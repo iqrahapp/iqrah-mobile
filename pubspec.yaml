@@ -39,6 +39,7 @@ dependencies:
     path: rust_builder
   flutter_rust_bridge: 2.11.1
   flutter_riverpod: ^2.6.1
+  intl: ^0.20.0
 
 dev_dependencies:
   flutter_test:

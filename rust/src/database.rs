@@ -32,6 +32,7 @@ pub fn create_schema(conn: &Connection) -> Result<()> {
             node_id TEXT NOT NULL,
             stability REAL NOT NULL DEFAULT 0,
             difficulty REAL NOT NULL DEFAULT 0,
+            energy REAL NOT NULL DEFAULT 0.0,           -- mastery 0-1 scale
             last_reviewed INTEGER NOT NULL DEFAULT 0,   -- epoch ms
             due_at INTEGER NOT NULL DEFAULT 0,          -- epoch ms
             review_count INTEGER NOT NULL DEFAULT 0,
@@ -156,8 +157,8 @@ pub fn seed_database_for_user(conn: &Connection, user_id: &str) -> Result<()> {
     {
         // Only insert memory states for this user
         let mut insert_memory = tx.prepare(
-        "INSERT OR REPLACE INTO user_memory_states (user_id, node_id, stability, difficulty, last_reviewed, due_at, review_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?)"
+        "INSERT OR REPLACE INTO user_memory_states (user_id, node_id, stability, difficulty, energy, last_reviewed, due_at, review_count)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )?;
 
         for (i, _) in al_fatiha_data.iter().enumerate() {
@@ -166,6 +167,7 @@ pub fn seed_database_for_user(conn: &Connection, user_id: &str) -> Result<()> {
             insert_memory.execute([
                 user_id, // Use parameter instead of hardcoded
                 &node_id,
+                &0.0.to_string(),
                 &0.0.to_string(),
                 &0.0.to_string(),
                 &0.to_string(),

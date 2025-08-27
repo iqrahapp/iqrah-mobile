@@ -3,36 +3,36 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import '../frb_generated.dart';
-import '../repository.dart';
+import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-
-String greet({required String name}) =>
-    RustLib.instance.api.crateApiSimpleGreet(name: name);
+import 'repository.dart';
 
 Future<String> initDatabase({required String dbPath}) =>
-    RustLib.instance.api.crateApiSimpleInitDatabase(dbPath: dbPath);
+    RustLib.instance.api.crateApiInitDatabase(dbPath: dbPath);
 
 Future<String> initDatabaseInMemory() =>
-    RustLib.instance.api.crateApiSimpleInitDatabaseInMemory();
+    RustLib.instance.api.crateApiInitDatabaseInMemory();
 
 Future<List<NodeData>> getDueItems({
   required String userId,
   required int limit,
-}) => RustLib.instance.api.crateApiSimpleGetDueItems(
-  userId: userId,
-  limit: limit,
-);
+}) => RustLib.instance.api.crateApiGetDueItems(userId: userId, limit: limit);
 
 Future<NodeData> getNodeData({required String nodeId}) =>
-    RustLib.instance.api.crateApiSimpleGetNodeData(nodeId: nodeId);
+    RustLib.instance.api.crateApiGetNodeData(nodeId: nodeId);
 
 Future<MemoryState> processReview({
   required String userId,
   required String nodeId,
   required ReviewGrade grade,
-}) => RustLib.instance.api.crateApiSimpleProcessReview(
+}) => RustLib.instance.api.crateApiProcessReview(
   userId: userId,
   nodeId: nodeId,
   grade: grade,
 );
+
+Future<DebugStats> getDebugStats({required String userId}) =>
+    RustLib.instance.api.crateApiGetDebugStats(userId: userId);
+
+Future<String> reseedDatabase() =>
+    RustLib.instance.api.crateApiReseedDatabase();

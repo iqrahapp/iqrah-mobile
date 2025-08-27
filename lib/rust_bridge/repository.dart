@@ -6,9 +6,61 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+class DebugStats {
+  final int dueToday;
+  final int totalReviewed;
+  final double avgEnergy;
+  final List<DueItem> nextDueItems;
+
+  const DebugStats({
+    required this.dueToday,
+    required this.totalReviewed,
+    required this.avgEnergy,
+    required this.nextDueItems,
+  });
+
+  @override
+  int get hashCode =>
+      dueToday.hashCode ^
+      totalReviewed.hashCode ^
+      avgEnergy.hashCode ^
+      nextDueItems.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DebugStats &&
+          runtimeType == other.runtimeType &&
+          dueToday == other.dueToday &&
+          totalReviewed == other.totalReviewed &&
+          avgEnergy == other.avgEnergy &&
+          nextDueItems == other.nextDueItems;
+}
+
+class DueItem {
+  final String nodeId;
+  final String? arabic;
+  final MemoryState state;
+
+  const DueItem({required this.nodeId, this.arabic, required this.state});
+
+  @override
+  int get hashCode => nodeId.hashCode ^ arabic.hashCode ^ state.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DueItem &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          arabic == other.arabic &&
+          state == other.state;
+}
+
 class MemoryState {
   final double stability;
   final double difficulty;
+  final double energy;
   final PlatformInt64 lastReviewed;
   final PlatformInt64 dueAt;
   final int reviewCount;
@@ -16,6 +68,7 @@ class MemoryState {
   const MemoryState({
     required this.stability,
     required this.difficulty,
+    required this.energy,
     required this.lastReviewed,
     required this.dueAt,
     required this.reviewCount,
@@ -25,6 +78,7 @@ class MemoryState {
   int get hashCode =>
       stability.hashCode ^
       difficulty.hashCode ^
+      energy.hashCode ^
       lastReviewed.hashCode ^
       dueAt.hashCode ^
       reviewCount.hashCode;
@@ -36,6 +90,7 @@ class MemoryState {
           runtimeType == other.runtimeType &&
           stability == other.stability &&
           difficulty == other.difficulty &&
+          energy == other.energy &&
           lastReviewed == other.lastReviewed &&
           dueAt == other.dueAt &&
           reviewCount == other.reviewCount;

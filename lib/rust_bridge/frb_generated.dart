@@ -3,7 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/simple.dart';
+import 'api.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -56,7 +56,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   @override
   Future<void> executeRustInitializers() async {
-    await api.crateApiSimpleInitApp();
+    await api.crateApiInitApp();
   }
 
   @override
@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -709357990;
+  int get rustContentHash => -1716790986;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,26 +78,28 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<List<NodeData>> crateApiSimpleGetDueItems({
+  Future<DebugStats> crateApiGetDebugStats({required String userId});
+
+  Future<List<NodeData>> crateApiGetDueItems({
     required String userId,
     required int limit,
   });
 
-  Future<NodeData> crateApiSimpleGetNodeData({required String nodeId});
+  Future<NodeData> crateApiGetNodeData({required String nodeId});
 
-  String crateApiSimpleGreet({required String name});
+  Future<void> crateApiInitApp();
 
-  Future<void> crateApiSimpleInitApp();
+  Future<String> crateApiInitDatabase({required String dbPath});
 
-  Future<String> crateApiSimpleInitDatabase({required String dbPath});
+  Future<String> crateApiInitDatabaseInMemory();
 
-  Future<String> crateApiSimpleInitDatabaseInMemory();
-
-  Future<MemoryState> crateApiSimpleProcessReview({
+  Future<MemoryState> crateApiProcessReview({
     required String userId,
     required String nodeId,
     required ReviewGrade grade,
   });
+
+  Future<String> crateApiReseedDatabase();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -109,7 +111,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<List<NodeData>> crateApiSimpleGetDueItems({
+  Future<DebugStats> crateApiGetDebugStats({required String userId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(userId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_debug_stats,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetDebugStatsConstMeta,
+        argValues: [userId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetDebugStatsConstMeta =>
+      const TaskConstMeta(debugName: "get_debug_stats", argNames: ["userId"]);
+
+  @override
+  Future<List<NodeData>> crateApiGetDueItems({
     required String userId,
     required int limit,
   }) {
@@ -122,7 +152,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -130,20 +160,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_node_data,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiSimpleGetDueItemsConstMeta,
+        constMeta: kCrateApiGetDueItemsConstMeta,
         argValues: [userId, limit],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleGetDueItemsConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiGetDueItemsConstMeta => const TaskConstMeta(
     debugName: "get_due_items",
     argNames: ["userId", "limit"],
   );
 
   @override
-  Future<NodeData> crateApiSimpleGetNodeData({required String nodeId}) {
+  Future<NodeData> crateApiGetNodeData({required String nodeId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -152,7 +182,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -160,41 +190,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_node_data,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiSimpleGetNodeDataConstMeta,
+        constMeta: kCrateApiGetNodeDataConstMeta,
         argValues: [nodeId],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleGetNodeDataConstMeta =>
+  TaskConstMeta get kCrateApiGetNodeDataConstMeta =>
       const TaskConstMeta(debugName: "get_node_data", argNames: ["nodeId"]);
 
   @override
-  String crateApiSimpleGreet({required String name}) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(name, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiSimpleGreetConstMeta,
-        argValues: [name],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiSimpleGreetConstMeta =>
-      const TaskConstMeta(debugName: "greet", argNames: ["name"]);
-
-  @override
-  Future<void> crateApiSimpleInitApp() {
+  Future<void> crateApiInitApp() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -210,18 +217,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiSimpleInitAppConstMeta,
+        constMeta: kCrateApiInitAppConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleInitAppConstMeta =>
+  TaskConstMeta get kCrateApiInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
-  Future<String> crateApiSimpleInitDatabase({required String dbPath}) {
+  Future<String> crateApiInitDatabase({required String dbPath}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -238,18 +245,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiSimpleInitDatabaseConstMeta,
+        constMeta: kCrateApiInitDatabaseConstMeta,
         argValues: [dbPath],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleInitDatabaseConstMeta =>
+  TaskConstMeta get kCrateApiInitDatabaseConstMeta =>
       const TaskConstMeta(debugName: "init_database", argNames: ["dbPath"]);
 
   @override
-  Future<String> crateApiSimpleInitDatabaseInMemory() {
+  Future<String> crateApiInitDatabaseInMemory() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -265,18 +272,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiSimpleInitDatabaseInMemoryConstMeta,
+        constMeta: kCrateApiInitDatabaseInMemoryConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleInitDatabaseInMemoryConstMeta =>
+  TaskConstMeta get kCrateApiInitDatabaseInMemoryConstMeta =>
       const TaskConstMeta(debugName: "init_database_in_memory", argNames: []);
 
   @override
-  Future<MemoryState> crateApiSimpleProcessReview({
+  Future<MemoryState> crateApiProcessReview({
     required String userId,
     required String nodeId,
     required ReviewGrade grade,
@@ -299,18 +306,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_memory_state,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiSimpleProcessReviewConstMeta,
+        constMeta: kCrateApiProcessReviewConstMeta,
         argValues: [userId, nodeId, grade],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiSimpleProcessReviewConstMeta =>
-      const TaskConstMeta(
-        debugName: "process_review",
-        argNames: ["userId", "nodeId", "grade"],
-      );
+  TaskConstMeta get kCrateApiProcessReviewConstMeta => const TaskConstMeta(
+    debugName: "process_review",
+    argNames: ["userId", "nodeId", "grade"],
+  );
+
+  @override
+  Future<String> crateApiReseedDatabase() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiReseedDatabaseConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiReseedDatabaseConstMeta =>
+      const TaskConstMeta(debugName: "reseed_database", argNames: []);
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -322,6 +355,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  DebugStats dco_decode_debug_stats(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return DebugStats(
+      dueToday: dco_decode_u_32(arr[0]),
+      totalReviewed: dco_decode_u_32(arr[1]),
+      avgEnergy: dco_decode_f_64(arr[2]),
+      nextDueItems: dco_decode_list_due_item(arr[3]),
+    );
+  }
+
+  @protected
+  DueItem dco_decode_due_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return DueItem(
+      nodeId: dco_decode_String(arr[0]),
+      arabic: dco_decode_opt_String(arr[1]),
+      state: dco_decode_memory_state(arr[2]),
+    );
   }
 
   @protected
@@ -343,6 +403,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<DueItem> dco_decode_list_due_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_due_item).toList();
+  }
+
+  @protected
   List<NodeData> dco_decode_list_node_data(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_node_data).toList();
@@ -358,14 +424,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MemoryState dco_decode_memory_state(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return MemoryState(
       stability: dco_decode_f_64(arr[0]),
       difficulty: dco_decode_f_64(arr[1]),
-      lastReviewed: dco_decode_i_64(arr[2]),
-      dueAt: dco_decode_i_64(arr[3]),
-      reviewCount: dco_decode_i_32(arr[4]),
+      energy: dco_decode_f_64(arr[2]),
+      lastReviewed: dco_decode_i_64(arr[3]),
+      dueAt: dco_decode_i_64(arr[4]),
+      reviewCount: dco_decode_i_32(arr[5]),
     );
   }
 
@@ -380,6 +447,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       arabic: dco_decode_String(arr[1]),
       translation: dco_decode_String(arr[2]),
     );
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
@@ -421,6 +494,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  DebugStats sse_decode_debug_stats(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_dueToday = sse_decode_u_32(deserializer);
+    var var_totalReviewed = sse_decode_u_32(deserializer);
+    var var_avgEnergy = sse_decode_f_64(deserializer);
+    var var_nextDueItems = sse_decode_list_due_item(deserializer);
+    return DebugStats(
+      dueToday: var_dueToday,
+      totalReviewed: var_totalReviewed,
+      avgEnergy: var_avgEnergy,
+      nextDueItems: var_nextDueItems,
+    );
+  }
+
+  @protected
+  DueItem sse_decode_due_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_nodeId = sse_decode_String(deserializer);
+    var var_arabic = sse_decode_opt_String(deserializer);
+    var var_state = sse_decode_memory_state(deserializer);
+    return DueItem(nodeId: var_nodeId, arabic: var_arabic, state: var_state);
+  }
+
+  @protected
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
@@ -436,6 +533,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  List<DueItem> sse_decode_list_due_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DueItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_due_item(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -462,12 +571,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_stability = sse_decode_f_64(deserializer);
     var var_difficulty = sse_decode_f_64(deserializer);
+    var var_energy = sse_decode_f_64(deserializer);
     var var_lastReviewed = sse_decode_i_64(deserializer);
     var var_dueAt = sse_decode_i_64(deserializer);
     var var_reviewCount = sse_decode_i_32(deserializer);
     return MemoryState(
       stability: var_stability,
       difficulty: var_difficulty,
+      energy: var_energy,
       lastReviewed: var_lastReviewed,
       dueAt: var_dueAt,
       reviewCount: var_reviewCount,
@@ -485,6 +596,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       arabic: var_arabic,
       translation: var_translation,
     );
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
   }
 
   @protected
@@ -533,6 +655,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_debug_stats(DebugStats self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.dueToday, serializer);
+    sse_encode_u_32(self.totalReviewed, serializer);
+    sse_encode_f_64(self.avgEnergy, serializer);
+    sse_encode_list_due_item(self.nextDueItems, serializer);
+  }
+
+  @protected
+  void sse_encode_due_item(DueItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.nodeId, serializer);
+    sse_encode_opt_String(self.arabic, serializer);
+    sse_encode_memory_state(self.state, serializer);
+  }
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
@@ -548,6 +687,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_list_due_item(List<DueItem> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_due_item(item, serializer);
+    }
   }
 
   @protected
@@ -577,6 +725,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_f_64(self.stability, serializer);
     sse_encode_f_64(self.difficulty, serializer);
+    sse_encode_f_64(self.energy, serializer);
     sse_encode_i_64(self.lastReviewed, serializer);
     sse_encode_i_64(self.dueAt, serializer);
     sse_encode_i_32(self.reviewCount, serializer);
@@ -588,6 +737,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.id, serializer);
     sse_encode_String(self.arabic, serializer);
     sse_encode_String(self.translation, serializer);
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
   }
 
   @protected

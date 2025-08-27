@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iqrah/rust_bridge/api/simple.dart' as api;
+import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/rust_bridge/repository.dart';
 
 class SessionState {

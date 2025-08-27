@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/pages/excercise_page.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/providers/session_provider.dart';
+import 'package:iqrah/widgets/debug_panel.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -18,6 +19,13 @@ class DashboardPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(dueItemsProvider),
+          ),
+          GestureDetector(
+            onLongPress: () => DebugPanel.show(context),
+            child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Icon(Icons.info_outline),
+            ),
           ),
         ],
       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/pages/dashboard_page.dart';
-import 'package:iqrah/rust_bridge/api/simple.dart';
+import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/rust_bridge/frb_generated.dart';
 
 Future<void> main() async {
