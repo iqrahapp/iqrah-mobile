@@ -21,7 +21,7 @@ class SummaryPage extends ConsumerWidget {
             ElevatedButton(
               onPressed: () {
                 // Invalidate provider before going back
-                ref.invalidate(dueItemsProvider);
+                ref.invalidate(exercisesProvider);
 
                 // Go back to the dashboard page clearing the excersise/summary pages
                 Navigator.of(context).popUntil((route) => route.isFirst);

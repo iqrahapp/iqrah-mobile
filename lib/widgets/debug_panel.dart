@@ -71,6 +71,16 @@ class DebugPanel {
             ),
           ),
           const SizedBox(height: 8),
+          _buildStatRow(
+            'Total Nodes',
+            '${stats.totalNodesCount}',
+            Colors.green[300],
+          ),
+          _buildStatRow(
+            'Total Edges',
+            '${stats.totalEdgesCount}',
+            Colors.green[300],
+          ),
           _buildStatRow('Due Today', '${stats.dueToday}', Colors.red[300]),
           _buildStatRow(
             'Total Reviewed',

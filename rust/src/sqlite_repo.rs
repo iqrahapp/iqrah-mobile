@@ -1,5 +1,9 @@
-use crate::repository::{
-    DebugStats, DueItem, KnowledgeGraphRepository, MemoryState, NodeData, ReviewGrade,
+use crate::{
+    cbor_import::{ImportedEdge, ImportedNode, NodeType},
+    propagation::{DistributionParams, DistributionType, EdgeForPropagation, EdgeType},
+    repository::{
+        DebugStats, DueItem, KnowledgeGraphRepository, MemoryState, NodeData, ReviewGrade,
+    },
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -7,8 +11,8 @@ use flutter_rust_bridge::frb;
 use fsrs::FSRS;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{config::DbConfig, params};
-use std::path::PathBuf;
+use rusqlite::{config::DbConfig, params, OptionalExtension};
+use std::{collections::HashMap, path::PathBuf};
 use tokio::task;
 
 fn calculate_energy_delta(grade: ReviewGrade, current_energy: f64) -> f64 {
@@ -20,6 +24,71 @@ fn calculate_energy_delta(grade: ReviewGrade, current_energy: f64) -> f64 {
     };
     // Diminishing returns as energy approaches 1.0
     base_delta * (1.0 - current_energy)
+
+    /*
+    ✅ Good News: You've Already Implemented the Core Idea!
+
+    Before exploring more advanced techniques, I want to point out that your existing calculate_energy_delta function is smarter than you might think. Look at this part:
+
+    Rust
+    // This is your current, elegant solutionfn calculate_energy_delta(grade: ReviewGrade, current_energy: f64) -> f64 {
+
+        let base_delta = /* ... */;
+
+        // This part is key!
+
+        base_delta * (1.0 - current_energy.max(0.0)) // (using max(0.0) to handle the [-1, 1] range)
+
+    }
+
+    The * (1.0 - current_energy) term already implements an adaptive delta based on diminishing returns.
+
+    When energy is low (e.g., 0.1), the multiplier is large (* 0.9), resulting in a big step.
+
+    When energy is high (e.g., 0.9), the multiplier is small (* 0.1), resulting in a small, fine-tuning step.
+
+    This is an excellent, simple, and effective MVP for an adaptive system.
+
+    🚀 How to Make It Even Smarter (Ideas for Future Sprints)
+
+    While your current model is great, we can get even closer to an Adam-like optimizer by incorporating more context. Here are two advanced approaches for a future sprint.
+
+    1. The "Momentum" Model
+
+    This approach adds a "velocity" to learning. If a user consistently answers correctly, the energy gains could accelerate.
+
+    How it works: Add a learning_momentum column (e.g., from 0.5 to 1.5) to the user_memory_states table.
+
+    On a good review: Slightly increase the momentum (e.g., momentum = (momentum + 0.1).min(1.5)).
+
+    On a bad review: Reset the momentum back to a lower value (e.g., 1.0 or 0.8).
+
+    The new delta calculation: final_delta = base_delta * (1.0 - current_energy) * learning_momentum.
+
+    This allows the system to differentiate between a lucky guess and consistent knowledge.
+
+    2. The FSRS-Integrated Model (The Principled Approach)
+
+    This is the most elegant solution because it uses data you already have. The FSRS engine calculates Stability (S), which is a fantastic proxy for long-term memory strength.
+
+    The Logic:
+
+    When Stability is low, the concept is new or forgotten. We need a large energy delta.
+
+    When Stability is high, the concept is well-mastered. We need a small energy delta to avoid overshooting.
+
+    How it works: We can use a function that decays as stability increases. The tanh function is perfect for this as it smoothly maps the unbounded stability value.
+
+    Rust
+
+
+
+    // In process_review, you already have the `stability` value from FSRSlet stability = selected_state.memory.stability;// Create a factor that decreases as stability increases// The number `30.0` is a tuning parameter: a larger value means the factor decays slower.let stability_factor = 1.0 - (stability / 30.0).tanh(); let final_delta = base_delta * stability_factor;
+
+    This method is powerful because it directly ties your two memory systems together. The FSRS scheduling engine's assessment of memory strength now directly informs the energy propagation system.
+
+    Verdict: Your concern is valid and shows a deep understanding of the problem. For now, be confident that your current "diminishing returns" model is a solid and effective MVP. For a future sprint, the FSRS-Integrated Model is the ideal, principled path forward.
+    */
 }
 
 #[frb(ignore)]
@@ -27,7 +96,6 @@ pub struct SqliteRepository {
     pool: Pool<SqliteConnectionManager>,
 }
 
-#[frb(ignore)]
 impl SqliteRepository {
     pub fn new(path: Option<PathBuf>) -> Result<Self> {
         let manager = match path {
@@ -49,25 +117,11 @@ impl SqliteRepository {
 
         Ok(Self { pool })
     }
-
-    pub fn seed(&self) -> Result<()> {
-        let conn = self.pool.get()?;
-        crate::database::seed_database(&conn)
-    }
 }
 
-#[frb(ignore)]
+// #[frb(ignore)]
 #[async_trait]
 impl KnowledgeGraphRepository for SqliteRepository {
-    async fn seed(&self) -> Result<()> {
-        let pool = self.pool.clone();
-        task::spawn_blocking(move || {
-            let conn = pool.get()?;
-            crate::database::seed_database(&conn)
-        })
-        .await?
-    }
-
     async fn get_due_items(&self, user_id: &str, limit: u32) -> Result<Vec<NodeData>> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
@@ -75,59 +129,47 @@ impl KnowledgeGraphRepository for SqliteRepository {
         task::spawn_blocking(move || {
             let conn = pool.get()?;
             let mut stmt = conn.prepare(
-                "SELECT n.id,
-                        MAX(CASE WHEN nm.key = 'arabic' THEN nm.value END) AS arabic,
-                        MAX(CASE WHEN nm.key = 'translation' THEN nm.value END) AS translation
-                 FROM nodes n
-                 JOIN node_metadata nm ON n.id = nm.node_id
-                 JOIN user_memory_states ums ON n.id = ums.node_id
-                 WHERE ums.user_id = ? AND ums.due_at <= ?
-                 GROUP BY n.id
-                 ORDER BY ums.last_reviewed ASC
-                 LIMIT ?",
+                "SELECT n.id, n.node_type, nm.key, nm.value
+             FROM nodes n
+             JOIN node_metadata nm ON n.id = nm.node_id
+             JOIN user_memory_states ums ON n.id = ums.node_id
+             WHERE ums.user_id = ? AND ums.due_at <= ?
+               AND n.node_type IN ('word_instance', 'verse')
+             ORDER BY ums.last_reviewed ASC",
             )?;
 
             let now_ms = chrono::Utc::now().timestamp_millis();
-            let items = stmt
-                .query_map(params![user_id, now_ms, limit], |row| {
-                    Ok(NodeData {
-                        id: row.get("id")?,
-                        arabic: row.get("arabic")?,
-                        translation: row.get("translation")?,
-                    })
-                })?
-                .collect::<Result<Vec<_>, _>>()?;
-
-            Ok(items)
-        })
-        .await?
-    }
-
-    async fn get_node_data(&self, node_id: &str) -> Result<NodeData> {
-        let pool = self.pool.clone();
-        let node_id = node_id.to_string();
-
-        task::spawn_blocking(move || {
-            let conn = pool.get()?;
-            let mut stmt = conn.prepare(
-                "SELECT n.id,
-                        MAX(CASE WHEN nm.key = 'arabic' THEN nm.value END) AS arabic,
-                        MAX(CASE WHEN nm.key = 'translation' THEN nm.value END) AS translation
-                 FROM nodes n
-                 JOIN node_metadata nm ON n.id = nm.node_id
-                 WHERE n.id = ?
-                 GROUP BY n.id",
-            )?;
-
-            let node = stmt.query_row(params![node_id], |row| {
-                Ok(NodeData {
-                    id: row.get("id")?,
-                    arabic: row.get("arabic")?,
-                    translation: row.get("translation")?,
-                })
+            let rows = stmt.query_map(params![user_id, now_ms], |row| {
+                Ok((
+                    row.get::<_, String>("id")?,
+                    row.get::<_, NodeType>("node_type")?,
+                    row.get::<_, String>("key")?,
+                    row.get::<_, String>("value")?,
+                ))
             })?;
 
-            Ok(node)
+            // Group metadata by node_id
+            let mut nodes_map: HashMap<String, NodeData> = HashMap::new();
+
+            for row in rows {
+                let (node_id, node_type, key, value) = row?;
+
+                nodes_map
+                    .entry(node_id.clone())
+                    .or_insert_with(|| NodeData {
+                        id: node_id.clone(),
+                        node_type,
+                        metadata: HashMap::new(),
+                    })
+                    .metadata
+                    .insert(key, value);
+            }
+
+            // Convert to NodeData and take only the limit we need
+            Ok(nodes_map
+                .into_values()
+                .take(limit as usize)
+                .collect::<Vec<_>>())
         })
         .await?
     }
@@ -137,7 +179,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
         user_id: &str,
         node_id: &str,
         grade: ReviewGrade,
-    ) -> Result<MemoryState> {
+    ) -> Result<(MemoryState, f64)> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
         let node_id = node_id.to_string();
@@ -146,7 +188,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
         let conn = pool.get()?;
         let now_ms = chrono::Utc::now().timestamp_millis();
 
-        // Get current state - no JSON parsing needed
+        // Get current state
         let (stability, difficulty, energy, review_count, last_reviewed): (f64, f64, f64, i32, i64) = conn.query_row(
             "SELECT stability, difficulty, energy, review_count, last_reviewed FROM user_memory_states WHERE user_id = ? AND node_id = ?",
             params![user_id, node_id],
@@ -193,7 +235,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
 
         // Energy calculation
         let energy_delta = calculate_energy_delta(grade, energy);
-        let new_energy = (energy + energy_delta).clamp(0.0, 1.0);
+        let new_energy = (energy + energy_delta).clamp(-1.0, 1.0);
 
         // Update database - store stability/difficulty directly
         conn.execute(
@@ -211,34 +253,212 @@ impl KnowledgeGraphRepository for SqliteRepository {
             ]
         )?;
 
-        // Simple propagation
-        if energy_delta > 0.05 {
-            let arabic_word: String = conn.query_row(
-                "SELECT value FROM node_metadata WHERE node_id = ? AND key = 'arabic'",
-                params![node_id], |row| row.get(0)
-            ).unwrap_or_default();
-
-            if !arabic_word.is_empty() {
-                conn.execute(
-                    "UPDATE user_memory_states SET energy = MIN(1.0, energy + ?)
-                     WHERE user_id = ? AND node_id IN (
-                       SELECT node_id FROM node_metadata
-                       WHERE key='arabic' AND value=? AND node_id != ?
-                     ) AND energy < 0.8",
-                    params![energy_delta * 0.5, user_id, arabic_word, node_id]
-                )?;
-            }
-        }
-
-        Ok(MemoryState {
+        Ok((MemoryState {
             stability: selected_state.memory.stability as f64,
             difficulty: selected_state.memory.difficulty as f64,
             energy: new_energy,
             due_at: due_at_ms,
             review_count: review_count + 1,
             last_reviewed: now_ms,
-        })
+        }, new_energy))
     }).await?
+    }
+
+    async fn get_knowledge_edges(&self, source_node_id: &str) -> Result<Vec<EdgeForPropagation>> {
+        let pool = self.pool.clone();
+        let source_node_id = source_node_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get().map_err(|e| anyhow::anyhow!(e))?;
+            let mut stmt = conn.prepare(
+                "SELECT target_id, distribution_type, param1, param2
+                 FROM edges
+                 WHERE source_id = ? AND edge_type = ?",
+            )?;
+
+            let edges = stmt
+                .query_map(params![source_node_id, EdgeType::Knowledge as i32], |row| {
+                    let dist_type_int: i32 = row.get(1)?; // Read as integer
+                    let p1: f32 = row.get(2)?;
+                    let p2: f32 = row.get(3)?;
+
+                    // Convert integer to enum, falling back to Constant on error
+                    let distribution = match DistributionType::try_from(dist_type_int) {
+                        Ok(DistributionType::Normal) => DistributionParams::Normal {
+                            mean: p1,
+                            std_dev: p2,
+                        },
+                        Ok(DistributionType::Beta) => DistributionParams::Beta {
+                            alpha: p1,
+                            beta: p2,
+                        },
+                        _ => DistributionParams::Constant { weight: p1 }, // Default/fallback
+                    };
+
+                    Ok(EdgeForPropagation {
+                        target_node_id: row.get(0)?,
+                        distribution,
+                    })
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
+
+            Ok(edges)
+        })
+        .await?
+    }
+
+    async fn get_node_energy(&self, user_id: &str, node_id: &str) -> Result<Option<f64>> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+        let node_id = node_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get().map_err(|e| anyhow::anyhow!(e))?;
+            let energy = conn
+                .query_row(
+                    "SELECT energy FROM user_memory_states WHERE user_id = ? AND node_id = ?",
+                    params![user_id, node_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            Ok(energy)
+        })
+        .await?
+    }
+
+    async fn update_node_energies(&self, user_id: &str, updates: &[(String, f64)]) -> Result<()> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+        // Clone updates to move into the blocking task
+        let updates = updates.to_vec();
+
+        task::spawn_blocking(move || {
+            let mut conn = pool.get()?;
+            let tx = conn.transaction()?;
+
+            for (node_id, new_energy) in updates {
+                tx.execute(
+                    "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND node_id = ?",
+                    params![new_energy, user_id, node_id],
+                )?;
+            }
+
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn sync_user_nodes(&self, user_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+
+        task::spawn_blocking(move || -> anyhow::Result<()> {
+            let conn = pool.get()?;
+
+            let now_ms = chrono::Utc::now().timestamp_millis();
+
+            conn.execute(
+                "INSERT OR IGNORE INTO user_memory_states (user_id, node_id, due_at)
+             SELECT ?1, id, ?2 FROM nodes",
+                params![user_id, now_ms],
+            )?;
+
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn reset_user_progress(&self, user_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+
+        task::spawn_blocking(move || -> anyhow::Result<()> {
+            let conn = pool.get()?;
+            let now_ms = chrono::Utc::now().timestamp_millis();
+
+            // This single command efficiently replaces all existing records or inserts
+            // new ones for the user, resetting their progress for every node.
+            conn.execute(
+                "INSERT OR REPLACE INTO user_memory_states (user_id, node_id, due_at)
+             SELECT ?1, id, ?2 FROM nodes",
+                params![user_id, now_ms],
+            )?;
+
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> Result<()> {
+        let pool = self.pool.clone();
+        // We need to own the data to move it into the thread
+        let nodes_data = nodes.to_vec();
+
+        Ok(task::spawn_blocking(move || -> anyhow::Result<()> {
+            let mut conn = pool.get()?;
+            // Use a transaction for a massive speed boost on bulk inserts
+            let tx = conn.transaction()?;
+
+            {
+                // Prepare statements once before the loop
+                let mut insert_node = tx.prepare_cached(
+                    "INSERT OR REPLACE INTO nodes (id, node_type, created_at) VALUES (?, ?, ?)",
+                )?;
+                let mut insert_meta = tx.prepare_cached(
+                    "INSERT OR REPLACE INTO node_metadata (node_id, key, value) VALUES (?, ?, ?)",
+                )?;
+                let now_ms = chrono::Utc::now().timestamp_millis();
+
+                for node in &nodes_data {
+                    // 1. Insert into the main `nodes` table
+                    insert_node.execute(params![node.id, node.attributes.node_type, now_ms])?;
+
+                    // 2. Insert all metadata into the `node_metadata` table
+                    for (key, value) in &node.attributes.metadata {
+                        insert_meta.execute(params![node.id, key, value])?;
+                    }
+                }
+            } // Statements are dropped here before the transaction is committed
+
+            tx.commit()?;
+            Ok(())
+        })
+        .await??)
+    }
+
+    async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> Result<()> {
+        let pool = self.pool.clone();
+        let edges_data = edges.to_vec();
+
+        Ok(task::spawn_blocking(move || -> anyhow::Result<()> {
+        let mut conn = pool.get()?;
+        let tx = conn.transaction()?;
+
+            {
+                let mut insert_edge = tx.prepare_cached(
+                    "INSERT OR REPLACE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2) VALUES (?, ?, ?, ?, ?, ?)",
+                )?;
+
+                for edge in &edges_data {
+                    let (dist_type, p1, p2) = match edge.distribution {
+                        DistributionParams::Normal { mean, std_dev } => (DistributionType::Normal, mean, std_dev),
+                        DistributionParams::Beta { alpha, beta } => (DistributionType::Beta, alpha, beta),
+                        DistributionParams::Constant { weight } => (DistributionType::Constant, weight, 0.0),
+                    };
+
+                    insert_edge.execute(params![edge.source_id, edge.target_id, edge.edge_type as i32, dist_type as i32, p1, p2])?;
+                }
+            }
+
+            tx.commit()?;
+            Ok(())
+        })
+        .await??)
     }
 
     async fn get_debug_stats(&self, user_id: &str) -> Result<DebugStats> {
@@ -296,11 +516,18 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 })?
                 .collect::<Result<Vec<_>, _>>()?;
 
+
+            let total_nodes_count  : usize = conn.query_one("SELECT COUNT(*) FROM nodes", [], |row| row.get::<_, usize>(0)).unwrap_or(0);
+            let total_edges_count  : usize = conn.query_one("SELECT COUNT(*) FROM edges", [], |row| row.get::<_, usize>(0)).unwrap_or(0);
+
+
             Ok(DebugStats {
                 due_today,
                 total_reviewed,
                 avg_energy,
                 next_due_items,
+                total_nodes_count,
+                total_edges_count,
             })
         })
         .await?

@@ -11,12 +11,16 @@ class DebugStats {
   final int totalReviewed;
   final double avgEnergy;
   final List<DueItem> nextDueItems;
+  final BigInt totalNodesCount;
+  final BigInt totalEdgesCount;
 
   const DebugStats({
     required this.dueToday,
     required this.totalReviewed,
     required this.avgEnergy,
     required this.nextDueItems,
+    required this.totalNodesCount,
+    required this.totalEdgesCount,
   });
 
   @override
@@ -24,7 +28,9 @@ class DebugStats {
       dueToday.hashCode ^
       totalReviewed.hashCode ^
       avgEnergy.hashCode ^
-      nextDueItems.hashCode;
+      nextDueItems.hashCode ^
+      totalNodesCount.hashCode ^
+      totalEdgesCount.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -34,7 +40,9 @@ class DebugStats {
           dueToday == other.dueToday &&
           totalReviewed == other.totalReviewed &&
           avgEnergy == other.avgEnergy &&
-          nextDueItems == other.nextDueItems;
+          nextDueItems == other.nextDueItems &&
+          totalNodesCount == other.totalNodesCount &&
+          totalEdgesCount == other.totalEdgesCount;
 }
 
 class DueItem {
@@ -94,30 +102,6 @@ class MemoryState {
           lastReviewed == other.lastReviewed &&
           dueAt == other.dueAt &&
           reviewCount == other.reviewCount;
-}
-
-class NodeData {
-  final String id;
-  final String arabic;
-  final String translation;
-
-  const NodeData({
-    required this.id,
-    required this.arabic,
-    required this.translation,
-  });
-
-  @override
-  int get hashCode => id.hashCode ^ arabic.hashCode ^ translation.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NodeData &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          arabic == other.arabic &&
-          translation == other.translation;
 }
 
 enum ReviewGrade { again, hard, good, easy }

@@ -3,23 +3,26 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import 'exercises.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'repository.dart';
 
-Future<String> initDatabase({required String dbPath}) =>
-    RustLib.instance.api.crateApiInitDatabase(dbPath: dbPath);
+/// One-time setup: initializes DB, imports graph, and syncs the default user.
+/// Should be called on first app launch.
+Future<String> setupDatabase({String? dbPath, required List<int> kgBytes}) =>
+    RustLib.instance.api.crateApiSetupDatabase(
+      dbPath: dbPath,
+      kgBytes: kgBytes,
+    );
 
-Future<String> initDatabaseInMemory() =>
-    RustLib.instance.api.crateApiInitDatabaseInMemory();
+Future<String> setupDatabaseInMemory({required List<int> kgBytes}) =>
+    RustLib.instance.api.crateApiSetupDatabaseInMemory(kgBytes: kgBytes);
 
-Future<List<NodeData>> getDueItems({
+Future<List<Exercise>> getExercises({
   required String userId,
   required int limit,
-}) => RustLib.instance.api.crateApiGetDueItems(userId: userId, limit: limit);
-
-Future<NodeData> getNodeData({required String nodeId}) =>
-    RustLib.instance.api.crateApiGetNodeData(nodeId: nodeId);
+}) => RustLib.instance.api.crateApiGetExercises(userId: userId, limit: limit);
 
 Future<MemoryState> processReview({
   required String userId,

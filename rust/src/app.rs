@@ -16,8 +16,6 @@ pub fn init_app(path: Option<PathBuf>) -> Result<()> {
         return Ok(()); // Already initialized
     } else {
         let repo = Arc::new(SqliteRepository::new(path)?);
-        repo.seed()?; // Separate seeding step
-
         let service = LearningService::new(repo);
         APP.set(App { service })
             .map_err(|_| anyhow::anyhow!("App already initialized"))?;

@@ -10,7 +10,7 @@ class DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dueItemsAsync = ref.watch(dueItemsProvider);
+    final dueItemsAsync = ref.watch(exercisesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,7 +18,7 @@ class DashboardPage extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(dueItemsProvider),
+            onPressed: () => ref.invalidate(exercisesProvider),
           ),
           GestureDetector(
             onLongPress: () => DebugPanel.show(context),

@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1716790986;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 248113850;
 
 // Section: executor
 
@@ -81,7 +81,7 @@ fn wire__crate__api__get_debug_stats_impl(
         },
     )
 }
-fn wire__crate__api__get_due_items_impl(
+fn wire__crate__api__get_exercises_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -89,7 +89,7 @@ fn wire__crate__api__get_due_items_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "get_due_items",
+            debug_name: "get_exercises",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -109,43 +109,7 @@ fn wire__crate__api__get_due_items_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::get_due_items(api_user_id, api_limit).await?;
-                        Ok(output_ok)
-                    })()
-                    .await,
-                )
-            }
-        },
-    )
-}
-fn wire__crate__api__get_node_data_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "get_node_data",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_node_id = <String>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| async move {
-                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
-                    (move || async move {
-                        let output_ok = crate::api::get_node_data(api_node_id).await?;
+                        let output_ok = crate::api::get_exercises(api_user_id, api_limit).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -184,77 +148,6 @@ fn wire__crate__api__init_app_impl(
                     })?;
                     Ok(output_ok)
                 })())
-            }
-        },
-    )
-}
-fn wire__crate__api__init_database_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "init_database",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_db_path = <String>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| async move {
-                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
-                    (move || async move {
-                        let output_ok = crate::api::init_database(api_db_path).await?;
-                        Ok(output_ok)
-                    })()
-                    .await,
-                )
-            }
-        },
-    )
-}
-fn wire__crate__api__init_database_in_memory_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "init_database_in_memory",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            deserializer.end();
-            move |context| async move {
-                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
-                    (move || async move {
-                        let output_ok = crate::api::init_database_in_memory().await?;
-                        Ok(output_ok)
-                    })()
-                    .await,
-                )
             }
         },
     )
@@ -333,6 +226,80 @@ fn wire__crate__api__reseed_database_impl(
         },
     )
 }
+fn wire__crate__api__setup_database_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "setup_database",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_db_path = <Option<String>>::sse_decode(&mut deserializer);
+            let api_kg_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::setup_database(api_db_path, api_kg_bytes).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__setup_database_in_memory_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "setup_database_in_memory",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_kg_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::setup_database_in_memory(api_kg_bytes).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 
 // Section: dart2rust
 
@@ -359,11 +326,15 @@ impl SseDecode for crate::repository::DebugStats {
         let mut var_totalReviewed = <u32>::sse_decode(deserializer);
         let mut var_avgEnergy = <f64>::sse_decode(deserializer);
         let mut var_nextDueItems = <Vec<crate::repository::DueItem>>::sse_decode(deserializer);
+        let mut var_totalNodesCount = <usize>::sse_decode(deserializer);
+        let mut var_totalEdgesCount = <usize>::sse_decode(deserializer);
         return crate::repository::DebugStats {
             due_today: var_dueToday,
             total_reviewed: var_totalReviewed,
             avg_energy: var_avgEnergy,
             next_due_items: var_nextDueItems,
+            total_nodes_count: var_totalNodesCount,
+            total_edges_count: var_totalEdgesCount,
         };
     }
 }
@@ -378,6 +349,22 @@ impl SseDecode for crate::repository::DueItem {
             node_id: var_nodeId,
             arabic: var_arabic,
             state: var_state,
+        };
+    }
+}
+
+impl SseDecode for crate::exercises::Exercise {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_nodeId = <String>::sse_decode(deserializer);
+        let mut var_arabic = <String>::sse_decode(deserializer);
+        let mut var_translation = <String>::sse_decode(deserializer);
+        let mut var_exerciseType = <String>::sse_decode(deserializer);
+        return crate::exercises::Exercise {
+            node_id: var_nodeId,
+            arabic: var_arabic,
+            translation: var_translation,
+            exercise_type: var_exerciseType,
         };
     }
 }
@@ -415,13 +402,13 @@ impl SseDecode for Vec<crate::repository::DueItem> {
     }
 }
 
-impl SseDecode for Vec<crate::repository::NodeData> {
+impl SseDecode for Vec<crate::exercises::Exercise> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::repository::NodeData>::sse_decode(deserializer));
+            ans_.push(<crate::exercises::Exercise>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -455,20 +442,6 @@ impl SseDecode for crate::repository::MemoryState {
             last_reviewed: var_lastReviewed,
             due_at: var_dueAt,
             review_count: var_reviewCount,
-        };
-    }
-}
-
-impl SseDecode for crate::repository::NodeData {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_id = <String>::sse_decode(deserializer);
-        let mut var_arabic = <String>::sse_decode(deserializer);
-        let mut var_translation = <String>::sse_decode(deserializer);
-        return crate::repository::NodeData {
-            id: var_id,
-            arabic: var_arabic,
-            translation: var_translation,
         };
     }
 }
@@ -517,6 +490,13 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
+impl SseDecode for usize {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap() as _
+    }
+}
+
 impl SseDecode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -534,13 +514,12 @@ fn pde_ffi_dispatcher_primary_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         1 => wire__crate__api__get_debug_stats_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__get_due_items_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__get_node_data_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__init_database_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__init_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__get_exercises_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -567,6 +546,8 @@ impl flutter_rust_bridge::IntoDart for crate::repository::DebugStats {
             self.total_reviewed.into_into_dart().into_dart(),
             self.avg_energy.into_into_dart().into_dart(),
             self.next_due_items.into_into_dart().into_dart(),
+            self.total_nodes_count.into_into_dart().into_dart(),
+            self.total_edges_count.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -597,6 +578,24 @@ impl flutter_rust_bridge::IntoIntoDart<crate::repository::DueItem> for crate::re
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::exercises::Exercise {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.node_id.into_into_dart().into_dart(),
+            self.arabic.into_into_dart().into_dart(),
+            self.translation.into_into_dart().into_dart(),
+            self.exercise_type.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::exercises::Exercise {}
+impl flutter_rust_bridge::IntoIntoDart<crate::exercises::Exercise> for crate::exercises::Exercise {
+    fn into_into_dart(self) -> crate::exercises::Exercise {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::repository::MemoryState {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -618,25 +617,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::repository::MemoryState>
     for crate::repository::MemoryState
 {
     fn into_into_dart(self) -> crate::repository::MemoryState {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::repository::NodeData {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.id.into_into_dart().into_dart(),
-            self.arabic.into_into_dart().into_dart(),
-            self.translation.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::repository::NodeData {}
-impl flutter_rust_bridge::IntoIntoDart<crate::repository::NodeData>
-    for crate::repository::NodeData
-{
-    fn into_into_dart(self) -> crate::repository::NodeData {
         self
     }
 }
@@ -685,6 +665,8 @@ impl SseEncode for crate::repository::DebugStats {
         <u32>::sse_encode(self.total_reviewed, serializer);
         <f64>::sse_encode(self.avg_energy, serializer);
         <Vec<crate::repository::DueItem>>::sse_encode(self.next_due_items, serializer);
+        <usize>::sse_encode(self.total_nodes_count, serializer);
+        <usize>::sse_encode(self.total_edges_count, serializer);
     }
 }
 
@@ -694,6 +676,16 @@ impl SseEncode for crate::repository::DueItem {
         <String>::sse_encode(self.node_id, serializer);
         <Option<String>>::sse_encode(self.arabic, serializer);
         <crate::repository::MemoryState>::sse_encode(self.state, serializer);
+    }
+}
+
+impl SseEncode for crate::exercises::Exercise {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.node_id, serializer);
+        <String>::sse_encode(self.arabic, serializer);
+        <String>::sse_encode(self.translation, serializer);
+        <String>::sse_encode(self.exercise_type, serializer);
     }
 }
 
@@ -728,12 +720,12 @@ impl SseEncode for Vec<crate::repository::DueItem> {
     }
 }
 
-impl SseEncode for Vec<crate::repository::NodeData> {
+impl SseEncode for Vec<crate::exercises::Exercise> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::repository::NodeData>::sse_encode(item, serializer);
+            <crate::exercises::Exercise>::sse_encode(item, serializer);
         }
     }
 }
@@ -757,15 +749,6 @@ impl SseEncode for crate::repository::MemoryState {
         <i64>::sse_encode(self.last_reviewed, serializer);
         <i64>::sse_encode(self.due_at, serializer);
         <i32>::sse_encode(self.review_count, serializer);
-    }
-}
-
-impl SseEncode for crate::repository::NodeData {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.id, serializer);
-        <String>::sse_encode(self.arabic, serializer);
-        <String>::sse_encode(self.translation, serializer);
     }
 }
 
@@ -814,6 +797,16 @@ impl SseEncode for u8 {
 impl SseEncode for () {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
+}
+
+impl SseEncode for usize {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer
+            .cursor
+            .write_u64::<NativeEndian>(self as _)
+            .unwrap();
+    }
 }
 
 impl SseEncode for bool {

@@ -1,45 +1,51 @@
-use crate::repository::{DebugStats, MemoryState, NodeData, ReviewGrade};
+use crate::{
+    exercises::{create_exercise, Exercise},
+    repository::{DebugStats, MemoryState, ReviewGrade},
+};
 use anyhow::Result;
 
-pub async fn init_database(db_path: String) -> Result<String> {
-    let db_path = if db_path.is_empty() {
+/// One-time setup: initializes DB, imports graph, and syncs the default user.
+/// Should be called on first app launch.
+pub async fn setup_database(db_path: Option<String>, kg_bytes: Vec<u8>) -> Result<String> {
+    let db_path = if db_path.is_none() || db_path.as_ref().unwrap().is_empty() {
         None
     } else {
-        Some(std::path::PathBuf::from(db_path))
+        Some(std::path::PathBuf::from(db_path.unwrap()))
     };
 
-    let db_path_str_dbg = db_path
-        .as_ref()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or("<in-memory>".to_string());
-
+    // 1. Initialize the app/repo with the db_path
     crate::app::init_app(db_path)?;
+    let service = &crate::app::app().service;
 
-    let n = crate::app::app()
-        .service
-        .get_due_items("default_user", 100)
-        .await?
-        .len();
+    // 2. Import the graph from the asset file
+    let import_stats = service.import_cbor_graph_from_bytes(kg_bytes).await?;
+
+    // 3. Create the default user and sync their nodes
+    service.sync_user_nodes("default_user").await?;
 
     Ok(format!(
-        "Database initialized at {} with {} due items ready",
-        db_path_str_dbg, n
+        "Setup complete. Imported {} nodes and {} edges.",
+        import_stats.nodes_imported, import_stats.edges_imported
     ))
 }
 
-pub async fn init_database_in_memory() -> Result<String> {
-    init_database(String::new()).await
+pub async fn setup_database_in_memory(kg_bytes: Vec<u8>) -> Result<String> {
+    setup_database(None, kg_bytes).await
 }
 
-pub async fn get_due_items(user_id: String, limit: u32) -> Result<Vec<NodeData>> {
-    crate::app::app()
+pub async fn get_exercises(user_id: String, limit: u32) -> Result<Vec<Exercise>> {
+    let due_nodes = crate::app::app()
         .service
-        .get_due_items(&user_id, limit)
-        .await
-}
+        .get_due_items(&user_id, limit * 2) // Get extra in case some fail to generate
+        .await?;
 
-pub async fn get_node_data(node_id: String) -> Result<NodeData> {
-    crate::app::app().service.get_node_data(&node_id).await
+    let exercises: Vec<Exercise> = due_nodes
+        .into_iter()
+        .filter_map(|node| create_exercise(node).ok()) // Skip any that fail
+        .take(limit as usize) // Take only what we need after filtering
+        .collect();
+
+    Ok(exercises)
 }
 
 pub async fn process_review(
@@ -59,8 +65,11 @@ pub async fn get_debug_stats(user_id: String) -> Result<DebugStats> {
 
 pub async fn reseed_database() -> Result<String> {
     // Call the repo's seed method which deletes tables and reseeds
-    crate::app::app().service.seed().await?;
-    Ok("Database cleared and reseeded successfully".to_string())
+    crate::app::app()
+        .service
+        .reset_user_progress("default_user")
+        .await?;
+    Ok("User progress reset successfully".to_string())
 }
 
 #[flutter_rust_bridge::frb(init)]

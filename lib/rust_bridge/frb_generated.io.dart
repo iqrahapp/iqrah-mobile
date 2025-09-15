@@ -7,6 +7,7 @@ import 'api.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
+import 'exercises.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 import 'repository.dart';
@@ -32,6 +33,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DueItem dco_decode_due_item(dynamic raw);
 
   @protected
+  Exercise dco_decode_exercise(dynamic raw);
+
+  @protected
   double dco_decode_f_64(dynamic raw);
 
   @protected
@@ -44,16 +48,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<DueItem> dco_decode_list_due_item(dynamic raw);
 
   @protected
-  List<NodeData> dco_decode_list_node_data(dynamic raw);
+  List<Exercise> dco_decode_list_exercise(dynamic raw);
+
+  @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
   MemoryState dco_decode_memory_state(dynamic raw);
-
-  @protected
-  NodeData dco_decode_node_data(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
@@ -71,6 +75,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
   @protected
@@ -81,6 +88,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DueItem sse_decode_due_item(SseDeserializer deserializer);
+
+  @protected
+  Exercise sse_decode_exercise(SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
@@ -95,16 +105,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<DueItem> sse_decode_list_due_item(SseDeserializer deserializer);
 
   @protected
-  List<NodeData> sse_decode_list_node_data(SseDeserializer deserializer);
+  List<Exercise> sse_decode_list_exercise(SseDeserializer deserializer);
+
+  @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   MemoryState sse_decode_memory_state(SseDeserializer deserializer);
-
-  @protected
-  NodeData sse_decode_node_data(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -120,6 +130,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
@@ -140,6 +153,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_due_item(DueItem self, SseSerializer serializer);
 
   @protected
+  void sse_encode_exercise(Exercise self, SseSerializer serializer);
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
@@ -152,7 +168,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_due_item(List<DueItem> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_node_data(List<NodeData> self, SseSerializer serializer);
+  void sse_encode_list_exercise(List<Exercise> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -162,9 +181,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_memory_state(MemoryState self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_node_data(NodeData self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
@@ -180,6 +196,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);

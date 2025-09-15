@@ -1,16 +1,34 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/pages/dashboard_page.dart';
 import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/rust_bridge/frb_generated.dart';
 
+const graphAssetPath = "assets/iqrah-graph-v1.0.0.cbor.zst";
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
 
+  // Ensure the asset still exist
+  final ByteData assetData;
+  try {
+    assetData = await rootBundle.load(graphAssetPath);
+    print('✅ Asset loaded successfully: $graphAssetPath');
+  } catch (e) {
+    print('❌ Failed to load asset: $graphAssetPath');
+    print('Error: $e');
+    // Exit the app with a non-zero exit code to indicate failure
+    exit(1);
+  }
+
   // final dbPath = await getDatabasePath();
   // final initMsg = await initDatabase(dbPath: dbPath);
-  final initMsg = await initDatabaseInMemory();
+  final bytes = assetData.buffer.asUint8List();
+  final initMsg = await setupDatabaseInMemory(kgBytes: bytes);
   print(initMsg);
 
   runApp(const ProviderScope(child: MyApp()));

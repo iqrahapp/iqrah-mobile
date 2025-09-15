@@ -2,14 +2,21 @@ use anyhow::Result;
 use async_trait::async_trait;
 use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+
+use crate::{
+    cbor_import::{
+        import_cbor_graph_from_bytes, ImportStats, ImportedEdge, ImportedNode, NodeType,
+    },
+    propagation::EdgeForPropagation,
+};
 
 // Node data with metadata for Flutter
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeData {
     pub id: String,
-    pub arabic: String,
-    pub translation: String,
+    pub node_type: NodeType,
+    pub metadata: HashMap<String, String>,
 }
 
 // Review grades (will map to FSRS later)
@@ -25,7 +32,7 @@ pub enum ReviewGrade {
 pub struct MemoryState {
     pub stability: f64,
     pub difficulty: f64,
-    pub energy: f64,        // mastery 0-1 scale
+    pub energy: f64,        // mastery [-1, 1] scale
     pub last_reviewed: i64, // epoch ms
     pub due_at: i64,        // epoch ms
     pub review_count: i32,
@@ -44,21 +51,30 @@ pub struct DebugStats {
     pub total_reviewed: u32,
     pub avg_energy: f64,
     pub next_due_items: Vec<DueItem>,
+    pub total_nodes_count: usize,
+    pub total_edges_count: usize,
 }
 /// Repository trait with Send + Sync for thread safety
 #[frb(ignore)]
 #[async_trait]
 pub trait KnowledgeGraphRepository: Send + Sync {
-    async fn seed(&self) -> Result<()>;
     async fn get_due_items(&self, user_id: &str, limit: u32) -> Result<Vec<NodeData>>;
-    async fn get_node_data(&self, node_id: &str) -> Result<NodeData>;
     async fn process_review(
         &self,
         user_id: &str,
         node_id: &str,
         grade: ReviewGrade,
-    ) -> Result<MemoryState>;
+    ) -> Result<(MemoryState, f64)>;
     async fn get_debug_stats(&self, user_id: &str) -> Result<DebugStats>;
+    async fn get_knowledge_edges(&self, source_node_id: &str) -> Result<Vec<EdgeForPropagation>>;
+    async fn get_node_energy(&self, user_id: &str, node_id: &str) -> Result<Option<f64>>;
+    async fn update_node_energies(&self, user_id: &str, updates: &[(String, f64)]) -> Result<()>;
+    async fn sync_user_nodes(&self, user_id: &str) -> Result<()>;
+    async fn reset_user_progress(&self, user_id: &str) -> Result<()>;
+
+    // Batch operations for setup/import
+    async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> Result<()>;
+    async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> Result<()>;
 }
 
 /// Service owns a trait object - perfect for testing
@@ -77,25 +93,44 @@ impl LearningService {
         self.repo.get_due_items(user_id, limit).await
     }
 
-    pub async fn get_node_data(&self, node_id: &str) -> Result<NodeData> {
-        self.repo.get_node_data(node_id).await
-    }
-
     pub async fn process_review(
         &self,
         user_id: &str,
         node_id: &str,
         grade: ReviewGrade,
     ) -> Result<MemoryState> {
-        self.repo.process_review(user_id, node_id, grade).await
+        // Step 1: Process the main review
+        let (new_state, energy_delta) = self.repo.process_review(user_id, node_id, grade).await?;
+
+        // Step 2: Propagate if the energy change is significant
+        // No longer checks for only "good" reviews.
+        if energy_delta.abs() > 0.01 {
+            // Threshold to avoid tiny propagations
+            let _stats = crate::propagation::propagate_energy(
+                &*self.repo,
+                user_id,
+                node_id,
+                energy_delta as f32,
+            )
+            .await?;
+        }
+
+        Ok(new_state)
     }
 
     pub async fn get_debug_stats(&self, user_id: &str) -> Result<DebugStats> {
         self.repo.get_debug_stats(user_id).await
     }
 
-    // FIXME[low]: this is a hack to expose seeding via the service - should be in AdminService
-    pub async fn seed(&self) -> Result<()> {
-        self.repo.seed().await
+    pub async fn sync_user_nodes(&self, user_id: &str) -> Result<()> {
+        self.repo.sync_user_nodes(user_id).await
+    }
+
+    pub async fn reset_user_progress(&self, user_id: &str) -> Result<()> {
+        self.repo.reset_user_progress(user_id).await
+    }
+
+    pub async fn import_cbor_graph_from_bytes(&self, data: Vec<u8>) -> Result<ImportStats> {
+        import_cbor_graph_from_bytes(&*self.repo, data).await
     }
 }
