@@ -655,6 +655,10 @@ impl KnowledgeGraphRepository for SqliteRepository {
             SELECT n.id,
                    ums.energy,
                    ums.due_at,
+                   ums.stability,
+                   ums.difficulty,
+                   ums.last_reviewed,
+                   ums.review_count,
                    (
                        1.0 * MAX(0, (?1 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
                        2.0 * MAX(0, 1.0 - ums.energy) +
@@ -686,6 +690,10 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 stmt.query_map(params![now_ms, user_id, limit, chapter_num], |row| {
                     let due_at: i64 = row.get("due_at")?;
                     let energy: f64 = row.get("energy")?;
+                    let stability: f64 = row.get("stability")?;
+                    let difficulty: f64 = row.get("difficulty")?;
+                    let last_reviewed: i64 = row.get("last_reviewed")?;
+                    let review_count: i32 = row.get("review_count")?;
                     let priority_score: f64 = row.get("priority_score")?;
                     let foundational_score: f64 = row
                         .get::<_, Option<String>>("foundational_score")?
@@ -709,12 +717,24 @@ impl KnowledgeGraphRepository for SqliteRepository {
                             importance,
                             weights: weights.clone(),
                         },
+                        memory_state: MemoryState {
+                            stability,
+                            difficulty,
+                            energy,
+                            last_reviewed,
+                            due_at,
+                            review_count,
+                        },
                     })
                 })?.collect::<Result<Vec<_>, _>>()?
             } else {
                 stmt.query_map(params![now_ms, user_id, limit], |row| {
                     let due_at: i64 = row.get("due_at")?;
                     let energy: f64 = row.get("energy")?;
+                    let stability: f64 = row.get("stability")?;
+                    let difficulty: f64 = row.get("difficulty")?;
+                    let last_reviewed: i64 = row.get("last_reviewed")?;
+                    let review_count: i32 = row.get("review_count")?;
                     let priority_score: f64 = row.get("priority_score")?;
                     let foundational_score: f64 = row
                         .get::<_, Option<String>>("foundational_score")?
@@ -737,6 +757,14 @@ impl KnowledgeGraphRepository for SqliteRepository {
                             mastery_gap,
                             importance,
                             weights: weights.clone(),
+                        },
+                        memory_state: MemoryState {
+                            stability,
+                            difficulty,
+                            energy,
+                            last_reviewed,
+                            due_at,
+                            review_count,
                         },
                     })
                 })?.collect::<Result<Vec<_>, _>>()?

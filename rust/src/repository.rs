@@ -62,13 +62,14 @@ pub struct ItemPreview {
     pub translation: Option<String>,
     pub priority_score: f64,
     pub score_breakdown: ScoreBreakdown,
+    pub memory_state: MemoryState,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScoreBreakdown {
     pub days_overdue: f64,
     pub mastery_gap: f64, // 1.0 - energy
-    pub importance: f64,  // foundational_score * 1000
+    pub importance: f64,  // foundational_score (direct value, not multiplied)
     pub weights: ScoreWeights,
 }
 

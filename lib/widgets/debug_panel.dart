@@ -361,6 +361,8 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
 
   Widget _buildPreviewCard(ItemPreview item) {
     final breakdown = item.scoreBreakdown;
+    final memoryState = item.memoryState;
+    final struggleLevel = _getStruggleLevel(memoryState);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -373,7 +375,7 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with node ID and total score
+          // Header with node ID and scores
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -387,20 +389,49 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.amber[700],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  item.priorityScore.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // FSRS Score (based on stability)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: _getFsrsScoreColor(memoryState.stability),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      'FSRS ${_getFsrsScore(memoryState.stability)}',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
-                ),
+                  // Priority Score
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber[700],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      item.priorityScore.toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -415,6 +446,26 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+
+          // FSRS Parameters
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _buildFsrsParameter(
+                'Stability',
+                memoryState.stability,
+                Colors.blue[300],
+              ),
+              const SizedBox(width: 8),
+              _buildFsrsParameter(
+                'Difficulty',
+                memoryState.difficulty,
+                Colors.purple[300],
+              ),
+              const SizedBox(width: 8),
+              _buildStruggleIndicator(struggleLevel),
+            ],
+          ),
 
           // Score breakdown
           const SizedBox(height: 6),
@@ -467,11 +518,11 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
             ),
           ),
           Text(
-            '${value.toStringAsFixed(1)}×${weight.toStringAsFixed(1)}',
+            '${value.toStringAsFixed(2)}×${weight.toStringAsFixed(1)}',
             style: TextStyle(fontSize: 10, color: color),
           ),
           Text(
-            '=${contribution.toStringAsFixed(1)}',
+            '=${contribution.toStringAsFixed(2)}',
             style: TextStyle(
               fontSize: 9,
               color: Colors.grey[400],
@@ -481,6 +532,117 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
         ],
       ),
     );
+  }
+
+  static Widget _buildFsrsParameter(String label, double value, Color? color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value.toStringAsFixed(1),
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildStruggleIndicator(String struggleLevel) {
+    final (label, color) = _getStruggleLevelDisplay(struggleLevel);
+
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            'Struggle',
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _getStruggleLevel(memoryState) {
+    // Based on stability (higher = better retention) and difficulty (higher = harder to learn)
+    final stability = memoryState.stability;
+    final difficulty = memoryState.difficulty;
+    final energy = memoryState.energy;
+
+    // Create a composite struggle score (lower = less struggle)
+    final struggleScore =
+        difficulty * 10 + (1.0 - stability) * 5 + (1.0 - energy) * 3;
+
+    if (struggleScore < 5) return 'Mastered';
+    if (struggleScore < 10) return 'Good';
+    if (struggleScore < 15) return 'Fair';
+    if (struggleScore < 20) return 'Weak';
+    if (struggleScore < 25) return 'Poor';
+    return 'Struggle';
+  }
+
+  static (String, Color) _getStruggleLevelDisplay(String level) {
+    switch (level) {
+      case 'Mastered':
+        return ('Mastered', Colors.green[400]!);
+      case 'Good':
+        return ('Good', Colors.lightGreen[400]!);
+      case 'Fair':
+        return ('Fair', Colors.yellow[400]!);
+      case 'Weak':
+        return ('Weak', Colors.orange[400]!);
+      case 'Poor':
+        return ('Poor', Colors.red[400]!);
+      case 'Struggle':
+        return ('Struggle', Colors.red[600]!);
+      default:
+        return ('Unknown', Colors.grey[400]!);
+    }
+  }
+
+  static int _getFsrsScore(double stability) {
+    // Convert stability to a 0-100 score
+    // Stability typically ranges from 0 to ~50+ for well-learned items
+    return (stability * 2).clamp(0, 100).round();
+  }
+
+  static Color _getFsrsScoreColor(double stability) {
+    final score = _getFsrsScore(stability);
+    if (score >= 80) return Colors.green[400]!;
+    if (score >= 60) return Colors.lightGreen[400]!;
+    if (score >= 40) return Colors.yellow[400]!;
+    if (score >= 20) return Colors.orange[400]!;
+    return Colors.red[400]!;
   }
 
   static Color _getEnergyColor(double energy) {

@@ -515,12 +515,14 @@ impl SseDecode for crate::repository::ItemPreview {
         let mut var_translation = <Option<String>>::sse_decode(deserializer);
         let mut var_priorityScore = <f64>::sse_decode(deserializer);
         let mut var_scoreBreakdown = <crate::repository::ScoreBreakdown>::sse_decode(deserializer);
+        let mut var_memoryState = <crate::repository::MemoryState>::sse_decode(deserializer);
         return crate::repository::ItemPreview {
             node_id: var_nodeId,
             arabic: var_arabic,
             translation: var_translation,
             priority_score: var_priorityScore,
             score_breakdown: var_scoreBreakdown,
+            memory_state: var_memoryState,
         };
     }
 }
@@ -819,6 +821,7 @@ impl flutter_rust_bridge::IntoDart for crate::repository::ItemPreview {
             self.translation.into_into_dart().into_dart(),
             self.priority_score.into_into_dart().into_dart(),
             self.score_breakdown.into_into_dart().into_dart(),
+            self.memory_state.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1018,6 +1021,7 @@ impl SseEncode for crate::repository::ItemPreview {
         <Option<String>>::sse_encode(self.translation, serializer);
         <f64>::sse_encode(self.priority_score, serializer);
         <crate::repository::ScoreBreakdown>::sse_encode(self.score_breakdown, serializer);
+        <crate::repository::MemoryState>::sse_encode(self.memory_state, serializer);
     }
 }
 

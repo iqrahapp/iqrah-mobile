@@ -71,6 +71,7 @@ class ItemPreview {
   final String? translation;
   final double priorityScore;
   final ScoreBreakdown scoreBreakdown;
+  final MemoryState memoryState;
 
   const ItemPreview({
     required this.nodeId,
@@ -78,6 +79,7 @@ class ItemPreview {
     this.translation,
     required this.priorityScore,
     required this.scoreBreakdown,
+    required this.memoryState,
   });
 
   @override
@@ -86,7 +88,8 @@ class ItemPreview {
       arabic.hashCode ^
       translation.hashCode ^
       priorityScore.hashCode ^
-      scoreBreakdown.hashCode;
+      scoreBreakdown.hashCode ^
+      memoryState.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -97,7 +100,8 @@ class ItemPreview {
           arabic == other.arabic &&
           translation == other.translation &&
           priorityScore == other.priorityScore &&
-          scoreBreakdown == other.scoreBreakdown;
+          scoreBreakdown == other.scoreBreakdown &&
+          memoryState == other.memoryState;
 }
 
 class MemoryState {

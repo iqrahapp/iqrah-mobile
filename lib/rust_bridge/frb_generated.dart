@@ -519,14 +519,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ItemPreview dco_decode_item_preview(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return ItemPreview(
       nodeId: dco_decode_String(arr[0]),
       arabic: dco_decode_opt_String(arr[1]),
       translation: dco_decode_opt_String(arr[2]),
       priorityScore: dco_decode_f_64(arr[3]),
       scoreBreakdown: dco_decode_score_breakdown(arr[4]),
+      memoryState: dco_decode_memory_state(arr[5]),
     );
   }
 
@@ -752,12 +753,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_translation = sse_decode_opt_String(deserializer);
     var var_priorityScore = sse_decode_f_64(deserializer);
     var var_scoreBreakdown = sse_decode_score_breakdown(deserializer);
+    var var_memoryState = sse_decode_memory_state(deserializer);
     return ItemPreview(
       nodeId: var_nodeId,
       arabic: var_arabic,
       translation: var_translation,
       priorityScore: var_priorityScore,
       scoreBreakdown: var_scoreBreakdown,
+      memoryState: var_memoryState,
     );
   }
 
@@ -1007,6 +1010,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.translation, serializer);
     sse_encode_f_64(self.priorityScore, serializer);
     sse_encode_score_breakdown(self.scoreBreakdown, serializer);
+    sse_encode_memory_state(self.memoryState, serializer);
   }
 
   @protected
