@@ -83,7 +83,12 @@ pub struct ScoreWeights {
 #[frb(ignore)]
 #[async_trait]
 pub trait KnowledgeGraphRepository: Send + Sync {
-    async fn get_due_items(&self, user_id: &str, limit: u32) -> Result<Vec<NodeData>>;
+    async fn get_due_items(
+        &self,
+        user_id: &str,
+        limit: u32,
+        surah_filter: Option<i32>,
+    ) -> Result<Vec<NodeData>>;
     async fn process_review(
         &self,
         user_id: &str,
@@ -97,7 +102,13 @@ pub trait KnowledgeGraphRepository: Send + Sync {
     async fn sync_user_nodes(&self, user_id: &str) -> Result<()>;
     async fn reset_user_progress(&self, user_id: &str) -> Result<()>;
     async fn refresh_all_priority_scores(&self, user_id: &str) -> Result<()>;
-    async fn get_session_preview(&self, user_id: &str, limit: u32) -> Result<Vec<ItemPreview>>;
+    async fn get_session_preview(
+        &self,
+        user_id: &str,
+        limit: u32,
+        surah_filter: Option<i32>,
+    ) -> Result<Vec<ItemPreview>>;
+    async fn get_available_surahs(&self) -> Result<Vec<(i32, String)>>;
 
     // Batch operations for setup/import
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> Result<()>;
@@ -116,8 +127,13 @@ impl LearningService {
         Self { repo }
     }
 
-    pub async fn get_due_items(&self, user_id: &str, limit: u32) -> Result<Vec<NodeData>> {
-        self.repo.get_due_items(user_id, limit).await
+    pub async fn get_due_items(
+        &self,
+        user_id: &str,
+        limit: u32,
+        surah_filter: Option<i32>,
+    ) -> Result<Vec<NodeData>> {
+        self.repo.get_due_items(user_id, limit, surah_filter).await
     }
 
     pub async fn process_review(
@@ -165,7 +181,18 @@ impl LearningService {
         import_cbor_graph_from_bytes(&*self.repo, data).await
     }
 
-    pub async fn get_session_preview(&self, user_id: &str, limit: u32) -> Result<Vec<ItemPreview>> {
-        self.repo.get_session_preview(user_id, limit).await
+    pub async fn get_session_preview(
+        &self,
+        user_id: &str,
+        limit: u32,
+        surah_filter: Option<i32>,
+    ) -> Result<Vec<ItemPreview>> {
+        self.repo
+            .get_session_preview(user_id, limit, surah_filter)
+            .await
+    }
+
+    pub async fn get_available_surahs(&self) -> Result<Vec<(i32, String)>> {
+        self.repo.get_available_surahs().await
     }
 }

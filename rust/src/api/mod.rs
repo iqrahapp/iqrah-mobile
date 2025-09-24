@@ -3,6 +3,7 @@ use crate::{
     repository::{DebugStats, ItemPreview, MemoryState, ReviewGrade},
 };
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 /// One-time setup: initializes DB, imports graph, and syncs the default user.
 /// Should be called on first app launch.
@@ -43,10 +44,14 @@ pub async fn setup_database_in_memory(kg_bytes: Vec<u8>) -> Result<String> {
     setup_database(None, kg_bytes).await
 }
 
-pub async fn get_exercises(user_id: String, limit: u32) -> Result<Vec<Exercise>> {
+pub async fn get_exercises(
+    user_id: String,
+    limit: u32,
+    surah_filter: Option<i32>,
+) -> Result<Vec<Exercise>> {
     let due_nodes = crate::app::app()
         .service
-        .get_due_items(&user_id, limit * 2) // Get extra in case some fail to generate
+        .get_due_items(&user_id, limit * 2, surah_filter) // Get extra in case some fail to generate
         .await?;
 
     println!("debug:get_exercises: found {} nodes", due_nodes.len());
@@ -92,11 +97,30 @@ pub async fn refresh_priority_scores(user_id: String) -> Result<String> {
     Ok("Priority scores refreshed".to_string())
 }
 
-pub async fn get_session_preview(user_id: String, limit: u32) -> Result<Vec<ItemPreview>> {
+pub async fn get_session_preview(
+    user_id: String,
+    limit: u32,
+    surah_filter: Option<i32>,
+) -> Result<Vec<ItemPreview>> {
     crate::app::app()
         .service
-        .get_session_preview(&user_id, limit)
+        .get_session_preview(&user_id, limit, surah_filter)
         .await
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SurahInfo {
+    pub number: i32,
+    pub name: String,
+}
+
+pub async fn get_available_surahs() -> Result<Vec<SurahInfo>> {
+    let surahs = crate::app::app().service.get_available_surahs().await?;
+
+    Ok(surahs
+        .into_iter()
+        .map(|(number, name)| SurahInfo { number, name })
+        .collect())
 }
 
 #[flutter_rust_bridge::frb(init)]

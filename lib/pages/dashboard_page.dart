@@ -4,6 +4,7 @@ import 'package:iqrah/pages/excercise_page.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/widgets/debug_panel.dart';
+import 'package:iqrah/widgets/surah_dropdown.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -29,53 +30,79 @@ class DashboardPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
-        child: dueItemsAsync.when(
-          data: (items) {
-            if (items.isEmpty) {
-              return const Text(
-                'No items are due for review. Please come back later!',
-                style: TextStyle(fontSize: 20),
-                textAlign: TextAlign.center,
-              );
-            }
-            return Column(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Sūrah filter dropdown
+            Row(
               children: [
-                Text(
-                  'You have ${items.length} items due for review.',
-                  style: const TextStyle(fontSize: 20),
+                const Text(
+                  'Filter by Sūrah:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 20,
-                    ),
-                    textStyle: const TextStyle(fontSize: 20),
-                  ),
-                  onPressed: () {
-                    // 1. Tell the SessionNotifier to start a review with these items
-                    ref.read(sessionProvider.notifier).startReview(items);
-                    // 2. Navigate to the ExcercisePage
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ExcercisePage()),
+                const SizedBox(width: 16),
+                const SurahDropdown(),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: Center(
+                child: dueItemsAsync.when(
+                  data: (items) {
+                    if (items.isEmpty) {
+                      return const Text(
+                        'No items are due for review. Please come back later!',
+                        style: TextStyle(fontSize: 20),
+                        textAlign: TextAlign.center,
+                      );
+                    }
+                    return Column(
+                      children: [
+                        Text(
+                          'You have ${items.length} items due for review.',
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 40,
+                              vertical: 20,
+                            ),
+                            textStyle: const TextStyle(fontSize: 20),
+                          ),
+                          onPressed: () {
+                            // 1. Tell the SessionNotifier to start a review with these items
+                            ref
+                                .read(sessionProvider.notifier)
+                                .startReview(items);
+                            // 2. Navigate to the ExcercisePage
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ExcercisePage(),
+                              ),
+                            );
+                          },
+                          child: const Text('Start Review'),
+                        ),
+                      ],
                     );
                   },
-                  child: const Text('Start Review'),
+                  loading: () => const Column(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 20),
+                      Text("Loading due items..."),
+                    ],
+                  ),
+                  error: (e, st) => const Text(
+                    'An error occurred while loading the session.',
+                  ),
                 ),
-              ],
-            );
-          },
-          loading: () => const Column(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text("Loading due items..."),
-            ],
-          ),
-          error: (e, st) =>
-              const Text('An error occurred while loading the session.'),
+              ),
+            ),
+          ],
         ),
       ),
     );

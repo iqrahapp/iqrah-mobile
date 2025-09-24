@@ -68,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 554516516;
+  int get rustContentHash => -726130573;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,16 +79,20 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<List<SurahInfo>> crateApiGetAvailableSurahs();
+
   Future<DebugStats> crateApiGetDebugStats({required String userId});
 
   Future<List<Exercise>> crateApiGetExercises({
     required String userId,
     required int limit,
+    int? surahFilter,
   });
 
   Future<List<ItemPreview>> crateApiGetSessionPreview({
     required String userId,
     required int limit,
+    int? surahFilter,
   });
 
   Future<void> crateApiInitApp();
@@ -120,6 +124,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<List<SurahInfo>> crateApiGetAvailableSurahs() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_surah_info,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetAvailableSurahsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetAvailableSurahsConstMeta =>
+      const TaskConstMeta(debugName: "get_available_surahs", argNames: []);
+
+  @override
   Future<DebugStats> crateApiGetDebugStats({required String userId}) {
     return handler.executeNormal(
       NormalTask(
@@ -129,7 +160,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -151,6 +182,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Future<List<Exercise>> crateApiGetExercises({
     required String userId,
     required int limit,
+    int? surahFilter,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -158,40 +190,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(userId, serializer);
           sse_encode_u_32(limit, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 2,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_exercise,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGetExercisesConstMeta,
-        argValues: [userId, limit],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGetExercisesConstMeta => const TaskConstMeta(
-    debugName: "get_exercises",
-    argNames: ["userId", "limit"],
-  );
-
-  @override
-  Future<List<ItemPreview>> crateApiGetSessionPreview({
-    required String userId,
-    required int limit,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(userId, serializer);
-          sse_encode_u_32(limit, serializer);
+          sse_encode_opt_box_autoadd_i_32(surahFilter, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -200,11 +199,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
+          decodeSuccessData: sse_decode_list_exercise,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetExercisesConstMeta,
+        argValues: [userId, limit, surahFilter],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetExercisesConstMeta => const TaskConstMeta(
+    debugName: "get_exercises",
+    argNames: ["userId", "limit", "surahFilter"],
+  );
+
+  @override
+  Future<List<ItemPreview>> crateApiGetSessionPreview({
+    required String userId,
+    required int limit,
+    int? surahFilter,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(userId, serializer);
+          sse_encode_u_32(limit, serializer);
+          sse_encode_opt_box_autoadd_i_32(surahFilter, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
           decodeSuccessData: sse_decode_list_item_preview,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetSessionPreviewConstMeta,
-        argValues: [userId, limit],
+        argValues: [userId, limit, surahFilter],
         apiImpl: this,
       ),
     );
@@ -212,7 +247,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiGetSessionPreviewConstMeta => const TaskConstMeta(
     debugName: "get_session_preview",
-    argNames: ["userId", "limit"],
+    argNames: ["userId", "limit", "surahFilter"],
   );
 
   @override
@@ -224,7 +259,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -258,7 +293,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -288,7 +323,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -318,7 +353,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -350,7 +385,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -380,7 +415,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -411,6 +446,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  int dco_decode_box_autoadd_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -520,6 +561,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<SurahInfo> dco_decode_list_surah_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_surah_info).toList();
+  }
+
+  @protected
   MemoryState dco_decode_memory_state(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -539,6 +586,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_i_32(raw);
   }
 
   @protected
@@ -571,6 +624,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       wDue: dco_decode_f_64(arr[0]),
       wNeed: dco_decode_f_64(arr[1]),
       wYield: dco_decode_f_64(arr[2]),
+    );
+  }
+
+  @protected
+  SurahInfo dco_decode_surah_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return SurahInfo(
+      number: dco_decode_i_32(arr[0]),
+      name: dco_decode_String(arr[1]),
     );
   }
 
@@ -610,6 +675,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_i_32(deserializer));
   }
 
   @protected
@@ -741,6 +812,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<SurahInfo> sse_decode_list_surah_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <SurahInfo>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_surah_info(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   MemoryState sse_decode_memory_state(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_stability = sse_decode_f_64(deserializer);
@@ -765,6 +848,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_i_32(deserializer));
     } else {
       return null;
     }
@@ -799,6 +893,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_wNeed = sse_decode_f_64(deserializer);
     var var_wYield = sse_decode_f_64(deserializer);
     return ScoreWeights(wDue: var_wDue, wNeed: var_wNeed, wYield: var_wYield);
+  }
+
+  @protected
+  SurahInfo sse_decode_surah_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_number = sse_decode_i_32(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    return SurahInfo(number: var_number, name: var_name);
   }
 
   @protected
@@ -843,6 +945,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self, serializer);
   }
 
   @protected
@@ -954,6 +1062,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_surah_info(
+    List<SurahInfo> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_surah_info(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_memory_state(MemoryState self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_f_64(self.stability, serializer);
@@ -971,6 +1091,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_i_32(self, serializer);
     }
   }
 
@@ -998,6 +1128,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_f_64(self.wDue, serializer);
     sse_encode_f_64(self.wNeed, serializer);
     sse_encode_f_64(self.wYield, serializer);
+  }
+
+  @protected
+  void sse_encode_surah_info(SurahInfo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.number, serializer);
+    sse_encode_String(self.name, serializer);
   }
 
   @protected

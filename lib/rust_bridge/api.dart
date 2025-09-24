@@ -8,6 +8,8 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'repository.dart';
 
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+
 /// One-time setup: initializes DB, imports graph, and syncs the default user.
 /// Should be called on first app launch.
 Future<String> setupDatabase({String? dbPath, required List<int> kgBytes}) =>
@@ -22,7 +24,12 @@ Future<String> setupDatabaseInMemory({required List<int> kgBytes}) =>
 Future<List<Exercise>> getExercises({
   required String userId,
   required int limit,
-}) => RustLib.instance.api.crateApiGetExercises(userId: userId, limit: limit);
+  int? surahFilter,
+}) => RustLib.instance.api.crateApiGetExercises(
+  userId: userId,
+  limit: limit,
+  surahFilter: surahFilter,
+);
 
 Future<MemoryState> processReview({
   required String userId,
@@ -46,7 +53,30 @@ Future<String> refreshPriorityScores({required String userId}) =>
 Future<List<ItemPreview>> getSessionPreview({
   required String userId,
   required int limit,
+  int? surahFilter,
 }) => RustLib.instance.api.crateApiGetSessionPreview(
   userId: userId,
   limit: limit,
+  surahFilter: surahFilter,
 );
+
+Future<List<SurahInfo>> getAvailableSurahs() =>
+    RustLib.instance.api.crateApiGetAvailableSurahs();
+
+class SurahInfo {
+  final int number;
+  final String name;
+
+  const SurahInfo({required this.number, required this.name});
+
+  @override
+  int get hashCode => number.hashCode ^ name.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SurahInfo &&
+          runtimeType == other.runtimeType &&
+          number == other.number &&
+          name == other.name;
+}

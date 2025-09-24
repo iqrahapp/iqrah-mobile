@@ -123,37 +123,76 @@ impl SqliteRepository {
 // #[frb(ignore)]
 #[async_trait]
 impl KnowledgeGraphRepository for SqliteRepository {
-    async fn get_due_items(&self, user_id: &str, limit: u32) -> Result<Vec<NodeData>> {
+    async fn get_due_items(
+        &self,
+        user_id: &str,
+        limit: u32,
+        surah_filter: Option<i32>,
+    ) -> Result<Vec<NodeData>> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
 
         task::spawn_blocking(move || {
             let conn = pool.get()?;
-            let mut stmt = conn.prepare(
+
+            // Build the WHERE clause dynamically based on surah_filter
+            let (where_clause, _) = match surah_filter {
+                Some(_) => {
+                    // For word_instance: check parent_node points to verse that starts with "VERSE:{chapter_num}:"
+                    // For verse: check the ID starts with "VERSE:{chapter_num}:"
+                    (
+                        "AND ((n.node_type = 'word_instance' AND EXISTS (
+                            SELECT 1 FROM node_metadata nm_parent
+                            WHERE nm_parent.node_id = n.id
+                            AND nm_parent.key = 'parent_node'
+                            AND nm_parent.value LIKE 'VERSE:' || ?4 || ':%'
+                        )) OR (n.node_type = 'verse' AND n.id LIKE 'VERSE:' || ?4 || ':%'))",
+                        4
+                    )
+                }
+                None => ("", 3)
+            };
+
+            let query = format!(
                 "SELECT n.id, n.node_type, nm.key, nm.value
-             FROM nodes n
-             JOIN node_metadata nm ON n.id = nm.node_id
-             JOIN user_memory_states ums ON n.id = ums.node_id
-             WHERE ums.user_id = ?1 AND ums.due_at <= ?2
-               AND n.node_type IN ('word_instance', 'verse')
-             ORDER BY (
-                 1.0 * MAX(0, (?2 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
-                 2.0 * MAX(0, 1.0 - ums.energy) +
-                 1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
-                                 WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
-             ) DESC, ums.last_reviewed ASC
-             LIMIT ?3",
-            )?;
+                 FROM nodes n
+                 JOIN node_metadata nm ON n.id = nm.node_id
+                 JOIN user_memory_states ums ON n.id = ums.node_id
+                 WHERE ums.user_id = ?1 AND ums.due_at <= ?2
+                   AND n.node_type IN ('word_instance', 'verse')
+                   {}
+                 ORDER BY (
+                     1.0 * MAX(0, (?2 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                     2.0 * MAX(0, 1.0 - ums.energy) +
+                     1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
+                                     WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
+                 ) DESC, ums.last_reviewed ASC
+                 LIMIT ?3",
+                where_clause
+            );
+
+            let mut stmt = conn.prepare(&query)?;
 
             let now_ms = chrono::Utc::now().timestamp_millis();
-            let rows = stmt.query_map(params![user_id, now_ms, limit], |row| {
+
+            // Create a helper function to avoid closure type mismatch
+            fn map_row(row: &rusqlite::Row) -> rusqlite::Result<(String, NodeType, String, String)> {
                 Ok((
                     row.get::<_, String>("id")?,
                     row.get::<_, NodeType>("node_type")?,
                     row.get::<_, String>("key")?,
                     row.get::<_, String>("value")?,
                 ))
-            })?;
+            }
+
+            let rows = match surah_filter {
+                Some(chapter_num) => {
+                    stmt.query_map(params![user_id, now_ms, limit, chapter_num], map_row)?
+                }
+                None => {
+                    stmt.query_map(params![user_id, now_ms, limit], map_row)?
+                }
+            };
 
             // Group metadata by node_id
             let mut nodes_map: HashMap<String, NodeData> = HashMap::new();
@@ -585,7 +624,12 @@ impl KnowledgeGraphRepository for SqliteRepository {
         .await?
     }
 
-    async fn get_session_preview(&self, user_id: &str, limit: u32) -> Result<Vec<ItemPreview>> {
+    async fn get_session_preview(
+        &self,
+        user_id: &str,
+        limit: u32,
+        surah_filter: Option<i32>,
+    ) -> Result<Vec<ItemPreview>> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
 
@@ -593,7 +637,20 @@ impl KnowledgeGraphRepository for SqliteRepository {
             let conn = pool.get()?;
             let now_ms = chrono::Utc::now().timestamp_millis();
 
-            let mut stmt = conn.prepare(
+            // Build the WHERE clause dynamically based on surah_filter
+            let where_clause = match surah_filter {
+                Some(_) => {
+                    "AND ((n.node_type = 'word_instance' AND EXISTS (
+                        SELECT 1 FROM node_metadata nm_parent
+                        WHERE nm_parent.node_id = n.id
+                        AND nm_parent.key = 'parent_node'
+                        AND nm_parent.value LIKE 'VERSE:' || ?4 || ':%'
+                    )) OR (n.node_type = 'verse' AND n.id LIKE 'VERSE:' || ?4 || ':%'))"
+                }
+                None => ""
+            };
+
+            let query = format!(
                 "
             SELECT n.id,
                    ums.energy,
@@ -611,11 +668,13 @@ impl KnowledgeGraphRepository for SqliteRepository {
             JOIN user_memory_states ums ON n.id = ums.node_id
             LEFT JOIN node_metadata nm ON n.id = nm.node_id
             WHERE ums.user_id = ?2 AND n.node_type IN ('word_instance', 'verse')
+            {}
             GROUP BY n.id
             ORDER BY priority_score DESC
             LIMIT ?3
-        ",
-            )?;
+        ", where_clause);
+
+            let mut stmt = conn.prepare(&query)?;
 
             let weights = ScoreWeights {
                 w_due: 1.0,
@@ -623,36 +682,104 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 w_yield: 1.5,
             };
 
-            let previews = stmt.query_map(params![now_ms, user_id, limit], |row| {
-                let due_at: i64 = row.get("due_at")?;
-                let energy: f64 = row.get("energy")?;
-                let priority_score: f64 = row.get("priority_score")?;
-                let foundational_score: f64 = row
-                    .get::<_, Option<String>>("foundational_score")?
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0.0);
+            let previews: Vec<ItemPreview> = if let Some(chapter_num) = surah_filter {
+                stmt.query_map(params![now_ms, user_id, limit, chapter_num], |row| {
+                    let due_at: i64 = row.get("due_at")?;
+                    let energy: f64 = row.get("energy")?;
+                    let priority_score: f64 = row.get("priority_score")?;
+                    let foundational_score: f64 = row
+                        .get::<_, Option<String>>("foundational_score")?
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0.0);
 
-                // Recalculate components for transparency
-                let days_overdue =
-                    ((now_ms - due_at) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)).max(0.0);
-                let mastery_gap = (1.0 - energy.max(0.0)).max(0.0);
-                let importance = foundational_score ;
+                    // Recalculate components for transparency
+                    let days_overdue =
+                        ((now_ms - due_at) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)).max(0.0);
+                    let mastery_gap = (1.0 - energy.max(0.0)).max(0.0);
+                    let importance = foundational_score;
 
-                Ok(ItemPreview {
-                    node_id: row.get("id")?,
-                    arabic: row.get("arabic")?,
-                    translation: row.get("translation")?,
-                    priority_score,
-                    score_breakdown: ScoreBreakdown {
-                        days_overdue,
-                        mastery_gap,
-                        importance,
-                        weights: weights.clone(),
-                    },
-                })
-            })?;
+                    Ok(ItemPreview {
+                        node_id: row.get("id")?,
+                        arabic: row.get("arabic")?,
+                        translation: row.get("translation")?,
+                        priority_score,
+                        score_breakdown: ScoreBreakdown {
+                            days_overdue,
+                            mastery_gap,
+                            importance,
+                            weights: weights.clone(),
+                        },
+                    })
+                })?.collect::<Result<Vec<_>, _>>()?
+            } else {
+                stmt.query_map(params![now_ms, user_id, limit], |row| {
+                    let due_at: i64 = row.get("due_at")?;
+                    let energy: f64 = row.get("energy")?;
+                    let priority_score: f64 = row.get("priority_score")?;
+                    let foundational_score: f64 = row
+                        .get::<_, Option<String>>("foundational_score")?
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0.0);
 
-            Ok(previews.collect::<Result<Vec<_>, _>>()?)
+                    // Recalculate components for transparency
+                    let days_overdue =
+                        ((now_ms - due_at) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)).max(0.0);
+                    let mastery_gap = (1.0 - energy.max(0.0)).max(0.0);
+                    let importance = foundational_score;
+
+                    Ok(ItemPreview {
+                        node_id: row.get("id")?,
+                        arabic: row.get("arabic")?,
+                        translation: row.get("translation")?,
+                        priority_score,
+                        score_breakdown: ScoreBreakdown {
+                            days_overdue,
+                            mastery_gap,
+                            importance,
+                            weights: weights.clone(),
+                        },
+                    })
+                })?.collect::<Result<Vec<_>, _>>()?
+            };
+
+            Ok(previews)
+        })
+        .await?
+    }
+
+    async fn get_available_surahs(&self) -> Result<Vec<(i32, String)>> {
+        let pool = self.pool.clone();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            let mut stmt = conn.prepare(
+                "SELECT n.id, nm.value as name
+                 FROM nodes n
+                 JOIN node_metadata nm ON n.id = nm.node_id
+                 WHERE n.node_type = 'chapter' AND nm.key = 'name'
+                 ORDER BY CAST(SUBSTR(n.id, 9) AS INTEGER)",
+            )?;
+
+            let surahs: Vec<(i32, String)> = stmt
+                .query_map([], |row| {
+                    let id: String = row.get("id")?;
+                    // Extract chapter number from "CHAPTER:X" format
+                    let chapter_num = id
+                        .strip_prefix("CHAPTER:")
+                        .and_then(|s| s.parse::<i32>().ok())
+                        .ok_or_else(|| {
+                            rusqlite::Error::InvalidColumnType(
+                                0,
+                                "id".to_string(),
+                                rusqlite::types::Type::Text,
+                            )
+                        })?;
+                    let name: String = row.get("name")?;
+                    Ok((chapter_num, name))
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
+
+            Ok(surahs)
         })
         .await?
     }

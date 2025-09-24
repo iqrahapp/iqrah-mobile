@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/rust_bridge/repository.dart';
 
@@ -26,16 +28,16 @@ class DebugPanel {
   }
 }
 
-class _DebugPanelDialog extends StatefulWidget {
+class _DebugPanelDialog extends ConsumerStatefulWidget {
   final DebugStats stats;
 
   const _DebugPanelDialog({required this.stats});
 
   @override
-  State<_DebugPanelDialog> createState() => _DebugPanelDialogState();
+  ConsumerState<_DebugPanelDialog> createState() => _DebugPanelDialogState();
 }
 
-class _DebugPanelDialogState extends State<_DebugPanelDialog> {
+class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
   Key _previewKey = UniqueKey(); // Force rebuild of session preview
 
   @override
@@ -276,7 +278,11 @@ class _DebugPanelDialogState extends State<_DebugPanelDialog> {
         const SizedBox(height: 8),
         FutureBuilder<List<ItemPreview>>(
           key: _previewKey, // Force rebuild on re-fetch
-          future: api.getSessionPreview(userId: "default_user", limit: 5),
+          future: api.getSessionPreview(
+            userId: "default_user",
+            limit: 5,
+            surahFilter: ref.watch(surahFilterProvider),
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

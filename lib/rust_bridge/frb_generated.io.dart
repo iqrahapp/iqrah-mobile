@@ -27,6 +27,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_i_32(dynamic raw);
+
+  @protected
   DebugStats dco_decode_debug_stats(dynamic raw);
 
   @protected
@@ -63,10 +66,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<SurahInfo> dco_decode_list_surah_info(dynamic raw);
+
+  @protected
   MemoryState dco_decode_memory_state(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
   @protected
   ReviewGrade dco_decode_review_grade(dynamic raw);
@@ -76,6 +85,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ScoreWeights dco_decode_score_weights(dynamic raw);
+
+  @protected
+  SurahInfo dco_decode_surah_info(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -94,6 +106,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
   DebugStats sse_decode_debug_stats(SseDeserializer deserializer);
@@ -132,10 +147,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<SurahInfo> sse_decode_list_surah_info(SseDeserializer deserializer);
+
+  @protected
   MemoryState sse_decode_memory_state(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
   ReviewGrade sse_decode_review_grade(SseDeserializer deserializer);
@@ -145,6 +166,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ScoreWeights sse_decode_score_weights(SseDeserializer deserializer);
+
+  @protected
+  SurahInfo sse_decode_surah_info(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -169,6 +193,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_debug_stats(DebugStats self, SseSerializer serializer);
@@ -213,10 +240,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_surah_info(
+    List<SurahInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_memory_state(MemoryState self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
 
   @protected
   void sse_encode_review_grade(ReviewGrade self, SseSerializer serializer);
@@ -229,6 +265,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_score_weights(ScoreWeights self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_surah_info(SurahInfo self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
