@@ -2,7 +2,8 @@ use crate::{
     cbor_import::{ImportedEdge, ImportedNode, NodeType},
     propagation::{DistributionParams, DistributionType, EdgeForPropagation, EdgeType},
     repository::{
-        DebugStats, DueItem, KnowledgeGraphRepository, MemoryState, NodeData, ReviewGrade,
+        DebugStats, DueItem, ItemPreview, KnowledgeGraphRepository, MemoryState, NodeData,
+        ReviewGrade, ScoreBreakdown, ScoreWeights,
     },
 };
 use anyhow::Result;
@@ -133,13 +134,19 @@ impl KnowledgeGraphRepository for SqliteRepository {
              FROM nodes n
              JOIN node_metadata nm ON n.id = nm.node_id
              JOIN user_memory_states ums ON n.id = ums.node_id
-             WHERE ums.user_id = ? AND ums.due_at <= ?
+             WHERE ums.user_id = ?1 AND ums.due_at <= ?2
                AND n.node_type IN ('word_instance', 'verse')
-             ORDER BY ums.last_reviewed ASC",
+             ORDER BY (
+                 1.0 * MAX(0, (?2 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                 2.0 * MAX(0, 1.0 - ums.energy) +
+                 1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
+                                 WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
+             ) DESC, ums.last_reviewed ASC
+             LIMIT ?3",
             )?;
 
             let now_ms = chrono::Utc::now().timestamp_millis();
-            let rows = stmt.query_map(params![user_id, now_ms], |row| {
+            let rows = stmt.query_map(params![user_id, now_ms, limit], |row| {
                 Ok((
                     row.get::<_, String>("id")?,
                     row.get::<_, NodeType>("node_type")?,
@@ -168,7 +175,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
             // Convert to NodeData and take only the limit we need
             Ok(nodes_map
                 .into_values()
-                .take(limit as usize)
+                // .take(limit as usize) // Already limited by SQL query
                 .collect::<Vec<_>>())
         })
         .await?
@@ -240,16 +247,27 @@ impl KnowledgeGraphRepository for SqliteRepository {
         // Update database - store stability/difficulty directly
         conn.execute(
             "UPDATE user_memory_states
-             SET stability = ?, difficulty = ?, energy = ?, last_reviewed = ?, due_at = ?, review_count = review_count + 1
-             WHERE user_id = ? AND node_id = ?",
+            SET stability = ?, difficulty = ?, energy = ?, last_reviewed = ?, due_at = ?,
+                review_count = review_count + 1,
+                priority_score = (
+                    1.0 * MAX(0, (? - ?) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                    2.0 * MAX(0, 1.0 - ?) +
+                    1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata
+                                    WHERE node_id = ? AND key = 'foundational_score'), 0)
+                )
+            WHERE user_id = ? AND node_id = ?",
             params![
-                selected_state.memory.stability as f64,
-                selected_state.memory.difficulty as f64,
-                new_energy,
-                now_ms,
-                due_at_ms,
-                user_id,
-                node_id
+                selected_state.memory.stability as f64,  // 1
+                selected_state.memory.difficulty as f64, // 2
+                new_energy,                              // 3
+                now_ms,                                  // 4
+                due_at_ms,                              // 5
+                now_ms,                                 // 6 - for (? - ?) overdue calculation
+                due_at_ms,                              // 7 - for (? - ?) overdue calculation
+                new_energy,                             // 8 - for (1.0 - ?) mastery gap
+                node_id,                                // 9 - for foundational_score lookup
+                user_id,                                // 10
+                node_id                                 // 11
             ]
         )?;
 
@@ -329,21 +347,55 @@ impl KnowledgeGraphRepository for SqliteRepository {
     async fn update_node_energies(&self, user_id: &str, updates: &[(String, f64)]) -> Result<()> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
-        // Clone updates to move into the blocking task
         let updates = updates.to_vec();
 
         task::spawn_blocking(move || {
             let mut conn = pool.get()?;
             let tx = conn.transaction()?;
+            let now_ms = chrono::Utc::now().timestamp_millis();
 
             for (node_id, new_energy) in updates {
                 tx.execute(
-                    "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND node_id = ?",
-                    params![new_energy, user_id, node_id],
+                    "UPDATE user_memory_states
+                 SET energy = ?1,
+                     priority_score = (
+                         1.0 * MAX(0, (?2 - due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                         2.0 * MAX(0, 1.0 - ?1) +
+                         1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm
+                                        WHERE nm.node_id = ?3 AND nm.key = 'foundational_score'), 0)
+                     )
+                 WHERE user_id = ?4 AND node_id = ?3",
+                    params![new_energy, now_ms, node_id, user_id],
                 )?;
             }
 
             tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn refresh_all_priority_scores(&self, user_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            let now_ms = chrono::Utc::now().timestamp_millis();
+
+            conn.execute(
+                "
+            UPDATE user_memory_states
+            SET priority_score = (
+                1.0 * MAX(0, (?1 - due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                2.0 * MAX(0, 1.0 - energy) +
+                1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm
+                               WHERE nm.node_id = user_memory_states.node_id
+                               AND nm.key = 'foundational_score'), 0)
+            )
+            WHERE user_id = ?",
+                params![now_ms, user_id],
+            )?;
             Ok(())
         })
         .await?
@@ -529,6 +581,78 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 total_nodes_count,
                 total_edges_count,
             })
+        })
+        .await?
+    }
+
+    async fn get_session_preview(&self, user_id: &str, limit: u32) -> Result<Vec<ItemPreview>> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            let now_ms = chrono::Utc::now().timestamp_millis();
+
+            let mut stmt = conn.prepare(
+                "
+            SELECT n.id,
+                   ums.energy,
+                   ums.due_at,
+                   (
+                       1.0 * MAX(0, (?1 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                       2.0 * MAX(0, 1.0 - ums.energy) +
+                       1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
+                                      WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
+                   ) AS priority_score,
+                   MAX(CASE WHEN nm.key = 'arabic' THEN nm.value END) as arabic,
+                   MAX(CASE WHEN nm.key = 'translation' THEN nm.value END) as translation,
+                   MAX(CASE WHEN nm.key = 'foundational_score' THEN nm.value END) as foundational_score
+            FROM nodes n
+            JOIN user_memory_states ums ON n.id = ums.node_id
+            LEFT JOIN node_metadata nm ON n.id = nm.node_id
+            WHERE ums.user_id = ?2 AND n.node_type IN ('word_instance', 'verse')
+            GROUP BY n.id
+            ORDER BY priority_score DESC
+            LIMIT ?3
+        ",
+            )?;
+
+            let weights = ScoreWeights {
+                w_due: 1.0,
+                w_need: 2.0,
+                w_yield: 1.5,
+            };
+
+            let previews = stmt.query_map(params![now_ms, user_id, limit], |row| {
+                let due_at: i64 = row.get("due_at")?;
+                let energy: f64 = row.get("energy")?;
+                let priority_score: f64 = row.get("priority_score")?;
+                let foundational_score: f64 = row
+                    .get::<_, Option<String>>("foundational_score")?
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(0.0);
+
+                // Recalculate components for transparency
+                let days_overdue =
+                    ((now_ms - due_at) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)).max(0.0);
+                let mastery_gap = (1.0 - energy.max(0.0)).max(0.0);
+                let importance = foundational_score ;
+
+                Ok(ItemPreview {
+                    node_id: row.get("id")?,
+                    arabic: row.get("arabic")?,
+                    translation: row.get("translation")?,
+                    priority_score,
+                    score_breakdown: ScoreBreakdown {
+                        days_overdue,
+                        mastery_gap,
+                        importance,
+                        weights: weights.clone(),
+                    },
+                })
+            })?;
+
+            Ok(previews.collect::<Result<Vec<_>, _>>()?)
         })
         .await?
     }

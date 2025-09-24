@@ -68,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 248113850;
+  int get rustContentHash => 554516516;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -86,6 +86,11 @@ abstract class RustLibApi extends BaseApi {
     required int limit,
   });
 
+  Future<List<ItemPreview>> crateApiGetSessionPreview({
+    required String userId,
+    required int limit,
+  });
+
   Future<void> crateApiInitApp();
 
   Future<MemoryState> crateApiProcessReview({
@@ -93,6 +98,8 @@ abstract class RustLibApi extends BaseApi {
     required String nodeId,
     required ReviewGrade grade,
   });
+
+  Future<String> crateApiRefreshPriorityScores({required String userId});
 
   Future<String> crateApiReseedDatabase();
 
@@ -175,6 +182,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<List<ItemPreview>> crateApiGetSessionPreview({
+    required String userId,
+    required int limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(userId, serializer);
+          sse_encode_u_32(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_item_preview,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetSessionPreviewConstMeta,
+        argValues: [userId, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetSessionPreviewConstMeta => const TaskConstMeta(
+    debugName: "get_session_preview",
+    argNames: ["userId", "limit"],
+  );
+
+  @override
   Future<void> crateApiInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -183,7 +224,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -217,7 +258,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -238,6 +279,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<String> crateApiRefreshPriorityScores({required String userId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(userId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiRefreshPriorityScoresConstMeta,
+        argValues: [userId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRefreshPriorityScoresConstMeta =>
+      const TaskConstMeta(
+        debugName: "refresh_priority_scores",
+        argNames: ["userId"],
+      );
+
+  @override
   Future<String> crateApiReseedDatabase() {
     return handler.executeNormal(
       NormalTask(
@@ -246,7 +318,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -278,7 +350,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -308,7 +380,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -403,6 +475,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ItemPreview dco_decode_item_preview(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return ItemPreview(
+      nodeId: dco_decode_String(arr[0]),
+      arabic: dco_decode_opt_String(arr[1]),
+      translation: dco_decode_opt_String(arr[2]),
+      priorityScore: dco_decode_f_64(arr[3]),
+      scoreBreakdown: dco_decode_score_breakdown(arr[4]),
+    );
+  }
+
+  @protected
   List<DueItem> dco_decode_list_due_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_due_item).toList();
@@ -412,6 +499,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<Exercise> dco_decode_list_exercise(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_exercise).toList();
+  }
+
+  @protected
+  List<ItemPreview> dco_decode_list_item_preview(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_item_preview).toList();
   }
 
   @protected
@@ -452,6 +545,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ReviewGrade dco_decode_review_grade(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ReviewGrade.values[raw as int];
+  }
+
+  @protected
+  ScoreBreakdown dco_decode_score_breakdown(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ScoreBreakdown(
+      daysOverdue: dco_decode_f_64(arr[0]),
+      masteryGap: dco_decode_f_64(arr[1]),
+      importance: dco_decode_f_64(arr[2]),
+      weights: dco_decode_score_weights(arr[3]),
+    );
+  }
+
+  @protected
+  ScoreWeights dco_decode_score_weights(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ScoreWeights(
+      wDue: dco_decode_f_64(arr[0]),
+      wNeed: dco_decode_f_64(arr[1]),
+      wYield: dco_decode_f_64(arr[2]),
+    );
   }
 
   @protected
@@ -554,6 +674,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ItemPreview sse_decode_item_preview(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_nodeId = sse_decode_String(deserializer);
+    var var_arabic = sse_decode_opt_String(deserializer);
+    var var_translation = sse_decode_opt_String(deserializer);
+    var var_priorityScore = sse_decode_f_64(deserializer);
+    var var_scoreBreakdown = sse_decode_score_breakdown(deserializer);
+    return ItemPreview(
+      nodeId: var_nodeId,
+      arabic: var_arabic,
+      translation: var_translation,
+      priorityScore: var_priorityScore,
+      scoreBreakdown: var_scoreBreakdown,
+    );
+  }
+
+  @protected
   List<DueItem> sse_decode_list_due_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -573,6 +710,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <Exercise>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_exercise(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ItemPreview> sse_decode_list_item_preview(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ItemPreview>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_item_preview(deserializer));
     }
     return ans_;
   }
@@ -626,6 +775,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return ReviewGrade.values[inner];
+  }
+
+  @protected
+  ScoreBreakdown sse_decode_score_breakdown(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_daysOverdue = sse_decode_f_64(deserializer);
+    var var_masteryGap = sse_decode_f_64(deserializer);
+    var var_importance = sse_decode_f_64(deserializer);
+    var var_weights = sse_decode_score_weights(deserializer);
+    return ScoreBreakdown(
+      daysOverdue: var_daysOverdue,
+      masteryGap: var_masteryGap,
+      importance: var_importance,
+      weights: var_weights,
+    );
+  }
+
+  @protected
+  ScoreWeights sse_decode_score_weights(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_wDue = sse_decode_f_64(deserializer);
+    var var_wNeed = sse_decode_f_64(deserializer);
+    var var_wYield = sse_decode_f_64(deserializer);
+    return ScoreWeights(wDue: var_wDue, wNeed: var_wNeed, wYield: var_wYield);
   }
 
   @protected
@@ -719,6 +892,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_item_preview(ItemPreview self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.nodeId, serializer);
+    sse_encode_opt_String(self.arabic, serializer);
+    sse_encode_opt_String(self.translation, serializer);
+    sse_encode_f_64(self.priorityScore, serializer);
+    sse_encode_score_breakdown(self.scoreBreakdown, serializer);
+  }
+
+  @protected
   void sse_encode_list_due_item(List<DueItem> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
@@ -733,6 +916,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_exercise(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_item_preview(
+    List<ItemPreview> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_item_preview(item, serializer);
     }
   }
 
@@ -783,6 +978,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_review_grade(ReviewGrade self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_score_breakdown(
+    ScoreBreakdown self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self.daysOverdue, serializer);
+    sse_encode_f_64(self.masteryGap, serializer);
+    sse_encode_f_64(self.importance, serializer);
+    sse_encode_score_weights(self.weights, serializer);
+  }
+
+  @protected
+  void sse_encode_score_weights(ScoreWeights self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self.wDue, serializer);
+    sse_encode_f_64(self.wNeed, serializer);
+    sse_encode_f_64(self.wYield, serializer);
   }
 
   @protected

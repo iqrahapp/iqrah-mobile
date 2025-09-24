@@ -4,6 +4,7 @@ use rusqlite::Connection;
 /// Create schema with indexes and constraints
 pub fn create_schema(conn: &Connection) -> Result<()> {
     // Nodes: Individual learning items (words/phrases)
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS nodes (
             id TEXT PRIMARY KEY,
@@ -52,6 +53,7 @@ pub fn create_schema(conn: &Connection) -> Result<()> {
             last_reviewed INTEGER NOT NULL DEFAULT 0,   -- epoch ms
             due_at INTEGER NOT NULL DEFAULT 0,          -- epoch ms
             review_count INTEGER NOT NULL DEFAULT 0,
+            priority_score REAL NOT NULL DEFAULT 0.0,    -- for scheduling
             PRIMARY KEY (user_id, node_id),
             FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
         )",
@@ -68,6 +70,8 @@ pub fn create_schema(conn: &Connection) -> Result<()> {
         "CREATE INDEX IF NOT EXISTS idx_ums_user_last ON user_memory_states(user_id, last_reviewed)",
         [],
     )?;
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ums_priority ON user_memory_states(user_id, priority_score)", [])?;
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_id)",

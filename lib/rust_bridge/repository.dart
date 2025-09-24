@@ -65,6 +65,41 @@ class DueItem {
           state == other.state;
 }
 
+class ItemPreview {
+  final String nodeId;
+  final String? arabic;
+  final String? translation;
+  final double priorityScore;
+  final ScoreBreakdown scoreBreakdown;
+
+  const ItemPreview({
+    required this.nodeId,
+    this.arabic,
+    this.translation,
+    required this.priorityScore,
+    required this.scoreBreakdown,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^
+      arabic.hashCode ^
+      translation.hashCode ^
+      priorityScore.hashCode ^
+      scoreBreakdown.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ItemPreview &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          arabic == other.arabic &&
+          translation == other.translation &&
+          priorityScore == other.priorityScore &&
+          scoreBreakdown == other.scoreBreakdown;
+}
+
 class MemoryState {
   final double stability;
   final double difficulty;
@@ -105,3 +140,58 @@ class MemoryState {
 }
 
 enum ReviewGrade { again, hard, good, easy }
+
+class ScoreBreakdown {
+  final double daysOverdue;
+  final double masteryGap;
+  final double importance;
+  final ScoreWeights weights;
+
+  const ScoreBreakdown({
+    required this.daysOverdue,
+    required this.masteryGap,
+    required this.importance,
+    required this.weights,
+  });
+
+  @override
+  int get hashCode =>
+      daysOverdue.hashCode ^
+      masteryGap.hashCode ^
+      importance.hashCode ^
+      weights.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScoreBreakdown &&
+          runtimeType == other.runtimeType &&
+          daysOverdue == other.daysOverdue &&
+          masteryGap == other.masteryGap &&
+          importance == other.importance &&
+          weights == other.weights;
+}
+
+class ScoreWeights {
+  final double wDue;
+  final double wNeed;
+  final double wYield;
+
+  const ScoreWeights({
+    required this.wDue,
+    required this.wNeed,
+    required this.wYield,
+  });
+
+  @override
+  int get hashCode => wDue.hashCode ^ wNeed.hashCode ^ wYield.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScoreWeights &&
+          runtimeType == other.runtimeType &&
+          wDue == other.wDue &&
+          wNeed == other.wNeed &&
+          wYield == other.wYield;
+}

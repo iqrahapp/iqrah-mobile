@@ -54,6 +54,31 @@ pub struct DebugStats {
     pub total_nodes_count: usize,
     pub total_edges_count: usize,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ItemPreview {
+    pub node_id: String,
+    pub arabic: Option<String>,
+    pub translation: Option<String>,
+    pub priority_score: f64,
+    pub score_breakdown: ScoreBreakdown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScoreBreakdown {
+    pub days_overdue: f64,
+    pub mastery_gap: f64, // 1.0 - energy
+    pub importance: f64,  // foundational_score * 1000
+    pub weights: ScoreWeights,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScoreWeights {
+    pub w_due: f64,   // 1.0
+    pub w_need: f64,  // 2.0
+    pub w_yield: f64, // 1.5
+}
+
 /// Repository trait with Send + Sync for thread safety
 #[frb(ignore)]
 #[async_trait]
@@ -71,6 +96,8 @@ pub trait KnowledgeGraphRepository: Send + Sync {
     async fn update_node_energies(&self, user_id: &str, updates: &[(String, f64)]) -> Result<()>;
     async fn sync_user_nodes(&self, user_id: &str) -> Result<()>;
     async fn reset_user_progress(&self, user_id: &str) -> Result<()>;
+    async fn refresh_all_priority_scores(&self, user_id: &str) -> Result<()>;
+    async fn get_session_preview(&self, user_id: &str, limit: u32) -> Result<Vec<ItemPreview>>;
 
     // Batch operations for setup/import
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> Result<()>;
@@ -130,7 +157,15 @@ impl LearningService {
         self.repo.reset_user_progress(user_id).await
     }
 
+    pub async fn refresh_all_priority_scores(&self, user_id: &str) -> Result<()> {
+        self.repo.refresh_all_priority_scores(user_id).await
+    }
+
     pub async fn import_cbor_graph_from_bytes(&self, data: Vec<u8>) -> Result<ImportStats> {
         import_cbor_graph_from_bytes(&*self.repo, data).await
+    }
+
+    pub async fn get_session_preview(&self, user_id: &str, limit: u32) -> Result<Vec<ItemPreview>> {
+        self.repo.get_session_preview(user_id, limit).await
     }
 }

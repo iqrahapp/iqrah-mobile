@@ -7,5 +7,5 @@ import 'package:iqrah/rust_bridge/exercises.dart';
 final exercisesProvider = FutureProvider.autoDispose<List<Exercise>>((
   ref,
 ) async {
-  return api.getExercises(userId: "default_user", limit: 10);
+  return api.getExercises(userId: "default_user", limit: 20);
 });

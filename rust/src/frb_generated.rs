@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 248113850;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 554516516;
 
 // Section: executor
 
@@ -118,6 +118,44 @@ fn wire__crate__api__get_exercises_impl(
         },
     )
 }
+fn wire__crate__api__get_session_preview_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_session_preview",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_user_id = <String>::sse_decode(&mut deserializer);
+            let api_limit = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::get_session_preview(api_user_id, api_limit).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -183,6 +221,42 @@ fn wire__crate__api__process_review_impl(
                     (move || async move {
                         let output_ok =
                             crate::api::process_review(api_user_id, api_node_id, api_grade).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__refresh_priority_scores_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "refresh_priority_scores",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_user_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::refresh_priority_scores(api_user_id).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -390,6 +464,24 @@ impl SseDecode for i64 {
     }
 }
 
+impl SseDecode for crate::repository::ItemPreview {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_nodeId = <String>::sse_decode(deserializer);
+        let mut var_arabic = <Option<String>>::sse_decode(deserializer);
+        let mut var_translation = <Option<String>>::sse_decode(deserializer);
+        let mut var_priorityScore = <f64>::sse_decode(deserializer);
+        let mut var_scoreBreakdown = <crate::repository::ScoreBreakdown>::sse_decode(deserializer);
+        return crate::repository::ItemPreview {
+            node_id: var_nodeId,
+            arabic: var_arabic,
+            translation: var_translation,
+            priority_score: var_priorityScore,
+            score_breakdown: var_scoreBreakdown,
+        };
+    }
+}
+
 impl SseDecode for Vec<crate::repository::DueItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -409,6 +501,18 @@ impl SseDecode for Vec<crate::exercises::Exercise> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<crate::exercises::Exercise>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::repository::ItemPreview> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::repository::ItemPreview>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -471,6 +575,36 @@ impl SseDecode for crate::repository::ReviewGrade {
     }
 }
 
+impl SseDecode for crate::repository::ScoreBreakdown {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_daysOverdue = <f64>::sse_decode(deserializer);
+        let mut var_masteryGap = <f64>::sse_decode(deserializer);
+        let mut var_importance = <f64>::sse_decode(deserializer);
+        let mut var_weights = <crate::repository::ScoreWeights>::sse_decode(deserializer);
+        return crate::repository::ScoreBreakdown {
+            days_overdue: var_daysOverdue,
+            mastery_gap: var_masteryGap,
+            importance: var_importance,
+            weights: var_weights,
+        };
+    }
+}
+
+impl SseDecode for crate::repository::ScoreWeights {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_wDue = <f64>::sse_decode(deserializer);
+        let mut var_wNeed = <f64>::sse_decode(deserializer);
+        let mut var_wYield = <f64>::sse_decode(deserializer);
+        return crate::repository::ScoreWeights {
+            w_due: var_wDue,
+            w_need: var_wNeed,
+            w_yield: var_wYield,
+        };
+    }
+}
+
 impl SseDecode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -515,11 +649,13 @@ fn pde_ffi_dispatcher_primary_impl(
     match func_id {
         1 => wire__crate__api__get_debug_stats_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__get_exercises_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__get_session_preview_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__refresh_priority_scores_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -596,6 +732,30 @@ impl flutter_rust_bridge::IntoIntoDart<crate::exercises::Exercise> for crate::ex
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::repository::ItemPreview {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.node_id.into_into_dart().into_dart(),
+            self.arabic.into_into_dart().into_dart(),
+            self.translation.into_into_dart().into_dart(),
+            self.priority_score.into_into_dart().into_dart(),
+            self.score_breakdown.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::repository::ItemPreview
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::repository::ItemPreview>
+    for crate::repository::ItemPreview
+{
+    fn into_into_dart(self) -> crate::repository::ItemPreview {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::repository::MemoryState {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -640,6 +800,51 @@ impl flutter_rust_bridge::IntoIntoDart<crate::repository::ReviewGrade>
     for crate::repository::ReviewGrade
 {
     fn into_into_dart(self) -> crate::repository::ReviewGrade {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::repository::ScoreBreakdown {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.days_overdue.into_into_dart().into_dart(),
+            self.mastery_gap.into_into_dart().into_dart(),
+            self.importance.into_into_dart().into_dart(),
+            self.weights.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::repository::ScoreBreakdown
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::repository::ScoreBreakdown>
+    for crate::repository::ScoreBreakdown
+{
+    fn into_into_dart(self) -> crate::repository::ScoreBreakdown {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::repository::ScoreWeights {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.w_due.into_into_dart().into_dart(),
+            self.w_need.into_into_dart().into_dart(),
+            self.w_yield.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::repository::ScoreWeights
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::repository::ScoreWeights>
+    for crate::repository::ScoreWeights
+{
+    fn into_into_dart(self) -> crate::repository::ScoreWeights {
         self
     }
 }
@@ -710,6 +915,17 @@ impl SseEncode for i64 {
     }
 }
 
+impl SseEncode for crate::repository::ItemPreview {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.node_id, serializer);
+        <Option<String>>::sse_encode(self.arabic, serializer);
+        <Option<String>>::sse_encode(self.translation, serializer);
+        <f64>::sse_encode(self.priority_score, serializer);
+        <crate::repository::ScoreBreakdown>::sse_encode(self.score_breakdown, serializer);
+    }
+}
+
 impl SseEncode for Vec<crate::repository::DueItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -726,6 +942,16 @@ impl SseEncode for Vec<crate::exercises::Exercise> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::exercises::Exercise>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::repository::ItemPreview> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::repository::ItemPreview>::sse_encode(item, serializer);
         }
     }
 }
@@ -777,6 +1003,25 @@ impl SseEncode for crate::repository::ReviewGrade {
             },
             serializer,
         );
+    }
+}
+
+impl SseEncode for crate::repository::ScoreBreakdown {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <f64>::sse_encode(self.days_overdue, serializer);
+        <f64>::sse_encode(self.mastery_gap, serializer);
+        <f64>::sse_encode(self.importance, serializer);
+        <crate::repository::ScoreWeights>::sse_encode(self.weights, serializer);
+    }
+}
+
+impl SseEncode for crate::repository::ScoreWeights {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <f64>::sse_encode(self.w_due, serializer);
+        <f64>::sse_encode(self.w_need, serializer);
+        <f64>::sse_encode(self.w_yield, serializer);
     }
 }
 

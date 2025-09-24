@@ -1,6 +1,6 @@
 use crate::{
     exercises::{create_exercise, Exercise},
-    repository::{DebugStats, MemoryState, ReviewGrade},
+    repository::{DebugStats, ItemPreview, MemoryState, ReviewGrade},
 };
 use anyhow::Result;
 
@@ -13,20 +13,30 @@ pub async fn setup_database(db_path: Option<String>, kg_bytes: Vec<u8>) -> Resul
         Some(std::path::PathBuf::from(db_path.unwrap()))
     };
 
+    let default_user = "default_user";
+
     // 1. Initialize the app/repo with the db_path
     crate::app::init_app(db_path)?;
     let service = &crate::app::app().service;
 
-    // 2. Import the graph from the asset file
-    let import_stats = service.import_cbor_graph_from_bytes(kg_bytes).await?;
+    let debug_stats = service.get_debug_stats(default_user).await?;
+    if debug_stats.total_nodes_count == 0 {
+        // 2. Import the graph from the asset file
+        let import_stats = service.import_cbor_graph_from_bytes(kg_bytes).await?;
 
-    // 3. Create the default user and sync their nodes
-    service.sync_user_nodes("default_user").await?;
+        // 3. Create the default user and sync their nodes
+        service.sync_user_nodes(default_user).await?;
 
-    Ok(format!(
-        "Setup complete. Imported {} nodes and {} edges.",
-        import_stats.nodes_imported, import_stats.edges_imported
-    ))
+        Ok(format!(
+            "Setup complete. Imported {} nodes and {} edges.",
+            import_stats.nodes_imported, import_stats.edges_imported
+        ))
+    } else {
+        Ok(format!(
+            "Setup complete. Re-used existing DB (nodes={}, edges={})",
+            debug_stats.total_nodes_count, debug_stats.total_edges_count,
+        ))
+    }
 }
 
 pub async fn setup_database_in_memory(kg_bytes: Vec<u8>) -> Result<String> {
@@ -38,6 +48,8 @@ pub async fn get_exercises(user_id: String, limit: u32) -> Result<Vec<Exercise>>
         .service
         .get_due_items(&user_id, limit * 2) // Get extra in case some fail to generate
         .await?;
+
+    println!("debug:get_exercises: found {} nodes", due_nodes.len());
 
     let exercises: Vec<Exercise> = due_nodes
         .into_iter()
@@ -70,6 +82,21 @@ pub async fn reseed_database() -> Result<String> {
         .reset_user_progress("default_user")
         .await?;
     Ok("User progress reset successfully".to_string())
+}
+
+pub async fn refresh_priority_scores(user_id: String) -> Result<String> {
+    crate::app::app()
+        .service
+        .refresh_all_priority_scores(&user_id)
+        .await?;
+    Ok("Priority scores refreshed".to_string())
+}
+
+pub async fn get_session_preview(user_id: String, limit: u32) -> Result<Vec<ItemPreview>> {
+    crate::app::app()
+        .service
+        .get_session_preview(&user_id, limit)
+        .await
 }
 
 #[flutter_rust_bridge::frb(init)]

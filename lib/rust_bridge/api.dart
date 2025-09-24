@@ -39,3 +39,14 @@ Future<DebugStats> getDebugStats({required String userId}) =>
 
 Future<String> reseedDatabase() =>
     RustLib.instance.api.crateApiReseedDatabase();
+
+Future<String> refreshPriorityScores({required String userId}) =>
+    RustLib.instance.api.crateApiRefreshPriorityScores(userId: userId);
+
+Future<List<ItemPreview>> getSessionPreview({
+  required String userId,
+  required int limit,
+}) => RustLib.instance.api.crateApiGetSessionPreview(
+  userId: userId,
+  limit: limit,
+);
