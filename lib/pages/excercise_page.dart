@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,22 +18,33 @@ class ExcercisePage extends ConsumerStatefulWidget {
 class _ExcercisePageState extends ConsumerState<ExcercisePage> {
   bool _isAnswerVisible = false;
   int? _selectedIndex; // for MCQ
+  final Stopwatch _stopwatch = Stopwatch();
+  Timer? _timer;
+  Duration _elapsed = Duration.zero;
+  ReviewGrade? _autoGrade;
+  String? _feedbackLabel;
+  Color? _feedbackColor;
+  bool _showOverrideOptions = false;
+  bool _isSubmittingAutoGrade = false;
 
   @override
   Widget build(BuildContext context) {
     ref.listen<SessionState>(sessionProvider, (prev, next) {
-      if (prev == null) return;
+      if (prev == null) {
+        if (next.currentExercise != null) {
+          _handleExerciseChange(next);
+        }
+        return;
+      }
 
       if ((!prev.isCompleted() && next.isCompleted()) ||
           next.exercises.isEmpty) {
+        _stopTimer();
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const SummaryPage()),
         );
       } else if (prev.currentIndex != next.currentIndex) {
-        setState(() {
-          _isAnswerVisible = false;
-          _selectedIndex = null;
-        });
+        _handleExerciseChange(next);
       }
     });
 
@@ -63,6 +76,90 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
     );
   }
 
+  void _handleExerciseChange(SessionState state) {
+    final exercise = state.currentExercise;
+    _stopTimer();
+    if (!mounted) return;
+    setState(() {
+      _isAnswerVisible = false;
+      _selectedIndex = null;
+      _autoGrade = null;
+      _feedbackLabel = null;
+      _feedbackColor = null;
+      _showOverrideOptions = false;
+      _elapsed = Duration.zero;
+      _isSubmittingAutoGrade = false;
+    });
+    if (exercise != null) {
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _stopwatch
+      ..reset()
+      ..start();
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (!mounted) return;
+      setState(() {
+        _elapsed = _stopwatch.elapsed;
+      });
+    });
+  }
+
+  void _stopTimer() {
+    _stopwatch.stop();
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void _handleMcqSelection(int selectedIndex, int correctIndex) {
+    final elapsedNow = _stopwatch.elapsed;
+    final isCorrect = selectedIndex == correctIndex;
+    final grade = _computeAutoGrade(isCorrect, elapsedNow);
+    final feedback = _feedbackTextFor(grade, isCorrect: isCorrect);
+    final feedbackColor = _colorForGrade(grade);
+
+    _stopTimer();
+    setState(() {
+      _elapsed = elapsedNow;
+      _selectedIndex = selectedIndex;
+      _isAnswerVisible = true;
+      _autoGrade = grade;
+      _feedbackLabel = feedback;
+      _feedbackColor = feedbackColor;
+      _showOverrideOptions = false;
+    });
+  }
+
+  Future<void> _submitAutoGrade() async {
+    final grade = _autoGrade;
+    if (grade == null || _isSubmittingAutoGrade) {
+      return;
+    }
+
+    setState(() {
+      _isSubmittingAutoGrade = true;
+    });
+
+    try {
+      await ref.read(sessionProvider.notifier).submitReview(grade);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingAutoGrade = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopTimer();
+    super.dispose();
+  }
+
   Widget _buildLoadingState() {
     // ... (This widget is unchanged)
     return const Center(
@@ -84,11 +181,115 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
       key: const ValueKey('content'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildTimerIndicator(theme),
+        const SizedBox(height: 16),
         Expanded(child: _buildExerciseCard(currentItem, theme)),
         const SizedBox(height: 24),
         _buildActionButtons(),
       ],
     );
+  }
+
+  Widget _buildTimerIndicator(ThemeData theme) {
+    final projectedGrade = _autoGrade ?? _gradeForElapsed(_elapsed);
+    final color = _colorForGrade(projectedGrade);
+    final background = color.withValues(alpha: 0.12);
+    final timeLabel = _formatElapsed(_elapsed);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer_rounded, color: color),
+          const SizedBox(width: 8),
+          Text(
+            '$timeLabel s',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            _autoGrade != null
+                ? 'Auto: ${_labelForGrade(projectedGrade)}'
+                : 'Target: ${_labelForGrade(projectedGrade)}',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ReviewGrade _gradeForElapsed(Duration elapsed) {
+    if (elapsed < const Duration(seconds: 3)) {
+      return ReviewGrade.easy;
+    }
+    if (elapsed <= const Duration(seconds: 10)) {
+      return ReviewGrade.good;
+    }
+    return ReviewGrade.hard;
+  }
+
+  Color _colorForGrade(ReviewGrade grade) {
+    switch (grade) {
+      case ReviewGrade.again:
+        return Colors.red.shade600;
+      case ReviewGrade.hard:
+        return Colors.orange.shade600;
+      case ReviewGrade.good:
+        return Colors.green.shade600;
+      case ReviewGrade.easy:
+        return Colors.blue.shade600;
+    }
+  }
+
+  String _labelForGrade(ReviewGrade grade) {
+    switch (grade) {
+      case ReviewGrade.again:
+        return 'Again';
+      case ReviewGrade.hard:
+        return 'Hard';
+      case ReviewGrade.good:
+        return 'Good';
+      case ReviewGrade.easy:
+        return 'Easy';
+    }
+  }
+
+  String _formatElapsed(Duration elapsed) {
+    final seconds = elapsed.inMilliseconds / 1000.0;
+    return seconds.toStringAsFixed(1);
+  }
+
+  ReviewGrade _computeAutoGrade(bool isCorrect, Duration elapsed) {
+    if (!isCorrect) {
+      return ReviewGrade.again;
+    }
+    return _gradeForElapsed(elapsed);
+  }
+
+  String _feedbackTextFor(ReviewGrade grade, {required bool isCorrect}) {
+    switch (grade) {
+      case ReviewGrade.again:
+        return isCorrect ? 'Again' : 'Again…';
+      case ReviewGrade.hard:
+        return 'Hard!';
+      case ReviewGrade.good:
+        return 'Good!';
+      case ReviewGrade.easy:
+        return 'Easy!';
+    }
   }
 
   // MODIFIED to build different content for question and answer
@@ -186,12 +387,8 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
                         prompt: arabic,
                         choices: choicesEn,
                         isArabicChoices: false,
-                        onSelect: (index) {
-                          setState(() {
-                            _selectedIndex = index;
-                            _isAnswerVisible = true;
-                          });
-                        },
+                        onSelect: (index) =>
+                            _handleMcqSelection(index, correctIndex),
                       ),
                   mcqEnToAr:
                       (
@@ -210,12 +407,8 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
                         prompt: english,
                         choices: choicesAr,
                         isArabicChoices: true,
-                        onSelect: (index) {
-                          setState(() {
-                            _selectedIndex = index;
-                            _isAnswerVisible = true;
-                          });
-                        },
+                        onSelect: (index) =>
+                            _handleMcqSelection(index, correctIndex),
                       ),
                 ),
               ),
@@ -397,6 +590,8 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
   // --- The widgets below are unchanged ---
 
   Widget _buildActionButtons() {
+    final showAutoControls =
+        _isAnswerVisible && _autoGrade != null && !_showOverrideOptions;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
       transitionBuilder: (child, animation) {
@@ -411,7 +606,9 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
           ),
         );
       },
-      child: _isAnswerVisible
+      child: showAutoControls
+          ? _buildAutoContinueControls()
+          : _isAnswerVisible
           ? _buildGradeButtonsRow()
           : _buildShowAnswerButton(),
     );
@@ -428,12 +625,63 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
         ),
         onPressed: () {
           HapticFeedback.mediumImpact();
+          _stopTimer();
           setState(() {
+            _elapsed = _stopwatch.elapsed;
             _isAnswerVisible = true;
           });
         },
         child: const Text("Show Answer"),
       ),
+    );
+  }
+
+  Widget _buildAutoContinueControls() {
+    final grade = _autoGrade;
+    if (grade == null) {
+      return const SizedBox.shrink();
+    }
+    final label = _feedbackLabel ?? _labelForGrade(grade);
+    final color = _feedbackColor ?? _colorForGrade(grade);
+
+    return Column(
+      key: const ValueKey('autoControls'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          onPressed: _submitAutoGrade,
+          child: Text('Continue (${_labelForGrade(grade)})'),
+        ),
+        TextButton(
+          onPressed: () {
+            setState(() {
+              _showOverrideOptions = true;
+            });
+          },
+          child: const Text('Override grade'),
+        ),
+      ],
     );
   }
 
