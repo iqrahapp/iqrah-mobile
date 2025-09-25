@@ -15,7 +15,8 @@ class ExcercisePage extends ConsumerStatefulWidget {
   ConsumerState<ExcercisePage> createState() => _ExcercisePageState();
 }
 
-class _ExcercisePageState extends ConsumerState<ExcercisePage> {
+class _ExcercisePageState extends ConsumerState<ExcercisePage>
+    with WidgetsBindingObserver {
   bool _isAnswerVisible = false;
   int? _selectedIndex; // for MCQ
   final Stopwatch _stopwatch = Stopwatch();
@@ -26,6 +27,41 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
   Color? _feedbackColor;
   bool _showOverrideOptions = false;
   bool _isSubmittingAutoGrade = false;
+
+  String? _exerciseNodeId(Exercise? exercise) {
+    return exercise?.when(
+      recall: (nodeId, arabic, translation) => nodeId,
+      cloze: (nodeId, question, answer) => nodeId,
+      mcqArToEn:
+          (
+            nodeId,
+            arabic,
+            verseArabic,
+            surahNumber,
+            ayahNumber,
+            wordIndex,
+            choicesEn,
+            correctIndex,
+          ) => nodeId,
+      mcqEnToAr:
+          (
+            nodeId,
+            english,
+            verseArabic,
+            surahNumber,
+            ayahNumber,
+            wordIndex,
+            choicesAr,
+            correctIndex,
+          ) => nodeId,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +79,9 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const SummaryPage()),
         );
-      } else if (prev.currentIndex != next.currentIndex) {
+      } else if (prev.currentIndex != next.currentIndex ||
+          _exerciseNodeId(prev.currentExercise) !=
+              _exerciseNodeId(next.currentExercise)) {
         _handleExerciseChange(next);
       }
     });
@@ -95,10 +133,20 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
     }
   }
 
-  void _startTimer() {
-    _stopwatch
-      ..reset()
-      ..start();
+  void _startTimer({bool reset = true}) {
+    if (reset) {
+      _stopwatch.reset();
+      if (mounted) {
+        setState(() {
+          _elapsed = Duration.zero;
+        });
+      } else {
+        _elapsed = Duration.zero;
+      }
+    }
+    if (!_stopwatch.isRunning) {
+      _stopwatch.start();
+    }
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
@@ -112,6 +160,30 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
     _stopwatch.stop();
     _timer?.cancel();
     _timer = null;
+  }
+
+  void _pauseTimerForLifecycle() {
+    if (!_stopwatch.isRunning) return;
+    final elapsedNow = _stopwatch.elapsed;
+    _stopTimer();
+    if (!mounted) return;
+    setState(() {
+      _elapsed = elapsedNow;
+    });
+  }
+
+  void _resumeTimerForLifecycle() {
+    if (_isAnswerVisible || _autoGrade != null) {
+      return;
+    }
+    final currentExercise = ref.read(sessionProvider).currentExercise;
+    if (currentExercise == null) {
+      return;
+    }
+    if (_stopwatch.isRunning) {
+      return;
+    }
+    _startTimer(reset: false);
   }
 
   void _handleMcqSelection(int selectedIndex, int correctIndex) {
@@ -157,7 +229,23 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
   @override
   void dispose() {
     _stopTimer();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _resumeTimerForLifecycle();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _pauseTimerForLifecycle();
+        break;
+    }
   }
 
   Widget _buildLoadingState() {

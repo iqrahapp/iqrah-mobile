@@ -138,14 +138,14 @@ impl KnowledgeGraphRepository for SqliteRepository {
             // Build the WHERE clause dynamically based on surah_filter
             let (where_clause, _) = match surah_filter {
                 Some(_) => {
-                    // For word_instance: check parent_node points to verse that starts with "VERSE:{chapter_num}:"
+                    // For word_instance: ensure there's an edge from a verse within the surah to the node
                     // For verse: check the ID starts with "VERSE:{chapter_num}:"
                     (
                         "AND ((n.node_type = 'word_instance' AND EXISTS (
-                            SELECT 1 FROM node_metadata nm_parent
-                            WHERE nm_parent.node_id = n.id
-                            AND nm_parent.key = 'parent_node'
-                            AND nm_parent.value LIKE 'VERSE:' || ?4 || ':%'
+                            SELECT 1 FROM edges e
+                            WHERE e.target_id = n.id
+                              AND e.edge_type = 0
+                              AND e.source_id LIKE 'VERSE:' || ?4 || ':%'
                         )) OR (n.node_type = 'verse' AND n.id LIKE 'VERSE:' || ?4 || ':%'))",
                         4
                     )
