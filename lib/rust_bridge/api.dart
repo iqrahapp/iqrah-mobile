@@ -3,11 +3,13 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import 'cbor_import.dart';
 import 'exercises.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'repository.dart';
 
+// These functions are ignored because they are not marked as `pub`: `build_mcq_from_word_instance`, `simple_map_to_exercise`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
 
 /// One-time setup: initializes DB, imports graph, and syncs the default user.
@@ -59,6 +61,19 @@ Future<List<ItemPreview>> getSessionPreview({
   limit: limit,
   surahFilter: surahFilter,
 );
+
+/// Search node IDs by prefix (used for sandbox suggestions)
+Future<List<NodeData>> searchNodes({
+  required String query,
+  required int limit,
+}) => RustLib.instance.api.crateApiSearchNodes(query: query, limit: limit);
+
+/// Fetch a single node with its metadata by ID
+Future<NodeData?> fetchNodeWithMetadata({required String nodeId}) =>
+    RustLib.instance.api.crateApiFetchNodeWithMetadata(nodeId: nodeId);
+
+Future<List<Exercise>> getExercisesForNode({required String nodeId}) =>
+    RustLib.instance.api.crateApiGetExercisesForNode(nodeId: nodeId);
 
 Future<List<SurahInfo>> getAvailableSurahs() =>
     RustLib.instance.api.crateApiGetAvailableSurahs();

@@ -3,6 +3,7 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import 'cbor_import.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
@@ -141,6 +142,30 @@ class MemoryState {
           lastReviewed == other.lastReviewed &&
           dueAt == other.dueAt &&
           reviewCount == other.reviewCount;
+}
+
+class NodeData {
+  final String id;
+  final NodeType nodeType;
+  final Map<String, String> metadata;
+
+  const NodeData({
+    required this.id,
+    required this.nodeType,
+    required this.metadata,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ nodeType.hashCode ^ metadata.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeData &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          nodeType == other.nodeType &&
+          metadata == other.metadata;
 }
 
 enum ReviewGrade { again, hard, good, easy }

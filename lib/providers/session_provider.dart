@@ -42,14 +42,40 @@ class SessionNotifier extends Notifier<SessionState> {
     if (exercise == null) return;
 
     try {
+      final nodeId = exercise.when(
+        recall: (nodeId, arabic, translation) => nodeId,
+        cloze: (nodeId, question, answer) => nodeId,
+        mcqArToEn:
+            (
+              nodeId,
+              arabic,
+              verseArabic,
+              surahNumber,
+              ayahNumber,
+              wordIndex,
+              choicesEn,
+              correctIndex,
+            ) => nodeId,
+        mcqEnToAr:
+            (
+              nodeId,
+              english,
+              verseArabic,
+              surahNumber,
+              ayahNumber,
+              wordIndex,
+              choicesAr,
+              correctIndex,
+            ) => nodeId,
+      );
       await api.processReview(
         userId: "default_user",
-        nodeId: exercise.nodeId, // Note: nodeId instead of id
+        nodeId: nodeId, // Note: nodeId instead of id
         grade: grade,
       );
       state = state.copyWith(currentIndex: state.currentIndex + 1);
     } catch (e) {
-      print("Failed to submit review for exercise ${exercise.nodeId}: $e");
+      print("Failed to submit review for current exercise: $e");
     }
   }
 }

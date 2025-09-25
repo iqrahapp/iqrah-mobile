@@ -32,6 +32,8 @@ serde_json.workspace = true
 serde_plain = "1.0.2"
 serde_repr = "0.1.20"
 serde_path_to_error = "0.1.17"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }

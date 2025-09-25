@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -726130573;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1543024456;
 
 // Section: executor
 
@@ -45,6 +45,42 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__fetch_node_with_metadata_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "fetch_node_with_metadata",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_node_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::fetch_node_with_metadata(api_node_id).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__get_available_surahs_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -148,6 +184,42 @@ fn wire__crate__api__get_exercises_impl(
                         let output_ok =
                             crate::api::get_exercises(api_user_id, api_limit, api_surah_filter)
                                 .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__get_exercises_for_node_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_exercises_for_node",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_node_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::get_exercises_for_node(api_node_id).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -343,6 +415,43 @@ fn wire__crate__api__reseed_database_impl(
         },
     )
 }
+fn wire__crate__api__search_nodes_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "search_nodes",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_query = <String>::sse_decode(&mut deserializer);
+            let api_limit = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::search_nodes(api_query, api_limit).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__setup_database_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -428,6 +537,14 @@ impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
     }
 }
 
+impl SseDecode for std::collections::HashMap<String, String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <Vec<(String, String)>>::sse_decode(deserializer);
+        return inner.into_iter().collect();
+    }
+}
+
 impl SseDecode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -473,16 +590,72 @@ impl SseDecode for crate::repository::DueItem {
 impl SseDecode for crate::exercises::Exercise {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_nodeId = <String>::sse_decode(deserializer);
-        let mut var_arabic = <String>::sse_decode(deserializer);
-        let mut var_translation = <String>::sse_decode(deserializer);
-        let mut var_exerciseType = <String>::sse_decode(deserializer);
-        return crate::exercises::Exercise {
-            node_id: var_nodeId,
-            arabic: var_arabic,
-            translation: var_translation,
-            exercise_type: var_exerciseType,
-        };
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_arabic = <String>::sse_decode(deserializer);
+                let mut var_translation = <String>::sse_decode(deserializer);
+                return crate::exercises::Exercise::Recall {
+                    node_id: var_nodeId,
+                    arabic: var_arabic,
+                    translation: var_translation,
+                };
+            }
+            1 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_question = <String>::sse_decode(deserializer);
+                let mut var_answer = <String>::sse_decode(deserializer);
+                return crate::exercises::Exercise::Cloze {
+                    node_id: var_nodeId,
+                    question: var_question,
+                    answer: var_answer,
+                };
+            }
+            2 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_arabic = <String>::sse_decode(deserializer);
+                let mut var_verseArabic = <String>::sse_decode(deserializer);
+                let mut var_surahNumber = <i32>::sse_decode(deserializer);
+                let mut var_ayahNumber = <i32>::sse_decode(deserializer);
+                let mut var_wordIndex = <i32>::sse_decode(deserializer);
+                let mut var_choicesEn = <Vec<String>>::sse_decode(deserializer);
+                let mut var_correctIndex = <i32>::sse_decode(deserializer);
+                return crate::exercises::Exercise::McqArToEn {
+                    node_id: var_nodeId,
+                    arabic: var_arabic,
+                    verse_arabic: var_verseArabic,
+                    surah_number: var_surahNumber,
+                    ayah_number: var_ayahNumber,
+                    word_index: var_wordIndex,
+                    choices_en: var_choicesEn,
+                    correct_index: var_correctIndex,
+                };
+            }
+            3 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_english = <String>::sse_decode(deserializer);
+                let mut var_verseArabic = <String>::sse_decode(deserializer);
+                let mut var_surahNumber = <i32>::sse_decode(deserializer);
+                let mut var_ayahNumber = <i32>::sse_decode(deserializer);
+                let mut var_wordIndex = <i32>::sse_decode(deserializer);
+                let mut var_choicesAr = <Vec<String>>::sse_decode(deserializer);
+                let mut var_correctIndex = <i32>::sse_decode(deserializer);
+                return crate::exercises::Exercise::McqEnToAr {
+                    node_id: var_nodeId,
+                    english: var_english,
+                    verse_arabic: var_verseArabic,
+                    surah_number: var_surahNumber,
+                    ayah_number: var_ayahNumber,
+                    word_index: var_wordIndex,
+                    choices_ar: var_choicesAr,
+                    correct_index: var_correctIndex,
+                };
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -527,6 +700,18 @@ impl SseDecode for crate::repository::ItemPreview {
     }
 }
 
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::repository::DueItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -563,6 +748,18 @@ impl SseDecode for Vec<crate::repository::ItemPreview> {
     }
 }
 
+impl SseDecode for Vec<crate::repository::NodeData> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::repository::NodeData>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -570,6 +767,18 @@ impl SseDecode for Vec<u8> {
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
             ans_.push(<u8>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<(String, String)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<(String, String)>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -607,6 +816,38 @@ impl SseDecode for crate::repository::MemoryState {
     }
 }
 
+impl SseDecode for crate::repository::NodeData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_nodeType = <crate::cbor_import::NodeType>::sse_decode(deserializer);
+        let mut var_metadata =
+            <std::collections::HashMap<String, String>>::sse_decode(deserializer);
+        return crate::repository::NodeData {
+            id: var_id,
+            node_type: var_nodeType,
+            metadata: var_metadata,
+        };
+    }
+}
+
+impl SseDecode for crate::cbor_import::NodeType {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::cbor_import::NodeType::Root,
+            1 => crate::cbor_import::NodeType::Lemma,
+            2 => crate::cbor_import::NodeType::Word,
+            3 => crate::cbor_import::NodeType::WordInstance,
+            4 => crate::cbor_import::NodeType::Verse,
+            5 => crate::cbor_import::NodeType::Chapter,
+            6 => crate::cbor_import::NodeType::Knowledge,
+            _ => unreachable!("Invalid variant for NodeType: {}", inner),
+        };
+    }
+}
+
 impl SseDecode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -626,6 +867,26 @@ impl SseDecode for Option<i32> {
         } else {
             return None;
         }
+    }
+}
+
+impl SseDecode for Option<crate::repository::NodeData> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::repository::NodeData>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for (String, String) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <String>::sse_decode(deserializer);
+        let mut var_field1 = <String>::sse_decode(deserializer);
+        return (var_field0, var_field1);
     }
 }
 
@@ -727,16 +988,19 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__get_available_surahs_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__get_debug_stats_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__get_exercises_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__get_session_preview_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__refresh_priority_scores_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__fetch_node_with_metadata_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__get_available_surahs_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__get_debug_stats_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__get_exercises_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__get_exercises_for_node_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__get_session_preview_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__refresh_priority_scores_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__search_nodes_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -797,13 +1061,75 @@ impl flutter_rust_bridge::IntoIntoDart<crate::repository::DueItem> for crate::re
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::exercises::Exercise {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.node_id.into_into_dart().into_dart(),
-            self.arabic.into_into_dart().into_dart(),
-            self.translation.into_into_dart().into_dart(),
-            self.exercise_type.into_into_dart().into_dart(),
-        ]
-        .into_dart()
+        match self {
+            crate::exercises::Exercise::Recall {
+                node_id,
+                arabic,
+                translation,
+            } => [
+                0.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                arabic.into_into_dart().into_dart(),
+                translation.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::exercises::Exercise::Cloze {
+                node_id,
+                question,
+                answer,
+            } => [
+                1.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                question.into_into_dart().into_dart(),
+                answer.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::exercises::Exercise::McqArToEn {
+                node_id,
+                arabic,
+                verse_arabic,
+                surah_number,
+                ayah_number,
+                word_index,
+                choices_en,
+                correct_index,
+            } => [
+                2.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                arabic.into_into_dart().into_dart(),
+                verse_arabic.into_into_dart().into_dart(),
+                surah_number.into_into_dart().into_dart(),
+                ayah_number.into_into_dart().into_dart(),
+                word_index.into_into_dart().into_dart(),
+                choices_en.into_into_dart().into_dart(),
+                correct_index.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::exercises::Exercise::McqEnToAr {
+                node_id,
+                english,
+                verse_arabic,
+                surah_number,
+                ayah_number,
+                word_index,
+                choices_ar,
+                correct_index,
+            } => [
+                3.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                english.into_into_dart().into_dart(),
+                verse_arabic.into_into_dart().into_dart(),
+                surah_number.into_into_dart().into_dart(),
+                ayah_number.into_into_dart().into_dart(),
+                word_index.into_into_dart().into_dart(),
+                choices_ar.into_into_dart().into_dart(),
+                correct_index.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::exercises::Exercise {}
@@ -859,6 +1185,48 @@ impl flutter_rust_bridge::IntoIntoDart<crate::repository::MemoryState>
     for crate::repository::MemoryState
 {
     fn into_into_dart(self) -> crate::repository::MemoryState {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::repository::NodeData {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.node_type.into_into_dart().into_dart(),
+            self.metadata.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::repository::NodeData {}
+impl flutter_rust_bridge::IntoIntoDart<crate::repository::NodeData>
+    for crate::repository::NodeData
+{
+    fn into_into_dart(self) -> crate::repository::NodeData {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::cbor_import::NodeType {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Root => 0.into_dart(),
+            Self::Lemma => 1.into_dart(),
+            Self::Word => 2.into_dart(),
+            Self::WordInstance => 3.into_dart(),
+            Self::Verse => 4.into_dart(),
+            Self::Chapter => 5.into_dart(),
+            Self::Knowledge => 6.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::cbor_import::NodeType {}
+impl flutter_rust_bridge::IntoIntoDart<crate::cbor_import::NodeType>
+    for crate::cbor_import::NodeType
+{
+    fn into_into_dart(self) -> crate::cbor_import::NodeType {
         self
     }
 }
@@ -954,6 +1322,13 @@ impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     }
 }
 
+impl SseEncode for std::collections::HashMap<String, String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<(String, String)>>::sse_encode(self.into_iter().collect(), serializer);
+    }
+}
+
 impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -985,10 +1360,71 @@ impl SseEncode for crate::repository::DueItem {
 impl SseEncode for crate::exercises::Exercise {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.node_id, serializer);
-        <String>::sse_encode(self.arabic, serializer);
-        <String>::sse_encode(self.translation, serializer);
-        <String>::sse_encode(self.exercise_type, serializer);
+        match self {
+            crate::exercises::Exercise::Recall {
+                node_id,
+                arabic,
+                translation,
+            } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(arabic, serializer);
+                <String>::sse_encode(translation, serializer);
+            }
+            crate::exercises::Exercise::Cloze {
+                node_id,
+                question,
+                answer,
+            } => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(question, serializer);
+                <String>::sse_encode(answer, serializer);
+            }
+            crate::exercises::Exercise::McqArToEn {
+                node_id,
+                arabic,
+                verse_arabic,
+                surah_number,
+                ayah_number,
+                word_index,
+                choices_en,
+                correct_index,
+            } => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(arabic, serializer);
+                <String>::sse_encode(verse_arabic, serializer);
+                <i32>::sse_encode(surah_number, serializer);
+                <i32>::sse_encode(ayah_number, serializer);
+                <i32>::sse_encode(word_index, serializer);
+                <Vec<String>>::sse_encode(choices_en, serializer);
+                <i32>::sse_encode(correct_index, serializer);
+            }
+            crate::exercises::Exercise::McqEnToAr {
+                node_id,
+                english,
+                verse_arabic,
+                surah_number,
+                ayah_number,
+                word_index,
+                choices_ar,
+                correct_index,
+            } => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(english, serializer);
+                <String>::sse_encode(verse_arabic, serializer);
+                <i32>::sse_encode(surah_number, serializer);
+                <i32>::sse_encode(ayah_number, serializer);
+                <i32>::sse_encode(word_index, serializer);
+                <Vec<String>>::sse_encode(choices_ar, serializer);
+                <i32>::sse_encode(correct_index, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -1025,6 +1461,16 @@ impl SseEncode for crate::repository::ItemPreview {
     }
 }
 
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::repository::DueItem> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1055,12 +1501,32 @@ impl SseEncode for Vec<crate::repository::ItemPreview> {
     }
 }
 
+impl SseEncode for Vec<crate::repository::NodeData> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::repository::NodeData>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <u8>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<(String, String)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <(String, String)>::sse_encode(item, serializer);
         }
     }
 }
@@ -1087,6 +1553,36 @@ impl SseEncode for crate::repository::MemoryState {
     }
 }
 
+impl SseEncode for crate::repository::NodeData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <crate::cbor_import::NodeType>::sse_encode(self.node_type, serializer);
+        <std::collections::HashMap<String, String>>::sse_encode(self.metadata, serializer);
+    }
+}
+
+impl SseEncode for crate::cbor_import::NodeType {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::cbor_import::NodeType::Root => 0,
+                crate::cbor_import::NodeType::Lemma => 1,
+                crate::cbor_import::NodeType::Word => 2,
+                crate::cbor_import::NodeType::WordInstance => 3,
+                crate::cbor_import::NodeType::Verse => 4,
+                crate::cbor_import::NodeType::Chapter => 5,
+                crate::cbor_import::NodeType::Knowledge => 6,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
 impl SseEncode for Option<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1104,6 +1600,24 @@ impl SseEncode for Option<i32> {
         if let Some(value) = self {
             <i32>::sse_encode(value, serializer);
         }
+    }
+}
+
+impl SseEncode for Option<crate::repository::NodeData> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::repository::NodeData>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for (String, String) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.0, serializer);
+        <String>::sse_encode(self.1, serializer);
     }
 }
 

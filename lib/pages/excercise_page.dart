@@ -15,6 +15,7 @@ class ExcercisePage extends ConsumerStatefulWidget {
 
 class _ExcercisePageState extends ConsumerState<ExcercisePage> {
   bool _isAnswerVisible = false;
+  int? _selectedIndex; // for MCQ
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +30,7 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
       } else if (prev.currentIndex != next.currentIndex) {
         setState(() {
           _isAnswerVisible = false;
+          _selectedIndex = null;
         });
       }
     });
@@ -101,64 +103,267 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage> {
         },
         child: _isAnswerVisible
             ? _buildCardFace(
-                "Translation",
+                "Answer",
                 theme,
                 key: const ValueKey('answer'),
-                content: _buildHighlightedTranslation(currentItem, theme),
+                content: currentItem.when(
+                  recall: (nodeId, arabic, translation) => _buildPlainText(
+                    translation,
+                    theme,
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                  cloze: (nodeId, question, answer) =>
+                      _buildPlainText(answer, theme, isArabic: true),
+                  mcqArToEn:
+                      (
+                        nodeId,
+                        arabic,
+                        verseArabic,
+                        surahNumber,
+                        ayahNumber,
+                        wordIndex,
+                        choicesEn,
+                        correctIndex,
+                      ) => _buildMcqAnswer(
+                        theme,
+                        selectedIndex: _selectedIndex,
+                        correctIndex: correctIndex,
+                        correctLabel: choicesEn[correctIndex],
+                        verseArabic: verseArabic,
+                        wordIndex: wordIndex,
+                      ),
+                  mcqEnToAr:
+                      (
+                        nodeId,
+                        english,
+                        verseArabic,
+                        surahNumber,
+                        ayahNumber,
+                        wordIndex,
+                        choicesAr,
+                        correctIndex,
+                      ) => _buildMcqAnswer(
+                        theme,
+                        selectedIndex: _selectedIndex,
+                        correctIndex: correctIndex,
+                        correctLabel: choicesAr[correctIndex],
+                        verseArabic: verseArabic,
+                        wordIndex: wordIndex,
+                        isArabic: true,
+                      ),
+                ),
               )
             : _buildCardFace(
-                "Original",
+                "Question",
                 theme,
                 key: const ValueKey('question'),
-                content: Text(
-                  currentItem.arabic,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    fontFamily: 'Amiri',
-                    height: 1.5,
+                content: currentItem.when(
+                  recall: (nodeId, arabic, translation) => _buildPlainText(
+                    arabic,
+                    theme,
+                    isArabic: true,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontFamily: 'Amiri',
+                      height: 1.5,
+                    ),
                   ),
+                  cloze: (nodeId, question, answer) =>
+                      _buildPlainText(question, theme, isArabic: true),
+                  mcqArToEn:
+                      (
+                        nodeId,
+                        arabic,
+                        verseArabic,
+                        surahNumber,
+                        ayahNumber,
+                        wordIndex,
+                        choicesEn,
+                        correctIndex,
+                      ) => _buildMcqQuestion(
+                        theme,
+                        verseArabic: verseArabic,
+                        wordIndex: wordIndex,
+                        prompt: arabic,
+                        choices: choicesEn,
+                        isArabicChoices: false,
+                        onSelect: (index) {
+                          setState(() {
+                            _selectedIndex = index;
+                            _isAnswerVisible = true;
+                          });
+                        },
+                      ),
+                  mcqEnToAr:
+                      (
+                        nodeId,
+                        english,
+                        verseArabic,
+                        surahNumber,
+                        ayahNumber,
+                        wordIndex,
+                        choicesAr,
+                        correctIndex,
+                      ) => _buildMcqQuestion(
+                        theme,
+                        verseArabic: verseArabic,
+                        wordIndex: wordIndex,
+                        prompt: english,
+                        choices: choicesAr,
+                        isArabicChoices: true,
+                        onSelect: (index) {
+                          setState(() {
+                            _selectedIndex = index;
+                            _isAnswerVisible = true;
+                          });
+                        },
+                      ),
                 ),
               ),
       ),
     );
   }
 
-  Widget _buildHighlightedTranslation(Exercise item, ThemeData theme) {
-    final fullText = item.translation;
-    final clozeWord = item.arabic;
-
-    // KEY CHANGE: Use a smaller, more consistent text style for all translations.
-    // This prevents awkward wrapping on long sentences.
-    final textStyle = theme.textTheme.headlineSmall;
-
-    if (clozeWord.isEmpty || !fullText.contains(clozeWord)) {
-      return Text(
-        fullText,
-        textAlign: TextAlign.center,
-        style: textStyle, // Apply the consistent style
-      );
-    }
-
-    final parts = fullText.split(clozeWord);
-
-    final highlightStyle = textStyle?.copyWith(
-      // fontWeight: FontWeight.bold,
-      color: theme.colorScheme.primary,
-      // backgroundColor: theme.colorScheme.primaryContainer.withOpacity(
-      //   0.3,
-      // ), // Added a subtle background highlight
-    );
-
-    return RichText(
+  Widget _buildPlainText(
+    String text,
+    ThemeData theme, {
+    bool isArabic = false,
+    TextStyle? style,
+  }) {
+    return Text(
+      text,
       textAlign: TextAlign.center,
-      text: TextSpan(
-        style: textStyle, // Apply the consistent style
-        children: [
-          TextSpan(text: parts[0]),
-          TextSpan(text: clozeWord, style: highlightStyle),
-          if (parts.length > 1) TextSpan(text: parts[1]),
-        ],
-      ),
+      textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+      style:
+          style ??
+          (isArabic
+              ? theme.textTheme.headlineMedium?.copyWith(fontFamily: 'Amiri')
+              : theme.textTheme.headlineSmall),
+    );
+  }
+
+  Widget _buildMcqQuestion(
+    ThemeData theme, {
+    required String verseArabic,
+    required int wordIndex,
+    required String prompt,
+    required List<String> choices,
+    required bool isArabicChoices,
+    required void Function(int index) onSelect,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildHighlightedVerse(verseArabic, wordIndex, theme),
+        const SizedBox(height: 16),
+        Text(
+          isArabicChoices ? prompt : 'What is the meaning of: $prompt',
+          style: theme.textTheme.titleMedium,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        ...List.generate(choices.length, (i) {
+          final choice = choices[i];
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: OutlinedButton(
+              onPressed: () => onSelect(i),
+              style: OutlinedButton.styleFrom(
+                alignment: isArabicChoices
+                    ? Alignment.centerRight
+                    : Alignment.center,
+              ),
+              child: Text(
+                choice,
+                style:
+                    (isArabicChoices
+                            ? theme.textTheme.titleLarge?.copyWith(
+                                fontFamily: 'Amiri',
+                              )
+                            : theme.textTheme.titleMedium)
+                        ?.copyWith(height: 1.4),
+                textAlign: isArabicChoices ? TextAlign.right : TextAlign.center,
+                textDirection: isArabicChoices
+                    ? TextDirection.rtl
+                    : TextDirection.ltr,
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildMcqAnswer(
+    ThemeData theme, {
+    required int? selectedIndex,
+    required int correctIndex,
+    required String correctLabel,
+    required String verseArabic,
+    required int wordIndex,
+    bool isArabic = false,
+  }) {
+    final isCorrect =
+        (selectedIndex != null) && (selectedIndex == correctIndex);
+    final color = isCorrect ? Colors.green : Colors.red;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildHighlightedVerse(verseArabic, wordIndex, theme),
+        const SizedBox(height: 16),
+        if (selectedIndex != null)
+          Text(
+            isCorrect ? 'Correct' : 'Incorrect',
+            style: theme.textTheme.titleMedium?.copyWith(color: color),
+          ),
+        const SizedBox(height: 8),
+        Text(
+          'Answer: $correctLabel',
+          style:
+              (isArabic
+                      ? theme.textTheme.titleLarge?.copyWith(
+                          fontFamily: 'Amiri',
+                        )
+                      : theme.textTheme.titleMedium)
+                  ?.copyWith(height: 1.4),
+          textAlign: isArabic ? TextAlign.right : TextAlign.center,
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHighlightedVerse(
+    String verseArabic,
+    int wordIndex,
+    ThemeData theme,
+  ) {
+    final words = verseArabic.split(RegExp(r"\s+"));
+    final idx = (wordIndex - 1).clamp(0, words.length - 1);
+    return Wrap(
+      alignment: WrapAlignment.center,
+      textDirection: TextDirection.rtl,
+      runSpacing: 4,
+      spacing: 6,
+      children: [
+        for (var i = 0; i < words.length; i++)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: i == idx
+                ? BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  )
+                : null,
+            child: Text(
+              words[i],
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontFamily: 'Amiri',
+                height: 1.6,
+              ),
+              textDirection: TextDirection.rtl,
+            ),
+          ),
+      ],
     );
   }
 

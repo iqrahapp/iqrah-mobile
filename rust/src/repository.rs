@@ -80,6 +80,20 @@ pub struct ScoreWeights {
     pub w_yield: f64, // 1.5
 }
 
+// Lightweight context to build MCQ exercises for a word instance
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WordInstanceContext {
+    pub node_id: String,      // WORD_INSTANCE:ch:ayah:idx
+    pub arabic: String,       // target word
+    pub translation: String,  // target translation
+    pub verse_arabic: String, // full verse
+    pub surah_number: i32,
+    pub ayah_number: i32,
+    pub word_index: i32,                 // 1-based in verse
+    pub verse_word_ar_list: Vec<String>, // all words in verse (arabic)
+    pub verse_word_en_list: Vec<String>, // all translations in verse (parallel)
+}
+
 /// Repository trait with Send + Sync for thread safety
 #[frb(ignore)]
 #[async_trait]
@@ -110,6 +124,13 @@ pub trait KnowledgeGraphRepository: Send + Sync {
         surah_filter: Option<i32>,
     ) -> Result<Vec<ItemPreview>>;
     async fn get_available_surahs(&self) -> Result<Vec<(i32, String)>>;
+
+    // Context lookups for exercise building
+    async fn get_word_instance_context(&self, node_id: &str) -> Result<WordInstanceContext>;
+
+    // Node search and fetch
+    async fn search_nodes(&self, query: &str, limit: u32) -> Result<Vec<NodeData>>;
+    async fn get_node_with_metadata(&self, node_id: &str) -> Result<Option<NodeData>>;
 
     // Batch operations for setup/import
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> Result<()>;
@@ -195,5 +216,20 @@ impl LearningService {
 
     pub async fn get_available_surahs(&self) -> Result<Vec<(i32, String)>> {
         self.repo.get_available_surahs().await
+    }
+
+    pub async fn get_word_instance_context(
+        &self,
+        node_id: &str,
+    ) -> Result<crate::repository::WordInstanceContext> {
+        self.repo.get_word_instance_context(node_id).await
+    }
+
+    pub async fn search_nodes(&self, query: &str, limit: u32) -> Result<Vec<NodeData>> {
+        self.repo.search_nodes(query, limit).await
+    }
+
+    pub async fn get_node_with_metadata(&self, node_id: &str) -> Result<Option<NodeData>> {
+        self.repo.get_node_with_metadata(node_id).await
     }
 }

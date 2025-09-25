@@ -153,23 +153,31 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 None => ("", 3)
             };
 
-            let query = format!(
-                "SELECT n.id, n.node_type, nm.key, nm.value
-                 FROM nodes n
-                 JOIN node_metadata nm ON n.id = nm.node_id
-                 JOIN user_memory_states ums ON n.id = ums.node_id
-                 WHERE ums.user_id = ?1 AND ums.due_at <= ?2
-                   AND n.node_type IN ('word_instance', 'verse')
-                   {}
-                 ORDER BY (
-                     1.0 * MAX(0, (?2 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
-                     2.0 * MAX(0, 1.0 - ums.energy) +
-                     1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
-                                     WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
-                 ) DESC, ums.last_reviewed ASC
-                 LIMIT ?3",
-                where_clause
-            );
+                                    let query = format!(
+                                            "WITH candidates AS (
+                                                    SELECT n.id, n.node_type
+                                                    FROM nodes n
+                                                    JOIN user_memory_states ums ON n.id = ums.node_id
+                                                    WHERE ums.user_id = ?1 AND ums.due_at <= ?2
+                                                        AND n.node_type IN ('word_instance', 'verse')
+                                                        {}
+                                                    ORDER BY
+                                                        CASE WHEN n.node_type = 'word_instance' THEN 1 ELSE 0 END DESC,
+                                                        (
+                                                            1.0 * MAX(0, (?2 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
+                                                            2.0 * MAX(0, 1.0 - ums.energy) +
+                                                            1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
+                                                                                            WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
+                                                        ) DESC,
+                                                        ums.last_reviewed ASC
+                                                    LIMIT ?3
+                                            )
+                                            SELECT n.id, n.node_type, nm.key, nm.value
+                                            FROM candidates c
+                                            JOIN nodes n ON n.id = c.id
+                                            JOIN node_metadata nm ON n.id = nm.node_id",
+                                            where_clause
+                                    );
 
             let mut stmt = conn.prepare(&query)?;
 
@@ -211,11 +219,14 @@ impl KnowledgeGraphRepository for SqliteRepository {
                     .insert(key, value);
             }
 
-            // Convert to NodeData and take only the limit we need
-            Ok(nodes_map
-                .into_values()
-                // .take(limit as usize) // Already limited by SQL query
-                .collect::<Vec<_>>())
+            // Convert to NodeData
+            let out: Vec<NodeData> = nodes_map.into_values().collect();
+            // Debug logging: counts by type
+            let (wi, vs) = out.iter().fold((0,0), |(a,b), n| {
+                match n.node_type { NodeType::WordInstance => (a+1,b), NodeType::Verse => (a,b+1), _ => (a,b) }
+            });
+            println!("get_due_items: selected nodes = {} (word_instances={}, verses={})", out.len(), wi, vs);
+            Ok(out)
         })
         .await?
     }
@@ -808,6 +819,207 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 .collect::<Result<Vec<_>, _>>()?;
 
             Ok(surahs)
+        })
+        .await?
+    }
+
+    async fn get_word_instance_context(
+        &self,
+        node_id: &str,
+    ) -> Result<crate::repository::WordInstanceContext> {
+        let pool = self.pool.clone();
+        let node_id = node_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+
+            // 1) Gather metadata for the target word instance
+            let mut metadata: HashMap<String, String> = HashMap::new();
+            {
+                let mut stmt =
+                    conn.prepare("SELECT key, value FROM node_metadata WHERE node_id = ?1")?;
+                let rows = stmt.query_map(params![node_id.as_str()], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })?;
+                for r in rows {
+                    let (k, v) = r?;
+                    metadata.insert(k, v);
+                }
+            }
+
+            let arabic = metadata.get("arabic").cloned().unwrap_or_default();
+            let translation = metadata.get("translation").cloned().unwrap_or_default();
+
+            // 2) Parse node id to derive the parent verse and numeric indices
+            let mut parts = node_id.split(':');
+            let _ = parts.next(); // WORD_INSTANCE prefix
+            let surah_part = parts
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("Invalid word instance id {}", node_id))?;
+            let ayah_part = parts
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("Invalid word instance id {}", node_id))?;
+            let word_part = parts
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("Invalid word instance id {}", node_id))?;
+
+            let surah_number: i32 = surah_part.parse().unwrap_or(0);
+            let ayah_number: i32 = ayah_part.parse().unwrap_or(0);
+            let base_word_index: i32 = word_part.parse().unwrap_or(0);
+            let base_word_id = format!("WORD_INSTANCE:{}:{}:{}", surah_part, ayah_part, word_part);
+            let parent_verse_id = format!("VERSE:{}:{}", surah_part, ayah_part);
+
+            // 3) Fetch verse Arabic text
+            let verse_arabic: String = conn
+                .query_row(
+                    "SELECT value FROM node_metadata WHERE node_id = ?1 AND key = 'arabic'",
+                    params![parent_verse_id.clone()],
+                    |row| row.get(0),
+                )
+                .unwrap_or_default();
+
+            // 4) Collect all word instances attached to the verse via dependency edges
+            let mut stmt = conn.prepare(
+                "SELECT
+                     wi.id,
+                     MAX(CASE WHEN nm.key='arabic' THEN nm.value END) AS ar,
+                     MAX(CASE WHEN nm.key='translation' THEN nm.value END) AS en
+                 FROM edges e
+                 JOIN nodes wi ON wi.id = e.target_id
+                 LEFT JOIN node_metadata nm ON nm.node_id = wi.id
+                 WHERE e.source_id = ?1 AND e.edge_type = ?2 AND wi.node_type = 'word_instance'
+                 GROUP BY wi.id",
+            )?;
+
+            let rows = stmt.query_map(
+                params![parent_verse_id, EdgeType::Dependency as i32],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                        row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                    ))
+                },
+            )?;
+
+            let mut verse_words: Vec<(String, i32, String, String)> = Vec::new();
+            for r in rows {
+                let (wi_id, ar, en) = r?;
+                if wi_id.ends_with(":memorization") {
+                    continue;
+                }
+                let idx = wi_id
+                    .split(':')
+                    .nth(3)
+                    .and_then(|s| s.parse::<i32>().ok())
+                    .unwrap_or(0);
+                verse_words.push((wi_id, idx, ar, en));
+            }
+
+            verse_words.sort_by_key(|(_, idx, _, _)| *idx);
+
+            let mut verse_word_ar_list: Vec<String> = Vec::with_capacity(verse_words.len());
+            let mut verse_word_en_list: Vec<String> = Vec::with_capacity(verse_words.len());
+            let mut found_index = base_word_index;
+
+            for (wi_id, idx, ar, en) in verse_words {
+                verse_word_ar_list.push(ar);
+                verse_word_en_list.push(en);
+                if wi_id == base_word_id {
+                    found_index = idx;
+                }
+            }
+
+            Ok(crate::repository::WordInstanceContext {
+                node_id,
+                arabic,
+                translation,
+                verse_arabic,
+                surah_number,
+                ayah_number,
+                word_index: found_index,
+                verse_word_ar_list,
+                verse_word_en_list,
+            })
+        })
+        .await?
+    }
+
+    async fn search_nodes(&self, query: &str, limit: u32) -> Result<Vec<NodeData>> {
+        let pool = self.pool.clone();
+        let q = query.to_string();
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+
+            let mut pattern = q.trim().to_uppercase();
+            pattern = pattern
+                .replace('\\', "\\\\")
+                .replace('%', "\\%")
+                .replace('_', "\\_");
+            if pattern.is_empty() {
+                return Ok(Vec::new());
+            }
+            if !pattern.ends_with('%') {
+                pattern.push('%');
+            }
+
+            let mut stmt = conn.prepare(
+                "SELECT id, node_type
+                 FROM nodes
+                 WHERE id LIKE ?1 ESCAPE '\\'
+                 ORDER BY id
+                 LIMIT ?2",
+            )?;
+
+            let rows = stmt.query_map(params![pattern, limit], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, NodeType>(1)?))
+            })?;
+
+            let mut out: Vec<NodeData> = Vec::new();
+            for r in rows {
+                let (id, ty) = r?;
+                out.push(NodeData {
+                    id,
+                    node_type: ty,
+                    metadata: HashMap::new(),
+                });
+            }
+
+            Ok(out)
+        })
+        .await?
+    }
+
+    async fn get_node_with_metadata(&self, node_id: &str) -> Result<Option<NodeData>> {
+        let pool = self.pool.clone();
+        let node_id = node_id.to_string();
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            let ty: Option<NodeType> = conn
+                .query_row(
+                    "SELECT node_type FROM nodes WHERE id = ?1",
+                    params![node_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            let Some(node_type) = ty else {
+                return Ok(None);
+            };
+            let mut metadata: HashMap<String, String> = HashMap::new();
+            let mut stmt =
+                conn.prepare("SELECT key, value FROM node_metadata WHERE node_id = ?1")?;
+            let rows = stmt.query_map(params![node_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            for r in rows {
+                let (k, v) = r?;
+                metadata.insert(k, v);
+            }
+            Ok(Some(NodeData {
+                id: node_id,
+                node_type,
+                metadata,
+            }))
         })
         .await?
     }

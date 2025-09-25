@@ -1,55 +1,42 @@
 // src/exercises.rs
-use crate::{cbor_import::NodeType, repository::NodeData};
-use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
-pub struct Exercise {
-    pub node_id: String,
-    pub arabic: String,
-    pub translation: String,
-    pub exercise_type: String, // "recall" or "cloze"
-}
-
-pub fn create_exercise(node_data: NodeData) -> Result<Exercise> {
-    match node_data.node_type {
-        NodeType::WordInstance => {
-            let arabic = node_data
-                .metadata
-                .get("arabic")
-                .ok_or_else(|| anyhow::anyhow!("Missing arabic text"))?;
-            let translation = node_data
-                .metadata
-                .get("translation")
-                .ok_or_else(|| anyhow::anyhow!("Missing translation"))?;
-
-            Ok(Exercise {
-                node_id: node_data.id,
-                arabic: arabic.clone(),
-                translation: translation.clone(),
-                exercise_type: "recall".to_string(),
-            })
-        }
-        NodeType::Verse => {
-            let arabic = node_data
-                .metadata
-                .get("arabic")
-                .ok_or_else(|| anyhow::anyhow!("Missing arabic text for verse"))?;
-
-            let words: Vec<&str> = arabic.split_whitespace().collect();
-            if words.len() < 2 {
-                return Err(anyhow::anyhow!("Verse too short for cloze"));
-            }
-
-            let mut cloze_words = words.clone();
-            cloze_words[1] = "______";
-
-            Ok(Exercise {
-                node_id: node_data.id,
-                arabic: cloze_words.join(" "),
-                translation: arabic.to_string(),
-                exercise_type: "cloze".to_string(),
-            })
-        }
-        _ => Err(anyhow::anyhow!("Unsupported node type for exercises")),
-    }
+/// Enum-based exercise representation exposed to Flutter.
+/// Variants carry only the data needed for rendering/interaction.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Exercise {
+    /// Simple recall: show Arabic, expect English meaning.
+    Recall {
+        node_id: String,
+        arabic: String,
+        translation: String,
+    },
+    /// Simple cloze deletion from a verse.
+    Cloze {
+        node_id: String,
+        question: String, // Arabic with blank
+        answer: String,   // Full Arabic line
+    },
+    /// Multiple-choice: Arabic prompt -> pick English
+    McqArToEn {
+        node_id: String,
+        arabic: String,       // the target word arabic
+        verse_arabic: String, // full verse
+        surah_number: i32,
+        ayah_number: i32,
+        word_index: i32, // 1-based index in verse for highlight
+        choices_en: Vec<String>,
+        correct_index: i32,
+    },
+    /// Multiple-choice: English prompt -> pick Arabic
+    McqEnToAr {
+        node_id: String,
+        english: String, // target translation
+        verse_arabic: String,
+        surah_number: i32,
+        ayah_number: i32,
+        word_index: i32,
+        choices_ar: Vec<String>,
+        correct_index: i32,
+    },
 }

@@ -149,7 +149,9 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
   }
 
   static Widget _buildDueItemCard(DueItem item) {
-    final dueTime = DateTime.fromMillisecondsSinceEpoch(item.state.dueAt);
+    final dueTime = DateTime.fromMillisecondsSinceEpoch(
+      item.state.dueAt.toInt(),
+    );
     final now = DateTime.now();
     final isOverdue = dueTime.isBefore(now);
     final timeStr = DateFormat('MMM dd HH:mm').format(dueTime);

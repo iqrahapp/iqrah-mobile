@@ -3098,6 +3098,8 @@ dependencies = [
  "serde_plain",
  "serde_repr",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
  "uuid",
  "zstd",
 ]

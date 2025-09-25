@@ -5,34 +5,48 @@
 
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+part 'exercises.freezed.dart';
 
-class Exercise {
-  final String nodeId;
-  final String arabic;
-  final String translation;
-  final String exerciseType;
+@freezed
+sealed class Exercise with _$Exercise {
+  const Exercise._();
 
-  const Exercise({
-    required this.nodeId,
-    required this.arabic,
-    required this.translation,
-    required this.exerciseType,
-  });
+  /// Simple recall: show Arabic, expect English meaning.
+  const factory Exercise.recall({
+    required String nodeId,
+    required String arabic,
+    required String translation,
+  }) = Exercise_Recall;
 
-  @override
-  int get hashCode =>
-      nodeId.hashCode ^
-      arabic.hashCode ^
-      translation.hashCode ^
-      exerciseType.hashCode;
+  /// Simple cloze deletion from a verse.
+  const factory Exercise.cloze({
+    required String nodeId,
+    required String question,
+    required String answer,
+  }) = Exercise_Cloze;
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Exercise &&
-          runtimeType == other.runtimeType &&
-          nodeId == other.nodeId &&
-          arabic == other.arabic &&
-          translation == other.translation &&
-          exerciseType == other.exerciseType;
+  /// Multiple-choice: Arabic prompt -> pick English
+  const factory Exercise.mcqArToEn({
+    required String nodeId,
+    required String arabic,
+    required String verseArabic,
+    required int surahNumber,
+    required int ayahNumber,
+    required int wordIndex,
+    required List<String> choicesEn,
+    required int correctIndex,
+  }) = Exercise_McqArToEn;
+
+  /// Multiple-choice: English prompt -> pick Arabic
+  const factory Exercise.mcqEnToAr({
+    required String nodeId,
+    required String english,
+    required String verseArabic,
+    required int surahNumber,
+    required int ayahNumber,
+    required int wordIndex,
+    required List<String> choicesAr,
+    required int correctIndex,
+  }) = Exercise_McqEnToAr;
 }
