@@ -4,6 +4,8 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api.dart';
+import 'api/simple.dart';
+import 'api/types.dart';
 import 'cbor_import.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -34,7 +36,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_box_autoadd_i_32(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
+
+  @protected
   NodeData dco_decode_box_autoadd_node_data(dynamic raw);
+
+  @protected
+  PropagationFilter dco_decode_box_autoadd_propagation_filter(dynamic raw);
 
   @protected
   DebugStats dco_decode_debug_stats(dynamic raw);
@@ -79,6 +87,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<PropagationDetailSummary> dco_decode_list_propagation_detail_summary(
+    dynamic raw,
+  );
+
+  @protected
   List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
 
   @protected
@@ -100,7 +113,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
   @protected
+  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
+
+  @protected
   NodeData? dco_decode_opt_box_autoadd_node_data(dynamic raw);
+
+  @protected
+  PropagationDetailSummary dco_decode_propagation_detail_summary(dynamic raw);
+
+  @protected
+  PropagationFilter dco_decode_propagation_filter(dynamic raw);
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
@@ -144,7 +166,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   NodeData sse_decode_box_autoadd_node_data(SseDeserializer deserializer);
+
+  @protected
+  PropagationFilter sse_decode_box_autoadd_propagation_filter(
+    SseDeserializer deserializer,
+  );
 
   @protected
   DebugStats sse_decode_debug_stats(SseDeserializer deserializer);
@@ -189,6 +219,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<PropagationDetailSummary> sse_decode_list_propagation_detail_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<(String, String)> sse_decode_list_record_string_string(
     SseDeserializer deserializer,
   );
@@ -212,7 +247,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   NodeData? sse_decode_opt_box_autoadd_node_data(SseDeserializer deserializer);
+
+  @protected
+  PropagationDetailSummary sse_decode_propagation_detail_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PropagationFilter sse_decode_propagation_filter(SseDeserializer deserializer);
 
   @protected
   (String, String) sse_decode_record_string_string(
@@ -265,8 +311,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_i_64(
+    PlatformInt64 self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_node_data(
     NodeData self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_propagation_filter(
+    PropagationFilter self,
     SseSerializer serializer,
   );
 
@@ -319,6 +377,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_propagation_detail_summary(
+    List<PropagationDetailSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_record_string_string(
     List<(String, String)> self,
     SseSerializer serializer,
@@ -346,8 +410,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_i_64(
+    PlatformInt64? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_node_data(
     NodeData? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_propagation_detail_summary(
+    PropagationDetailSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_propagation_filter(
+    PropagationFilter self,
     SseSerializer serializer,
   );
 

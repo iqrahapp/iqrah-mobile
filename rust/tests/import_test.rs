@@ -1,6 +1,6 @@
 // tests/import_test.rs
 mod common;
-use rust_lib_iqrah::cbor_import::import_cbor_graph;
+use rust_lib_iqrah::cbor_import::import_cbor_graph_from_file;
 use rust_lib_iqrah::propagation::DistributionParams;
 use rust_lib_iqrah::repository::KnowledgeGraphRepository;
 
@@ -10,7 +10,7 @@ async fn test_full_cbor_import_and_verification() {
     let repo = common::setup_test_repo().await;
 
     // ACT: Run the import process on our test file
-    let stats = import_cbor_graph(&*repo, "tests/data/test-graph.cbor.zst")
+    let stats = import_cbor_graph_from_file(&*repo, "tests/data/test-graph.cbor.zst".to_string())
         .await
         .expect("CBOR import failed");
 

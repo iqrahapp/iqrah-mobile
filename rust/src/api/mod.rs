@@ -1,3 +1,9 @@
+pub mod simple;
+pub mod types;
+
+pub use simple::query_propagation_details;
+pub use types::{PropagationDetailSummary, PropagationFilter};
+
 use crate::{
     exercises::Exercise,
     repository::{

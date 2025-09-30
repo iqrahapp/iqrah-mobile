@@ -3,7 +3,8 @@ use crate::{
     propagation::{DistributionParams, DistributionType, EdgeForPropagation, EdgeType},
     repository::{
         DebugStats, DueItem, ItemPreview, KnowledgeGraphRepository, MemoryState, NodeData,
-        ReviewGrade, ScoreBreakdown, ScoreWeights,
+        PropagationDetailRecord, PropagationLogDetail, PropagationQueryOptions, ReviewGrade,
+        ScoreBreakdown, ScoreWeights,
     },
 };
 use anyhow::Result;
@@ -13,8 +14,9 @@ use fsrs::FSRS;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{config::DbConfig, params, OptionalExtension};
-use std::{collections::HashMap, path::PathBuf};
+use std::{cmp::Ordering, collections::HashMap, path::PathBuf};
 use tokio::task;
+use tracing::info;
 
 fn calculate_energy_delta(grade: ReviewGrade, current_energy: f64) -> f64 {
     let base_delta = match grade {
@@ -328,7 +330,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
             due_at: due_at_ms,
             review_count: review_count + 1,
             last_reviewed: now_ms,
-        }, new_energy))
+        }, energy_delta))
     }).await?
     }
 
@@ -421,6 +423,151 @@ impl KnowledgeGraphRepository for SqliteRepository {
 
             tx.commit()?;
             Ok(())
+        })
+        .await?
+    }
+
+    async fn log_propagation_event(
+        &self,
+        source_node_id: &str,
+        event_timestamp: i64,
+        details: &[PropagationLogDetail],
+    ) -> Result<()> {
+        if details.is_empty() {
+            return Ok(());
+        }
+
+        let pool = self.pool.clone();
+        let source = source_node_id.to_string();
+        let mut entries: Vec<PropagationLogDetail> = details.to_vec();
+        entries.sort_by(|a, b| {
+            b.energy_change
+                .abs()
+                .partial_cmp(&a.energy_change.abs())
+                .unwrap_or(Ordering::Equal)
+        });
+        entries.truncate(15);
+
+        let direct_self_count = entries
+            .iter()
+            .filter(|detail| detail.path.as_deref() == Some("Self"))
+            .count();
+
+        let inserted_count = entries.len();
+        if inserted_count == 0 {
+            return Ok(());
+        }
+
+        task::spawn_blocking(move || -> anyhow::Result<()> {
+            let mut conn = pool.get()?;
+            let tx = conn.transaction()?;
+
+            tx.execute(
+                "INSERT INTO propagation_events (source_node_id, event_timestamp) VALUES (?1, ?2)",
+                params![source.as_str(), event_timestamp],
+            )?;
+            let event_id = tx.last_insert_rowid();
+
+            {
+                let mut insert_detail = tx.prepare_cached(
+                    "INSERT INTO propagation_details (event_id, target_node_id, energy_change, path, reason)
+                     VALUES (?1, ?2, ?3, ?4, ?5)",
+                )?;
+
+                for detail in &entries {
+                    insert_detail.execute(params![
+                        event_id,
+                        &detail.target_node_id,
+                        detail.energy_change,
+                        detail.path.as_deref(),
+                        detail.reason.as_deref()
+                    ])?;
+                }
+            }
+
+            tx.commit()?;
+            let propagated_count = inserted_count.saturating_sub(direct_self_count);
+            info!(
+                "Logged propagation event source={} affected_nodes={} propagated_nodes={}",
+                source,
+                inserted_count,
+                propagated_count
+            );
+            Ok(())
+        })
+        .await??;
+
+        Ok(())
+    }
+
+    async fn query_propagation_details(
+        &self,
+        filter: PropagationQueryOptions,
+    ) -> Result<Vec<PropagationDetailRecord>> {
+        let pool = self.pool.clone();
+        task::spawn_blocking(move || -> anyhow::Result<Vec<PropagationDetailRecord>> {
+            let conn = pool.get()?;
+            let mut sql = String::from(
+                "SELECT
+                    pe.event_timestamp,
+                    pe.source_node_id,
+                    src_meta.value AS source_text,
+                    pd.target_node_id,
+                    tgt_meta.value AS target_text,
+                    pd.energy_change,
+                    pd.path,
+                    pd.reason
+                FROM propagation_details pd
+                JOIN propagation_events pe ON pe.id = pd.event_id
+                LEFT JOIN node_metadata src_meta ON src_meta.node_id = pe.source_node_id AND src_meta.key = 'arabic'
+                LEFT JOIN node_metadata tgt_meta ON tgt_meta.node_id = pd.target_node_id AND tgt_meta.key = 'arabic'",
+            );
+
+            let mut conditions: Vec<String> = Vec::new();
+            let mut binds: Vec<rusqlite::types::Value> = Vec::new();
+
+            if let Some(start) = filter.start_time_secs {
+                conditions.push("pe.event_timestamp >= ?".to_string());
+                binds.push(start.into());
+            }
+
+            if let Some(end) = filter.end_time_secs {
+                conditions.push("pe.event_timestamp <= ?".to_string());
+                binds.push(end.into());
+            }
+
+            if !conditions.is_empty() {
+                sql.push_str(" WHERE ");
+                sql.push_str(&conditions.join(" AND "));
+            }
+
+            let limit = if filter.limit == 0 { 50 } else { filter.limit };
+            sql.push_str(" ORDER BY pe.event_timestamp DESC LIMIT ?");
+            binds.push((limit as i64).into());
+
+            let mut stmt = conn.prepare(&sql)?;
+            let rows = stmt.query_map(
+                rusqlite::params_from_iter(binds.iter()),
+                |row| {
+                    Ok(PropagationDetailRecord {
+                        event_timestamp: row.get(0)?,
+                        source_node_id: row.get(1)?,
+                        source_text: row.get(2)?,
+                        target_node_id: row.get(3)?,
+                        target_text: row.get(4)?,
+                        energy_change: row.get(5)?,
+                        path: row.get(6)?,
+                        reason: row.get(7)?,
+                    })
+                },
+            )?;
+
+            let mut out: Vec<PropagationDetailRecord> = Vec::new();
+            for row in rows {
+                out.push(row?);
+            }
+
+            Ok(out)
         })
         .await?
     }

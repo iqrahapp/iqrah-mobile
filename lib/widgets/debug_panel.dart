@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
+import 'package:iqrah/providers/propagation_log_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/rust_bridge/api/types.dart' as rust_types;
 import 'package:iqrah/rust_bridge/repository.dart';
 
 class DebugPanel {
@@ -54,6 +58,8 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
               _buildSummarySection(widget.stats),
               const SizedBox(height: 16),
               _buildSessionPreviewSection(),
+              const SizedBox(height: 16),
+              const PropagationLogView(),
               const SizedBox(height: 16),
               _buildNextDueSection(widget.stats.nextDueItems),
             ],
@@ -696,5 +702,197 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
         ),
       );
     }
+  }
+}
+
+class PropagationLogView extends ConsumerStatefulWidget {
+  const PropagationLogView({super.key});
+
+  @override
+  ConsumerState<PropagationLogView> createState() => _PropagationLogViewState();
+}
+
+class _PropagationLogViewState extends ConsumerState<PropagationLogView> {
+  bool _sortByImpact = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncLog = ref.watch(propagationLogProvider);
+    final notifier = ref.watch(propagationLogProvider.notifier);
+    final entries = asyncLog.value ?? <rust_types.PropagationDetailSummary>[];
+    final displayEntries = _sortByImpact
+        ? (List.of(entries)..sort(
+            (a, b) => b.energyChange.abs().compareTo(a.energyChange.abs()),
+          ))
+        : entries;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Propagation Log',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber[300],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _sortByImpact = !_sortByImpact),
+                    icon: Icon(
+                      _sortByImpact ? Icons.filter_alt_off : Icons.bolt,
+                      color: Colors.blue[300],
+                    ),
+                    label: Text(
+                      _sortByImpact ? 'Timestamp' : 'Top impact',
+                      style: TextStyle(color: Colors.blue[200]),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Refresh',
+                    color: Colors.teal[200],
+                    onPressed: () {
+                      unawaited(notifier.refreshLog());
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildWindowControls(notifier),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 240,
+            child: asyncLog.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) =>
+                  Text('Error: $err', style: TextStyle(color: Colors.red[300])),
+              data: (_) {
+                if (displayEntries.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No propagation activity recorded yet.',
+                      style: TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: displayEntries.length,
+                  separatorBuilder: (context, _) =>
+                      Divider(color: Colors.grey[800], height: 12),
+                  itemBuilder: (context, index) {
+                    final item = displayEntries[index];
+                    final timestamp = DateTime.fromMillisecondsSinceEpoch(
+                      item.eventTimestamp * 1000,
+                    );
+                    final timestampLabel = DateFormat(
+                      'MMM dd HH:mm:ss',
+                    ).format(timestamp);
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(
+                        '${item.sourceNodeText} -> ${item.targetNodeText}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            timestampLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          if (item.path != null && item.path!.isNotEmpty)
+                            Text(
+                              'Path: ${item.path}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          if (item.reason != null && item.reason!.isNotEmpty)
+                            Text(
+                              'Reason: ${item.reason}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                        ],
+                      ),
+                      trailing: Text(
+                        item.energyChange.toStringAsFixed(4),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: _energyColor(item.energyChange),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWindowControls(PropagationLogNotifier notifier) {
+    final window = notifier.window;
+    final List<(PropagationLogWindow, String)> options = [
+      (PropagationLogWindow.allTime, 'All time'),
+      (PropagationLogWindow.lastDay, 'Last 24h'),
+      (PropagationLogWindow.lastHour, 'Last hour'),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      children: options
+          .map(
+            (option) => ChoiceChip(
+              label: Text(option.$2),
+              selected: window == option.$1,
+              onSelected: (selected) {
+                if (selected) {
+                  unawaited(notifier.setWindow(option.$1));
+                }
+              },
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Color _energyColor(double delta) {
+    if (delta >= 0) {
+      return Colors.green[300]!;
+    }
+    return Colors.red[300]!;
   }
 }

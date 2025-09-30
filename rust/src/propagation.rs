@@ -1,9 +1,7 @@
 // src/propagation.rs
 
-use crate::repository::KnowledgeGraphRepository;
+use crate::repository::{KnowledgeGraphRepository, PropagationLogDetail};
 use anyhow::Result;
-use rand::rng;
-use rand_distr::{Beta, Distribution, Normal};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, VecDeque};
 
@@ -75,16 +73,28 @@ pub enum DistributionParams {
 }
 
 impl DistributionParams {
-    pub fn sample(&self) -> f32 {
-        let mut rng = rng();
+    pub fn multiplier(&self) -> f32 {
         match *self {
-            Self::Normal { mean, std_dev } => Normal::new(mean, std_dev)
-                .map(|dist| dist.sample(&mut rng).clamp(0.0, 1.0))
-                .unwrap_or(0.0),
-            Self::Beta { alpha, beta } => Beta::new(alpha, beta)
-                .map(|dist| dist.sample(&mut rng))
-                .unwrap_or(0.0),
-            Self::Constant { weight } => weight,
+            Self::Normal { mean, .. } => mean.clamp(0.0, 1.0),
+            Self::Beta { alpha, beta } => {
+                let total = alpha + beta;
+                if total > 0.0 {
+                    (alpha / total).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                }
+            }
+            Self::Constant { weight } => weight.clamp(0.0, 1.0),
+        }
+    }
+
+    pub fn describe(&self) -> String {
+        match *self {
+            Self::Normal { mean, std_dev } => {
+                format!("Normal({mean:.2},{std_dev:.2})")
+            }
+            Self::Beta { alpha, beta } => format!("Beta({alpha:.2},{beta:.2})"),
+            Self::Constant { weight } => format!("Constant({weight:.2})"),
         }
     }
 }
@@ -102,41 +112,66 @@ pub struct PropagationStats {
     pub max_depth_reached: u32,
 }
 
+#[derive(Debug, Clone)]
+pub struct PropagationOutcome {
+    pub stats: PropagationStats,
+    pub details: Vec<PropagationLogDetail>,
+}
+
+struct QueueEntry {
+    node_id: String,
+    delta: f32,
+    depth: u32,
+    path: String,
+}
+
 /// The main propagation engine, performing a Breadth-First Search (BFS).
 pub async fn propagate_energy(
     repo: &dyn KnowledgeGraphRepository,
     user_id: &str,
     start_node_id: &str,
     initial_delta: f32,
-) -> Result<PropagationStats> {
+) -> Result<PropagationOutcome> {
     // These limits prevent runaway calculations on mobile
     let max_depth = 3;
-    let threshold = 0.001;
-    let max_updates = 10;
+    let threshold = 0.00001;
+    let max_updates = 20;
 
     let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
     let mut updates: Vec<(String, f64)> = Vec::new();
+    let mut detail_entries: Vec<PropagationLogDetail> = Vec::new();
     let mut max_depth_reached = 0;
 
-    queue.push_back((start_node_id.to_string(), initial_delta, 0));
+    queue.push_back(QueueEntry {
+        node_id: start_node_id.to_string(),
+        delta: initial_delta,
+        depth: 0,
+        path: start_node_id.to_string(),
+    });
     visited.insert(start_node_id.to_string());
 
-    while let Some((node_id, delta, depth)) = queue.pop_front() {
-        if updates.len() >= max_updates || depth >= max_depth || delta.abs() < threshold {
+    while let Some(entry) = queue.pop_front() {
+        if updates.len() >= max_updates || entry.depth >= max_depth {
             continue;
         }
 
-        max_depth_reached = max_depth_reached.max(depth);
+        max_depth_reached = max_depth_reached.max(entry.depth);
 
-        let edges = repo.get_knowledge_edges(&node_id).await?;
+        let mut edges = repo.get_knowledge_edges(&entry.node_id).await?;
+        
+        // Also check for edges from the memorization variant
+        let memorization_node = format!("{}:memorization", entry.node_id);
+        let mut memo_edges = repo.get_knowledge_edges(&memorization_node).await?;
+        edges.append(&mut memo_edges);
 
         for edge in edges {
             if visited.contains(&edge.target_node_id) {
                 continue;
             }
 
-            let propagated_delta = edge.distribution.sample() * delta;
+            let weight = edge.distribution.multiplier();
+            let propagated_delta = weight * entry.delta;
 
             if propagated_delta.abs() >= threshold {
                 let current_energy = repo
@@ -145,14 +180,28 @@ pub async fn propagate_energy(
                     .unwrap_or(0.0);
 
                 let new_energy = (current_energy + propagated_delta as f64).clamp(-1.0, 1.0);
+                let energy_change = new_energy - current_energy;
+                let path = format!("{} -> {}", entry.path, edge.target_node_id);
+                let reason = Some(edge.distribution.describe());
                 updates.push((edge.target_node_id.clone(), new_energy));
+                detail_entries.push(PropagationLogDetail {
+                    target_node_id: edge.target_node_id.clone(),
+                    energy_change,
+                    path: Some(path.clone()),
+                    reason,
+                });
                 visited.insert(edge.target_node_id.clone());
 
                 if updates.len() >= max_updates {
                     break;
                 }
 
-                queue.push_back((edge.target_node_id, propagated_delta, depth + 1));
+                queue.push_back(QueueEntry {
+                    node_id: edge.target_node_id,
+                    delta: propagated_delta,
+                    depth: entry.depth + 1,
+                    path,
+                });
             }
         }
     }
@@ -161,9 +210,12 @@ pub async fn propagate_energy(
         repo.update_node_energies(user_id, &updates).await?;
     }
 
-    Ok(PropagationStats {
-        nodes_updated: updates.len(),
-        max_depth_reached,
+    Ok(PropagationOutcome {
+        stats: PropagationStats {
+            nodes_updated: updates.len(),
+            max_depth_reached,
+        },
+        details: detail_entries,
     })
 }
 
@@ -172,16 +224,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_beta_bounds() {
+    fn test_beta_multiplier() {
         let dist = DistributionParams::Beta {
             alpha: 4.0,
             beta: 2.0,
         };
 
-        for _ in 0..100 {
-            let sample = dist.sample();
-            assert!(sample >= 0.0 && sample <= 1.0);
-        }
+        let value = dist.multiplier();
+        assert!((value - 0.6666).abs() < 0.01);
     }
 
     #[test]
@@ -191,15 +241,13 @@ mod tests {
             std_dev: 0.3,
         };
 
-        for _ in 0..100 {
-            let sample = dist.sample();
-            assert!(sample >= 0.0 && sample <= 1.0);
-        }
+        let value = dist.multiplier();
+        assert!((value - 0.5).abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_constant_value() {
         let dist = DistributionParams::Constant { weight: 0.75 };
-        assert_eq!(dist.sample(), 0.75);
+        assert_eq!(dist.multiplier(), 0.75);
     }
 }

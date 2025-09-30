@@ -60,6 +60,30 @@ pub fn create_schema(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS propagation_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_node_id TEXT NOT NULL,
+            event_timestamp INTEGER NOT NULL,
+            FOREIGN KEY (source_node_id) REFERENCES nodes(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS propagation_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id INTEGER NOT NULL,
+            target_node_id TEXT NOT NULL,
+            energy_change REAL NOT NULL,
+            path TEXT,
+            reason TEXT,
+            FOREIGN KEY (event_id) REFERENCES propagation_events(id) ON DELETE CASCADE,
+            FOREIGN KEY (target_node_id) REFERENCES nodes(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
     // High-impact indexes for due items queries
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_ums_user_due ON user_memory_states(user_id, due_at)",
@@ -80,6 +104,16 @@ pub fn create_schema(conn: &Connection) -> Result<()> {
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_propagation_events_timestamp ON propagation_events(event_timestamp DESC)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_propagation_details_event ON propagation_details(event_id)",
         [],
     )?;
 

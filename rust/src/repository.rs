@@ -1,5 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use chrono::Utc;
 use flutter_rust_bridge::frb;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
@@ -94,6 +95,33 @@ pub struct WordInstanceContext {
     pub verse_word_en_list: Vec<String>, // all translations in verse (parallel)
 }
 
+#[derive(Debug, Clone)]
+pub struct PropagationLogDetail {
+    pub target_node_id: String,
+    pub energy_change: f64,
+    pub path: Option<String>,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PropagationDetailRecord {
+    pub event_timestamp: i64,
+    pub source_node_id: String,
+    pub target_node_id: String,
+    pub source_text: Option<String>,
+    pub target_text: Option<String>,
+    pub energy_change: f64,
+    pub path: Option<String>,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PropagationQueryOptions {
+    pub start_time_secs: Option<i64>,
+    pub end_time_secs: Option<i64>,
+    pub limit: u32,
+}
+
 /// Repository trait with Send + Sync for thread safety
 #[frb(ignore)]
 #[async_trait]
@@ -114,6 +142,16 @@ pub trait KnowledgeGraphRepository: Send + Sync {
     async fn get_knowledge_edges(&self, source_node_id: &str) -> Result<Vec<EdgeForPropagation>>;
     async fn get_node_energy(&self, user_id: &str, node_id: &str) -> Result<Option<f64>>;
     async fn update_node_energies(&self, user_id: &str, updates: &[(String, f64)]) -> Result<()>;
+    async fn log_propagation_event(
+        &self,
+        source_node_id: &str,
+        event_timestamp: i64,
+        details: &[PropagationLogDetail],
+    ) -> Result<()>;
+    async fn query_propagation_details(
+        &self,
+        filter: PropagationQueryOptions,
+    ) -> Result<Vec<PropagationDetailRecord>>;
     async fn sync_user_nodes(&self, user_id: &str) -> Result<()>;
     async fn reset_user_progress(&self, user_id: &str) -> Result<()>;
     async fn refresh_all_priority_scores(&self, user_id: &str) -> Result<()>;
@@ -145,6 +183,8 @@ pub struct LearningService {
 
 #[frb(ignore)]
 impl LearningService {
+    const PROPAGATION_TRIGGER_DELTA: f64 = 0.0001;
+
     pub fn new(repo: Arc<dyn KnowledgeGraphRepository>) -> Self {
         Self { repo }
     }
@@ -165,22 +205,53 @@ impl LearningService {
         grade: ReviewGrade,
     ) -> Result<MemoryState> {
         // Step 1: Process the main review
+        let grade_for_log = grade.clone();
         let (new_state, energy_delta) = self.repo.process_review(user_id, node_id, grade).await?;
 
+        let mut log_details: Vec<PropagationLogDetail> = Vec::new();
+
+        if energy_delta.abs() > 1e-6 {
+            let reason = format!("Direct({})", Self::grade_label(&grade_for_log));
+            log_details.push(PropagationLogDetail {
+                target_node_id: node_id.to_string(),
+                energy_change: energy_delta,
+                path: Some("Self".to_string()),
+                reason: Some(reason),
+            });
+        }
+
         // Step 2: Propagate if the energy change is significant
-        // No longer checks for only "good" reviews.
-        if energy_delta.abs() > 0.01 {
-            // Threshold to avoid tiny propagations
-            let _stats = crate::propagation::propagate_energy(
+        if energy_delta.abs() > Self::PROPAGATION_TRIGGER_DELTA {
+            let outcome = crate::propagation::propagate_energy(
                 &*self.repo,
                 user_id,
                 node_id,
                 energy_delta as f32,
             )
             .await?;
+
+            if !outcome.details.is_empty() {
+                log_details.extend(outcome.details);
+            }
+        }
+
+        if !log_details.is_empty() {
+            let timestamp = Utc::now().timestamp();
+            self.repo
+                .log_propagation_event(node_id, timestamp, &log_details)
+                .await?;
         }
 
         Ok(new_state)
+    }
+
+    fn grade_label(grade: &ReviewGrade) -> &'static str {
+        match grade {
+            ReviewGrade::Again => "Again",
+            ReviewGrade::Hard => "Hard",
+            ReviewGrade::Good => "Good",
+            ReviewGrade::Easy => "Easy",
+        }
     }
 
     pub async fn get_debug_stats(&self, user_id: &str) -> Result<DebugStats> {
@@ -231,5 +302,12 @@ impl LearningService {
 
     pub async fn get_node_with_metadata(&self, node_id: &str) -> Result<Option<NodeData>> {
         self.repo.get_node_with_metadata(node_id).await
+    }
+
+    pub async fn query_propagation_details(
+        &self,
+        filter: PropagationQueryOptions,
+    ) -> Result<Vec<PropagationDetailRecord>> {
+        self.repo.query_propagation_details(filter).await
     }
 }
