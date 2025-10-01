@@ -2,21 +2,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/rust_bridge/api/simple.dart' as rust_simple;
 import 'package:iqrah/rust_bridge/api/types.dart' as rust_types;
 
-enum PropagationLogWindow { allTime, lastDay, lastHour }
+enum PropagationLogWindow { allTime, last7Days, lastDay, lastHour, last5Min }
+
+enum PropagationViewMode { chronological, aggregated }
 
 class PropagationLogNotifier
     extends AsyncNotifier<List<rust_types.PropagationDetailSummary>> {
   late rust_types.PropagationFilter _filter;
   late PropagationLogWindow _window;
+  late PropagationViewMode _viewMode;
 
   rust_types.PropagationFilter get filter => _filter;
   PropagationLogWindow get window => _window;
+  PropagationViewMode get viewMode => _viewMode;
 
   @override
   Future<List<rust_types.PropagationDetailSummary>> build() async {
     _window = PropagationLogWindow.allTime;
+    _viewMode = PropagationViewMode.chronological;
     _filter = _filterForWindow(_window);
     return _fetchLog();
+  }
+
+  Future<void> setViewMode(PropagationViewMode mode) async {
+    _viewMode = mode;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(_fetchLog);
   }
 
   Future<void> refreshLog() async {
@@ -39,23 +50,35 @@ class PropagationLogNotifier
   rust_types.PropagationFilter _filterForWindow(PropagationLogWindow window) {
     final nowSecs = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     switch (window) {
+      case PropagationLogWindow.last5Min:
+        return rust_types.PropagationFilter(
+          startTimeSecs: nowSecs - 300,
+          endTimeSecs: null,
+          limit: 200,
+        );
       case PropagationLogWindow.lastHour:
         return rust_types.PropagationFilter(
           startTimeSecs: nowSecs - 3600,
           endTimeSecs: null,
-          limit: 100,
+          limit: 300,
         );
       case PropagationLogWindow.lastDay:
         return rust_types.PropagationFilter(
           startTimeSecs: nowSecs - 86400,
           endTimeSecs: null,
-          limit: 150,
+          limit: 500,
+        );
+      case PropagationLogWindow.last7Days:
+        return rust_types.PropagationFilter(
+          startTimeSecs: nowSecs - 604800,
+          endTimeSecs: null,
+          limit: 1000,
         );
       case PropagationLogWindow.allTime:
         return rust_types.PropagationFilter(
           startTimeSecs: null,
           endTimeSecs: null,
-          limit: 150,
+          limit: 500,
         );
     }
   }
