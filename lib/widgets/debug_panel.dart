@@ -311,6 +311,7 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
             userId: "default_user",
             limit: 5,
             surahFilter: ref.watch(surahFilterProvider),
+            isHighYieldMode: ref.watch(highYieldModeProvider),
           ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {

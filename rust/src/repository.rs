@@ -131,6 +131,7 @@ pub trait KnowledgeGraphRepository: Send + Sync {
         user_id: &str,
         limit: u32,
         surah_filter: Option<i32>,
+        is_high_yield_mode: bool,
     ) -> Result<Vec<NodeData>>;
     async fn process_review(
         &self,
@@ -160,6 +161,7 @@ pub trait KnowledgeGraphRepository: Send + Sync {
         user_id: &str,
         limit: u32,
         surah_filter: Option<i32>,
+        is_high_yield_mode: bool,
     ) -> Result<Vec<ItemPreview>>;
     async fn get_available_surahs(&self) -> Result<Vec<(i32, String)>>;
 
@@ -194,8 +196,9 @@ impl LearningService {
         user_id: &str,
         limit: u32,
         surah_filter: Option<i32>,
+        is_high_yield_mode: bool,
     ) -> Result<Vec<NodeData>> {
-        self.repo.get_due_items(user_id, limit, surah_filter).await
+        self.repo.get_due_items(user_id, limit, surah_filter, is_high_yield_mode).await
     }
 
     pub async fn process_review(
@@ -279,9 +282,10 @@ impl LearningService {
         user_id: &str,
         limit: u32,
         surah_filter: Option<i32>,
+        is_high_yield_mode: bool,
     ) -> Result<Vec<ItemPreview>> {
         self.repo
-            .get_session_preview(user_id, limit, surah_filter)
+            .get_session_preview(user_id, limit, surah_filter, is_high_yield_mode)
             .await
     }
 

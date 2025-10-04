@@ -55,6 +55,18 @@ class DashboardPage extends ConsumerWidget {
                 const SurahDropdown(),
               ],
             ),
+            const SizedBox(height: 16),
+            // High-Yield Mode toggle
+            SwitchListTile(
+              title: const Text('High-Yield Mode'),
+              subtitle: const Text('Focus on widely-applicable concepts'),
+              value: ref.watch(highYieldModeProvider),
+              onChanged: (value) {
+                ref.read(highYieldModeProvider.notifier).state = value;
+                ref.invalidate(exercisesProvider);
+              },
+              secondary: const Icon(Icons.stars),
+            ),
             const SizedBox(height: 20),
             Expanded(
               child: Center(

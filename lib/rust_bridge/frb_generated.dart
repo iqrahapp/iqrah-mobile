@@ -92,6 +92,7 @@ abstract class RustLibApi extends BaseApi {
     required String userId,
     required int limit,
     int? surahFilter,
+    required bool isHighYieldMode,
   });
 
   Future<List<Exercise>> crateApiGetExercisesForNode({required String nodeId});
@@ -100,6 +101,7 @@ abstract class RustLibApi extends BaseApi {
     required String userId,
     required int limit,
     int? surahFilter,
+    required bool isHighYieldMode,
   });
 
   Future<void> crateApiInitApp();
@@ -230,6 +232,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String userId,
     required int limit,
     int? surahFilter,
+    required bool isHighYieldMode,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -238,6 +241,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(userId, serializer);
           sse_encode_u_32(limit, serializer);
           sse_encode_opt_box_autoadd_i_32(surahFilter, serializer);
+          sse_encode_bool(isHighYieldMode, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -250,7 +254,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetExercisesConstMeta,
-        argValues: [userId, limit, surahFilter],
+        argValues: [userId, limit, surahFilter, isHighYieldMode],
         apiImpl: this,
       ),
     );
@@ -258,7 +262,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiGetExercisesConstMeta => const TaskConstMeta(
     debugName: "get_exercises",
-    argNames: ["userId", "limit", "surahFilter"],
+    argNames: ["userId", "limit", "surahFilter", "isHighYieldMode"],
   );
 
   @override
@@ -297,6 +301,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String userId,
     required int limit,
     int? surahFilter,
+    required bool isHighYieldMode,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -305,6 +310,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(userId, serializer);
           sse_encode_u_32(limit, serializer);
           sse_encode_opt_box_autoadd_i_32(surahFilter, serializer);
+          sse_encode_bool(isHighYieldMode, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -317,7 +323,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetSessionPreviewConstMeta,
-        argValues: [userId, limit, surahFilter],
+        argValues: [userId, limit, surahFilter, isHighYieldMode],
         apiImpl: this,
       ),
     );
@@ -325,7 +331,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiGetSessionPreviewConstMeta => const TaskConstMeta(
     debugName: "get_session_preview",
-    argNames: ["userId", "limit", "surahFilter"],
+    argNames: ["userId", "limit", "surahFilter", "isHighYieldMode"],
   );
 
   @override
@@ -601,6 +607,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
   }
 
   @protected
@@ -985,6 +997,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
   }
 
   @protected
@@ -1447,12 +1465,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
     SseSerializer serializer,
@@ -1477,6 +1489,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
   }
 
   @protected
@@ -1892,11 +1910,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }

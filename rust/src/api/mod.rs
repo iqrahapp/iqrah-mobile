@@ -61,10 +61,11 @@ pub async fn get_exercises(
     user_id: String,
     limit: u32,
     surah_filter: Option<i32>,
+    is_high_yield_mode: bool,
 ) -> Result<Vec<Exercise>> {
     let due_nodes = crate::app::app()
         .service
-        .get_due_items(&user_id, limit * 2, surah_filter) // Get extra in case some fail to generate
+        .get_due_items(&user_id, limit * 2, surah_filter, is_high_yield_mode) // Get extra in case some fail to generate
         .await?;
     let word_instances = due_nodes
         .iter()
@@ -304,10 +305,11 @@ pub async fn get_session_preview(
     user_id: String,
     limit: u32,
     surah_filter: Option<i32>,
+    is_high_yield_mode: bool,
 ) -> Result<Vec<ItemPreview>> {
     crate::app::app()
         .service
-        .get_session_preview(&user_id, limit, surah_filter)
+        .get_session_preview(&user_id, limit, surah_filter, is_high_yield_mode)
         .await
 }
 

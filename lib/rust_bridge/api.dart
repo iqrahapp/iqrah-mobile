@@ -27,10 +27,12 @@ Future<List<Exercise>> getExercises({
   required String userId,
   required int limit,
   int? surahFilter,
+  required bool isHighYieldMode,
 }) => RustLib.instance.api.crateApiGetExercises(
   userId: userId,
   limit: limit,
   surahFilter: surahFilter,
+  isHighYieldMode: isHighYieldMode,
 );
 
 Future<MemoryState> processReview({
@@ -56,10 +58,12 @@ Future<List<ItemPreview>> getSessionPreview({
   required String userId,
   required int limit,
   int? surahFilter,
+  required bool isHighYieldMode,
 }) => RustLib.instance.api.crateApiGetSessionPreview(
   userId: userId,
   limit: limit,
   surahFilter: surahFilter,
+  isHighYieldMode: isHighYieldMode,
 );
 
 /// Search node IDs by prefix (used for sandbox suggestions)

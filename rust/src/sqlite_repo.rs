@@ -130,12 +130,20 @@ impl KnowledgeGraphRepository for SqliteRepository {
         user_id: &str,
         limit: u32,
         surah_filter: Option<i32>,
+        is_high_yield_mode: bool,
     ) -> Result<Vec<NodeData>> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
 
         task::spawn_blocking(move || {
             let conn = pool.get()?;
+
+            // Determine importance metric and weight based on mode
+            let (importance_key, yield_weight) = if is_high_yield_mode {
+                ("influence_score", 10.0)
+            } else {
+                ("foundational_score", 1.5)
+            };
 
             // Build the WHERE clause dynamically based on surah_filter
             let (where_clause, _) = match surah_filter {
@@ -168,8 +176,8 @@ impl KnowledgeGraphRepository for SqliteRepository {
                                                         (
                                                             1.0 * MAX(0, (?2 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
                                                             2.0 * MAX(0, 1.0 - ums.energy) +
-                                                            1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
-                                                                                            WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
+                                                            {} * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
+                                                                                            WHERE nm2.node_id = n.id AND nm2.key = '{}'), 0)
                                                         ) DESC,
                                                         ums.last_reviewed ASC
                                                     LIMIT ?3
@@ -178,7 +186,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
                                             FROM candidates c
                                             JOIN nodes n ON n.id = c.id
                                             JOIN node_metadata nm ON n.id = nm.node_id",
-                                            where_clause
+                                            where_clause, yield_weight, importance_key
                                     );
 
             let mut stmt = conn.prepare(&query)?;
@@ -787,6 +795,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
         user_id: &str,
         limit: u32,
         surah_filter: Option<i32>,
+        is_high_yield_mode: bool,
     ) -> Result<Vec<ItemPreview>> {
         let pool = self.pool.clone();
         let user_id = user_id.to_string();
@@ -794,6 +803,13 @@ impl KnowledgeGraphRepository for SqliteRepository {
         task::spawn_blocking(move || {
             let conn = pool.get()?;
             let now_ms = chrono::Utc::now().timestamp_millis();
+
+            // Determine importance metric and weight based on mode
+            let (importance_key, yield_weight) = if is_high_yield_mode {
+                ("influence_score", 10.0)
+            } else {
+                ("foundational_score", 1.5)
+            };
 
             // Build the WHERE clause dynamically based on surah_filter
             let where_clause = match surah_filter {
@@ -820,12 +836,12 @@ impl KnowledgeGraphRepository for SqliteRepository {
                    (
                        1.0 * MAX(0, (?1 - ums.due_at) / (24.0 * 60.0 * 60.0 * 1000.0)) +
                        2.0 * MAX(0, 1.0 - ums.energy) +
-                       1.5 * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
-                                      WHERE nm2.node_id = n.id AND nm2.key = 'foundational_score'), 0)
+                       {} * COALESCE((SELECT CAST(value AS REAL) FROM node_metadata nm2
+                                      WHERE nm2.node_id = n.id AND nm2.key = '{}'), 0)
                    ) AS priority_score,
                    MAX(CASE WHEN nm.key = 'arabic' THEN nm.value END) as arabic,
                    MAX(CASE WHEN nm.key = 'translation' THEN nm.value END) as translation,
-                   MAX(CASE WHEN nm.key = 'foundational_score' THEN nm.value END) as foundational_score
+                   MAX(CASE WHEN nm.key = '{}' THEN nm.value END) as importance_score
             FROM nodes n
             JOIN user_memory_states ums ON n.id = ums.node_id
             LEFT JOIN node_metadata nm ON n.id = nm.node_id
@@ -834,14 +850,14 @@ impl KnowledgeGraphRepository for SqliteRepository {
             GROUP BY n.id
             ORDER BY priority_score DESC
             LIMIT ?3
-        ", where_clause);
+        ", yield_weight, importance_key, importance_key, where_clause);
 
             let mut stmt = conn.prepare(&query)?;
 
             let weights = ScoreWeights {
                 w_due: 1.0,
                 w_need: 2.0,
-                w_yield: 1.5,
+                w_yield: yield_weight,
             };
 
             let previews: Vec<ItemPreview> = if let Some(chapter_num) = surah_filter {
@@ -853,8 +869,8 @@ impl KnowledgeGraphRepository for SqliteRepository {
                     let last_reviewed: i64 = row.get("last_reviewed")?;
                     let review_count: i32 = row.get("review_count")?;
                     let priority_score: f64 = row.get("priority_score")?;
-                    let foundational_score: f64 = row
-                        .get::<_, Option<String>>("foundational_score")?
+                    let importance_score: f64 = row
+                        .get::<_, Option<String>>("importance_score")?
                         .and_then(|s| s.parse().ok())
                         .unwrap_or(0.0);
 
@@ -862,7 +878,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
                     let days_overdue =
                         ((now_ms - due_at) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)).max(0.0);
                     let mastery_gap = (1.0 - energy.max(0.0)).max(0.0);
-                    let importance = foundational_score;
+                    let importance = importance_score;
 
                     Ok(ItemPreview {
                         node_id: row.get("id")?,
@@ -894,8 +910,8 @@ impl KnowledgeGraphRepository for SqliteRepository {
                     let last_reviewed: i64 = row.get("last_reviewed")?;
                     let review_count: i32 = row.get("review_count")?;
                     let priority_score: f64 = row.get("priority_score")?;
-                    let foundational_score: f64 = row
-                        .get::<_, Option<String>>("foundational_score")?
+                    let importance_score: f64 = row
+                        .get::<_, Option<String>>("importance_score")?
                         .and_then(|s| s.parse().ok())
                         .unwrap_or(0.0);
 
@@ -903,7 +919,7 @@ impl KnowledgeGraphRepository for SqliteRepository {
                     let days_overdue =
                         ((now_ms - due_at) as f64 / (24.0 * 60.0 * 60.0 * 1000.0)).max(0.0);
                     let mastery_gap = (1.0 - energy.max(0.0)).max(0.0);
-                    let importance = foundational_score;
+                    let importance = importance_score;
 
                     Ok(ItemPreview {
                         node_id: row.get("id")?,
