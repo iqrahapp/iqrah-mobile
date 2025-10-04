@@ -16,6 +16,7 @@ Classes:
 from .buffer import StreamingAudioBuffer
 from .pitch_stream import IncrementalPitchExtractor, StreamingPitchAnalyzer
 from .anchors import AnchorDetector, Anchor
+from .online_dtw import EnhancedOnlineDTW, OnlineAlignmentState
 
 # Not yet implemented:
 # from .feedback import LiveFeedback, RealtimeHints
@@ -26,6 +27,8 @@ __all__ = [
     "StreamingPitchAnalyzer",
     "AnchorDetector",
     "Anchor",
+    "EnhancedOnlineDTW",
+    "OnlineAlignmentState",
     # "LiveFeedback",
     # "RealtimeHints",
 ]
