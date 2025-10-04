@@ -2,7 +2,7 @@ use crate::{
     cbor_import::{ImportedEdge, ImportedNode, NodeType},
     propagation::{DistributionParams, DistributionType, EdgeForPropagation, EdgeType},
     repository::{
-        DebugStats, DueItem, ItemPreview, KnowledgeGraphRepository, MemoryState, NodeData,
+        DashboardStats, DebugStats, DueItem, ItemPreview, KnowledgeGraphRepository, MemoryState, NodeData,
         PropagationDetailRecord, PropagationLogDetail, PropagationQueryOptions, ReviewGrade,
         ScoreBreakdown, ScoreWeights,
     },
@@ -1183,6 +1183,196 @@ impl KnowledgeGraphRepository for SqliteRepository {
                 node_type,
                 metadata,
             }))
+        })
+        .await?
+    }
+
+    async fn save_session(&self, node_ids: &[String]) -> Result<()> {
+        let pool = self.pool.clone();
+        let node_ids = node_ids.to_vec();
+
+        task::spawn_blocking(move || {
+            let mut conn = pool.get()?;
+            let tx = conn.transaction()?;
+
+            // Clear existing session
+            tx.execute("DELETE FROM session_state", [])?;
+
+            // Insert new session items with order
+            {
+                let mut stmt = tx.prepare_cached(
+                    "INSERT INTO session_state (node_id, session_order) VALUES (?1, ?2)",
+                )?;
+
+                for (idx, node_id) in node_ids.iter().enumerate() {
+                    stmt.execute(params![node_id, idx as i32])?;
+                }
+            } // stmt dropped here
+
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn get_existing_session(&self) -> Result<Option<Vec<NodeData>>> {
+        let pool = self.pool.clone();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+
+            // Check if session exists
+            let count: i32 = conn.query_row(
+                "SELECT COUNT(*) FROM session_state",
+                [],
+                |row| row.get(0),
+            )?;
+
+            if count == 0 {
+                return Ok(None);
+            }
+
+            // Fetch session items in order
+            let mut stmt = conn.prepare(
+                "SELECT n.id, n.node_type, nm.key, nm.value
+                 FROM session_state ss
+                 JOIN nodes n ON n.id = ss.node_id
+                 JOIN node_metadata nm ON n.id = nm.node_id
+                 ORDER BY ss.session_order",
+            )?;
+
+            let rows = stmt.query_map([], |row| {
+                Ok((
+                    row.get::<_, String>("id")?,
+                    row.get::<_, NodeType>("node_type")?,
+                    row.get::<_, String>("key")?,
+                    row.get::<_, String>("value")?,
+                ))
+            })?;
+
+            let mut nodes_map: HashMap<String, NodeData> = HashMap::new();
+
+            for row in rows {
+                let (node_id, node_type, key, value) = row?;
+
+                nodes_map
+                    .entry(node_id.clone())
+                    .or_insert_with(|| NodeData {
+                        id: node_id.clone(),
+                        node_type,
+                        metadata: HashMap::new(),
+                    })
+                    .metadata
+                    .insert(key, value);
+            }
+
+            let out: Vec<NodeData> = nodes_map.into_values().collect();
+            Ok(Some(out))
+        })
+        .await?
+    }
+
+    async fn remove_from_session(&self, node_id: &str) -> Result<()> {
+        let pool = self.pool.clone();
+        let node_id = node_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            conn.execute("DELETE FROM session_state WHERE node_id = ?1", params![node_id])?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn clear_session(&self) -> Result<()> {
+        let pool = self.pool.clone();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            conn.execute("DELETE FROM session_state", [])?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn get_dashboard_stats(&self, user_id: &str) -> Result<DashboardStats> {
+        let pool = self.pool.clone();
+        let user_id = user_id.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+
+            let reviews_today: u32 = conn
+                .query_row(
+                    "SELECT CAST(value AS INTEGER) FROM user_stats WHERE key = 'reviews_today'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+
+            let streak_days: u32 = conn
+                .query_row(
+                    "SELECT CAST(value AS INTEGER) FROM user_stats WHERE key = 'streak_days'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+
+            Ok(DashboardStats {
+                reviews_today,
+                streak_days,
+            })
+        })
+        .await?
+    }
+
+    async fn update_user_stats(
+        &self,
+        reviews_today: u32,
+        streak_days: u32,
+        last_review_date: &str,
+    ) -> Result<()> {
+        let pool = self.pool.clone();
+        let last_review_date = last_review_date.to_string();
+
+        task::spawn_blocking(move || {
+            let mut conn = pool.get()?;
+            let tx = conn.transaction()?;
+
+            tx.execute(
+                "INSERT OR REPLACE INTO user_stats (key, value) VALUES ('reviews_today', ?1)",
+                params![reviews_today.to_string()],
+            )?;
+
+            tx.execute(
+                "INSERT OR REPLACE INTO user_stats (key, value) VALUES ('streak_days', ?1)",
+                params![streak_days.to_string()],
+            )?;
+
+            tx.execute(
+                "INSERT OR REPLACE INTO user_stats (key, value) VALUES ('last_review_date', ?1)",
+                params![last_review_date],
+            )?;
+
+            tx.commit()?;
+            Ok(())
+        })
+        .await?
+    }
+
+    async fn get_last_review_date(&self) -> Result<Option<String>> {
+        let pool = self.pool.clone();
+
+        task::spawn_blocking(move || {
+            let conn = pool.get()?;
+            let date: Option<String> = conn
+                .query_row(
+                    "SELECT value FROM user_stats WHERE key = 'last_review_date'",
+                    [],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            Ok(date)
         })
         .await?
     }

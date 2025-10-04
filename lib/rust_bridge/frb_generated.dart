@@ -71,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1893197085;
+  int get rustContentHash => 1623807567;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -86,6 +86,8 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<SurahInfo>> crateApiGetAvailableSurahs();
 
+  Future<DashboardStats> crateApiGetDashboardStats({required String userId});
+
   Future<DebugStats> crateApiGetDebugStats({required String userId});
 
   Future<List<Exercise>> crateApiGetExercises({
@@ -96,6 +98,8 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<List<Exercise>> crateApiGetExercisesForNode({required String nodeId});
+
+  Future<List<NodeData>?> crateApiGetExistingSession();
 
   Future<List<ItemPreview>> crateApiGetSessionPreview({
     required String userId,
@@ -200,7 +204,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_available_surahs", argNames: []);
 
   @override
-  Future<DebugStats> crateApiGetDebugStats({required String userId}) {
+  Future<DashboardStats> crateApiGetDashboardStats({required String userId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -210,6 +214,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             generalizedFrbRustBinding,
             serializer,
             funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_dashboard_stats,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetDashboardStatsConstMeta,
+        argValues: [userId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetDashboardStatsConstMeta => const TaskConstMeta(
+    debugName: "get_dashboard_stats",
+    argNames: ["userId"],
+  );
+
+  @override
+  Future<DebugStats> crateApiGetDebugStats({required String userId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(userId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
             port: port_,
           );
         },
@@ -245,7 +279,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -275,7 +309,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -297,6 +331,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<NodeData>?> crateApiGetExistingSession() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_list_node_data,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetExistingSessionConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetExistingSessionConstMeta =>
+      const TaskConstMeta(debugName: "get_existing_session", argNames: []);
+
+  @override
   Future<List<ItemPreview>> crateApiGetSessionPreview({
     required String userId,
     required int limit,
@@ -314,7 +375,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -343,7 +404,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -377,7 +438,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -409,7 +470,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -440,7 +501,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -470,7 +531,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -502,7 +563,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -536,7 +597,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -566,7 +627,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -637,6 +698,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PropagationFilter dco_decode_box_autoadd_propagation_filter(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_propagation_filter(raw);
+  }
+
+  @protected
+  DashboardStats dco_decode_dashboard_stats(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return DashboardStats(
+      reviewsToday: dco_decode_u_32(arr[0]),
+      streakDays: dco_decode_u_32(arr[1]),
+    );
   }
 
   @protected
@@ -869,6 +942,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<NodeData>? dco_decode_opt_list_node_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_list_node_data(raw);
+  }
+
+  @protected
   PropagationDetailSummary dco_decode_propagation_detail_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1029,6 +1108,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_propagation_filter(deserializer));
+  }
+
+  @protected
+  DashboardStats sse_decode_dashboard_stats(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_reviewsToday = sse_decode_u_32(deserializer);
+    var var_streakDays = sse_decode_u_32(deserializer);
+    return DashboardStats(
+      reviewsToday: var_reviewsToday,
+      streakDays: var_streakDays,
+    );
   }
 
   @protected
@@ -1357,6 +1447,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<NodeData>? sse_decode_opt_list_node_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_list_node_data(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   PropagationDetailSummary sse_decode_propagation_detail_summary(
     SseDeserializer deserializer,
   ) {
@@ -1528,6 +1629,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_propagation_filter(self, serializer);
+  }
+
+  @protected
+  void sse_encode_dashboard_stats(
+    DashboardStats self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self.reviewsToday, serializer);
+    sse_encode_u_32(self.streakDays, serializer);
   }
 
   @protected
@@ -1818,6 +1929,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_node_data(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_list_node_data(
+    List<NodeData>? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_list_node_data(self, serializer);
     }
   }
 

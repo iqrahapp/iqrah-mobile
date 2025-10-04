@@ -95,6 +95,12 @@ pub struct WordInstanceContext {
     pub verse_word_en_list: Vec<String>, // all translations in verse (parallel)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DashboardStats {
+    pub reviews_today: u32,
+    pub streak_days: u32,
+}
+
 #[derive(Debug, Clone)]
 pub struct PropagationLogDetail {
     pub target_node_id: String,
@@ -175,12 +181,28 @@ pub trait KnowledgeGraphRepository: Send + Sync {
     // Batch operations for setup/import
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> Result<()>;
     async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> Result<()>;
+
+    // Session persistence
+    async fn save_session(&self, node_ids: &[String]) -> Result<()>;
+    async fn get_existing_session(&self) -> Result<Option<Vec<NodeData>>>;
+    async fn remove_from_session(&self, node_id: &str) -> Result<()>;
+    async fn clear_session(&self) -> Result<()>;
+
+    // User statistics
+    async fn get_dashboard_stats(&self, user_id: &str) -> Result<DashboardStats>;
+    async fn update_user_stats(
+        &self,
+        reviews_today: u32,
+        streak_days: u32,
+        last_review_date: &str,
+    ) -> Result<()>;
+    async fn get_last_review_date(&self) -> Result<Option<String>>;
 }
 
 /// Service owns a trait object - perfect for testing
 #[frb(ignore)]
 pub struct LearningService {
-    repo: Arc<dyn KnowledgeGraphRepository>,
+    pub repo: Arc<dyn KnowledgeGraphRepository>,
 }
 
 #[frb(ignore)]
@@ -245,7 +267,59 @@ impl LearningService {
                 .await?;
         }
 
+        // Step 3: Update user stats (reviews today, streak)
+        self.update_stats_after_review(user_id).await?;
+
+        // Step 4: Remove item from session
+        self.repo.remove_from_session(node_id).await?;
+
         Ok(new_state)
+    }
+
+    async fn update_stats_after_review(&self, user_id: &str) -> Result<()> {
+        use chrono::NaiveDate;
+
+        let stats = self.repo.get_dashboard_stats(user_id).await?;
+        let today = Utc::now().date_naive();
+        let today_str = today.format("%Y-%m-%d").to_string();
+
+        // Get last review date from DB
+        let last_date_str = self.get_last_review_date().await?;
+
+        let (new_reviews_today, new_streak) = if let Some(last_str) = last_date_str {
+            let last_date = NaiveDate::parse_from_str(&last_str, "%Y-%m-%d")
+                .unwrap_or(today);
+
+            let days_diff = (today - last_date).num_days();
+
+            match days_diff {
+                0 => {
+                    // Same day - increment reviews, keep streak
+                    (stats.reviews_today + 1, stats.streak_days)
+                }
+                1 => {
+                    // Yesterday - reset reviews, increment streak
+                    (1, stats.streak_days + 1)
+                }
+                _ => {
+                    // Gap - reset both
+                    (1, 1)
+                }
+            }
+        } else {
+            // First ever review
+            (1, 1)
+        };
+
+        self.repo
+            .update_user_stats(new_reviews_today, new_streak, &today_str)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_last_review_date(&self) -> Result<Option<String>> {
+        self.repo.get_last_review_date().await
     }
 
     fn grade_label(grade: &ReviewGrade) -> &'static str {

@@ -117,5 +117,24 @@ pub fn create_schema(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    // Session persistence: stores current session items
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS session_state (
+            node_id TEXT NOT NULL PRIMARY KEY,
+            session_order INTEGER NOT NULL,
+            FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+        )",
+        [],
+    )?;
+
+    // User statistics: daily counts and streaks
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS user_stats (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )",
+        [],
+    )?;
+
     Ok(())
 }

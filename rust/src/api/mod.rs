@@ -7,7 +7,7 @@ pub use types::{PropagationDetailSummary, PropagationFilter};
 use crate::{
     exercises::Exercise,
     repository::{
-        DebugStats, ItemPreview, MemoryState, NodeData, ReviewGrade, WordInstanceContext,
+        DashboardStats, DebugStats, ItemPreview, MemoryState, NodeData, ReviewGrade, WordInstanceContext,
     },
 };
 use anyhow::Result;
@@ -131,6 +131,11 @@ pub async fn get_exercises(
         counts.2,
         counts.3
     );
+
+    // Save session state for persistence
+    let node_ids: Vec<String> = built.iter().map(|ex| ex.node_id().to_string()).collect();
+    crate::app::app().service.repo.save_session(&node_ids).await?;
+
     Ok(built)
 }
 
@@ -324,6 +329,16 @@ pub async fn fetch_node_with_metadata(node_id: String) -> Result<Option<NodeData
         .service
         .get_node_with_metadata(&node_id)
         .await
+}
+
+/// Get existing session if one exists
+pub async fn get_existing_session() -> Result<Option<Vec<NodeData>>> {
+    crate::app::app().service.repo.get_existing_session().await
+}
+
+/// Get dashboard stats (reviews today, streak)
+pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStats> {
+    crate::app::app().service.repo.get_dashboard_stats(&user_id).await
 }
 
 // Build exercises for a specific node id (sandbox)

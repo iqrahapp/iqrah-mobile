@@ -7,6 +7,24 @@ import 'cbor_import.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+class DashboardStats {
+  final int reviewsToday;
+  final int streakDays;
+
+  const DashboardStats({required this.reviewsToday, required this.streakDays});
+
+  @override
+  int get hashCode => reviewsToday.hashCode ^ streakDays.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DashboardStats &&
+          runtimeType == other.runtimeType &&
+          reviewsToday == other.reviewsToday &&
+          streakDays == other.streakDays;
+}
+
 class DebugStats {
   final int dueToday;
   final int totalReviewed;

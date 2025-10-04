@@ -40,3 +40,14 @@ pub enum Exercise {
         correct_index: i32,
     },
 }
+
+impl Exercise {
+    pub fn node_id(&self) -> &str {
+        match self {
+            Exercise::Recall { node_id, .. } => node_id,
+            Exercise::Cloze { node_id, .. } => node_id,
+            Exercise::McqArToEn { node_id, .. } => node_id,
+            Exercise::McqEnToAr { node_id, .. } => node_id,
+        }
+    }
+}

@@ -76,6 +76,14 @@ Future<List<NodeData>> searchNodes({
 Future<NodeData?> fetchNodeWithMetadata({required String nodeId}) =>
     RustLib.instance.api.crateApiFetchNodeWithMetadata(nodeId: nodeId);
 
+/// Get existing session if one exists
+Future<List<NodeData>?> getExistingSession() =>
+    RustLib.instance.api.crateApiGetExistingSession();
+
+/// Get dashboard stats (reviews today, streak)
+Future<DashboardStats> getDashboardStats({required String userId}) =>
+    RustLib.instance.api.crateApiGetDashboardStats(userId: userId);
+
 Future<List<Exercise>> getExercisesForNode({required String nodeId}) =>
     RustLib.instance.api.crateApiGetExercisesForNode(nodeId: nodeId);
 

@@ -48,6 +48,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PropagationFilter dco_decode_box_autoadd_propagation_filter(dynamic raw);
 
   @protected
+  DashboardStats dco_decode_dashboard_stats(dynamic raw);
+
+  @protected
   DebugStats dco_decode_debug_stats(dynamic raw);
 
   @protected
@@ -122,6 +125,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NodeData? dco_decode_opt_box_autoadd_node_data(dynamic raw);
 
   @protected
+  List<NodeData>? dco_decode_opt_list_node_data(dynamic raw);
+
+  @protected
   PropagationDetailSummary dco_decode_propagation_detail_summary(dynamic raw);
 
   @protected
@@ -181,6 +187,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PropagationFilter sse_decode_box_autoadd_propagation_filter(
     SseDeserializer deserializer,
   );
+
+  @protected
+  DashboardStats sse_decode_dashboard_stats(SseDeserializer deserializer);
 
   @protected
   DebugStats sse_decode_debug_stats(SseDeserializer deserializer);
@@ -259,6 +268,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NodeData? sse_decode_opt_box_autoadd_node_data(SseDeserializer deserializer);
 
   @protected
+  List<NodeData>? sse_decode_opt_list_node_data(SseDeserializer deserializer);
+
+  @protected
   PropagationDetailSummary sse_decode_propagation_detail_summary(
     SseDeserializer deserializer,
   );
@@ -331,6 +343,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_propagation_filter(
     PropagationFilter self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_dashboard_stats(
+    DashboardStats self,
     SseSerializer serializer,
   );
 
@@ -424,6 +442,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_node_data(
     NodeData? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_list_node_data(
+    List<NodeData>? self,
     SseSerializer serializer,
   );
 
