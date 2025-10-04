@@ -1,4 +1,6 @@
 # Miscellaneous
+*.graphml
+*.graphia
 *.class
 *.log
 *.pyc
