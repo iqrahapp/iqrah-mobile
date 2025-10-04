@@ -111,6 +111,45 @@ Integration (20%) ← Real SQLite, test fixtures
 Unit (75%)      ← Mocked dependencies, fast
 ```
 
+**Coverage Goals:**
+- iqrah-core: 90%+
+- iqrah-storage: 80%+
+- iqrah-api: 60%+
+
+**Key Takeaway:** Test-first development, not test-last
+
+---
+
+### 7. [Research Pipeline Refactor](./06-RESEARCH-PIPELINE-REFACTOR.md)
+**Transform R&D from notebooks to production Python package**
+
+#### Current Problems (Jupyter Notebook)
+- ❌ Depends on offline web API (cached only)
+- ❌ Hardcodes metadata INTO knowledge graph
+- ❌ Not reproducible or testable
+- ❌ Cannot be automated
+
+#### New Approach (Python Package)
+- ✅ Proper `pyproject.toml` structure
+- ✅ CLI tool: `iqrah-kg build`
+- ✅ Uses Tarteel SQLite (offline, no API)
+- ✅ Separates graph from metadata
+- ✅ 80%+ test coverage
+- ✅ CI/CD pipeline
+
+**Outputs:**
+1. `knowledge_graph.cbor.zst` - Pure graph structure
+2. `content.db` - SQLite with all metadata
+
+**Key Takeaway:** R&D pipeline must be as production-ready as the app itself
+
+#### Test Pyramid
+```
+E2E (5%)        ← Integration tests in Flutter
+Integration (20%) ← Real SQLite, test fixtures
+Unit (75%)      ← Mocked dependencies, fast
+```
+
 **Tools:**
 - `mockall` for mocking
 - `proptest` for property-based testing
