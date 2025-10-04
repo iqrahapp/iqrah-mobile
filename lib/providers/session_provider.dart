@@ -1,5 +1,6 @@
 // lib/providers/session_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/rust_bridge/exercises.dart';
 import 'package:iqrah/rust_bridge/repository.dart';
@@ -73,6 +74,10 @@ class SessionNotifier extends Notifier<SessionState> {
         nodeId: nodeId, // Note: nodeId instead of id
         grade: grade,
       );
+
+      // Invalidate stats to refresh the dashboard
+      ref.invalidate(dashboardStatsProvider);
+
       state = state.copyWith(currentIndex: state.currentIndex + 1);
     } catch (e) {
       print("Failed to submit review for current exercise: $e");
