@@ -341,6 +341,12 @@ pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStats> {
     crate::app::app().service.repo.get_dashboard_stats(&user_id).await
 }
 
+/// Clear the current session
+pub async fn clear_session() -> Result<String> {
+    crate::app::app().service.repo.clear_session().await?;
+    Ok("Session cleared".to_string())
+}
+
 // Build exercises for a specific node id (sandbox)
 pub async fn get_exercises_for_node(node_id: String) -> Result<Vec<Exercise>> {
     let node_opt = crate::app::app()

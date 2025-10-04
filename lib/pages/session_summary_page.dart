@@ -1,14 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
+import 'package:iqrah/rust_bridge/api.dart' as api;
 
-class SessionSummaryPage extends ConsumerWidget {
+class SessionSummaryPage extends ConsumerStatefulWidget {
   final int reviewCount;
 
   const SessionSummaryPage({super.key, required this.reviewCount});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SessionSummaryPage> createState() => _SessionSummaryPageState();
+}
+
+class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Clear session state when summary is shown
+    _clearSession();
+  }
+
+  Future<void> _clearSession() async {
+    try {
+      // Clear the session from the database
+      await api.clearSession();
+    } catch (e) {
+      print('Error clearing session: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final statsAsync = ref.watch(dashboardStatsProvider);
 
     return Scaffold(
@@ -37,7 +59,7 @@ class SessionSummaryPage extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'You reviewed $reviewCount item${reviewCount == 1 ? '' : 's'}',
+                'You reviewed ${widget.reviewCount} item${widget.reviewCount == 1 ? '' : 's'}',
                 style: const TextStyle(fontSize: 20),
               ),
               const SizedBox(height: 32),

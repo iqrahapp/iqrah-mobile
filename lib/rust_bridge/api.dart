@@ -84,6 +84,9 @@ Future<List<NodeData>?> getExistingSession() =>
 Future<DashboardStats> getDashboardStats({required String userId}) =>
     RustLib.instance.api.crateApiGetDashboardStats(userId: userId);
 
+/// Clear the current session
+Future<String> clearSession() => RustLib.instance.api.crateApiClearSession();
+
 Future<List<Exercise>> getExercisesForNode({required String nodeId}) =>
     RustLib.instance.api.crateApiGetExercisesForNode(nodeId: nodeId);
 
