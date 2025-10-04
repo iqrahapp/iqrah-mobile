@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iqrah-audio"
+version = "0.1.0"
+description = "Qur'an recitation analysis: pitch tracking and Qari comparison"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    {name = "Iqrah Team"}
+]
+dependencies = [
+    # Core audio processing
+    "numpy>=1.21.0",
+    "scipy>=1.9.0",
+    "librosa>=0.10.0",
+
+    # SOTA pitch tracking
+    "crepe>=0.0.12",          # Neural network pitch tracker (SOTA)
+
+    # Denoising
+    "noisereduce>=3.0.0",      # Spectral gating noise reduction
+
+    # DTW alignment (fast C implementation)
+    "dtaidistance>=2.3.10",    # Fast DTW with C speedups
+
+    # Audio I/O
+    "soundfile>=0.12.1",
+    "resampy>=0.4.2",
+
+    # Data serialization (mobile-compatible)
+    "cbor2>=5.5.0",
+    "zstandard>=0.21.0",
+
+    # CLI
+    "click>=8.1.0",
+    "rich>=13.0.0",            # Beautiful terminal output
+    "tqdm>=4.65.0",
+
+    # Visualization
+    "matplotlib>=3.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.7.0",
+    "ruff>=0.0.285",
+    "mypy>=1.5.0",
+]
+
+[project.scripts]
+iqrah-audio = "iqrah_audio.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311']
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=iqrah_audio --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
