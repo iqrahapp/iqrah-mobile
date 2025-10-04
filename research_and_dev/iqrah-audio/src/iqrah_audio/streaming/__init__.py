@@ -18,6 +18,7 @@ from .pitch_stream import IncrementalPitchExtractor, StreamingPitchAnalyzer
 from .anchors import AnchorDetector, Anchor
 from .online_dtw import EnhancedOnlineDTW, OnlineAlignmentState
 from .feedback import LiveFeedback, RealtimeHints
+from .pipeline import RealtimePipeline, PipelineConfig, PipelineStats
 
 __all__ = [
     "StreamingAudioBuffer",
@@ -29,4 +30,7 @@ __all__ = [
     "OnlineAlignmentState",
     "LiveFeedback",
     "RealtimeHints",
+    "RealtimePipeline",
+    "PipelineConfig",
+    "PipelineStats",
 ]
