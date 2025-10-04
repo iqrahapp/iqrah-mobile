@@ -212,7 +212,10 @@ class RealtimePipeline:
             sample_rate=self.config.sample_rate,
         )
 
-        self.pitch_extractor = IncrementalPitchExtractor(
+        # Use optimized pitch extractor for low latency
+        from .pitch_stream_optimized import OptimizedIncrementalPitchExtractor
+
+        self.pitch_extractor = OptimizedIncrementalPitchExtractor(
             method=self.config.pitch_method,
             sample_rate=self.config.sample_rate,
             hop_length=self.config.hop_length,
@@ -329,8 +332,7 @@ class RealtimePipeline:
     def reset(self):
         """Reset pipeline state (for new recitation)."""
         self.audio_buffer.clear()
-        # Note: pitch_extractor doesn't have a reset method yet
-        # This will be added in Phase 1 optimization
+        self.pitch_extractor.reset()
         # Note: DTW and feedback keep their state for continuity
 
     def get_stats(self) -> PipelineStats:
