@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iqrah/pages/dashboard_page.dart';
+import 'package:iqrah/pages/app_initializer.dart';
 import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/rust_bridge/frb_generated.dart';
 import 'package:iqrah/utils/database_path.dart';
@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Iqrah MVP',
       theme: ThemeData.dark(useMaterial3: true),
-      home: const DashboardPage(),
+      home: const AppInitializer(),
     );
   }
 }
