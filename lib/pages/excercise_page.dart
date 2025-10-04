@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iqrah/pages/summary_page.dart';
+import 'package:iqrah/pages/session_summary_page.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/rust_bridge/exercises.dart';
 import 'package:iqrah/rust_bridge/repository.dart';
@@ -77,7 +77,11 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
           next.exercises.isEmpty) {
         _stopTimer();
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SummaryPage()),
+          MaterialPageRoute(
+            builder: (_) => SessionSummaryPage(
+              reviewCount: next.exercises.length,
+            ),
+          ),
         );
       } else if (prev.currentIndex != next.currentIndex ||
           _exerciseNodeId(prev.currentExercise) !=

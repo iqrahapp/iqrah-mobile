@@ -13,6 +13,7 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dueItemsAsync = ref.watch(exercisesProvider);
+    final statsAsync = ref.watch(dashboardStatsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -44,6 +45,37 @@ class DashboardPage extends ConsumerWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Stats widget
+            statsAsync.when(
+              data: (stats) {
+                if (stats == null) return const SizedBox.shrink();
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatColumn(
+                          'Reviews Today',
+                          '${stats.reviewsToday}',
+                          Icons.check_circle,
+                          Colors.green,
+                        ),
+                        _buildStatColumn(
+                          'Streak',
+                          '${stats.streakDays} day${stats.streakDays == 1 ? '' : 's'}',
+                          Icons.local_fire_department,
+                          Colors.orange,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (e, st) => const SizedBox.shrink(),
+            ),
             // Sūrah filter dropdown
             Row(
               children: [
@@ -127,6 +159,31 @@ class DashboardPage extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  static Widget _buildStatColumn(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, size: 32, color: color),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12),
+        ),
+      ],
     );
   }
 }
