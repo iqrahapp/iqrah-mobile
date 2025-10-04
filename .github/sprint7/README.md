@@ -6,7 +6,7 @@
 
 ## 📋 Documents Overview
 
-This directory contains comprehensive planning for the most critical sprint in the Iqrah project. Read them in order:
+This directory contains comprehensive planning for the most critical sprint in the Iqrah project. **8 documents total** - Read them in order:
 
 ### 1. [Current State Analysis](./00-CURRENT-STATE-ANALYSIS.md)
 **What's wrong and why it matters**
@@ -143,25 +143,43 @@ Unit (75%)      ← Mocked dependencies, fast
 
 **Key Takeaway:** R&D pipeline must be as production-ready as the app itself
 
-#### Test Pyramid
-```
-E2E (5%)        ← Integration tests in Flutter
-Integration (20%) ← Real SQLite, test fixtures
-Unit (75%)      ← Mocked dependencies, fast
-```
+---
 
-**Tools:**
-- `mockall` for mocking
-- `proptest` for property-based testing
-- `rstest` for fixtures
-- `cargo tarpaulin` for coverage
+### 8. [Future Extensibility](./07-FUTURE-EXTENSIBILITY.md)
+**Ensuring Sprint 7 doesn't block future features**
 
-**Coverage Goals:**
-- iqrah-core: 90%+
-- iqrah-storage: 80%+
-- iqrah-api: 60%+
+#### Features Prepared For
+1. **AI-Generated Questions** (Sprint 7+)
+   - Expert questions linked to KG nodes
+   - Energy recalculation when questions added
+   - Multi-difficulty, multi-node support
+   - Aqeedah/tafsir filtering
 
-**Key Takeaway:** Test-first development, not test-last
+2. **Hadith Integration** (Sprint 9+, ~6-18 months)
+   - Hadiths as first-class KG nodes
+   - Separate edge types (Quran vs Hadith)
+   - Isolated propagation control
+
+3. **Audio Analysis** (Sprint 8+, ~2-3 months)
+   - Pitch contour comparison (DTW)
+   - Qari imitation scoring
+   - Offline audio processing
+
+#### Critical Design Decisions
+- ✅ Questions stored separately (not as KG nodes)
+- ✅ Energy formula: `E = E_auto × avg(E_questions)`
+- ✅ Edge type enum extensible (0-1 Quran, 2-3 Hadith)
+- ✅ Audio pitch contours in content.db (CBOR)
+- ✅ Content versioning for safe updates
+
+#### Sprint 7 Deliverables
+- [ ] All future schemas created (even if empty)
+- [ ] Repository stubs for disabled features
+- [ ] Energy recalculation hooks in place
+- [ ] Property tests for question logic
+- [ ] Feature composition pattern (with_questions, with_audio)
+
+**Key Takeaway:** Design once, extend forever
 
 ---
 

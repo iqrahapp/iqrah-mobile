@@ -171,6 +171,165 @@ pub trait UserRepository: Send + Sync {
 }
 ```
 
+#### `ports/question_repository.rs` (NEW - Sprint 7+)
+```rust
+#[async_trait]
+pub trait QuestionRepository: Send + Sync {
+    // Content-side (content.db)
+    async fn get_questions_for_node(&self, node_id: &NodeId) -> Result<Vec<Question>>;
+    async fn get_question(&self, question_id: &str) -> Result<Question>;
+    async fn get_question_links(&self, question_id: &str) -> Result<Vec<QuestionNodeLink>>;
+    async fn filter_questions(
+        &self,
+        filters: QuestionFilters,  // difficulty, aqeedah_school, tafsir_source
+    ) -> Result<Vec<Question>>;
+
+    // User-side (user.db)
+    async fn get_question_memory_state(
+        &self,
+        user_id: &str,
+        question_id: &str,
+    ) -> Result<Option<QuestionMemoryState>>;
+    async fn save_question_memory_state(
+        &self,
+        user_id: &str,
+        state: &QuestionMemoryState,
+    ) -> Result<()>;
+    async fn get_due_questions(
+        &self,
+        user_id: &str,
+        due_before: DateTime<Utc>,
+        filters: QuestionFilters,
+    ) -> Result<Vec<QuestionMemoryState>>;
+    async fn log_question_review(&self, review: QuestionReviewRecord) -> Result<()>;
+    async fn flag_question(&self, user_id: &str, question_id: &str, flag: QuestionFlag) -> Result<()>;
+}
+
+pub struct Question {
+    pub question_id: String,
+    pub question_text: String,
+    pub question_type: QuestionType,        // MCQ, TypeAnswer
+    pub difficulty: u8,                     // 1-4
+    pub verification_status: VerificationStatus,
+    pub aqeedah_school: Option<String>,
+    pub tafsir_source: Option<String>,
+    pub metadata_json: String,              // MCQ options, etc.
+}
+
+pub struct QuestionNodeLink {
+    pub question_id: String,
+    pub node_id: NodeId,
+    pub link_strength: f32,                 // 0.0-1.0
+}
+
+pub struct QuestionMemoryState {
+    pub user_id: String,
+    pub question_id: String,
+    pub stability: f64,
+    pub difficulty: f64,
+    pub mastery: f32,                       // 0.0-1.0, contributes to node energy
+    pub last_reviewed: DateTime<Utc>,
+    pub due_at: DateTime<Utc>,
+    pub review_count: u32,
+}
+
+pub struct QuestionFilters {
+    pub difficulty_range: Option<(u8, u8)>,
+    pub aqeedah_school: Option<String>,
+    pub tafsir_sources: Option<Vec<String>>,
+    pub verified_only: bool,
+}
+```
+
+#### `services/question_service.rs` (NEW - Sprint 7+)
+```rust
+pub struct QuestionService {
+    question_repo: Arc<dyn QuestionRepository>,
+    user_repo: Arc<dyn UserRepository>,
+    scheduler: Arc<dyn Scheduler>,
+}
+
+impl QuestionService {
+    /// Process a question review and recalculate linked node energies
+    pub async fn process_question_review(
+        &self,
+        user_id: &str,
+        question_id: &str,
+        grade: ReviewGrade,
+    ) -> Result<QuestionMemoryState> {
+        // 1. Get or create question memory state
+        let current_state = self.get_or_create_question_state(user_id, question_id).await?;
+
+        // 2. Update FSRS state
+        let new_state = self.scheduler.update_question_state(current_state, grade)?;
+
+        // 3. Save new state
+        self.question_repo.save_question_memory_state(user_id, &new_state).await?;
+
+        // 4. Get all nodes linked to this question
+        let links = self.question_repo.get_question_links(question_id).await?;
+
+        // 5. Recalculate energy for each linked node
+        for link in links {
+            self.recalculate_node_energy_with_questions(user_id, &link.node_id).await?;
+        }
+
+        Ok(new_state)
+    }
+
+    /// Recalculate node energy considering ALL linked questions
+    async fn recalculate_node_energy_with_questions(
+        &self,
+        user_id: &str,
+        node_id: &NodeId,
+    ) -> Result<()> {
+        // 1. Get auto-exercise mastery (existing energy from FSRS reviews)
+        let node_state = self.user_repo.get_memory_state(user_id, node_id).await?;
+        let auto_mastery = node_state.map(|s| s.energy.0).unwrap_or(0.0);
+
+        // 2. Get all questions linked to this node
+        let questions = self.question_repo.get_questions_for_node(node_id).await?;
+
+        if questions.is_empty() {
+            // No questions: energy = auto_mastery only
+            return Ok(());
+        }
+
+        // 3. Get user's mastery of each question
+        let mut question_masteries = Vec::new();
+        for question in questions {
+            if let Some(q_state) = self.question_repo
+                .get_question_memory_state(user_id, &question.question_id)
+                .await?
+            {
+                question_masteries.push(q_state.mastery);
+            } else {
+                // Unreviewed question = 0.0 mastery
+                question_masteries.push(0.0);
+            }
+        }
+
+        // 4. Calculate combined energy: auto_mastery × avg(question_masteries)
+        let avg_question_mastery = question_masteries.iter().sum::<f32>()
+                                  / question_masteries.len() as f32;
+        let new_energy = auto_mastery as f32 * avg_question_mastery;
+
+        // 5. Update node energy
+        self.user_repo.update_energy(user_id, &[(node_id.clone(), Energy(new_energy as f64))]).await?;
+
+        Ok(())
+    }
+
+    /// Check for content updates and recalculate energies if needed
+    pub async fn sync_content_version(&self, user_id: &str) -> Result<()> {
+        // Check if content.db version changed
+        // If yes, recalculate all nodes that have questions
+        // Implementation details in migration strategy
+        Ok(())
+    }
+}
+```
+
 #### `services/learning_service.rs`
 ```rust
 pub struct LearningService {
