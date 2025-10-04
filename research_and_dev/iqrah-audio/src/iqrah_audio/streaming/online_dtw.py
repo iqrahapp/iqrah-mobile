@@ -90,6 +90,9 @@ class EnhancedOnlineDTW:
         self.query_buffer = deque(maxlen=window_size)
         self.confidence_buffer = deque(maxlen=window_size)
 
+        # Frame counting
+        self.total_query_frames = 0  # Total frames processed
+
         # State
         self.state = OnlineAlignmentState(
             reference_position=0,
@@ -146,13 +149,17 @@ class EnhancedOnlineDTW:
         self.query_buffer.append(query_frame)
         self.confidence_buffer.append(query_confidence)
 
-        # Increment frames since anchor
+        # Increment counters
+        self.total_query_frames += 1
         self.state.frames_since_anchor += 1
 
         # Check if buffer is full enough
         if len(self.query_buffer) < min(50, self.window_size // 2):
             self.state.status = "acquiring"
             self.state.confidence = 0.0
+            # Initialize reference position to track with query
+            if self.state.reference_position == 0 and self.total_query_frames > 1:
+                self.state.reference_position = self.total_query_frames - 1
             return self.state
 
         # Anchor correction if detected
@@ -182,7 +189,10 @@ class EnhancedOnlineDTW:
         # Calculate confidence (combine DTW score with voicing confidence)
         dtw_confidence = result.alignment_score
         voice_confidence = np.mean(list(self.confidence_buffer))
-        combined_confidence = (dtw_confidence + voice_confidence) / 2
+
+        # For streaming, prioritize voicing confidence over DTW score
+        # (DTW scores can be low even for good alignments in streaming mode)
+        combined_confidence = max(0.7 * voice_confidence + 0.3 * dtw_confidence, voice_confidence)
 
         # Confidence gating: only update if confidence is high
         if combined_confidence < self.confidence_threshold:
@@ -193,21 +203,30 @@ class EnhancedOnlineDTW:
 
         # Update reference position from alignment
         if result.path:
-            # Find where current query position maps to in reference
-            query_current = len(self.query_buffer) - 1
+            # Find where the MOST RECENT query frame maps to in reference
+            # The most recent frame is at index (len(query_buffer) - 1) in the query
+            query_current_idx = len(self.query_buffer) - 1
 
-            # Find closest match in path
+            # Find the last occurrence of query_current_idx in the path
+            # (DTW path goes from start to end, so last occurrence is most recent)
             best_ref = ref_start
-            min_dist = float('inf')
-
             for q_idx, r_idx in result.path:
-                dist = abs(q_idx - query_current)
-                if dist < min_dist:
-                    min_dist = dist
+                if q_idx == query_current_idx:
                     best_ref = ref_start + r_idx
 
-            # Update position with drift correction
-            new_position = best_ref + self.state.drift_estimate
+            # For streaming, we expect query frame N to roughly align with reference frame N
+            # So use total_query_frames as a guide, with DTW providing local adjustments
+            expected_ref_pos = self.total_query_frames - 1
+
+            # Calculate deviation from expected
+            deviation = best_ref - expected_ref_pos
+
+            # Apply deviation with damping (don't trust large jumps)
+            # For self-alignment, deviation should be small
+            max_deviation = self.window_size // 4  # Allow some flexibility
+            clamped_deviation = np.clip(deviation, -max_deviation, max_deviation)
+
+            new_position = expected_ref_pos + clamped_deviation
 
             # Smooth position updates
             if len(self.position_history) > 0:
@@ -222,7 +241,8 @@ class EnhancedOnlineDTW:
 
         # Calculate lead/lag
         # Positive = ahead of reference, Negative = behind
-        expected_position = len(self.query_buffer) + ref_start
+        # Expected position = total frames processed (for self-alignment this should match)
+        expected_position = self.total_query_frames - 1  # -1 because 0-indexed
         raw_lead_lag_frames = self.state.reference_position - expected_position
         raw_lead_lag_ms = raw_lead_lag_frames * self.frame_duration_ms
 

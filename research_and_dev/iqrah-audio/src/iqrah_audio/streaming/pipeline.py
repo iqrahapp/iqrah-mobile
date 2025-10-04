@@ -62,7 +62,7 @@ class PipelineConfig:
     # Alignment
     dtw_window_size: int = 300
     dtw_band_width: int = 50
-    confidence_threshold: float = 0.6
+    confidence_threshold: float = 0.3  # Lowered for real speech (has unvoiced segments)
 
     # Feedback
     update_rate_hz: float = 15.0
