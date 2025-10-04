@@ -15,16 +15,17 @@ Classes:
 
 from .buffer import StreamingAudioBuffer
 from .pitch_stream import IncrementalPitchExtractor, StreamingPitchAnalyzer
+from .anchors import AnchorDetector, Anchor
 
 # Not yet implemented:
-# from .anchors import AnchorDetector
 # from .feedback import LiveFeedback, RealtimeHints
 
 __all__ = [
     "StreamingAudioBuffer",
     "IncrementalPitchExtractor",
     "StreamingPitchAnalyzer",
-    # "AnchorDetector",
+    "AnchorDetector",
+    "Anchor",
     # "LiveFeedback",
     # "RealtimeHints",
 ]
