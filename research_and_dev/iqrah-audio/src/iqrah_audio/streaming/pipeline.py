@@ -15,8 +15,9 @@ from .buffer import StreamingAudioBuffer
 from .pitch_stream import IncrementalPitchExtractor
 from .anchors import AnchorDetector, Anchor
 from .online_dtw import EnhancedOnlineDTW, OnlineAlignmentState
-from .online_dtw_v2 import OLTWAligner  # OLTW v2 (stable, recommended)
+from .online_dtw_v2 import OLTWAligner  # OLTW v2 (default, stable)
 # from .online_dtw_v3 import OLTWAligner as OLTWAlignerV3  # OLTW v3 (experimental)
+# from .online_dtw_v4 import OLTWAligner as OLTWAlignerV4  # OLTW v4 (experimental, parameter-free)
 from .feedback import LiveFeedback, RealtimeHints
 from ..pitch import PitchExtractor
 
@@ -79,6 +80,7 @@ class PipelineConfig:
     use_oltw: bool = True  # Use true online DTW instead of batch sliding window
     oltw_window_size: int = 300  # Sakoe-Chiba window for OLTW
     oltw_force_seed_at_start: bool = False  # Force seed at position 0 (for self-alignment)
+    oltw_use_delta_pitch: bool = True  # Use delta-pitch features (False = raw pitch, better for self-test)
 
 
 @dataclass

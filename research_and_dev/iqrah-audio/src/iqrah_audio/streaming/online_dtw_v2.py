@@ -84,6 +84,7 @@ class TrueOnlineDTW:
         hop_length: int = 512,
         window_size: int = 300,
         slope_constraint: float = 2.0,  # Max tempo ratio (2.0 = half to double speed)
+        use_delta_pitch: bool = False,  # V4 idea: delta-pitch for cross-alignment
     ):
         """
         Initialize True Online DTW.
@@ -94,6 +95,8 @@ class TrueOnlineDTW:
             hop_length: Hop length in samples
             window_size: Local search window (Sakoe-Chiba band width)
             slope_constraint: Maximum slope (tempo deviation)
+            use_delta_pitch: If True, use delta-pitch (first difference) features.
+                           Better for cross-alignment. Default False (z-norm better for self-alignment).
         """
         self.reference = np.asarray(reference, dtype=np.float64)
         self.n_reference = len(self.reference)
@@ -101,12 +104,18 @@ class TrueOnlineDTW:
         self.hop_length = hop_length
         self.window_size = window_size
         self.slope_constraint = slope_constraint
+        self.use_delta_pitch = use_delta_pitch
 
         # Frame duration for timing calculations
         self.frame_duration_ms = (hop_length / sample_rate) * 1000
 
         # Normalize reference for pitch-invariant matching
-        self.reference_normalized = self._znorm(self.reference)
+        if use_delta_pitch:
+            # V4 idea: Delta-pitch (pitch velocity) - robust to absolute pitch differences
+            self.reference_normalized = self._compute_delta_pitch(self.reference)
+        else:
+            # Z-normalization (default) - works best for self-alignment
+            self.reference_normalized = self._znorm(self.reference)
 
         # OLTW state: maintain last cost column
         self.cost_column = np.full(self.n_reference, np.inf, dtype=np.float64)
@@ -128,6 +137,51 @@ class TrueOnlineDTW:
         self.traceback = []  # List of (prev_ref_idx, cost) for each query frame
 
         print(f"✓ TrueOnlineDTW initialized: {self.n_reference} reference frames")
+        print(f"  Feature: {'delta-pitch' if use_delta_pitch else 'z-normalized pitch'}")
+
+    def _compute_delta_pitch(self, pitch: np.ndarray) -> np.ndarray:
+        """
+        Compute delta-pitch (first-order difference / pitch velocity).
+        
+        From V4: Delta-pitch captures pitch movement patterns, which are more
+        robust to absolute pitch differences between singers. Better for cross-alignment.
+        
+        Args:
+            pitch: Pitch sequence in Hz
+            
+        Returns:
+            Delta-pitch sequence (length = len(pitch), first element is 0)
+        """
+        if len(pitch) < 2:
+            return np.array([0.0])
+        
+        # Compute first-order difference
+        delta = np.diff(pitch)
+        
+        # Prepend 0 for first frame (no previous frame to compare)
+        return np.concatenate([[0.0], delta])
+
+    def _huber_loss(self, x: float, delta: float = 1.345) -> float:
+        """
+        Huber loss for robust distance computation.
+        
+        From V4: Combines L2 (quadratic) for small errors and L1 (linear) for large errors.
+        This prevents outlier pitch frames from dominating the alignment cost.
+        
+        Args:
+            x: Raw difference
+            delta: Threshold for switching from quadratic to linear (default 1.345 for 95% efficiency)
+            
+        Returns:
+            Robust distance
+        """
+        abs_x = abs(x)
+        if abs_x <= delta:
+            # Quadratic for small errors (sensitive to precise alignment)
+            return 0.5 * abs_x * abs_x
+        else:
+            # Linear for large errors (robust to outliers)
+            return delta * (abs_x - 0.5 * delta)
 
     def _znorm(self, x: np.ndarray, axis: int = -1) -> np.ndarray:
         """Z-normalization (zero mean, unit variance)."""
@@ -218,15 +272,23 @@ class TrueOnlineDTW:
         if not self.state.is_tracking:
             raise RuntimeError("OLTW not seeded. Call seed() first.")
 
-        # Update query history for normalization
+        # Update query history
         self.query_history.append(query_frame)
 
-        # Normalize query frame based on recent history
-        if len(self.query_history) > 10:
-            hist = np.array(self.query_history)
-            query_norm = (query_frame - np.mean(hist)) / (np.std(hist) + 1e-8)
+        # Normalize query frame based on feature type
+        if self.use_delta_pitch:
+            # Delta-pitch: difference from previous frame
+            if len(self.query_history) < 2:
+                query_norm = 0.0
+            else:
+                query_norm = query_frame - self.query_history[-2]
         else:
-            query_norm = query_frame
+            # Z-normalization based on recent history (default)
+            if len(self.query_history) > 10:
+                hist = np.array(self.query_history)
+                query_norm = (query_frame - np.mean(hist)) / (np.std(hist) + 1e-8)
+            else:
+                query_norm = query_frame
 
         # Swap columns (previous becomes old, current becomes new)
         self.prev_column, self.cost_column = self.cost_column, self.prev_column
@@ -247,8 +309,9 @@ class TrueOnlineDTW:
 
         # Update costs within window (OLTW update step)
         for j in range(window_start, window_end):
-            # Local distance (normalized Euclidean)
-            local_dist = abs(query_norm - self.reference_normalized[j])
+            # Local distance using Huber loss (V4 idea: robust to outliers)
+            raw_diff = query_norm - self.reference_normalized[j]
+            local_dist = self._huber_loss(raw_diff, delta=1.345)
 
             # Weight by voicing confidence
             local_dist *= (2.0 - query_confidence)  # Low confidence = higher cost

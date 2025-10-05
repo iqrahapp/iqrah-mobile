@@ -217,6 +217,7 @@ class RealtimeDemo:
             enable_anchors=True,
             anchor_min_confidence=0.7,
             oltw_force_seed_at_start=True,  # Force seed at position 0 for self-alignment
+            oltw_use_delta_pitch=False,  # Use raw pitch for better self-alignment accuracy
         )
 
         self.pipeline = RealtimePipeline(
@@ -399,7 +400,13 @@ def main():
             if not user_path.exists():
                 print(f"❌ Error: User audio not found: {args.user}")
                 return 1
-            demo.process_audio_file(str(user_path))
+
+            # Check if self-alignment (same file)
+            if user_path.resolve() == ref_path.resolve():
+                print("\n💡 Same file detected - running self-alignment test")
+                demo.process_self_alignment()
+            else:
+                demo.process_audio_file(str(user_path))
         else:
             print("\n💡 No user audio provided - running self-alignment test")
             demo.process_self_alignment()
