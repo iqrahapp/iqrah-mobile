@@ -5,8 +5,21 @@
 
 **State-of-the-Art pitch tracking and real-time streaming analysis for comparing Qur'anic recitations to reference Qari.**
 
-## ⚡ Quick Demo
+## ⚡ Quick Start
 
+### Web UI (Recommended)
+```bash
+# Install web dependencies
+pip install -r requirements-web.txt
+
+# Start web server
+python app.py
+
+# Open browser
+open http://localhost:8000
+```
+
+### Command Line Demo
 ```bash
 # Try the real-time demo (self-test mode)
 python demo_realtime.py
@@ -15,7 +28,7 @@ python demo_realtime.py
 python demo_realtime.py --user path/to/recitation.mp3
 ```
 
-See [DEMO_GUIDE.md](DEMO_GUIDE.md) for detailed usage.
+See [UI_GUIDE.md](UI_GUIDE.md) and [DEMO_GUIDE.md](DEMO_GUIDE.md) for detailed usage.
 
 ## 🎯 Performance Highlights
 
@@ -45,6 +58,13 @@ See [DEMO_GUIDE.md](DEMO_GUIDE.md) for detailed usage.
 - **Anchor Detection**: Silence, plosives, long notes
 - **Live Feedback**: 15 Hz coaching hints with visual cues
 - **Performance Monitoring**: Comprehensive latency tracking
+
+### ✅ Web UI (Complete)
+- **FastAPI Backend**: REST API + WebSocket streaming
+- **Real-Time Visualization**: Live waveform and feedback display
+- **Interactive Interface**: Microphone capture, file upload, visual cues
+- **Performance Dashboard**: Latency, confidence, frame tracking
+- **Production Ready**: Docker, Nginx, multi-worker support
 
 ### 📋 Future Enhancements
 - CTC forced alignment for phoneme-level analysis
