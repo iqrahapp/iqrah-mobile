@@ -272,21 +272,7 @@
             <p>Real-Time Quranic Recitation Analysis</p>
         </div>
 
-        <div class="card">
-            <h2>Reference Audio</h2>
-            <div class="audio-upload" onclick="document.getElementById('referenceFile').click()">
-                <input type="file" id="referenceFile" accept="audio/*">
-                <p>📁 Click to upload reference audio</p>
-                <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                    Or use default: Husary Al-Fatiha
-                </p>
-            </div>
-            <button id="useDefaultBtn" style="margin-top: 15px; width: 100%;">
-                Use Default Reference (Husary Al-Fatiha)
-            </button>
-        </div>
-
-        <!-- NEW: Word-Level Display -->
+        <!-- Word-Level Display -->
         <div class="card quran-display">
             <h2>📖 Quran Text (Word-by-Word)</h2>
 
@@ -325,6 +311,19 @@
 
         <div class="visualizer-card">
             <h2>🎵 Live Pitch Visualization</h2>
+
+            <!-- Loading Progress Bar -->
+            <div id="loadingProgress" style="display: none; margin-bottom: 15px;">
+                <div style="background: #f0f0f0; border-radius: 8px; overflow: hidden; height: 30px;">
+                    <div id="progressBar" style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+                        0%
+                    </div>
+                </div>
+                <div id="progressText" style="text-align: center; margin-top: 5px; color: #666; font-size: 14px;">
+                    Loading...
+                </div>
+            </div>
+
             <canvas id="audioVisualizer"></canvas>
             <div class="viz-legend">
                 <div class="viz-legend-item">

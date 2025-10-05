@@ -10,6 +10,9 @@ class IqrahAudioClient {
         this.processor = null;
         this.sessionId = 'default';
 
+        // Audio caching
+        this.audioCache = new Map();  // URL -> Blob cache
+
         this.initializeUI();
     }
 
@@ -18,8 +21,6 @@ class IqrahAudioClient {
         document.getElementById('connectBtn').addEventListener('click', () => this.connect());
         document.getElementById('recordBtn').addEventListener('click', () => this.toggleRecording());
         document.getElementById('resetBtn').addEventListener('click', () => this.reset());
-        document.getElementById('useDefaultBtn').addEventListener('click', () => this.useDefaultReference());
-        document.getElementById('referenceFile').addEventListener('change', (e) => this.uploadReference(e));
         document.getElementById('playbackBtn').addEventListener('click', () => this.togglePlayback());
 
         // Canvas for pitch visualization
@@ -34,14 +35,17 @@ class IqrahAudioClient {
         this.currentRefPosition = 0;
         this.maxHistoryPoints = 100;    // Keep last 100 points
         
-        // Pitch range for normalization (will be calculated from reference)
+        // Pitch range for normalization (will be calculated from reference AND user)
         this.minPitch = 0;
         this.maxPitch = 0;
+        this.userMinPitch = Infinity;
+        this.userMaxPitch = 0;
         
         // Playback state
         this.audioPlayer = null;
         this.isPlaying = false;
         this.referenceAudioUrl = null;
+        this.playbackPosition = -1;  // Current playback position in frames (-1 = not playing)
         
         // Start animation loop
         this.animationId = null;
@@ -110,6 +114,9 @@ class IqrahAudioClient {
         if (data.type === 'config_ok') {
             console.log('Configuration confirmed:', data);
         } else if (data.type === 'reference_loaded') {
+            // Hide progress bar
+            this.hideProgress();
+
             // Store reference pitch data for visualization
             if (data.reference_pitch) {
                 this.referencePitchBands = data.reference_pitch;
@@ -119,7 +126,11 @@ class IqrahAudioClient {
                     this.minPitch = Math.min(...pitches) * 0.8;  // 20% margin
                     this.maxPitch = Math.max(...pitches) * 1.2;
                 }
-                console.log('Reference pitch loaded:', this.referencePitchBands.length, 'frames');
+                console.log('✅ Reference pitch loaded:', this.referencePitchBands.length, 'frames');
+                console.log('✅ Pitch range:', this.minPitch.toFixed(1), '-', this.maxPitch.toFixed(1), 'Hz');
+
+                // Show success message briefly
+                this.showSuccess('Reference loaded! Ready to analyze your recitation.');
             }
         } else if (data.type === 'processed') {
             // Update stats
@@ -133,7 +144,7 @@ class IqrahAudioClient {
             // Update visualization with current pitch
             if (data.hints) {
                 const hints = data.hints;
-                
+
                 // Add user pitch to history for visualization
                 if (hints.current_pitch_hz && hints.current_pitch_hz > 0) {
                     this.userPitchHistory.push({
@@ -142,10 +153,27 @@ class IqrahAudioClient {
                         confidence: hints.confidence,
                         status: hints.status
                     });
-                    
+
+                    // Update user pitch range for dynamic scaling
+                    if (hints.current_pitch_hz < this.userMinPitch) {
+                        this.userMinPitch = hints.current_pitch_hz;
+                    }
+                    if (hints.current_pitch_hz > this.userMaxPitch) {
+                        this.userMaxPitch = hints.current_pitch_hz;
+                    }
+
                     // Keep only recent history
                     if (this.userPitchHistory.length > this.maxHistoryPoints) {
                         this.userPitchHistory.shift();
+                    }
+                }
+
+                // Update current word highlighting during recitation
+                if (hints.current_word_index !== undefined && wordTracker) {
+                    wordTracker.updateCurrentWord(hints.current_time_ms || 0);
+                    // Also update word info display
+                    if (hints.current_word_text) {
+                        document.getElementById('currentWordText').textContent = hints.current_word_text;
                     }
                 }
                 
@@ -199,19 +227,25 @@ class IqrahAudioClient {
         // Enhance message with word context if available
         let enhancedMessage = hints.message;
         if (wordTracker && wordTracker.segments && wordTracker.currentWordIndex >= 0) {
-            const currentWord = wordTracker.segments.words[wordTracker.currentWordIndex];
+            const words = wordTracker.segments.words || [];
+            const currentWord = words[wordTracker.currentWordIndex] || "";
             const nextWordIndex = wordTracker.currentWordIndex + 1;
 
-            if (hints.visual_cue === 'green') {
-                enhancedMessage = `✓ Good "${currentWord}"!`;
-                if (nextWordIndex < wordTracker.segments.words.length) {
-                    const nextWord = wordTracker.segments.words[nextWordIndex];
-                    enhancedMessage += ` Next: "${nextWord}"`;
+            // Only enhance if we have a valid current word
+            if (currentWord) {
+                if (hints.visual_cue === 'green') {
+                    enhancedMessage = `✓ Good "${currentWord}"!`;
+                    if (nextWordIndex < words.length) {
+                        const nextWord = words[nextWordIndex];
+                        if (nextWord) {
+                            enhancedMessage += ` Next: "${nextWord}"`;
+                        }
+                    }
+                } else if (hints.visual_cue === 'yellow') {
+                    enhancedMessage = `⚠ "${currentWord}" needs adjustment - ${hints.message}`;
+                } else if (hints.visual_cue === 'red') {
+                    enhancedMessage = `✗ "${currentWord}" - ${hints.message}`;
                 }
-            } else if (hints.visual_cue === 'yellow') {
-                enhancedMessage = `⚠ "${currentWord}" needs adjustment - ${hints.message}`;
-            } else if (hints.visual_cue === 'red') {
-                enhancedMessage = `✗ "${currentWord}" - ${hints.message}`;
             }
         }
 
@@ -353,6 +387,19 @@ class IqrahAudioClient {
         this.isRecording = false;
         document.getElementById('recordBtn').textContent = '🎤 Start Recording';
         this.updateStatus('connected', 'Connected');
+
+        // RESET VISUALIZATION STATE for next recording
+        this.userPitchHistory = [];
+        this.currentRefPosition = 0;
+        this.userMinPitch = Infinity;
+        this.userMaxPitch = 0;
+
+        // Clear feedback display
+        document.getElementById('feedbackDisplay').innerHTML = `
+            <p style="text-align: center; color: #999;">
+                Ready to record. Press Start Recording to begin.
+            </p>
+        `;
     }
 
     visualizeAudio(dataArray) {
@@ -553,6 +600,45 @@ class IqrahAudioClient {
         }
         ctx.globalAlpha = 1.0;
 
+        // Draw PLAYBACK tracking dot (when playing reference audio)
+        if (this.playbackPosition >= 0 && this.playbackPosition < this.referencePitchBands.length) {
+            const playbackPitch = this.referencePitchBands[this.playbackPosition];
+            if (playbackPitch && playbackPitch.f0_hz > 0) {
+                const x = ((this.playbackPosition - startIdx) / windowSize) * width;
+                const y = this.pitchToY(playbackPitch.f0_hz, height);
+
+                // Pulsing green circle for playback position
+                const pulse = Math.sin(Date.now() / 100) * 2 + 10;
+
+                // Glow effect
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, pulse + 8);
+                gradient.addColorStop(0, '#00ff88');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, pulse + 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Solid circle
+                ctx.fillStyle = '#00ff88';
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // White center
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Label
+                ctx.fillStyle = '#00ff88';
+                ctx.font = 'bold 11px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('PLAYBACK', x, y - 20);
+            }
+        }
+
         // Draw pitch labels
         ctx.fillStyle = '#888';
         ctx.font = '10px monospace';
@@ -562,25 +648,47 @@ class IqrahAudioClient {
             const hz = this.yToPitch(y, height);
             ctx.fillText(`${Math.round(hz)}Hz`, width - 5, y - 5);
         }
-        
+
         // Draw status message
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('Follow the blue line with your voice', 10, 20);
+        if (this.playbackPosition >= 0) {
+            ctx.fillText('🎵 Playing reference - follow the green dot', 10, 20);
+        } else if (this.isRecording) {
+            ctx.fillText('🎤 Recording - follow the blue line', 10, 20);
+        } else {
+            ctx.fillText('Press Play Reference or Start Recording', 10, 20);
+        }
     }
 
     pitchToY(f0_hz, height) {
         // Convert pitch (Hz) to Y coordinate (inverted, high pitch = low Y)
-        if (this.minPitch === 0 || this.maxPitch === 0) {
+
+        // Combine reference and user pitch ranges for dynamic scaling
+        let effectiveMin = this.minPitch;
+        let effectiveMax = this.maxPitch;
+
+        // Include user's pitch range if they've started singing
+        if (this.userMinPitch < Infinity && this.userMaxPitch > 0) {
+            effectiveMin = Math.min(effectiveMin || Infinity, this.userMinPitch);
+            effectiveMax = Math.max(effectiveMax || 0, this.userMaxPitch);
+        }
+
+        // Add 20% padding for better visualization
+        const range = effectiveMax - effectiveMin;
+        effectiveMin = Math.max(50, effectiveMin - range * 0.2);  // Don't go below 50Hz
+        effectiveMax = effectiveMax + range * 0.2;
+
+        if (effectiveMin === 0 || effectiveMax === 0 || effectiveMin >= effectiveMax) {
             return height / 2;
         }
-        
+
         // Log scale for better pitch perception
-        const logMin = Math.log(this.minPitch);
-        const logMax = Math.log(this.maxPitch);
-        const logF0 = Math.log(Math.max(f0_hz, this.minPitch));
-        
+        const logMin = Math.log(effectiveMin);
+        const logMax = Math.log(effectiveMax);
+        const logF0 = Math.log(Math.max(f0_hz, effectiveMin));
+
         const normalized = (logF0 - logMin) / (logMax - logMin);
         return height - (normalized * height);  // Invert Y
     }
@@ -599,59 +707,43 @@ class IqrahAudioClient {
         return Math.exp(logF0);
     }
 
-    async useDefaultReference() {
-        try {
-            const response = await fetch(`/api/reference/default?session_id=${this.sessionId}`);
-            const data = await response.json();
+    // Removed useDefaultReference() - now using setReferenceFromUrl() from ayah selection
+    // Removed uploadReference() - now using ayah audio directly
 
-            if (data.status === 'ready') {
-                // Load reference pitch data for visualization
-                if (data.reference_pitch) {
-                    this.referencePitchBands = data.reference_pitch;
-                    // Calculate pitch range for normalization
-                    const pitches = this.referencePitchBands.map(p => p.f0_hz).filter(f => f > 0);
-                    if (pitches.length > 0) {
-                        this.minPitch = Math.min(...pitches) * 0.8;
-                        this.maxPitch = Math.max(...pitches) * 1.2;
-                    }
-                    console.log('Reference pitch loaded:', this.referencePitchBands.length, 'frames');
-                }
-                
-                // Store reference audio URL for playback
-                this.referenceAudioUrl = data.reference.audio_url || '/api/reference/audio/default';
-                
-                this.showSuccess('Default reference loaded: ' + data.reference.filename);
-                console.log('Reference:', data);
-            }
-        } catch (error) {
-            console.error('Failed to load default reference:', error);
-            this.showError('Failed to load default reference');
+    showProgress(text, percent) {
+        const progressDiv = document.getElementById('loadingProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        console.log(`📊 Progress: ${percent}% - ${text}`);  // DEBUG
+
+        if (progressDiv && progressBar && progressText) {
+            progressDiv.style.display = 'block';
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = Math.round(percent) + '%';
+            progressText.textContent = text;
+        } else {
+            console.warn('Progress elements not found!', {progressDiv, progressBar, progressText});
         }
     }
 
-    async uploadReference(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    hideProgress() {
+        const progressDiv = document.getElementById('loadingProgress');
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+    }
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('session_id', this.sessionId);
-
-        try {
-            const response = await fetch('/api/reference/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'ready') {
-                this.showSuccess('Reference uploaded: ' + data.reference.filename);
-                console.log('Reference:', data);
-            }
-        } catch (error) {
-            console.error('Upload failed:', error);
-            this.showError('Upload failed');
+    setSegments(segmentsData) {
+        // Send segments to backend for word-level tracking
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'segments',
+                data: segmentsData
+            }));
+            console.log('✓ Segments sent to backend');
+        } else {
+            console.warn('WebSocket not connected - segments not sent');
         }
     }
 
@@ -678,7 +770,23 @@ class IqrahAudioClient {
                 if (wordTracker && this.audioPlayer && !this.audioPlayer.paused) {
                     const currentTimeMs = this.audioPlayer.currentTime * 1000;
                     wordTracker.updateCurrentWord(currentTimeMs);
+
+                    // Update playback position for visualization
+                    // Frame rate is ~15.625 Hz (64ms per frame)
+                    const frameRate = 15.625;
+                    this.playbackPosition = Math.floor((currentTimeMs / 1000) * frameRate);
                 }
+            });
+
+            // Reset playback position when ended or paused
+            this.audioPlayer.addEventListener('ended', () => {
+                this.playbackPosition = -1;
+            });
+            this.audioPlayer.addEventListener('pause', () => {
+                this.playbackPosition = -1;
+            });
+            this.audioPlayer.addEventListener('play', () => {
+                // Will be updated by timeupdate
             });
         }
 
@@ -688,7 +796,104 @@ class IqrahAudioClient {
             playBtn.disabled = false;
         }
 
-        console.log(`✓ Reference set: ${audioUrl}`);
+        // Download and send reference audio to backend
+        try {
+            this.showProgress('Downloading ayah audio...', 10);
+
+            let blob;
+            // Check cache first
+            if (this.audioCache.has(audioUrl)) {
+                console.log(`✓ Using cached audio: ${audioUrl}`);
+                blob = this.audioCache.get(audioUrl);
+                this.showProgress('Loading from cache...', 30);
+            } else {
+                console.log(`Downloading reference audio from: ${audioUrl}`);
+                const response = await fetch(audioUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const contentLength = response.headers.get('content-length');
+                const total = parseInt(contentLength, 10);
+                let loaded = 0;
+
+                // Stream with progress
+                const reader = response.body.getReader();
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    chunks.push(value);
+                    loaded += value.length;
+
+                    if (total) {
+                        const percent = 10 + (loaded / total) * 40; // 10-50%
+                        this.showProgress(`Downloading ayah audio... ${Math.round(loaded/1024)}KB / ${Math.round(total/1024)}KB`, percent);
+                    }
+                }
+
+                blob = new Blob(chunks);
+                // Cache for future use
+                this.audioCache.set(audioUrl, blob);
+                console.log(`✓ Audio cached: ${audioUrl}`);
+            }
+
+            this.showProgress('Processing audio for pitch extraction...', 60);
+
+            // Wait for WebSocket connection if not connected
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                this.showProgress('Connecting to server...', 70);
+                console.log('WebSocket not connected, connecting first...');
+
+                await this.connect();
+
+                // Wait for connection
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => reject(new Error('Connection timeout')), 5000);
+                    const checkConnection = setInterval(() => {
+                        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                            clearInterval(checkConnection);
+                            clearTimeout(timeout);
+                            resolve();
+                        }
+                    }, 100);
+                });
+            }
+
+            this.showProgress('Sending audio to server...', 80);
+
+            // Convert blob to base64
+            const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    resolve(reader.result.split(',')[1]);
+                };
+                reader.readAsDataURL(blob);
+            });
+
+            this.showProgress('Extracting pitch features (this may take a few seconds)...', 90);
+
+            // Send to WebSocket
+            this.ws.send(JSON.stringify({
+                type: 'reference',
+                data: base64,
+                filename: audioUrl.split('/').pop()
+            }));
+
+            console.log(`✓ Reference sent to backend: ${audioUrl}`);
+
+            // Progress will be hidden when reference_loaded message is received
+            // For now, show extracting message
+            this.showProgress('Extracting pitch (CREPE model running)...', 95);
+
+        } catch (error) {
+            console.error('Failed to download reference audio:', error);
+            this.showError('Failed to load reference audio: ' + error.message);
+            this.hideProgress();
+        }
     }
 
     togglePlayback() {
@@ -828,6 +1033,9 @@ class WordLevelTracker {
             if (this.segments.audio_url && window.iqrahClient) {
                 window.iqrahClient.setReferenceFromUrl(this.segments.audio_url);
                 console.log(`✓ Set reference audio: ${this.segments.audio_url}`);
+
+                // Send segments to backend for word-level tracking
+                window.iqrahClient.setSegments(this.segments);
             }
 
             console.log(`✓ Loaded ayah ${surah}:${ayah}`, this.segments);

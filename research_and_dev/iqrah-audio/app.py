@@ -64,6 +64,7 @@ if static_dir.exists():
 
 # Global state
 pipelines: Dict[str, RealtimePipeline] = {}
+session_segments: Dict[str, dict] = {}  # Store segments data per session
 default_reference_path = "data/husary/surahs/01.mp3"
 segments_loader = SegmentsLoader()
 
@@ -399,7 +400,29 @@ async def websocket_analyze(websocket: WebSocket):
                             hints_dict[key] = value.item()
                         elif isinstance(value, np.ndarray):
                             hints_dict[key] = value.tolist()
-                    
+
+                    # Add current word information if segments are available
+                    if session_id in session_segments and hints.reference_position is not None:
+                        segments_data = session_segments[session_id]
+                        segments = segments_data.get("segments", [])
+
+                        # Convert reference position (frame index) to time in milliseconds
+                        # Frame rate is ~15.625 Hz (64ms per frame)
+                        frame_rate = 15.625
+                        current_time_ms = (hints.reference_position / frame_rate) * 1000
+
+                        # Find current word based on time
+                        current_word_idx = -1
+                        for idx, seg in enumerate(segments):
+                            if seg["start_ms"] <= current_time_ms <= seg["end_ms"]:
+                                current_word_idx = idx
+                                break
+
+                        if current_word_idx >= 0:
+                            hints_dict["current_word_index"] = current_word_idx
+                            hints_dict["current_word_text"] = segments_data.get("words", [])[current_word_idx] if current_word_idx < len(segments_data.get("words", [])) else ""
+                            hints_dict["current_time_ms"] = current_time_ms
+
                     response["hints"] = hints_dict
                     print(f"✓ Hints generated: {hints.message[:50]}... (status={hints.status})")
 
@@ -411,6 +434,73 @@ async def websocket_analyze(websocket: WebSocket):
                 }
 
                 await websocket.send_json(response)
+
+            elif msg_type == "reference":
+                # Load reference from base64 data
+                try:
+                    audio_b64 = message.get("data")
+                    audio_bytes = base64.b64decode(audio_b64)
+
+                    # Save to temp file
+                    import tempfile
+                    temp_path = Path(tempfile.gettempdir()) / f"ref_{session_id}.mp3"
+                    with open(temp_path, "wb") as f:
+                        f.write(audio_bytes)
+
+                    # Load audio
+                    audio, sr = sf.read(str(temp_path))
+                    if len(audio.shape) > 1:
+                        audio = audio.mean(axis=1)
+                    audio = audio.astype(np.float32)
+
+                    # Create new pipeline with this reference
+                    config = PipelineConfig(
+                        sample_rate=sr,
+                        enable_anchors=True,
+                        update_rate_hz=30.0,
+                    )
+
+                    pipeline = RealtimePipeline(audio, config)
+                    pipelines[session_id] = pipeline
+
+                    # Extract reference pitch for visualization
+                    reference_pitch_data = [
+                        {"time": i / 15.625, "f0_hz": float(f0)}
+                        for i, f0 in enumerate(pipeline.reference_pitch.f0_hz)
+                    ]
+
+                    await websocket.send_json({
+                        "type": "reference_loaded",
+                        "session_id": session_id,
+                        "reference_frames": len(pipeline.reference_pitch.f0_hz),
+                        "reference_pitch": reference_pitch_data,
+                        "filename": message.get("filename", "reference.mp3")
+                    })
+
+                    print(f"✓ Reference loaded from URL for session {session_id}")
+
+                except Exception as e:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Failed to load reference: {str(e)}"
+                    })
+                    print(f"❌ Failed to load reference: {e}")
+
+            elif msg_type == "segments":
+                # Receive and store segment information for word-level tracking
+                # This allows the backend to know which word is being recited
+                segments_data = message.get("data")
+                # Store in session
+                session_segments[session_id] = segments_data
+
+                await websocket.send_json({
+                    "type": "segments_loaded",
+                    "session_id": session_id,
+                    "word_count": len(segments_data.get("segments", [])),
+                    "surah": segments_data.get("surah"),
+                    "ayah": segments_data.get("ayah")
+                })
+                print(f"✓ Segments loaded for session {session_id}: Surah {segments_data.get('surah')} Ayah {segments_data.get('ayah')}")
 
             elif msg_type == "reset":
                 # Reset pipeline
