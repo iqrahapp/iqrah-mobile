@@ -133,6 +133,10 @@ class TrueOnlineDTW:
         # Query normalization buffer
         self.query_history = deque(maxlen=100)  # For running Z-norm
 
+        # V4 idea: Track prediction errors for adaptive window sizing
+        self.prediction_errors = deque(maxlen=100)  # Position prediction errors
+        self.position_history = deque(maxlen=30)  # Recent positions for tempo estimation
+
         # Path tracking
         self.traceback = []  # List of (prev_ref_idx, cost) for each query frame
 
@@ -182,6 +186,46 @@ class TrueOnlineDTW:
         else:
             # Linear for large errors (robust to outliers)
             return delta * (abs_x - 0.5 * delta)
+
+    def _compute_adaptive_window(self, center: int) -> Tuple[int, int]:
+        """
+        Compute adaptive Sakoe-Chiba window based on prediction uncertainty.
+        
+        From V4: Uses 3σ rule (99.7% coverage) with tempo-based asymmetry.
+        If uncertain about position, use wider window. If confident, use narrow window.
+        
+        Args:
+            center: Current reference position
+            
+        Returns:
+            (window_start, window_end) tuple
+        """
+        # Estimate position uncertainty from recent prediction errors
+        if len(self.prediction_errors) >= 10:
+            sigma_pos = np.std(self.prediction_errors)
+            # 3σ coverage (99.7% of predictions)
+            half_width = max(50, min(300, 3.0 * sigma_pos))  # Clamp to [50, 300]
+        else:
+            # Bootstrap: use default window
+            half_width = self.window_size // 2
+        
+        # Estimate tempo from position deltas
+        if len(self.position_history) > 1:
+            tempo = float(np.median(np.diff(list(self.position_history))))
+            tempo = max(0.5, min(2.0, tempo))  # Sanity bounds
+        else:
+            tempo = 1.0  # Default 1:1 mapping
+        
+        # Asymmetric window based on tempo
+        # If tempo > 1 (moving fast), extend forward
+        # If tempo < 1 (moving slow), extend backward
+        back = int(half_width / tempo)
+        fwd = int(half_width * tempo)
+        
+        window_start = max(0, center - back)
+        window_end = min(self.n_reference, center + fwd)
+        
+        return window_start, window_end
 
     def _znorm(self, x: np.ndarray, axis: int = -1) -> np.ndarray:
         """Z-normalization (zero mean, unit variance)."""
@@ -294,6 +338,7 @@ class TrueOnlineDTW:
         self.prev_column, self.cost_column = self.cost_column, self.prev_column
 
         # Define search window (Sakoe-Chiba band)
+        # Keep simple symmetric window - adaptive window from V4 doesn't work well
         center = self.state.reference_position
         window_start = max(0, center - self.window_size // 2)
         window_end = min(self.n_reference, center + self.window_size // 2)
@@ -364,6 +409,12 @@ class TrueOnlineDTW:
         self.state.frames_processed += 1
         self.state.reference_position = best_ref_idx
         self.state.cumulative_cost += best_cost
+
+        # V4 idea: Track prediction error for adaptive window
+        expected_pos = self.state.frames_processed - 1  # Expected 1:1 mapping
+        prediction_error = best_ref_idx - expected_pos
+        self.prediction_errors.append(prediction_error)
+        self.position_history.append(best_ref_idx)
 
         # Calculate confidence based on LOCAL match quality, not accumulated path penalties
         # Use the local distance (before penalties) to measure alignment quality
