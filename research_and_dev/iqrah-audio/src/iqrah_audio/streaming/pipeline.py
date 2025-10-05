@@ -15,6 +15,7 @@ from .buffer import StreamingAudioBuffer
 from .pitch_stream import IncrementalPitchExtractor
 from .anchors import AnchorDetector, Anchor
 from .online_dtw import EnhancedOnlineDTW, OnlineAlignmentState
+from .online_dtw_v2 import OLTWAligner  # True Online DTW
 from .feedback import LiveFeedback, RealtimeHints
 from ..pitch import PitchExtractor
 
@@ -72,6 +73,10 @@ class PipelineConfig:
     # Anchors
     enable_anchors: bool = True
     anchor_min_confidence: float = 0.7
+
+    # OLTW (True Online DTW)
+    use_oltw: bool = True  # Use true online DTW instead of batch sliding window
+    oltw_window_size: int = 300  # Sakoe-Chiba window for OLTW
 
 
 @dataclass
@@ -226,17 +231,30 @@ class RealtimePipeline:
             hop_length=self.config.hop_length,
         )
 
-        self.online_dtw = EnhancedOnlineDTW(
-            window_size=self.config.dtw_window_size,
-            band_width=self.config.dtw_band_width,
-            confidence_threshold=self.config.confidence_threshold,
-            sample_rate=self.config.sample_rate,
-            hop_length=self.config.hop_length,
-        )
+        # Choose DTW backend
+        if self.config.use_oltw:
+            # Use true Online DTW (OLTW) - faster, more accurate
+            self.online_dtw = OLTWAligner(
+                reference=self.reference_pitch.f0_hz,
+                sample_rate=self.config.sample_rate,
+                hop_length=self.config.hop_length,
+                seed_buffer_frames=50,  # Use 50 frames for seeding
+            )
+            self.using_oltw = True
+        else:
+            # Use legacy batch DTW with sliding windows
+            self.online_dtw = EnhancedOnlineDTW(
+                window_size=self.config.dtw_window_size,
+                band_width=self.config.dtw_band_width,
+                confidence_threshold=self.config.confidence_threshold,
+                sample_rate=self.config.sample_rate,
+                hop_length=self.config.hop_length,
+            )
+            self.using_oltw = False
 
-        # Set reference anchors for DTW
-        if self.reference_anchors:
-            self.online_dtw.set_reference_anchors(self.reference_anchors)
+            # Set reference anchors for DTW (legacy only)
+            if self.reference_anchors:
+                self.online_dtw.set_reference_anchors(self.reference_anchors)
 
         self.feedback_generator = LiveFeedback(
             update_rate_hz=self.config.update_rate_hz,
