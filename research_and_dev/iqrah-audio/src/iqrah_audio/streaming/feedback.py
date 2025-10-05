@@ -30,6 +30,7 @@ class RealtimeHints:
         status: Current status (good, warning, error, acquiring)
         message: Human-readable coaching message
         visual_cue: Suggested visual feedback (color/icon)
+        current_pitch_hz: Current user pitch in Hz (for visualization)
     """
     timestamp: float
     lead_lag_ms: int
@@ -39,6 +40,7 @@ class RealtimeHints:
     status: str  # "good", "warning", "error", "acquiring"
     message: str
     visual_cue: str  # "green", "yellow", "red", "gray"
+    current_pitch_hz: float = 0.0  # Current user pitch for visualization
 
     # Optional detailed info
     reference_position: Optional[int] = None
@@ -190,6 +192,7 @@ class LiveFeedback:
             status=status,
             message=message,
             visual_cue=visual_cue,
+            current_pitch_hz=current_pitch_hz,  # Include current pitch for visualization
             reference_position=alignment_state.reference_position,
             drift_estimate=alignment_state.drift_estimate,
             frames_processed=self.frames_processed,

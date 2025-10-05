@@ -331,14 +331,16 @@ class RealtimePipeline:
             t6 = time.perf_counter()
             dtw_ms = (t6 - t5) * 1000
 
-            # 5. Generate feedback
+            # 5. Generate feedback (only if we haven't generated hints yet this chunk)
+            # This ensures we return the first non-None hints rather than the last
             t7 = time.perf_counter()
-            hints = self.feedback_generator.generate_hints(
-                alignment_state=alignment_state,
-                current_pitch_hz=f0_hz,
-                current_confidence=confidence,
-                reference_pitch_hz=self.reference_pitch.f0_hz,
-            )
+            if hints is None:  # Only generate if we haven't got hints yet
+                hints = self.feedback_generator.generate_hints(
+                    alignment_state=alignment_state,
+                    current_pitch_hz=f0_hz,
+                    current_confidence=confidence,
+                    reference_pitch_hz=self.reference_pitch.f0_hz,
+                )
             t8 = time.perf_counter()
             feedback_ms = (t8 - t7) * 1000
 

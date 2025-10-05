@@ -132,7 +132,7 @@ async def upload_reference(
         config = PipelineConfig(
             sample_rate=sr,
             enable_anchors=True,
-            update_rate_hz=15.0,
+            update_rate_hz=30.0,  # Increased for more responsive feedback
         )
 
         pipeline = RealtimePipeline(audio, config)
@@ -147,7 +147,11 @@ async def upload_reference(
                 "sample_rate": sr,
                 "frames": len(pipeline.reference_pitch.f0_hz),
                 "anchors": len(pipeline.reference_anchors),
-            }
+                "audio_url": f"/api/reference/audio/{session_id}",
+            },
+            "reference_pitch": [
+                {"f0_hz": float(f0)} for f0 in pipeline.reference_pitch.f0_hz
+            ]
         }
 
     except Exception as e:
@@ -178,7 +182,7 @@ async def use_default_reference(session_id: str = "default"):
         config = PipelineConfig(
             sample_rate=sr,
             enable_anchors=True,
-            update_rate_hz=15.0,
+            update_rate_hz=30.0,  # Increased for more responsive feedback
         )
 
         pipeline = RealtimePipeline(audio, config)
@@ -193,11 +197,35 @@ async def use_default_reference(session_id: str = "default"):
                 "sample_rate": sr,
                 "frames": len(pipeline.reference_pitch.f0_hz),
                 "anchors": len(pipeline.reference_anchors),
-            }
+                "audio_url": f"/api/reference/audio/{session_id}",
+            },
+            "reference_pitch": [
+                {"f0_hz": float(f0)} for f0 in pipeline.reference_pitch.f0_hz
+            ]
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/reference/audio/{session_id}")
+async def get_reference_audio(session_id: str = "default"):
+    """
+    Get reference audio file for playback.
+    
+    Args:
+        session_id: Session identifier (or 'default' for Husary Al-Fatiha)
+    
+    Returns:
+        Audio file
+    """
+    if session_id == "default":
+        # Return default reference audio
+        audio_path = Path(__file__).parent / default_reference_path
+        if audio_path.exists():
+            return FileResponse(audio_path, media_type="audio/mpeg")
+    
+    raise HTTPException(status_code=404, detail="Reference audio not found")
 
 
 @app.websocket("/ws/analyze")
@@ -256,7 +284,7 @@ async def websocket_analyze(websocket: WebSocket):
                     config = PipelineConfig(
                         sample_rate=sr,
                         enable_anchors=True,
-                        update_rate_hz=15.0,
+                        update_rate_hz=30.0,  # Increased from 15 to 30 Hz for more responsive feedback
                     )
 
                     pipeline = RealtimePipeline(audio, config)
@@ -285,6 +313,11 @@ async def websocket_analyze(websocket: WebSocket):
                 audio_bytes = base64.b64decode(audio_b64)
                 audio_chunk = np.frombuffer(audio_bytes, dtype=np.float32)
 
+                # Debug: Log audio chunk info (only first time)
+                if pipeline.stats.total_frames_processed == 0:
+                    print(f"📊 First audio chunk: {len(audio_chunk)} samples, "
+                          f"RMS: {np.sqrt(np.mean(audio_chunk**2)):.4f}")
+
                 # Process chunk
                 hints = pipeline.process_chunk(audio_chunk)
 
@@ -298,7 +331,17 @@ async def websocket_analyze(websocket: WebSocket):
                 }
 
                 if hints:
-                    response["hints"] = asdict(hints)
+                    # Convert hints to dict and ensure all values are JSON serializable
+                    hints_dict = asdict(hints)
+                    # Convert numpy types to Python native types
+                    for key, value in hints_dict.items():
+                        if isinstance(value, (np.integer, np.floating)):
+                            hints_dict[key] = value.item()
+                        elif isinstance(value, np.ndarray):
+                            hints_dict[key] = value.tolist()
+                    
+                    response["hints"] = hints_dict
+                    print(f"✓ Hints generated: {hints.message[:50]}... (status={hints.status})")
 
                 response["stats"] = {
                     "total_latency_ms": stats.total_latency_ms,
