@@ -56,6 +56,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 # Global state
 pipelines: Dict[str, RealtimePipeline] = {}
 default_reference_path = "data/husary/surahs/01.mp3"

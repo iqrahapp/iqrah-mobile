@@ -29,12 +29,18 @@ class IqrahAudioClient {
     }
 
     async connect() {
-        const wsUrl = `ws://${window.location.hostname}:8000/ws/analyze`;
+        // Use current host and port (works for any port)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host; // includes port
+        const wsUrl = `${protocol}//${host}/ws/analyze`;
+
+        console.log('Connecting to:', wsUrl);
 
         try {
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
+                console.log('WebSocket connected');
                 this.isConnected = true;
                 this.updateStatus('connected', 'Connected');
 
