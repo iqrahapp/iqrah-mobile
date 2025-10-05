@@ -15,7 +15,8 @@ from .buffer import StreamingAudioBuffer
 from .pitch_stream import IncrementalPitchExtractor
 from .anchors import AnchorDetector, Anchor
 from .online_dtw import EnhancedOnlineDTW, OnlineAlignmentState
-from .online_dtw_v2 import OLTWAligner  # True Online DTW
+from .online_dtw_v2 import OLTWAligner  # OLTW v2 (stable, recommended)
+# from .online_dtw_v3 import OLTWAligner as OLTWAlignerV3  # OLTW v3 (experimental)
 from .feedback import LiveFeedback, RealtimeHints
 from ..pitch import PitchExtractor
 
