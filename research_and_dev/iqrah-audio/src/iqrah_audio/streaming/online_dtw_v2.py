@@ -302,9 +302,14 @@ class TrueOnlineDTW:
         self.state.reference_position = best_ref_idx
         self.state.cumulative_cost += best_cost
 
-        # Calculate confidence (inverse of normalized cost)
-        avg_cost_per_frame = self.state.cumulative_cost / max(1, self.state.frames_processed)
-        self.state.confidence = 1.0 / (1.0 + avg_cost_per_frame)
+        # Calculate confidence based on LOCAL match quality, not accumulated path penalties
+        # Use the local distance (before penalties) to measure alignment quality
+        local_match_quality = abs(query_norm - self.reference_normalized[best_ref_idx])
+        avg_match_cost = (self.state.cumulative_cost / max(1, self.state.frames_processed)) if hasattr(self, '_match_cost_sum') else local_match_quality
+
+        # For confidence, we want: 1.0 for perfect match (cost=0), lower for poor match
+        # Use local cost only, ignore path penalties
+        self.state.confidence = 1.0 / (1.0 + local_match_quality)
 
         # Add to path
         query_idx = self.state.frames_processed - 1
