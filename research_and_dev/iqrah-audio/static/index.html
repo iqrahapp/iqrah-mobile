@@ -190,6 +190,46 @@
             margin: 10px 0;
             border: 2px solid #667eea;
         }
+
+        /* Word-level display styles */
+        .word {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 5px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f0f0f0;
+        }
+
+        .word:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        .word.current {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            transform: scale(1.15);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        .word.completed {
+            background: #48bb78;
+            color: white;
+            opacity: 0.7;
+        }
+
+        .word.upcoming {
+            opacity: 0.5;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1.15); }
+            50% { transform: scale(1.2); }
+        }
         
         .visualizer-card {
             background: white;
@@ -244,6 +284,43 @@
             <button id="useDefaultBtn" style="margin-top: 15px; width: 100%;">
                 Use Default Reference (Husary Al-Fatiha)
             </button>
+        </div>
+
+        <!-- NEW: Word-Level Display -->
+        <div class="card quran-display">
+            <h2>📖 Quran Text (Word-by-Word)</h2>
+
+            <div class="verse-selector" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <select id="surahSelect" style="flex: 1; padding: 10px; border-radius: 8px; border: 2px solid #667eea;">
+                    <!-- Populated dynamically from surahs.js -->
+                </select>
+                <select id="ayahSelect" style="flex: 1; padding: 10px; border-radius: 8px; border: 2px solid #667eea;">
+                    <!-- Populated based on selected surah -->
+                </select>
+                <button onclick="loadAyah()" style="padding: 10px 20px;">📖 Load Ayah</button>
+            </div>
+
+            <div id="quranText" class="arabic-text" style="
+                font-size: 2.5em;
+                line-height: 1.8;
+                direction: rtl;
+                text-align: right;
+                font-family: 'Traditional Arabic', 'Arabic Typesetting', serif;
+                min-height: 100px;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+            ">
+                <p style="text-align: center; color: #999; font-size: 0.4em; direction: ltr;">
+                    Select an ayah to display word-by-word text
+                </p>
+            </div>
+
+            <div id="wordInfo" style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+                <p><strong>Current Word:</strong> <span id="currentWordText">-</span></p>
+                <p><strong>Expected Timing:</strong> <span id="wordTiming">-</span></p>
+                <p><strong>Word Progress:</strong> <span id="wordProgress">0/0</span></p>
+            </div>
         </div>
 
         <div class="visualizer-card">
@@ -313,6 +390,7 @@
         </div>
     </div>
 
+    <script src="/static/surahs.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

@@ -39,6 +39,7 @@ from iqrah_audio.streaming import (
     PipelineConfig,
     RealtimeHints,
 )
+from iqrah_audio.core.segments_loader import SegmentsLoader, AyahData
 
 # Initialize FastAPI
 app = FastAPI(
@@ -64,6 +65,7 @@ if static_dir.exists():
 # Global state
 pipelines: Dict[str, RealtimePipeline] = {}
 default_reference_path = "data/husary/surahs/01.mp3"
+segments_loader = SegmentsLoader()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -98,6 +100,64 @@ async def health_check():
         "pipelines_active": len(pipelines),
         "version": "1.0.0"
     }
+
+
+@app.get("/api/segments/{surah}/{ayah}")
+async def get_ayah_segments(surah: int, ayah: int):
+    """
+    Get word-level segments and text for an ayah.
+
+    Args:
+        surah: Surah number (1-114)
+        ayah: Ayah number
+
+    Returns:
+        {
+            "surah": 1,
+            "ayah": 1,
+            "verse_key": "1:1",
+            "text": "بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ",
+            "words": ["بِسۡمِ", "اللهِ", "الرَّحۡمٰنِ", "الرَّحِيۡمِ"],
+            "audio_url": "https://...",
+            "segments": [
+                {"word_id": 1, "start_ms": 0, "end_ms": 480, "duration_ms": 480},
+                ...
+            ]
+        }
+    """
+    try:
+        ayah_data = segments_loader.get_ayah(surah, ayah)
+
+        return {
+            "surah": ayah_data.surah,
+            "ayah": ayah_data.ayah,
+            "verse_key": ayah_data.verse_key,
+            "text": ayah_data.text,
+            "words": ayah_data.words,
+            "audio_url": ayah_data.audio_url,
+            "segments": [
+                {
+                    "word_id": seg.word_id,
+                    "start_ms": seg.start_ms,
+                    "end_ms": seg.end_ms,
+                    "duration_ms": seg.duration_ms
+                }
+                for seg in ayah_data.segments
+            ]
+        }
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/segments/stats")
+async def get_coverage_stats():
+    """
+    Get statistics about available segment data.
+
+    Returns:
+        Coverage statistics including total ayahs, words, etc.
+    """
+    return segments_loader.get_coverage_stats()
 
 
 @app.post("/api/reference/upload")

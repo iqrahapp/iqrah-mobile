@@ -152,6 +152,17 @@ class IqrahAudioClient {
                 // Update reference position
                 if (hints.reference_position !== null) {
                     this.currentRefPosition = hints.reference_position;
+
+                    // Update word highlighting based on reference position
+                    if (wordTracker && wordTracker.segments) {
+                        // Convert frame position to milliseconds
+                        // Assuming 512 hop length, 22050 sample rate
+                        const hop_length = 512;
+                        const sample_rate = 22050;
+                        const refPosMs = (hints.reference_position * hop_length / sample_rate) * 1000;
+
+                        wordTracker.updateCurrentWord(refPosMs);
+                    }
                 }
                 
                 // Display text hints
@@ -185,10 +196,29 @@ class IqrahAudioClient {
         };
         const icon = icons[hints.visual_cue] || '•';
 
+        // Enhance message with word context if available
+        let enhancedMessage = hints.message;
+        if (wordTracker && wordTracker.segments && wordTracker.currentWordIndex >= 0) {
+            const currentWord = wordTracker.segments.words[wordTracker.currentWordIndex];
+            const nextWordIndex = wordTracker.currentWordIndex + 1;
+
+            if (hints.visual_cue === 'green') {
+                enhancedMessage = `✓ Good "${currentWord}"!`;
+                if (nextWordIndex < wordTracker.segments.words.length) {
+                    const nextWord = wordTracker.segments.words[nextWordIndex];
+                    enhancedMessage += ` Next: "${nextWord}"`;
+                }
+            } else if (hints.visual_cue === 'yellow') {
+                enhancedMessage = `⚠ "${currentWord}" needs adjustment - ${hints.message}`;
+            } else if (hints.visual_cue === 'red') {
+                enhancedMessage = `✗ "${currentWord}" - ${hints.message}`;
+            }
+        }
+
         item.innerHTML = `
             <div class="feedback-icon">${icon}</div>
             <div>
-                <div class="feedback-message">${hints.message}</div>
+                <div class="feedback-message">${enhancedMessage}</div>
                 <div class="feedback-details">
                     Lead/Lag: ${hints.lead_lag_ms > 0 ? '+' : ''}${hints.lead_lag_ms}ms |
                     Pitch: ${hints.pitch_error_cents.toFixed(1)}¢ |
@@ -625,6 +655,42 @@ class IqrahAudioClient {
         }
     }
 
+    async setReferenceFromUrl(audioUrl) {
+        // Set ayah audio as reference
+        this.referenceAudioUrl = audioUrl;
+
+        // Create/update audio player
+        if (this.audioPlayer) {
+            this.audioPlayer.pause();
+            this.audioPlayer.src = audioUrl;
+        } else {
+            this.audioPlayer = new Audio(audioUrl);
+            this.audioPlayer.addEventListener('ended', () => {
+                const btn = document.getElementById('playbackBtn');
+                if (btn) {
+                    btn.textContent = '▶️ Play Reference';
+                }
+                this.isPlaying = false;
+            });
+
+            // Update word highlighting as audio plays
+            this.audioPlayer.addEventListener('timeupdate', () => {
+                if (wordTracker && this.audioPlayer && !this.audioPlayer.paused) {
+                    const currentTimeMs = this.audioPlayer.currentTime * 1000;
+                    wordTracker.updateCurrentWord(currentTimeMs);
+                }
+            });
+        }
+
+        // Enable playback button
+        const playBtn = document.getElementById('playbackBtn');
+        if (playBtn) {
+            playBtn.disabled = false;
+        }
+
+        console.log(`✓ Reference set: ${audioUrl}`);
+    }
+
     togglePlayback() {
         if (!this.referenceAudioUrl) {
             this.showError('Please load a reference first');
@@ -735,7 +801,183 @@ class IqrahAudioClient {
     }
 }
 
+// Word-Level Tracker Class
+class WordLevelTracker {
+    constructor() {
+        this.segments = null;
+        this.currentWordIndex = -1;
+        this.surah = 1;
+        this.ayah = 1;
+    }
+
+    async loadAyah(surah, ayah) {
+        this.surah = surah;
+        this.ayah = ayah;
+
+        try {
+            const response = await fetch(`/api/segments/${surah}/${ayah}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            this.segments = await response.json();
+            this.renderWords();
+            this.updateWordInfo(-1);  // Reset info
+
+            // Set this ayah's audio as the reference automatically
+            if (this.segments.audio_url && window.iqrahClient) {
+                window.iqrahClient.setReferenceFromUrl(this.segments.audio_url);
+                console.log(`✓ Set reference audio: ${this.segments.audio_url}`);
+            }
+
+            console.log(`✓ Loaded ayah ${surah}:${ayah}`, this.segments);
+        } catch (error) {
+            console.error('Failed to load ayah:', error);
+            document.getElementById('quranText').innerHTML = `
+                <p style="text-align: center; color: #dc3545; font-size: 0.4em; direction: ltr;">
+                    ❌ Failed to load ayah ${surah}:${ayah}
+                </p>
+            `;
+        }
+    }
+
+    renderWords() {
+        const container = document.getElementById('quranText');
+        container.innerHTML = '';
+
+        if (!this.segments || !this.segments.words) {
+            return;
+        }
+
+        this.segments.words.forEach((word, idx) => {
+            const segment = this.segments.segments[idx];
+            const span = document.createElement('span');
+            span.className = 'word upcoming';
+            span.textContent = word;
+            span.dataset.wordId = segment.word_id;
+            span.dataset.start = segment.start_ms;
+            span.dataset.end = segment.end_ms;
+            span.dataset.index = idx;
+
+            // Add click handler to play word segment
+            span.onclick = () => {
+                this.playWordSegment(idx);
+                this.updateWordInfo(idx);
+                console.log(`Clicked word ${idx}: ${word}`, segment);
+            };
+
+            container.appendChild(span);
+        });
+
+        console.log(`✓ Rendered ${this.segments.words.length} words`);
+    }
+
+    playWordSegment(wordIndex) {
+        // Play the audio segment for this specific word
+        if (!this.segments || !window.iqrahClient || !window.iqrahClient.audioPlayer) {
+            console.warn('Cannot play word: audio player not ready');
+            return;
+        }
+
+        const segment = this.segments.segments[wordIndex];
+        const player = window.iqrahClient.audioPlayer;
+
+        // Jump to word start time
+        player.currentTime = segment.start_ms / 1000.0;
+
+        // Play
+        player.play();
+
+        // Stop at word end (with small buffer)
+        const duration = (segment.end_ms - segment.start_ms) / 1000.0;
+        setTimeout(() => {
+            player.pause();
+        }, duration * 1000 + 100);  // +100ms buffer
+
+        console.log(`Playing word ${wordIndex}: ${segment.start_ms}-${segment.end_ms}ms`);
+    }
+
+    updateCurrentWord(currentTimeMs) {
+        if (!this.segments) return;
+
+        const words = document.querySelectorAll('.word');
+        let activeWordIndex = -1;
+
+        words.forEach((word, idx) => {
+            const start = parseInt(word.dataset.start);
+            const end = parseInt(word.dataset.end);
+
+            word.classList.remove('current', 'completed', 'upcoming');
+
+            if (currentTimeMs >= start && currentTimeMs <= end) {
+                word.classList.add('current');
+                activeWordIndex = idx;
+            } else if (currentTimeMs > end) {
+                word.classList.add('completed');
+            } else {
+                word.classList.add('upcoming');
+            }
+        });
+
+        if (activeWordIndex >= 0 && activeWordIndex !== this.currentWordIndex) {
+            this.currentWordIndex = activeWordIndex;
+            this.updateWordInfo(activeWordIndex);
+        }
+    }
+
+    updateWordInfo(wordIndex) {
+        if (wordIndex < 0 || !this.segments) {
+            document.getElementById('currentWordText').textContent = '-';
+            document.getElementById('wordTiming').textContent = '-';
+            document.getElementById('wordProgress').textContent = '0/0';
+            return;
+        }
+
+        const word = this.segments.words[wordIndex];
+        const segment = this.segments.segments[wordIndex];
+
+        document.getElementById('currentWordText').textContent = word;
+        document.getElementById('wordTiming').textContent =
+            `${segment.start_ms}-${segment.end_ms}ms (${segment.duration_ms}ms)`;
+        document.getElementById('wordProgress').textContent =
+            `${wordIndex + 1}/${this.segments.words.length}`;
+    }
+
+    getExpectedWordForTime(timeMs) {
+        if (!this.segments) return null;
+
+        for (let i = 0; i < this.segments.segments.length; i++) {
+            const seg = this.segments.segments[i];
+            if (timeMs >= seg.start_ms && timeMs <= seg.end_ms) {
+                return {
+                    index: i,
+                    word: this.segments.words[i],
+                    segment: seg
+                };
+            }
+        }
+        return null;
+    }
+}
+
+// Global word tracker instance
+let wordTracker = null;
+
+// Global function for loadAyah button
+function loadAyah() {
+    const surah = document.getElementById('surahSelect').value;
+    const ayah = document.getElementById('ayahSelect').value;
+
+    if (wordTracker) {
+        wordTracker.loadAyah(parseInt(surah), parseInt(ayah));
+    }
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.iqrahClient = new IqrahAudioClient();
+    wordTracker = new WordLevelTracker();
+
+    // Load Al-Fatiha 1:1 by default
+    wordTracker.loadAyah(1, 1);
 });
