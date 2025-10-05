@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iqrah Audio - Real-Time Recitation Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status.disconnected { background: #fee; color: #c33; }
+        .status.connected { background: #efe; color: #3a3; }
+        .status.processing { background: #fef3cd; color: #856404; }
+
+        .feedback-display {
+            min-height: 150px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .feedback-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .feedback-item.good { background: #d4edda; border-left: 4px solid #28a745; }
+        .feedback-item.warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .feedback-item.error { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .feedback-item.acquiring { background: #e7e7e7; border-left: 4px solid #6c757d; }
+
+        .feedback-icon {
+            font-size: 24px;
+        }
+
+        .feedback-message {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .feedback-details {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .audio-upload {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .audio-upload:hover {
+            background: #f0f4ff;
+            border-color: #5568d3;
+        }
+
+        .audio-upload input {
+            display: none;
+        }
+
+        #audioVisualizer {
+            width: 100%;
+            height: 100px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Iqrah Audio</h1>
+            <p>Real-Time Quranic Recitation Analysis</p>
+        </div>
+
+        <div class="card">
+            <h2>Reference Audio</h2>
+            <div class="audio-upload" onclick="document.getElementById('referenceFile').click()">
+                <input type="file" id="referenceFile" accept="audio/*">
+                <p>📁 Click to upload reference audio</p>
+                <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                    Or use default: Husary Al-Fatiha
+                </p>
+            </div>
+            <button id="useDefaultBtn" style="margin-top: 15px; width: 100%;">
+                Use Default Reference (Husary Al-Fatiha)
+            </button>
+        </div>
+
+        <div class="card">
+            <h2>Live Analysis</h2>
+            <div id="connectionStatus" class="status disconnected">
+                <span>⚫</span>
+                <span>Disconnected</span>
+            </div>
+
+            <div class="controls">
+                <button id="connectBtn">Connect</button>
+                <button id="recordBtn" disabled>🎤 Start Recording</button>
+                <button id="uploadBtn" disabled>📤 Upload Audio</button>
+                <button id="resetBtn" disabled>🔄 Reset</button>
+            </div>
+
+            <canvas id="audioVisualizer"></canvas>
+
+            <div id="feedbackDisplay" class="feedback-display">
+                <p style="text-align: center; color: #999;">
+                    No feedback yet. Start recording or upload audio to begin.
+                </p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Performance Metrics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="statLatency">0</div>
+                    <div class="stat-label">Latency (ms)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statFrames">0</div>
+                    <div class="stat-label">Frames Processed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statHints">0</div>
+                    <div class="stat-label">Hints Generated</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statConfidence">0%</div>
+                    <div class="stat-label">Confidence</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
