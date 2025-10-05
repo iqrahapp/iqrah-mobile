@@ -239,12 +239,17 @@ class RealtimePipeline:
         if self.config.use_oltw:
             # Use true Online DTW (OLTW) - faster, more accurate
             force_seed = 0 if self.config.oltw_force_seed_at_start else None
+            
+            # Import V2 directly to pass use_delta_pitch parameter
+            from .online_dtw_v2 import TrueOnlineDTW
+            
             self.online_dtw = OLTWAligner(
                 reference=self.reference_pitch.f0_hz,
                 sample_rate=self.config.sample_rate,
                 hop_length=self.config.hop_length,
                 seed_buffer_frames=50,  # Use 50 frames for seeding
                 force_seed_position=force_seed,
+                use_delta_pitch=self.config.oltw_use_delta_pitch,
             )
             self.using_oltw = True
         else:

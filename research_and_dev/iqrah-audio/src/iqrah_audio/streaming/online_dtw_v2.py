@@ -491,6 +491,7 @@ class OLTWAligner:
         hop_length: int = 512,
         seed_buffer_frames: int = 50,  # Frames to buffer before seeding
         force_seed_position: Optional[int] = None,  # Force seed at this position
+        use_delta_pitch: bool = False,  # Use delta-pitch features (from V4)
     ):
         """
         Initialize OLTW aligner.
@@ -501,11 +502,13 @@ class OLTWAligner:
             hop_length: Hop length in samples
             seed_buffer_frames: Number of frames to collect before seeding
             force_seed_position: Force seeding at this position (for self-alignment, use 0)
+            use_delta_pitch: Use delta-pitch features (better for cross-alignment, default False for self-alignment)
         """
         self.oltw = TrueOnlineDTW(
             reference=reference,
             sample_rate=sample_rate,
             hop_length=hop_length,
+            use_delta_pitch=use_delta_pitch,
         )
 
         self.seed_buffer_frames = seed_buffer_frames
