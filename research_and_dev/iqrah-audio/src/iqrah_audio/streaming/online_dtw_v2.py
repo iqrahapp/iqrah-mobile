@@ -135,7 +135,7 @@ class TrueOnlineDTW:
         std = np.std(x, axis=axis, keepdims=True)
         return (x - mean) / (std + 1e-8)
 
-    def seed(self, initial_query: np.ndarray) -> int:
+    def seed(self, initial_query: np.ndarray, force_position: Optional[int] = None) -> int:
         """
         Seed the alignment using fast subsequence search.
 
@@ -144,6 +144,7 @@ class TrueOnlineDTW:
 
         Args:
             initial_query: First 1-2 seconds of query frames (~50-100 frames)
+            force_position: If provided, seed at this exact position (for self-alignment)
 
         Returns:
             Best starting index in reference
@@ -154,23 +155,31 @@ class TrueOnlineDTW:
         # Populate query history with initial frames for normalization
         self.query_history.extend(initial_query.tolist())
 
-        # Normalize query
-        query_norm = self._znorm(initial_query)
-        query_len = len(query_norm)
+        # Check if we should force a specific position
+        if force_position is not None:
+            best_idx = force_position
+            best_dist = 0.0
+            print(f"✓ Forced seed at reference position {best_idx}")
+        else:
+            # Normalize query
+            query_norm = self._znorm(initial_query)
+            query_len = len(query_norm)
 
-        # Sliding correlation (simplified MASS)
-        # For production, use stumpy.mass() which is FFT-based and much faster
-        best_dist = np.inf
-        best_idx = 0
+            # Sliding correlation (simplified MASS)
+            # For production, use stumpy.mass() which is FFT-based and much faster
+            best_dist = np.inf
+            best_idx = 0
 
-        for i in range(self.n_reference - query_len):
-            ref_window = self.reference_normalized[i:i + query_len]
-            # Euclidean distance (MASS uses z-normalized ED)
-            dist = np.sqrt(np.sum((query_norm - ref_window) ** 2))
+            for i in range(self.n_reference - query_len):
+                ref_window = self.reference_normalized[i:i + query_len]
+                # Euclidean distance (MASS uses z-normalized ED)
+                dist = np.sqrt(np.sum((query_norm - ref_window) ** 2))
 
-            if dist < best_dist:
-                best_dist = dist
-                best_idx = i
+                if dist < best_dist:
+                    best_dist = dist
+                    best_idx = i
+
+            print(f"✓ Seeded at reference position {best_idx} (distance: {best_dist:.3f})")
 
         # Initialize cost column starting from this position
         # Use "open begin" strategy: allow starting anywhere but with penalty
@@ -187,7 +196,6 @@ class TrueOnlineDTW:
         self.state.is_tracking = True
         self.state.path = [(0, best_idx)]
 
-        print(f"✓ Seeded at reference position {best_idx} (distance: {best_dist:.3f})")
         return best_idx
 
     def update(self, query_frame: float, query_confidence: float = 1.0, debug: bool = False) -> OLTWState:
@@ -254,12 +262,14 @@ class TrueOnlineDTW:
             if j > 0:
                 candidates.append(self.prev_column[j - 1])
 
-            # Vertical (query stretches - reference repeats frame) - small penalty
-            candidates.append(self.prev_column[j] + 0.001)
+            # Vertical (query stretches - reference repeats frame) - strong penalty
+            # For OLTW to work properly, diagonal path must be strongly preferred
+            # Penalty of 2.0 ensures diagonal is chosen when costs are similar
+            candidates.append(self.prev_column[j] + 2.0)
 
-            # Horizontal (reference stretches - query repeats frame) - small penalty
+            # Horizontal (reference stretches - query repeats frame) - strong penalty
             if j > 0:
-                candidates.append(self.cost_column[j - 1] + 0.001)
+                candidates.append(self.cost_column[j - 1] + 2.0)
 
             if not candidates:
                 # Edge case: first position
@@ -361,6 +371,7 @@ class OLTWAligner:
         sample_rate: int = 22050,
         hop_length: int = 512,
         seed_buffer_frames: int = 50,  # Frames to buffer before seeding
+        force_seed_position: Optional[int] = None,  # Force seed at this position
     ):
         """
         Initialize OLTW aligner.
@@ -370,6 +381,7 @@ class OLTWAligner:
             sample_rate: Audio sample rate
             hop_length: Hop length in samples
             seed_buffer_frames: Number of frames to collect before seeding
+            force_seed_position: Force seeding at this position (for self-alignment, use 0)
         """
         self.oltw = TrueOnlineDTW(
             reference=reference,
@@ -380,6 +392,7 @@ class OLTWAligner:
         self.seed_buffer_frames = seed_buffer_frames
         self.seed_buffer = []
         self.is_seeded = False
+        self.force_seed_position = force_seed_position
 
         # For compatibility with existing LiveFeedback interface
         self.total_frames = 0
@@ -425,7 +438,7 @@ class OLTWAligner:
             if len(self.seed_buffer) >= self.seed_buffer_frames:
                 # Seed the alignment
                 seed_array = np.array(self.seed_buffer)
-                self.oltw.seed(seed_array)
+                self.oltw.seed(seed_array, force_position=self.force_seed_position)
                 self.is_seeded = True
                 self.seed_buffer = []  # Free memory
 

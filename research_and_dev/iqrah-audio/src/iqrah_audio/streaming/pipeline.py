@@ -77,6 +77,7 @@ class PipelineConfig:
     # OLTW (True Online DTW)
     use_oltw: bool = True  # Use true online DTW instead of batch sliding window
     oltw_window_size: int = 300  # Sakoe-Chiba window for OLTW
+    oltw_force_seed_at_start: bool = False  # Force seed at position 0 (for self-alignment)
 
 
 @dataclass
@@ -234,11 +235,13 @@ class RealtimePipeline:
         # Choose DTW backend
         if self.config.use_oltw:
             # Use true Online DTW (OLTW) - faster, more accurate
+            force_seed = 0 if self.config.oltw_force_seed_at_start else None
             self.online_dtw = OLTWAligner(
                 reference=self.reference_pitch.f0_hz,
                 sample_rate=self.config.sample_rate,
                 hop_length=self.config.hop_length,
                 seed_buffer_frames=50,  # Use 50 frames for seeding
+                force_seed_position=force_seed,
             )
             self.using_oltw = True
         else:

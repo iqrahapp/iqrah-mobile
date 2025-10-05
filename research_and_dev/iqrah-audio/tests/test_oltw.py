@@ -198,13 +198,13 @@ try:
         state = aligner.update(220.0, 0.95)
 
         if i in [0, 49, 50, 100]:
-            status = "SEEDING" if not state.is_tracking else "TRACKING"
-            print(f"  Frame {i}: {status} pos={state.reference_position} "
+            # OnlineAlignmentState has 'status' field instead of 'is_tracking'
+            print(f"  Frame {i}: {state.status.upper()} pos={state.reference_position} "
                   f"conf={state.confidence:.2f}")
 
     print(f"\n✓ Final state: {state}")
     print(f"  Frames processed: {aligner.total_frames}")
-    print(f"  Tracking: {state.is_tracking}")
+    print(f"  Tracking: {state.status == 'tracking'}")
 
     print("\n✓ Test 4 PASSED")
 

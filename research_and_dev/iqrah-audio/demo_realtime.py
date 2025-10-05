@@ -201,6 +201,31 @@ class RealtimeDemo:
         print("\n🔄 Processing reference audio against itself...")
         print("   (This simulates perfect recitation)")
 
+        # Reinitialize pipeline with forced seed at position 0
+        print("\n🔧 Reinitializing pipeline for self-alignment...")
+        config = PipelineConfig(
+            sample_rate=self.sample_rate,
+            hop_length=512,
+            buffer_size_s=3.0,
+            pitch_method="yin",
+            dtw_window_size=300,
+            dtw_band_width=50,
+            confidence_threshold=0.6,
+            update_rate_hz=15.0,
+            on_note_threshold_cents=50.0,
+            smoothing_alpha=0.3,
+            enable_anchors=True,
+            anchor_min_confidence=0.7,
+            oltw_force_seed_at_start=True,  # Force seed at position 0 for self-alignment
+        )
+
+        self.pipeline = RealtimePipeline(
+            reference_audio=self.reference_audio,
+            config=config,
+            on_hints_callback=self._on_hints_callback if self.verbose else None,
+        )
+        print("✓ Pipeline ready (forced seed at position 0)")
+
         # Process in chunks
         n_chunks = len(self.reference_audio) // self.chunk_size
         print(f"\n▶ Processing {n_chunks} chunks...")
