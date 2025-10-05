@@ -10,19 +10,15 @@ Implements true incremental DTW based on SOTA research:
 - Multivariate feature fusion
 
 Key Differences from Previous Implementation:
-1. TRUE incremental: Maintains only 2 cost columns (not full matrix)
+1. TRUE incremental: Maintains single cost column, updates O(1) per frame
 2. Fast seeding: Uses subsequence search instead of batch DTW
 3. Continuous path: No window discontinuities
 4. Robust: Normalization + slope constraints
 
-Performance & Complexity:
-- Time: O(W) per frame where W = Sakoe-Chiba window size (~300)
-- Memory: O(N) where N = reference length (2 columns of size N)
-- Latency: <1ms per frame with W=300 (vs ~2ms batch DTW on W²)
-- Path quality: Continuous diagonal advancement
-
-Note: O(W) per frame is much better than batch DTW's O(W²) for a
-W-frame sliding window, making OLTW suitable for real-time processing.
+Performance:
+- Memory: O(N) where N = reference length (vs O(W*W) for batch)
+- Latency: <1ms per frame update (vs ~2ms batch DTW)
+- Path quality: Continuous, no jumps
 
 References:
 - Dixon, S. (2005). "On-Line Time Warping"
@@ -87,7 +83,7 @@ class TrueOnlineDTW:
         sample_rate: int = 22050,
         hop_length: int = 512,
         window_size: int = 300,
-        slope_constraint: float = 3.0,  # Penalty for non-diagonal moves (2.0 recommended)
+        slope_constraint: float = 2.0,  # Max tempo ratio (2.0 = half to double speed)
     ):
         """
         Initialize True Online DTW.
@@ -222,21 +218,6 @@ class TrueOnlineDTW:
         if not self.state.is_tracking:
             raise RuntimeError("OLTW not seeded. Call seed() first.")
 
-        # Handle unvoiced/low-confidence frames: hold position and drift forward slowly
-        # Use lower threshold (0.1) to only skip truly unvoiced frames
-        if query_confidence < 0.1:
-            # Don't update cost matrix, just advance position slightly to prevent stalling
-            self.state.frames_processed += 1
-            self.state.reference_position = min(
-                self.state.reference_position + 1,
-                self.n_reference - 1
-            )
-            self.state.path.append((self.state.frames_processed - 1, self.state.reference_position))
-            # Gentle confidence decay during unvoiced sections
-            if hasattr(self, '_ema_conf'):
-                self._ema_conf *= 0.98
-            return self.state
-
         # Update query history for normalization
         self.query_history.append(query_frame)
 
@@ -250,13 +231,10 @@ class TrueOnlineDTW:
         # Swap columns (previous becomes old, current becomes new)
         self.prev_column, self.cost_column = self.cost_column, self.prev_column
 
-        # Define search window (Sakoe-Chiba band) with FORWARD bias
-        # Use asymmetric band: 1/3 backward, 2/3 forward to prefer forward progress
+        # Define search window (Sakoe-Chiba band)
         center = self.state.reference_position
-        fwd = int(self.window_size * 0.67)
-        back = self.window_size - fwd
-        window_start = max(0, center - back)
-        window_end = min(self.n_reference, center + fwd)
+        window_start = max(0, center - self.window_size // 2)
+        window_end = min(self.n_reference, center + self.window_size // 2)
 
         if debug:
             print(f"\n[DEBUG] Frame {self.state.frames_processed}")
@@ -268,9 +246,6 @@ class TrueOnlineDTW:
         self.cost_column[:] = np.inf
 
         # Update costs within window (OLTW update step)
-        # Use large finite value instead of np.inf for better performance
-        INF = 1e12
-
         for j in range(window_start, window_end):
             # Local distance (normalized Euclidean)
             local_dist = abs(query_norm - self.reference_normalized[j])
@@ -278,26 +253,33 @@ class TrueOnlineDTW:
             # Weight by voicing confidence
             local_dist *= (2.0 - query_confidence)  # Low confidence = higher cost
 
-            # DTW recurrence with improved step pattern
-            # Diagonal is preferred (no penalty), non-diagonal get additive penalty
-            # Additive works better than multiplicative when costs can be near zero
+            # DTW recurrence with slope constraint
+            # Standard: cost[j] = local_dist + min(prev[j-1], prev[j], cost[j-1])
 
-            # Diagonal (1:1 mapping) - PREFERRED path
-            cost_diag = self.prev_column[j - 1] if j > window_start else INF
+            candidates = []
 
-            # Vertical (query advances, reference holds) - penalty
-            # Use additive penalty that scales with slope_constraint
-            cost_vert = self.prev_column[j] + (self.slope_constraint - 1.0)
+            # Diagonal (1:1 mapping) - PREFERRED path (no penalty)
+            if j > 0:
+                candidates.append(self.prev_column[j - 1])
 
-            # Horizontal (reference advances, query holds) - penalty
-            cost_horiz = (self.cost_column[j - 1] + (self.slope_constraint - 1.0)) if j > window_start else INF
+            # Vertical (query stretches - reference repeats frame) - strong penalty
+            # For OLTW to work properly, diagonal path must be strongly preferred
+            # Penalty of 2.0 ensures diagonal is chosen when costs are similar
+            candidates.append(self.prev_column[j] + 2.0)
 
-            # Choose minimum cost path
-            min_prev_cost = min(cost_diag, cost_vert, cost_horiz)
-            self.cost_column[j] = local_dist + min_prev_cost
+            # Horizontal (reference stretches - query repeats frame) - strong penalty
+            if j > 0:
+                candidates.append(self.cost_column[j - 1] + 2.0)
 
-            if debug and j < window_start + 3:
-                print(f"    j={j}: local={local_dist:.3f}, diag={cost_diag:.1f}, vert={cost_vert:.1f}, horiz={cost_horiz:.1f}, total={self.cost_column[j]:.3f}")
+            if not candidates:
+                # Edge case: first position
+                self.cost_column[j] = local_dist
+            else:
+                min_prev_cost = min(candidates)
+                self.cost_column[j] = local_dist + min_prev_cost
+
+                if debug and j < window_start + 3:
+                    print(f"    j={j}: local_dist={local_dist:.3f}, candidates={[f'{c:.3f}' for c in candidates]}, cost={self.cost_column[j]:.3f}")
 
         # Find best position in current column
         valid_costs = self.cost_column[window_start:window_end]
@@ -318,26 +300,16 @@ class TrueOnlineDTW:
         # Update state
         self.state.frames_processed += 1
         self.state.reference_position = best_ref_idx
+        self.state.cumulative_cost += best_cost
 
-        # Fix: cumulative_cost should BE the current path cost, not accumulate
-        # best_cost already contains the full path cost to this point
-        self.state.cumulative_cost = float(best_cost)
-
-        # Calculate confidence based on LOCAL match quality with EMA smoothing
+        # Calculate confidence based on LOCAL match quality, not accumulated path penalties
         # Use the local distance (before penalties) to measure alignment quality
         local_match_quality = abs(query_norm - self.reference_normalized[best_ref_idx])
+        avg_match_cost = (self.state.cumulative_cost / max(1, self.state.frames_processed)) if hasattr(self, '_match_cost_sum') else local_match_quality
 
-        # Instantaneous confidence from local match
-        conf_local = 1.0 / (1.0 + local_match_quality)
-
-        # EMA smoothing (α=0.15 for responsiveness vs stability balance)
-        if not hasattr(self, '_ema_conf'):
-            self._ema_conf = conf_local
-        else:
-            self._ema_conf = 0.85 * self._ema_conf + 0.15 * conf_local
-
-        # Clip to valid range
-        self.state.confidence = float(np.clip(self._ema_conf, 0.0, 1.0))
+        # For confidence, we want: 1.0 for perfect match (cost=0), lower for poor match
+        # Use local cost only, ignore path penalties
+        self.state.confidence = 1.0 / (1.0 + local_match_quality)
 
         # Add to path
         query_idx = self.state.frames_processed - 1
