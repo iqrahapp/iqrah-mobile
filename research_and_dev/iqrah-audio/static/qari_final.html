@@ -22,7 +22,7 @@
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 100%;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -94,6 +94,28 @@
             background: #ccc;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* View Mode Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            padding: 5px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+
+        .view-toggle button {
+            padding: 8px 15px;
+            border: none;
+            background: transparent;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .view-toggle button.active {
+            background: #667eea;
+            color: white;
         }
 
         /* Arabic Words Display (RTL) */
@@ -243,24 +265,26 @@
             <div class="control-group">
                 <label for="surahSelect">Surah:</label>
                 <select id="surahSelect">
-                    <option value="1">1 - Al-Fatihah</option>
+                    <!-- Populated dynamically -->
                 </select>
             </div>
 
             <div class="control-group">
                 <label for="ayahSelect">Ayah:</label>
                 <select id="ayahSelect">
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
+                    <!-- Populated dynamically based on surah -->
                 </select>
             </div>
 
             <button id="analyzeBtn" style="margin-top: 20px;">📊 Analyze</button>
+
+            <div class="control-group" style="margin-left: 20px;">
+                <label>View Mode:</label>
+                <div class="view-toggle">
+                    <button id="viewLine" class="active">📈 Line Graph</button>
+                    <button id="viewBars">📊 Note Bars</button>
+                </div>
+            </div>
         </div>
 
         <div id="loading" class="loading hidden">
@@ -326,6 +350,41 @@
     </div>
 
     <script>
+        // Surah names (114 surahs)
+        const SURAH_NAMES = [
+            "Al-Fatihah", "Al-Baqarah", "Ali 'Imran", "An-Nisa", "Al-Ma'idah", "Al-An'am",
+            "Al-A'raf", "Al-Anfal", "At-Tawbah", "Yunus", "Hud", "Yusuf", "Ar-Ra'd",
+            "Ibrahim", "Al-Hijr", "An-Nahl", "Al-Isra", "Al-Kahf", "Maryam", "Taha",
+            "Al-Anbya", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan", "Ash-Shu'ara",
+            "An-Naml", "Al-Qasas", "Al-'Ankabut", "Ar-Rum", "Luqman", "As-Sajdah",
+            "Al-Ahzab", "Saba", "Fatir", "Ya-Sin", "As-Saffat", "Sad", "Az-Zumar",
+            "Ghafir", "Fussilat", "Ash-Shuraa", "Az-Zukhruf", "Ad-Dukhan", "Al-Jathiyah",
+            "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf", "Adh-Dhariyat",
+            "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman", "Al-Waqi'ah", "Al-Hadid",
+            "Al-Mujadila", "Al-Hashr", "Al-Mumtahanah", "As-Saf", "Al-Jumu'ah",
+            "Al-Munafiqun", "At-Taghabun", "At-Talaq", "At-Tahrim", "Al-Mulk",
+            "Al-Qalam", "Al-Haqqah", "Al-Ma'arij", "Nuh", "Al-Jinn", "Al-Muzzammil",
+            "Al-Muddaththir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat", "An-Naba",
+            "An-Nazi'at", "Abasa", "'Adiyat", "At-Takwir", "Al-Infitar", "Al-Mutaffifin",
+            "Al-Inshiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", "Al-Ghashiyah", "Al-Fajr",
+            "Al-Balad", "Ash-Shams", "Al-Layl", "Ad-Duhaa", "Ash-Sharh", "At-Tin",
+            "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
+            "Al-Qari'ah", "At-Takathur", "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraysh",
+            "Al-Ma'un", "Al-Kawthar", "Al-Kafirun", "An-Nasr", "Al-Masad", "Al-Ikhlas",
+            "Al-Falaq", "An-Nas"
+        ];
+
+        // Ayah counts per surah
+        const AYAH_COUNTS = [
+            7, 286, 200, 176, 120, 165, 206, 75, 129, 109, 123, 111, 43, 52, 99, 128,
+            111, 110, 98, 135, 112, 78, 118, 64, 77, 227, 93, 88, 69, 60, 34, 30,
+            73, 54, 45, 83, 182, 88, 75, 85, 54, 53, 89, 59, 37, 35, 38, 29, 18,
+            45, 60, 49, 62, 55, 78, 96, 29, 22, 24, 13, 14, 11, 11, 18, 12, 12,
+            30, 52, 52, 44, 28, 28, 20, 56, 40, 31, 50, 40, 46, 42, 29, 19, 36,
+            25, 22, 17, 19, 26, 30, 20, 15, 21, 11, 8, 8, 19, 5, 8, 8, 11, 11,
+            8, 3, 9, 5, 4, 7, 3, 6, 3, 5, 4, 5, 6
+        ];
+
         const analyzeBtn = document.getElementById('analyzeBtn');
         const surahSelect = document.getElementById('surahSelect');
         const ayahSelect = document.getElementById('ayahSelect');
@@ -333,9 +392,52 @@
         const results = document.getElementById('results');
         const audioPlayer = document.getElementById('audioPlayer');
         const arabicWords = document.getElementById('arabicWords');
+        const viewLineBtn = document.getElementById('viewLine');
+        const viewBarsBtn = document.getElementById('viewBars');
 
         let currentData = null;
         let animationFrameId = null;
+        let viewMode = 'line'; // 'line' or 'bars'
+
+        // Populate surah dropdown
+        for (let i = 1; i <= 114; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `${i} - ${SURAH_NAMES[i - 1]}`;
+            surahSelect.appendChild(option);
+        }
+
+        // Update ayah dropdown when surah changes
+        surahSelect.addEventListener('change', () => {
+            const surahNum = parseInt(surahSelect.value);
+            const ayahCount = AYAH_COUNTS[surahNum - 1];
+
+            ayahSelect.innerHTML = '';
+            for (let i = 1; i <= ayahCount; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                ayahSelect.appendChild(option);
+            }
+        });
+
+        // Initialize ayah dropdown for first surah
+        surahSelect.dispatchEvent(new Event('change'));
+
+        // View mode toggle
+        viewLineBtn.addEventListener('click', () => {
+            viewMode = 'line';
+            viewLineBtn.classList.add('active');
+            viewBarsBtn.classList.remove('active');
+            if (currentData) plotVisualization(currentData);
+        });
+
+        viewBarsBtn.addEventListener('click', () => {
+            viewMode = 'bars';
+            viewBarsBtn.classList.add('active');
+            viewLineBtn.classList.remove('active');
+            if (currentData) plotVisualization(currentData);
+        });
 
         analyzeBtn.addEventListener('click', async () => {
             const surah = surahSelect.value;
@@ -388,6 +490,11 @@
 
                 loading.classList.add('hidden');
                 results.classList.remove('hidden');
+
+                // Force resize to fix width issue
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 100);
 
             } catch (error) {
                 console.error('Error:', error);
@@ -452,21 +559,87 @@
             return f0s[left] > 0 ? f0s[left] : 100;
         }
 
-        function plotVisualization(data) {
-            // Pitch trace
-            const pitchTrace = {
-                x: data.pitch.time,
-                y: data.pitch.f0_hz,
-                mode: 'lines',
-                name: 'Pitch Contour',
-                line: { color: '#667eea', width: 2 },
-                hovertemplate: '<b>Pitch</b><br>' +
-                               'Time: %{x:.3f}s<br>' +
-                               'Frequency: %{y:.1f} Hz<br>' +
-                               '<extra></extra>'
-            };
+        function smoothPitchData(pitchData, windowMs = 50) {
+            // Smooth pitch using moving average to reduce "noise" for bar view
+            const times = pitchData.time;
+            const f0s = pitchData.f0_hz;
+            const smoothed = [];
 
-            // Phoneme markers - only voiced
+            for (let i = 0; i < times.length; i++) {
+                const currentTime = times[i];
+                const windowStart = currentTime - windowMs / 1000;
+                const windowEnd = currentTime + windowMs / 1000;
+
+                const values = [];
+                for (let j = 0; j < times.length; j++) {
+                    if (times[j] >= windowStart && times[j] <= windowEnd && f0s[j] > 0) {
+                        values.push(f0s[j]);
+                    }
+                }
+
+                if (values.length > 0) {
+                    smoothed.push(values.reduce((a, b) => a + b) / values.length);
+                } else {
+                    smoothed.push(f0s[i]);
+                }
+            }
+
+            return smoothed;
+        }
+
+        function plotVisualization(data) {
+            let pitchTrace;
+
+            if (viewMode === 'bars') {
+                // Bar view: Show horizontal bars for each phoneme (easier to follow)
+                const voicedPhonemes = data.phonemes.filter(p => p.mean_pitch > 0);
+
+                pitchTrace = {
+                    x: voicedPhonemes.map(p => (p.start + p.end) / 2),
+                    y: voicedPhonemes.map(p => p.mean_pitch),
+                    error_y: {
+                        type: 'data',
+                        symmetric: false,
+                        array: voicedPhonemes.map(p => p.max_pitch - p.mean_pitch),
+                        arrayminus: voicedPhonemes.map(p => p.mean_pitch - p.min_pitch),
+                        color: 'rgba(102, 126, 234, 0.3)',
+                        thickness: 3
+                    },
+                    mode: 'markers',
+                    name: 'Pitch (Notes)',
+                    marker: {
+                        size: 16,
+                        color: voicedPhonemes.map(p => {
+                            const rule = p.tajweed_rule;
+                            if (rule === 'madd') return '#FFC87C';
+                            if (rule === 'ghunnah') return '#64C8FF';
+                            if (rule === 'shadda') return '#FFB6C1';
+                            return '#764ba2';
+                        }),
+                        line: { width: 2, color: 'white' }
+                    },
+                    hovertemplate: '<b>Phoneme: %{text}</b><br>' +
+                                   'Time: %{x:.3f}s<br>' +
+                                   'Pitch: %{y:.1f} Hz<br>' +
+                                   '<extra></extra>',
+                    text: voicedPhonemes.map(p => p.phoneme)
+                };
+            } else {
+                // Line view: Traditional pitch contour
+                pitchTrace = {
+                    x: data.pitch.time,
+                    y: data.pitch.f0_hz,
+                    mode: 'lines',
+                    name: 'Pitch Contour',
+                    line: { color: '#667eea', width: 2 },
+                    hovertemplate: '<b>Pitch</b><br>' +
+                                   'Time: %{x:.3f}s<br>' +
+                                   'Frequency: %{y:.1f} Hz<br>' +
+                                   '<extra></extra>'
+                };
+            }
+
+            // Phoneme markers
             const voicedPhonemes = data.phonemes.filter(p => p.mean_pitch > 0);
 
             const phonemeTrace = {
@@ -549,7 +722,7 @@
                         const arabicText = word.segments.map(s => s.text).join('');
 
                         wordAnnotations.push({
-                            x: (seg.start_ms + seg.end_ms) / 2000,  // Convert to seconds
+                            x: (seg.start_ms + seg.end_ms) / 2000,
                             y: 0,
                             yref: 'paper',
                             text: arabicText,
@@ -566,9 +739,15 @@
                 });
             }
 
+            const traces = viewMode === 'bars'
+                ? [pitchTrace, cursorTrace]  // No phoneme labels in bar mode (redundant)
+                : [pitchTrace, phonemeTrace, cursorTrace];
+
             const layout = {
                 title: {
-                    text: 'Pitch Contour with Phoneme Segmentation',
+                    text: viewMode === 'bars'
+                        ? 'Pitch Notes (Simplified View)'
+                        : 'Pitch Contour with Phoneme Segmentation',
                     font: { size: 20, color: '#667eea', family: 'Roboto' }
                 },
                 xaxis: {
@@ -593,14 +772,17 @@
                     borderwidth: 1
                 },
                 margin: { l: 60, r: 20, t: 80, b: 80 },
-                height: 600,
                 autosize: true
             };
 
-            Plotly.newPlot('pitchPlot', [pitchTrace, phonemeTrace, cursorTrace], layout, {
+            const config = {
                 responsive: true,
-                displayModeBar: true,
-                useResizeHandler: true
+                displayModeBar: true
+            };
+
+            Plotly.newPlot('pitchPlot', traces, layout, config).then(() => {
+                // Force one more resize after plot is created
+                window.dispatchEvent(new Event('resize'));
             });
         }
 
@@ -612,8 +794,6 @@
                 cancelAnimationFrame(animationFrameId);
             }
 
-            let lastUpdateTime = 0;
-
             function updateCursor() {
                 if (audioPlayer.paused || audioPlayer.ended) {
                     animationFrameId = requestAnimationFrame(updateCursor);
@@ -621,17 +801,15 @@
                 }
 
                 const currentTime = audioPlayer.currentTime;
-
-                // Update every frame for smoothness
                 const pitch = interpolatePitch(currentTime, currentData.pitch);
 
-                // Update cursor trace (index 2) - very fast update
+                // Update cursor trace (last trace)
+                const cursorIndex = viewMode === 'bars' ? 1 : 2;
                 Plotly.restyle('pitchPlot', {
                     x: [[currentTime]],
                     y: [[pitch]]
-                }, [2]);
+                }, [cursorIndex]);
 
-                lastUpdateTime = currentTime;
                 animationFrameId = requestAnimationFrame(updateCursor);
             }
 
