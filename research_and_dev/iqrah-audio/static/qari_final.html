@@ -322,6 +322,13 @@
 
                 currentData = data;
 
+                // Debug: Log phoneme data
+                console.log('📊 Received data:', {
+                    phonemes: data.phonemes.length,
+                    sample: data.phonemes[0],
+                    arabic_words: data.arabic_words?.length
+                });
+
                 // Update stats
                 document.getElementById('statDuration').textContent = data.duration.toFixed(2) + 's';
                 document.getElementById('statPhonemes').textContent = data.phonemes.length;
@@ -414,18 +421,22 @@
                                '<extra></extra>'
             };
 
-            // Phoneme markers
+            // Phoneme markers - only show voiced phonemes (mean_pitch > 0)
+            const voicedPhonemes = data.phonemes.filter(p => p.mean_pitch > 0);
+
+            console.log(`📍 Phonemes: ${data.phonemes.length} total, ${voicedPhonemes.length} voiced`);
+
             const phonemeTrace = {
-                x: data.phonemes.map(p => (p.start + p.end) / 2),
-                y: data.phonemes.map(p => p.mean_pitch || 0),
+                x: voicedPhonemes.map(p => (p.start + p.end) / 2),
+                y: voicedPhonemes.map(p => p.mean_pitch),
                 mode: 'markers+text',
                 name: 'المقاطع',
-                text: data.phonemes.map(p => p.phoneme),
-                textposition: 'top',
-                textfont: { size: 14, family: 'Roboto', color: '#333' },
+                text: voicedPhonemes.map(p => p.phoneme),
+                textposition: 'top center',
+                textfont: { size: 16, family: 'Roboto', color: '#000', weight: 'bold' },
                 marker: {
-                    size: 12,
-                    color: data.phonemes.map(p => {
+                    size: 14,
+                    color: voicedPhonemes.map(p => {
                         const rule = p.tajweed_rule;
                         if (rule === 'madd') return '#FFC87C';
                         if (rule === 'ghunnah') return '#64C8FF';
