@@ -129,6 +129,7 @@ async def analyze_qari(surah: int, ayah: int):
             "pitch": pitch_data,
             "phonemes": phonemes,
             "arabic_words": words_with_tajweed,
+            "word_segments": word_segments,  # Add word segments for visualization
             "transliteration": transliteration,
             "duration": pitch_data['duration']
         }
