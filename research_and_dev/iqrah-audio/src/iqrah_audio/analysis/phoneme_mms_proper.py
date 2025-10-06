@@ -273,15 +273,25 @@ def extract_phonemes_mms_proper(
         f0_array = np.array(pitch_data['f0_hz'])
 
         for syl_span in syl_spans:
-            # Detect Tajweed
-            syl = syl_span['syllable']
+            # Detect Tajweed - improved rules
+            syl = syl_span['syllable'].lower()
             tajweed_rule = None
-            if any(long in syl.lower() for long in ['aa', 'ee', 'oo', 'ii', 'uu']):
+
+            # Madd (elongation): Look for long vowels
+            if any(long in syl for long in ['aa', ' aa', 'ee', 'ii', 'oo', 'uu', 'aani', 'eeni']):
                 tajweed_rule = 'madd'
-            elif any(c*2 in syl.lower() for c in 'lmnr'):
+                # Longer duration expected for madd
+                expected_ratio = 1.5
+            # Shadda (doubled consonants): Look for gemination
+            elif any(c*2 in syl for c in 'lmnrbdtsjkfqghwyz'):
                 tajweed_rule = 'shadda'
-            elif 'm' in syl.lower() or 'n' in syl.lower():
+                expected_ratio = 1.3
+            # Ghunnah (nasal): m or n sounds, especially with tanween
+            elif any(pattern in syl for pattern in ['an', 'in', 'un', 'ng', 'nj']):
                 tajweed_rule = 'ghunnah'
+                expected_ratio = 1.2
+            else:
+                expected_ratio = 1.0
 
             # Get pitch
             start, end = syl_span['start'], syl_span['end']
