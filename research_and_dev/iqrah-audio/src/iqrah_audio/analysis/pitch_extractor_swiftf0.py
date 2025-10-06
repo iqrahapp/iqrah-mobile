@@ -14,6 +14,7 @@ SwiftF0 advantages:
 import numpy as np
 import librosa
 from swift_f0 import SwiftF0
+from scipy.signal import medfilt, savgol_filter
 from typing import Dict, List
 from pathlib import Path
 import urllib.request
@@ -64,24 +65,41 @@ def extract_pitch_swiftf0(
     time = np.array(result.timestamps)
     voiced = np.array(result.voicing)
 
-    # CRITICAL FIX: Filter out unrealistic values (SwiftF0 sometimes has initialization spikes)
-    # Human voice range: 50-500 Hz (male: 80-250 Hz, female: 150-400 Hz)
-    realistic_mask = (f0_hz >= 50) & (f0_hz <= 500)
+    # STEP 1: Gate by confidence FIRST (before range filtering)
+    # This removes low-confidence frames that could be octave errors or noise
+    v = voiced.astype(bool) & (confidence >= 0.6)
 
-    # For unrealistic frames, set to 0 (unvoiced)
-    f0_hz_filtered = f0_hz.copy()
-    f0_hz_filtered[~realistic_mask] = 0.0
+    # STEP 2: Apply range clamping AFTER confidence gating
+    # Quranic recitation: male 65-420 Hz, allow some margin (55-550 Hz)
+    f0 = f0_hz.copy()
+    f0[~v] = 0.0
 
-    # Update voiced array
-    voiced_filtered = voiced & realistic_mask
+    # Range filter on voiced frames
+    rng = (f0 >= 55) & (f0 <= 550)
+    f0[~rng] = 0.0
+    v = v & rng
+
+    # STEP 3: Light smoothing on voiced frames to reduce jitter
+    idx = np.where(f0 > 0)[0]
+    if idx.size > 0:
+        f = f0[idx]
+        # Median filter removes outliers (kernel must be odd)
+        f = medfilt(f, kernel_size=3)
+        # Savitzky-Golay smooths pitch contour (needs at least 7 points)
+        if f.size >= 7:
+            f = savgol_filter(f, window_length=7, polyorder=2)
+        f0[idx] = f
+
+    # Compute accurate duration from audio samples (not from time array)
+    duration = len(audio) / actual_sr
 
     return {
         'time': time.tolist(),
-        'f0_hz': f0_hz_filtered.tolist(),  # Filtered!
+        'f0_hz': f0.tolist(),
         'confidence': confidence.tolist(),
-        'voiced': voiced_filtered.tolist(),  # Updated!
+        'voiced': v.tolist(),
         'sample_rate': actual_sr,
-        'duration': float(time[-1]) if len(time) > 0 else 0.0
+        'duration': float(duration)
     }
 
 
@@ -144,7 +162,7 @@ def calculate_pitch_stats(f0_hz_list: List[float]) -> Dict:
     f0_hz = np.array(f0_hz_list)
 
     # Filter out unvoiced (0 or NaN) and unrealistic values
-    voiced_f0 = f0_hz[(f0_hz > 50) & (f0_hz < 500) & ~np.isnan(f0_hz)]
+    voiced_f0 = f0_hz[(f0_hz > 55) & (f0_hz < 550) & ~np.isnan(f0_hz)]
 
     if len(voiced_f0) == 0:
         return {

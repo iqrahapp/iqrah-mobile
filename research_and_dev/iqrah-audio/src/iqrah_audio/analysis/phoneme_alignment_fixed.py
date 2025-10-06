@@ -21,6 +21,7 @@ import torch
 import torchaudio
 import numpy as np
 import epitran
+import panphon.segment
 import re
 from typing import List, Dict, Tuple
 from pathlib import Path
@@ -31,6 +32,7 @@ _mms_model = None
 _mms_tokenizer = None
 _mms_aligner = None
 _uroman_instance = None
+_panphon_segmenter = None
 
 
 def _get_epitran():
@@ -61,6 +63,13 @@ def _get_uroman():
     return _uroman_instance
 
 
+def _get_panphon():
+    global _panphon_segmenter
+    if _panphon_segmenter is None:
+        _panphon_segmenter = panphon.segment.Segment()
+    return _panphon_segmenter
+
+
 def romanize_arabic(arabic_text: str) -> str:
     """
     Romanize Arabic text using uroman.
@@ -77,21 +86,25 @@ def romanize_arabic(arabic_text: str) -> str:
 
 def text_to_ipa_phones(arabic_text: str) -> List[str]:
     """
-    Convert diacritized Arabic to IPA phonemes using Epitran.
+    Convert diacritized Arabic to IPA phonemes using Epitran + PanPhon.
 
     Args:
         arabic_text: Diacritized Arabic text
 
     Returns:
-        List of IPA phonemes (simple character split for now)
+        List of IPA phonemes (properly segmented with PanPhon)
     """
     # Convert to IPA
     epi = _get_epitran()
     ipa_string = epi.transliterate(arabic_text)
 
-    # Simple character-level split (good enough for Arabic IPA)
-    # Filter out spaces and empty strings
-    phones = [p for p in list(ipa_string) if p.strip()]
+    # Use PanPhon to properly segment IPA string into phones
+    # This handles multi-char phones and combining diacritics correctly
+    segmenter = _get_panphon()
+    phones = segmenter.ipa_segs(ipa_string)
+
+    # Filter out spaces
+    phones = [p for p in phones if p.strip()]
 
     return phones
 
