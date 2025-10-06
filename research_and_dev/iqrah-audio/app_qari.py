@@ -20,7 +20,6 @@ import json
 # Import our analysis modules
 from src.iqrah_audio.analysis.pitch_extractor_swiftf0 import extract_pitch_swiftf0
 from src.iqrah_audio.analysis.phoneme_from_transliteration import get_phonemes_from_transliteration
-from src.iqrah_audio.reference import ReferenceProcessor
 
 app = FastAPI(title="Qari Phoneme Visualization")
 
@@ -28,9 +27,6 @@ app = FastAPI(title="Qari Phoneme Visualization")
 static_dir = Path(__file__).parent / "static"
 static_dir.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-# Initialize reference processor
-ref_processor = ReferenceProcessor()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -82,15 +78,11 @@ async def analyze_qari(surah: int, ayah: int):
         - audio_url: URL to audio file
     """
     try:
-        # Get reference audio URL
-        audio_url = ref_processor.get_audio_url(surah, ayah)
-
-        # Download and extract pitch
-        print(f"\n📊 Analyzing Qari recitation: {surah}:{ayah}")
-        print(f"   Audio: {audio_url}")
-
-        # For local testing, use Husary files if available
+        # Use local Husary files
         local_audio = Path(f"data/husary/surahs/{surah:03d}/{ayah:02d}.mp3")
+
+        print(f"\n📊 Analyzing Qari recitation: {surah}:{ayah}")
+        print(f"   Audio: {local_audio}")
 
         if local_audio.exists():
             print(f"   Using local file: {local_audio}")
