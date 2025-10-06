@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحليل التجويد - Qari Tajweed Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Roboto:wght@300;400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', 'Amiri', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-family: 'Amiri', serif;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        select {
+            background: white;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        button:hover:not(:disabled) {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Arabic Words Display */
+        .arabic-words {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-family: 'Amiri', serif;
+            font-size: 2em;
+            line-height: 2;
+            direction: rtl;
+        }
+
+        .arabic-word {
+            display: inline-block;
+            margin: 0 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .arabic-word:hover {
+            transform: scale(1.1);
+        }
+
+        .tajweed-segment {
+            display: inline;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        /* Audio Player */
+        .audio-player {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        audio {
+            flex: 1;
+            height: 50px;
+        }
+
+        /* Pitch Plot */
+        #pitchPlot {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-right: 4px solid #667eea;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #333;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Real-time cursor */
+        .playback-cursor {
+            position: absolute;
+            width: 3px;
+            background: #ff4444;
+            opacity: 0.8;
+            pointer-events: none;
+            z-index: 1000;
+            transition: left 0.05s linear;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📖 تحليل التجويد - Qari Tajweed Analysis</h1>
+        <p class="subtitle">تعلم التجويد من خلال التحليل الدقيق للصوتيات</p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="surahSelect">السورة:</label>
+                <select id="surahSelect">
+                    <option value="1">1 - الفاتحة</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="ayahSelect">الآية:</label>
+                <select id="ayahSelect">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                </select>
+            </div>
+
+            <button id="analyzeBtn" style="margin-top: 20px;">📊 تحليل</button>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <span>جاري التحليل...</span>
+        </div>
+
+        <div id="results" class="hidden">
+            <!-- Arabic Words with Tajweed Colors -->
+            <div class="arabic-words" id="arabicWords"></div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">المدة</div>
+                    <div class="stat-value" id="statDuration">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">المقاطع الصوتية</div>
+                    <div class="stat-value" id="statPhonemes">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">متوسط الطبقة</div>
+                    <div class="stat-value" id="statPitch">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">نطاق الطبقة</div>
+                    <div class="stat-value" id="statRange">-</div>
+                </div>
+            </div>
+
+            <!-- Audio Player -->
+            <div class="audio-player">
+                <span style="font-weight: 600; color: #667eea;">🎵 الاستماع:</span>
+                <audio id="audioPlayer" controls></audio>
+            </div>
+
+            <!-- Pitch Plot with Real-time Cursor -->
+            <div style="position: relative;">
+                <div id="pitchPlot"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const surahSelect = document.getElementById('surahSelect');
+        const ayahSelect = document.getElementById('ayahSelect');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const arabicWords = document.getElementById('arabicWords');
+
+        let currentData = null;
+        let playbackCursorShape = null;
+
+        analyzeBtn.addEventListener('click', async () => {
+            const surah = surahSelect.value;
+            const ayah = ayahSelect.value;
+
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/analyze/${surah}/${ayah}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                currentData = data;
+
+                // Update stats
+                document.getElementById('statDuration').textContent = data.duration.toFixed(2) + 's';
+                document.getElementById('statPhonemes').textContent = data.phonemes.length;
+
+                const voicedPitch = data.pitch.f0_hz.filter(f => f > 0);
+                const avgPitch = voicedPitch.reduce((a, b) => a + b, 0) / voicedPitch.length;
+                const minPitch = Math.min(...voicedPitch);
+                const maxPitch = Math.max(...voicedPitch);
+
+                document.getElementById('statPitch').textContent = avgPitch.toFixed(1) + ' Hz';
+                document.getElementById('statRange').textContent =
+                    minPitch.toFixed(0) + '-' + maxPitch.toFixed(0) + ' Hz';
+
+                // Display Arabic words with Tajweed colors
+                displayArabicWords(data.arabic_words);
+
+                // Set audio
+                audioPlayer.src = data.audio_url;
+
+                // Plot visualization
+                plotVisualization(data);
+
+                // Setup real-time cursor
+                setupRealtimeCursor();
+
+                loading.classList.add('hidden');
+                results.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('فشل التحليل: ' + error.message);
+                loading.classList.add('hidden');
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        });
+
+        function displayArabicWords(words) {
+            arabicWords.innerHTML = '';
+
+            for (const word of words) {
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'arabic-word';
+
+                for (const seg of word.segments) {
+                    const segSpan = document.createElement('span');
+                    segSpan.className = 'tajweed-segment';
+                    segSpan.textContent = seg.text;
+                    if (seg.tajweed_class) {
+                        segSpan.style.backgroundColor = seg.color;
+                        segSpan.title = seg.tajweed_class;
+                    }
+                    wordSpan.appendChild(segSpan);
+                }
+
+                arabicWords.appendChild(wordSpan);
+            }
+        }
+
+        function plotVisualization(data) {
+            // Pitch trace
+            const pitchTrace = {
+                x: data.pitch.time,
+                y: data.pitch.f0_hz,
+                mode: 'lines',
+                name: 'الطبقة الصوتية',
+                line: { color: '#667eea', width: 3 },
+                hovertemplate: '<b>الطبقة</b><br>' +
+                               'الوقت: %{x:.3f}s<br>' +
+                               'التردد: %{y:.1f} Hz<br>' +
+                               '<extra></extra>'
+            };
+
+            // Phoneme markers
+            const phonemeTrace = {
+                x: data.phonemes.map(p => (p.start + p.end) / 2),
+                y: data.phonemes.map(p => p.mean_pitch || 0),
+                mode: 'markers+text',
+                name: 'المقاطع',
+                text: data.phonemes.map(p => p.phoneme),
+                textposition: 'top',
+                textfont: { size: 14, family: 'Roboto', color: '#333' },
+                marker: {
+                    size: 12,
+                    color: data.phonemes.map(p => {
+                        const rule = p.tajweed_rule;
+                        if (rule === 'madd') return '#FFC87C';
+                        if (rule === 'ghunnah') return '#64C8FF';
+                        if (rule === 'shadda') return '#FFB6C1';
+                        return '#764ba2';
+                    }),
+                    line: { width: 2, color: 'white' }
+                },
+                hovertemplate: '<b>%{text}</b><br>' +
+                               'الوقت: %{x:.3f}s<br>' +
+                               'الطبقة: %{y:.1f} Hz<br>' +
+                               '<extra></extra>'
+            };
+
+            // Background shapes for phonemes
+            const shapes = data.phonemes.map((p, idx) => ({
+                type: 'rect',
+                x0: p.start,
+                x1: p.end,
+                y0: 0,
+                y1: 1,
+                yref: 'paper',
+                fillcolor: idx % 2 === 0 ? 'rgba(102, 126, 234, 0.08)' : 'rgba(118, 75, 162, 0.08)',
+                line: { width: 0.5, color: 'rgba(0, 0, 0, 0.1)' },
+                layer: 'below'
+            }));
+
+            const layout = {
+                title: {
+                    text: 'منحنى الطبقة الصوتية مع تقسيم المقاطع',
+                    font: { size: 20, color: '#667eea', family: 'Amiri' }
+                },
+                xaxis: {
+                    title: 'الوقت (ثانية)',
+                    gridcolor: '#eee',
+                    autorange: 'reversed'  // RTL: Reverse X-axis!
+                },
+                yaxis: {
+                    title: 'الطبقة (هرتز)',
+                    gridcolor: '#eee'
+                },
+                shapes: shapes,
+                hovermode: 'closest',
+                showlegend: true,
+                legend: {
+                    x: 1,
+                    y: 1,
+                    xanchor: 'right',
+                    bgcolor: 'rgba(255, 255, 255, 0.8)',
+                    bordercolor: '#ddd',
+                    borderwidth: 1
+                },
+                margin: { l: 60, r: 60, t: 80, b: 60 },
+                height: 600
+            };
+
+            Plotly.newPlot('pitchPlot', [pitchTrace, phonemeTrace], layout, {
+                responsive: true,
+                displayModeBar: true
+            });
+        }
+
+        function setupRealtimeCursor() {
+            if (!currentData) return;
+
+            // Add cursor line shape
+            audioPlayer.addEventListener('timeupdate', () => {
+                const currentTime = audioPlayer.currentTime;
+                const duration = currentData.duration;
+
+                // Update cursor position on plot
+                Plotly.relayout('pitchPlot', {
+                    shapes: [
+                        ...currentData.phonemes.map((p, idx) => ({
+                            type: 'rect',
+                            x0: p.start,
+                            x1: p.end,
+                            y0: 0,
+                            y1: 1,
+                            yref: 'paper',
+                            fillcolor: idx % 2 === 0 ? 'rgba(102, 126, 234, 0.08)' : 'rgba(118, 75, 162, 0.08)',
+                            line: { width: 0.5, color: 'rgba(0, 0, 0, 0.1)' },
+                            layer: 'below'
+                        })),
+                        // Cursor line
+                        {
+                            type: 'line',
+                            x0: currentTime,
+                            x1: currentTime,
+                            y0: 0,
+                            y1: 1,
+                            yref: 'paper',
+                            line: {
+                                color: '#ff4444',
+                                width: 3
+                            },
+                            layer: 'above'
+                        }
+                    ]
+                });
+            });
+        }
+
+        // Auto-analyze first ayah on load
+        window.addEventListener('load', () => {
+            setTimeout(() => analyzeBtn.click(), 500);
+        });
+    </script>
+</body>
+</html>
