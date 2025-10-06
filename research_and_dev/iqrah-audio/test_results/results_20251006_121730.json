@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-10-06T12:17:30.457966",
+  "total_tests": 38,
+  "passed": 23,
+  "failed": 3,
+  "errors": 12,
+  "skipped": 0,
+  "elapsed_time": 6.6696484088897705,
+  "success": false
+}

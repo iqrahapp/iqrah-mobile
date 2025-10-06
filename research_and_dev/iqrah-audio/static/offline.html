@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iqrah Audio - Offline Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="/static/recorder.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .step.completed {
+            background: #48bb78;
+            color: white;
+        }
+
+        .step-number {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .step-label {
+            font-size: 14px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .verse-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .verse-selector select {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            font-size: 16px;
+        }
+
+        .arabic-text {
+            font-size: 2em;
+            line-height: 1.8;
+            direction: rtl;
+            text-align: right;
+            font-family: 'Traditional Arabic', 'Arabic Typesetting', serif;
+            min-height: 80px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .plot-container {
+            width: 100%;
+            height: 400px;
+            margin: 15px 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-status {
+            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .metric-status.good { background: #d4edda; color: #155724; }
+        .metric-status.warning { background: #fff3cd; color: #856404; }
+        .metric-status.error { background: #f8d7da; color: #721c24; }
+
+        .word-scores {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .word-score {
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-family: 'Traditional Arabic', serif;
+            transition: all 0.3s;
+        }
+
+        .word-score.good { background: #d4edda; border-left: 4px solid #28a745; }
+        .word-score.warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .word-score.error { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .word-score.missing { background: #e2e3e5; border-left: 4px solid #6c757d; }
+
+        .recording-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .recording-timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+            font-family: monospace;
+        }
+
+        .recording-indicator {
+            width: 20px;
+            height: 20px;
+            background: #dc3545;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .silence-progress {
+            width: 200px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .silence-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .silence-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .comparison-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ Iqrah Audio</h1>
+            <p>Offline Recitation Analysis - Perfect Accuracy, No Rush!</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Select Ayah</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Listen to Reference</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Record Your Recitation</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Processing</div>
+            </div>
+            <div class="step" id="step5">
+                <div class="step-number">5</div>
+                <div class="step-label">View Results</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Select Ayah -->
+        <div class="card" id="selectCard">
+            <h2>📖 Select Ayah to Practice</h2>
+            <div class="verse-selector">
+                <select id="surahSelect">
+                    <option value="1">1 - Al-Fatihah</option>
+                    <option value="2">2 - Al-Baqarah</option>
+                    <option value="112">112 - Al-Ikhlas</option>
+                    <option value="113">113 - Al-Falaq</option>
+                    <option value="114">114 - An-Nas</option>
+                </select>
+                <select id="ayahSelect">
+                    <option value="1">Ayah 1</option>
+                    <option value="2">Ayah 2</option>
+                    <option value="3">Ayah 3</option>
+                    <option value="4">Ayah 4</option>
+                    <option value="5">Ayah 5</option>
+                    <option value="6">Ayah 6</option>
+                    <option value="7">Ayah 7</option>
+                </select>
+                <button onclick="loadAyah()">📖 Load Ayah</button>
+            </div>
+            <div class="arabic-text" id="ayahText">
+                <p style="text-align: center; color: #999; font-size: 0.5em; direction: ltr;">
+                    Select an ayah to begin
+                </p>
+            </div>
+        </div>
+
+        <!-- Step 2: Reference Audio -->
+        <div class="card hidden" id="referenceCard">
+            <h2>🎵 Reference Audio (Listen & Study)</h2>
+            <div class="controls">
+                <button onclick="playReference()">▶️ Play Reference</button>
+                <button onclick="pauseReference()">⏸️ Pause</button>
+                <button onclick="showPitchVisualization()">📊 Show Pitch Graph</button>
+            </div>
+            <audio id="refAudio" controls style="width: 100%; margin: 15px 0;"></audio>
+            <div id="refPitchPlot" class="plot-container hidden"></div>
+            <button onclick="readyToRecord()" style="background: #48bb78; font-size: 18px;">
+                ✅ I'm Ready to Record
+            </button>
+        </div>
+
+        <!-- Step 3: Recording -->
+        <div class="card hidden" id="recordCard">
+            <h2>🎤 Record Your Recitation</h2>
+            <div class="recording-controls">
+                <button id="recordBtn" onclick="startRecording()">🔴 Start Recording</button>
+                <button id="stopBtn" onclick="stopRecording()" disabled>⏹️ Stop Recording</button>
+                <div id="recordingIndicator" class="hidden">
+                    <div class="recording-indicator"></div>
+                </div>
+                <div id="recordingTimer" class="recording-timer hidden">00:00</div>
+                <div id="silenceDetector" class="hidden">
+                    <div class="silence-label">Silence Detected</div>
+                    <div class="silence-progress">
+                        <div id="silenceProgressBar" class="silence-progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+            <p style="color: #666; margin-top: 10px;">
+                💡 Recording will auto-stop after 2 seconds of silence
+            </p>
+            <audio id="userAudio" controls class="hidden" style="width: 100%; margin: 15px 0;"></audio>
+            <button id="analyzeBtn" onclick="analyzeRecording()" class="hidden" style="background: #48bb78; font-size: 18px;">
+                🔍 Analyze My Recitation
+            </button>
+        </div>
+
+        <!-- Step 4: Processing -->
+        <div class="card hidden" id="processingCard">
+            <h2>⚙️ Analyzing Your Recitation...</h2>
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Processing audio with CREPE pitch extraction...</p>
+                <p>Running DTW alignment...</p>
+                <p>Calculating comprehensive metrics...</p>
+                <p style="margin-top: 20px; color: #666;">This may take 10-15 seconds for perfect accuracy</p>
+            </div>
+        </div>
+
+        <!-- Step 5: Results -->
+        <div class="card hidden" id="resultsCard">
+            <h2>📊 Analysis Results</h2>
+
+            <!-- Overall Score -->
+            <div style="text-align: center; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; margin-bottom: 20px;">
+                <div style="font-size: 18px; margin-bottom: 10px;">Overall Score</div>
+                <div id="overallScore" style="font-size: 72px; font-weight: bold;">--</div>
+                <div style="font-size: 16px; opacity: 0.9;">out of 100</div>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Pitch Accuracy</div>
+                    <div class="metric-value" id="pitchAccuracy">--</div>
+                    <div class="metric-status" id="pitchStatus">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Tempo Ratio</div>
+                    <div class="metric-value" id="tempoRatio">--</div>
+                    <div class="metric-status" id="tempoStatus">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Voice Stability</div>
+                    <div class="metric-value" id="stabilityValue">--</div>
+                    <div class="metric-status" id="stabilityStatus">--</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Melody Complexity</div>
+                    <div class="metric-value" id="complexityValue">--</div>
+                    <div class="metric-status" id="complexityStatus">--</div>
+                </div>
+            </div>
+
+            <!-- Word-by-Word Scores -->
+            <h3 style="margin-top: 30px; color: #667eea;">Word-by-Word Analysis</h3>
+            <div id="wordScores" class="word-scores">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Pitch Comparison -->
+            <h3 style="margin-top: 30px; color: #667eea;">Pitch Comparison</h3>
+            <div class="comparison-container">
+                <div>
+                    <h4 style="text-align: center; color: #666;">Reference (Qari)</h4>
+                    <div id="refComparisonPlot" class="plot-container"></div>
+                </div>
+                <div>
+                    <h4 style="text-align: center; color: #666;">Your Recitation (with Phonemes)</h4>
+                    <div id="userComparisonPlot" class="plot-container"></div>
+
+                    <!-- Tajweed Legend -->
+                    <div id="tajweedLegend" class="hidden" style="margin-top: 10px; padding: 15px; background: #f7fafc; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="font-weight: bold; margin-bottom: 10px; color: #667eea;">🎨 Tajweed Rules Legend</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 14px;">
+                            <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 20px; height: 20px; background: rgba(255, 0, 0, 0.5); border-radius: 3px; margin-right: 8px;"></span>
+                                <span>Madd (elongation)</span>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 20px; height: 20px; background: rgba(0, 0, 255, 0.5); border-radius: 3px; margin-right: 8px;"></span>
+                                <span>Shadda (gemination)</span>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 20px; height: 20px; background: rgba(0, 255, 0, 0.5); border-radius: 3px; margin-right: 8px;"></span>
+                                <span>Ghunnah (nasalization)</span>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 20px; height: 20px; background: rgba(255, 165, 0, 0.5); border-radius: 3px; margin-right: 8px;"></span>
+                                <span>Qalqalah</span>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 20px; height: 20px; background: rgba(255, 255, 0, 0.5); border-radius: 3px; margin-right: 8px;"></span>
+                                <span>Laam Shamsiyah</span>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <span style="display: inline-block; width: 20px; height: 20px; background: rgba(128, 128, 128, 0.3); border-radius: 3px; margin-right: 8px;"></span>
+                                <span>Regular phoneme</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #718096;">
+                            💡 Hover over phoneme markers to see detailed information including Tajweed rules and duration
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="controls" style="margin-top: 30px;">
+                <button onclick="tryAgain()">🔄 Try Again</button>
+                <button onclick="selectNewAyah()">📖 Select Different Ayah</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/surahs.js"></script>
+    <script>
+        // Global state
+        let currentSurah = 1;
+        let currentAyah = 1;
+        let referenceData = null;
+        let audioRecorder = null;
+        let recordedChunks = [];
+        let recordingStartTime = null;
+        let recordingTimer = null;
+        let userAudioBlob = null;
+
+        // Step management
+        function activateStep(stepNum) {
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById(`step${i}`);
+                step.classList.remove('active', 'completed');
+                if (i < stepNum) step.classList.add('completed');
+                if (i === stepNum) step.classList.add('active');
+            }
+        }
+
+        function showCard(cardId) {
+            ['selectCard', 'referenceCard', 'recordCard', 'processingCard', 'resultsCard'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(cardId).classList.remove('hidden');
+        }
+
+        // Step 1: Load Ayah
+        async function loadAyah() {
+            currentSurah = parseInt(document.getElementById('surahSelect').value);
+            currentAyah = parseInt(document.getElementById('ayahSelect').value);
+
+            try {
+                const response = await fetch(`/api/reference/${currentSurah}/${currentAyah}`);
+                referenceData = await response.json();
+
+                // Display Arabic text
+                const ayahText = document.getElementById('ayahText');
+                ayahText.innerHTML = referenceData.words.reverse().join(' ');
+
+                // Load reference audio
+                document.getElementById('refAudio').src = referenceData.audio_url;
+
+                // Move to step 2
+                activateStep(2);
+                showCard('referenceCard');
+
+            } catch (error) {
+                console.error('Error loading ayah:', error);
+                alert('Failed to load ayah. Please try again.');
+            }
+        }
+
+        // Step 2: Reference Audio
+        function playReference() {
+            document.getElementById('refAudio').play();
+        }
+
+        function pauseReference() {
+            document.getElementById('refAudio').pause();
+        }
+
+        function showPitchVisualization() {
+            if (!referenceData || !referenceData.pitch_data) {
+                alert('Pitch data not loaded yet');
+                return;
+            }
+
+            const pitchData = referenceData.pitch_data;
+            const segments = referenceData.segments;
+
+            // Calculate pitch jumps (derivative)
+            const pitchJumps = [];
+            const jumpThreshold = 20; // Hz change threshold for marking
+
+            for (let i = 1; i < pitchData.f0_hz.length; i++) {
+                if (pitchData.voiced[i] && pitchData.voiced[i-1]) {
+                    const jump = Math.abs(pitchData.f0_hz[i] - pitchData.f0_hz[i-1]);
+                    if (jump > jumpThreshold) {
+                        pitchJumps.push({
+                            time: pitchData.time[i],
+                            f0: pitchData.f0_hz[i],
+                            jump: jump
+                        });
+                    }
+                }
+            }
+
+            // Main pitch contour trace
+            const pitchTrace = {
+                x: pitchData.time,
+                y: pitchData.f0_hz,
+                mode: 'lines',
+                name: 'Pitch Contour',
+                line: {
+                    color: '#667eea',
+                    width: 3
+                },
+                hovertemplate: '<b>Time:</b> %{x:.2f}s<br><b>Pitch:</b> %{y:.1f} Hz<extra></extra>'
+            };
+
+            // Pitch jump markers
+            const jumpTrace = {
+                x: pitchJumps.map(j => j.time),
+                y: pitchJumps.map(j => j.f0),
+                mode: 'markers',
+                name: 'Pitch Jumps (Tajweed)',
+                marker: {
+                    color: '#e74c3c',
+                    size: 10,
+                    symbol: 'diamond',
+                    line: {
+                        color: '#c0392b',
+                        width: 2
+                    }
+                },
+                hovertemplate: '<b>Jump:</b> %{text} Hz<extra></extra>',
+                text: pitchJumps.map(j => j.jump.toFixed(1))
+            };
+
+            // Playback position marker (starts hidden)
+            const playbackTrace = {
+                x: [0],
+                y: [pitchData.f0_hz[0]],
+                mode: 'markers',
+                name: 'Current Position',
+                marker: {
+                    color: '#2ecc71',
+                    size: 15,
+                    symbol: 'circle',
+                    line: {
+                        color: '#27ae60',
+                        width: 3
+                    }
+                },
+                hoverinfo: 'skip'
+            };
+
+            // Word boundary shapes
+            const shapes = [];
+            const annotations = [];
+
+            segments.forEach((seg, idx) => {
+                const startTime = seg.start_ms / 1000;
+                const endTime = seg.end_ms / 1000;
+
+                // Vertical line at word start
+                shapes.push({
+                    type: 'line',
+                    x0: startTime,
+                    x1: startTime,
+                    y0: 0,
+                    y1: 1,
+                    yref: 'paper',
+                    line: {
+                        color: 'rgba(102, 126, 234, 0.3)',
+                        width: 2,
+                        dash: 'dot'
+                    }
+                });
+
+                // Word label at bottom
+                annotations.push({
+                    x: (startTime + endTime) / 2,
+                    y: 0,
+                    yref: 'paper',
+                    text: seg.word,
+                    showarrow: false,
+                    font: {
+                        family: 'Traditional Arabic, Arabic Typesetting, serif',
+                        size: 16,
+                        color: '#667eea'
+                    },
+                    yanchor: 'top',
+                    xanchor: 'center'
+                });
+            });
+
+            const layout = {
+                title: {
+                    text: 'Reference Pitch with Word Alignment & Tajweed Markers',
+                    font: { size: 18 }
+                },
+                xaxis: {
+                    title: 'Time (seconds)',
+                    gridcolor: '#e0e0e0'
+                },
+                yaxis: {
+                    title: 'Pitch (Hz)',
+                    gridcolor: '#e0e0e0'
+                },
+                height: 500,
+                hovermode: 'closest',
+                shapes: shapes,
+                annotations: annotations,
+                margin: { b: 80 }, // More space for Arabic text
+                legend: {
+                    orientation: 'h',
+                    y: 1.1
+                }
+            };
+
+            Plotly.newPlot('refPitchPlot', [pitchTrace, jumpTrace, playbackTrace], layout);
+            document.getElementById('refPitchPlot').classList.remove('hidden');
+
+            // Setup real-time playback tracking
+            setupPlaybackTracking();
+        }
+
+        let playbackInterval = null;
+
+        function setupPlaybackTracking() {
+            const audio = document.getElementById('refAudio');
+
+            // Update playback marker when audio plays
+            audio.addEventListener('play', () => {
+                playbackInterval = setInterval(() => {
+                    updatePlaybackMarker(audio.currentTime);
+                }, 50); // Update every 50ms
+            });
+
+            audio.addEventListener('pause', () => {
+                if (playbackInterval) {
+                    clearInterval(playbackInterval);
+                    playbackInterval = null;
+                }
+            });
+
+            audio.addEventListener('ended', () => {
+                if (playbackInterval) {
+                    clearInterval(playbackInterval);
+                    playbackInterval = null;
+                }
+            });
+
+            audio.addEventListener('seeked', () => {
+                updatePlaybackMarker(audio.currentTime);
+            });
+        }
+
+        function updatePlaybackMarker(currentTime) {
+            if (!referenceData || !referenceData.pitch_data) return;
+
+            const pitchData = referenceData.pitch_data;
+
+            // Find closest frame to current time
+            let closestIdx = 0;
+            let minDiff = Math.abs(pitchData.time[0] - currentTime);
+
+            for (let i = 1; i < pitchData.time.length; i++) {
+                const diff = Math.abs(pitchData.time[i] - currentTime);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIdx = i;
+                } else {
+                    break; // Times are sequential, so we can stop
+                }
+            }
+
+            // Update playback marker
+            Plotly.restyle('refPitchPlot', {
+                x: [[pitchData.time[closestIdx]]],
+                y: [[pitchData.f0_hz[closestIdx]]]
+            }, 2); // Index 2 is the playback marker trace
+        }
+
+        function readyToRecord() {
+            activateStep(3);
+            showCard('recordCard');
+        }
+
+        // Step 3: Recording with Silence Detection
+        async function startRecording() {
+            try {
+                // Create recorder with silence detection
+                audioRecorder = new AudioRecorderWithSilenceDetection({
+                    silenceThresholdDB: -40,
+                    silenceDurationMS: 2000,
+                    frameDurationMS: 100,
+                    onSilenceProgress: (progress) => {
+                        // Update silence progress bar
+                        const progressBar = document.getElementById('silenceProgressBar');
+                        progressBar.style.width = `${progress * 100}%`;
+
+                        // Show silence detector when progress > 0
+                        const detector = document.getElementById('silenceDetector');
+                        if (progress > 0) {
+                            detector.classList.remove('hidden');
+                        } else {
+                            detector.classList.add('hidden');
+                        }
+                    },
+                    onSilenceDetected: () => {
+                        console.log('Silence detected - auto-stopping');
+                    },
+                    onRecordingComplete: (blob) => {
+                        userAudioBlob = blob;
+                        const audioUrl = URL.createObjectURL(blob);
+                        const userAudio = document.getElementById('userAudio');
+                        userAudio.src = audioUrl;
+                        userAudio.classList.remove('hidden');
+                        document.getElementById('analyzeBtn').classList.remove('hidden');
+
+                        // Reset UI
+                        document.getElementById('recordBtn').disabled = false;
+                        document.getElementById('stopBtn').disabled = true;
+                        document.getElementById('recordingIndicator').classList.add('hidden');
+                        document.getElementById('silenceDetector').classList.add('hidden');
+                        clearInterval(recordingTimer);
+                    },
+                    onError: (error) => {
+                        console.error('Recording error:', error);
+                        alert('Failed to access microphone. Please check permissions.');
+                    }
+                });
+
+                // Start recording
+                await audioRecorder.start();
+
+                // Update UI
+                document.getElementById('recordBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('recordingIndicator').classList.remove('hidden');
+                document.getElementById('recordingTimer').classList.remove('hidden');
+
+                // Start timer
+                recordingStartTime = Date.now();
+                recordingTimer = setInterval(updateRecordingTimer, 100);
+
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('Failed to access microphone. Please check permissions.');
+            }
+        }
+
+        function updateRecordingTimer() {
+            const elapsed = (Date.now() - recordingStartTime) / 1000;
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = Math.floor(elapsed % 60);
+            document.getElementById('recordingTimer').textContent =
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function stopRecording() {
+            if (audioRecorder && audioRecorder.isCurrentlyRecording()) {
+                audioRecorder.stop();
+            }
+        }
+
+        // Step 4: Analysis
+        async function analyzeRecording() {
+            if (!userAudioBlob) {
+                alert('No recording found. Please record first.');
+                return;
+            }
+
+            activateStep(4);
+            showCard('processingCard');
+
+            try {
+                const formData = new FormData();
+                formData.append('audio', userAudioBlob, 'recording.webm');
+
+                const response = await fetch(`/api/analyze/${currentSurah}/${currentAyah}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const results = await response.json();
+
+                displayResults(results);
+
+                activateStep(5);
+                showCard('resultsCard');
+
+            } catch (error) {
+                console.error('Error analyzing recording:', error);
+                alert('Analysis failed. Please try again.');
+                activateStep(3);
+                showCard('recordCard');
+            }
+        }
+
+        // Step 5: Display Results
+        function displayResults(results) {
+            // Overall score
+            document.getElementById('overallScore').textContent = results.metrics.overall_score;
+
+            // Metrics
+            const pitchAcc = results.metrics.pitch_accuracy;
+            document.getElementById('pitchAccuracy').textContent =
+                `${pitchAcc.good_words}/${pitchAcc.good_words + pitchAcc.warning_words + pitchAcc.error_words}`;
+            document.getElementById('pitchStatus').textContent =
+                `${pitchAcc.mean_error.toFixed(1)} cents avg error`;
+            document.getElementById('pitchStatus').className =
+                pitchAcc.mean_error < 30 ? 'metric-status good' :
+                pitchAcc.mean_error < 60 ? 'metric-status warning' : 'metric-status error';
+
+            document.getElementById('tempoRatio').textContent =
+                `${results.metrics.tempo.mean_ratio.toFixed(2)}x`;
+            document.getElementById('tempoStatus').textContent =
+                results.metrics.tempo.is_stable ? 'Stable' : 'Unstable';
+            document.getElementById('tempoStatus').className =
+                results.metrics.tempo.is_stable ? 'metric-status good' : 'metric-status warning';
+
+            document.getElementById('stabilityValue').textContent =
+                `${(results.metrics.stability.stability_score * 100).toFixed(0)}%`;
+            document.getElementById('stabilityStatus').textContent =
+                results.metrics.stability.status;
+            document.getElementById('stabilityStatus').className =
+                results.metrics.stability.status === 'stable' ? 'metric-status good' : 'metric-status warning';
+
+            document.getElementById('complexityValue').textContent =
+                `${results.metrics.complexity.num_peaks} peaks`;
+            document.getElementById('complexityStatus').textContent =
+                results.metrics.complexity.status;
+            document.getElementById('complexityStatus').className =
+                results.metrics.complexity.status === 'simple' ? 'metric-status good' : 'metric-status warning';
+
+            // Word scores
+            const wordScoresDiv = document.getElementById('wordScores');
+            wordScoresDiv.innerHTML = '';
+            results.word_scores.forEach((score, idx) => {
+                const word = results.metadata.words[results.metadata.words.length - 1 - idx];
+                const div = document.createElement('div');
+                div.className = `word-score ${score.status}`;
+                div.textContent = word;
+                div.title = `${score.error_cents.toFixed(1)} cents error`;
+                wordScoresDiv.appendChild(div);
+            });
+
+            // Pitch comparison plots
+            plotPitchComparison(results);
+        }
+
+        function getTajweedColor(tajweed_rule) {
+            if (!tajweed_rule || tajweed_rule === 'none') return 'rgba(128, 128, 128, 0.3)';
+            if (tajweed_rule.includes('madda')) return 'rgba(255, 0, 0, 0.5)';  // Red
+            if (tajweed_rule.includes('shadda')) return 'rgba(0, 0, 255, 0.5)'; // Blue
+            if (tajweed_rule === 'ghunnah') return 'rgba(0, 255, 0, 0.5)';      // Green
+            if (tajweed_rule === 'qalqalah') return 'rgba(255, 165, 0, 0.5)';   // Orange
+            if (tajweed_rule === 'laam_shamsiyah') return 'rgba(255, 255, 0, 0.5)'; // Yellow
+            if (tajweed_rule === 'ham_wasl') return 'rgba(200, 200, 200, 0.5)'; // Light gray
+            return 'rgba(128, 128, 128, 0.3)'; // Default gray
+        }
+
+        function getTajweedLabel(tajweed_rule) {
+            if (!tajweed_rule || tajweed_rule === 'none') return '';
+            if (tajweed_rule === 'madda_normal') return 'Madd (2×)';
+            if (tajweed_rule === 'madda_permissible') return 'Madd Permissible (2.5×)';
+            if (tajweed_rule === 'madda_obligatory') return 'Madd Obligatory (5×)';
+            if (tajweed_rule === 'ghunnah') return 'Ghunnah';
+            if (tajweed_rule.includes('shadda')) return 'Shadda';
+            if (tajweed_rule === 'qalqalah') return 'Qalqalah';
+            if (tajweed_rule === 'laam_shamsiyah') return 'Laam Shamsiyah';
+            if (tajweed_rule === 'ham_wasl') return 'Ham Wasl';
+            return tajweed_rule;
+        }
+
+        function plotPitchComparison(results) {
+            // Reference plot WITH PHONEMES (MOST IMPORTANT!)
+            const refTrace = {
+                x: results.ref_pitch.time,
+                y: results.ref_pitch.f0_hz,
+                mode: 'lines',
+                name: 'Reference',
+                line: { color: '#667eea', width: 2 }
+            };
+
+            const refTraces = [refTrace];
+            const refShapes = [];
+            const refAnnotations = [];
+
+            // Add phoneme segments to REFERENCE (Qari) graph - CRITICAL FOR LEARNING!
+            if (results.ref_phoneme_segments && results.ref_phoneme_segments.length > 0) {
+                console.log(`Adding ${results.ref_phoneme_segments.length} phonemes to REFERENCE graph`);
+
+                // Show Tajweed legend
+                document.getElementById('tajweedLegend').classList.remove('hidden');
+
+                // Create phoneme background regions for reference
+                results.ref_phoneme_segments.forEach((phoneme, idx) => {
+                    const color = getTajweedColor(phoneme.tajweed_rule);
+
+                    refShapes.push({
+                        type: 'rect',
+                        x0: phoneme.start,
+                        x1: phoneme.end,
+                        y0: 0,
+                        y1: 1,
+                        yref: 'paper',
+                        fillcolor: color,
+                        opacity: 0.2,
+                        line: { width: 0 },
+                        layer: 'below'
+                    });
+
+                    // Add phoneme labels (every other phoneme)
+                    if (idx % 2 === 0 && phoneme.mean_pitch > 0) {
+                        refAnnotations.push({
+                            x: (phoneme.start + phoneme.end) / 2,
+                            y: phoneme.mean_pitch,
+                            text: phoneme.phoneme,
+                            showarrow: false,
+                            font: {
+                                family: 'Traditional Arabic, Arial',
+                                size: 10,
+                                color: '#333'
+                            },
+                            bgcolor: 'rgba(255, 255, 255, 0.7)',
+                            borderpad: 2
+                        });
+                    }
+                });
+
+                // Create phoneme trace for hover information
+                const refPhonemeTrace = {
+                    x: results.ref_phoneme_segments.map(p => (p.start + p.end) / 2),
+                    y: results.ref_phoneme_segments.map(p => p.mean_pitch || 0),
+                    mode: 'markers',
+                    name: 'Phonemes',
+                    marker: {
+                        size: 8,
+                        color: results.ref_phoneme_segments.map(p => getTajweedColor(p.tajweed_rule)),
+                        opacity: 0.6,
+                        line: { width: 1, color: '#fff' }
+                    },
+                    hovertemplate: '<b>%{text}</b><br>' +
+                                   'Time: %{x:.3f}s<br>' +
+                                   'Pitch: %{y:.1f} Hz<br>' +
+                                   'Duration: %{customdata[0]:.3f}s<br>' +
+                                   '%{customdata[1]}<extra></extra>',
+                    text: results.ref_phoneme_segments.map(p => p.phoneme),
+                    customdata: results.ref_phoneme_segments.map(p => [
+                        p.duration,
+                        p.tajweed_rule ? getTajweedLabel(p.tajweed_rule) : 'No Tajweed rule'
+                    ])
+                };
+
+                refTraces.push(refPhonemeTrace);
+            }
+
+            Plotly.newPlot('refComparisonPlot', refTraces, {
+                xaxis: { title: 'Time (s)' },
+                yaxis: { title: 'Pitch (Hz)' },
+                height: 400,
+                margin: { l: 50, r: 20, t: 20, b: 40 },
+                shapes: refShapes,
+                annotations: refAnnotations,
+                hovermode: 'closest'
+            });
+
+            // User plot with phoneme segmentation
+            const userTrace = {
+                x: results.user_pitch.time,
+                y: results.user_pitch.f0_hz,
+                mode: 'lines',
+                name: 'Your Recitation',
+                line: { color: '#48bb78', width: 2 }
+            };
+
+            const traces = [userTrace];
+            const shapes = [];
+            const annotations = [];
+
+            // Add phoneme segments to USER graph if available
+            if (results.user_phoneme_segments && results.user_phoneme_segments.length > 0) {
+                console.log(`Adding ${results.user_phoneme_segments.length} phonemes to USER graph`);
+
+                // Show Tajweed legend
+                document.getElementById('tajweedLegend').classList.remove('hidden');
+
+                // Create phoneme background regions
+                results.user_phoneme_segments.forEach((phoneme, idx) => {
+                    const color = getTajweedColor(phoneme.tajweed_rule);
+
+                    shapes.push({
+                        type: 'rect',
+                        x0: phoneme.start,
+                        x1: phoneme.end,
+                        y0: 0,
+                        y1: 1,
+                        yref: 'paper',
+                        fillcolor: color,
+                        opacity: 0.2,
+                        line: { width: 0 },
+                        layer: 'below'
+                    });
+
+                    // Add phoneme labels (show every other phoneme to avoid crowding)
+                    if (idx % 2 === 0 && phoneme.mean_pitch > 0) {
+                        annotations.push({
+                            x: (phoneme.start + phoneme.end) / 2,
+                            y: phoneme.mean_pitch,
+                            text: phoneme.phoneme,
+                            showarrow: false,
+                            font: {
+                                family: 'Traditional Arabic, Arial',
+                                size: 10,
+                                color: '#333'
+                            },
+                            bgcolor: 'rgba(255, 255, 255, 0.7)',
+                            borderpad: 2
+                        });
+                    }
+                });
+
+                // Create phoneme trace for hover information
+                const phonemeTrace = {
+                    x: results.user_phoneme_segments.map(p => (p.start + p.end) / 2),
+                    y: results.user_phoneme_segments.map(p => p.mean_pitch || 0),
+                    mode: 'markers',
+                    name: 'Phonemes',
+                    marker: {
+                        size: 8,
+                        color: results.user_phoneme_segments.map(p => getTajweedColor(p.tajweed_rule)),
+                        opacity: 0.6,
+                        line: { width: 1, color: '#fff' }
+                    },
+                    hovertemplate: '<b>%{text}</b><br>' +
+                                   'Time: %{x:.3f}s<br>' +
+                                   'Pitch: %{y:.1f} Hz<br>' +
+                                   'Duration: %{customdata[0]:.3f}s<br>' +
+                                   '%{customdata[1]}<extra></extra>',
+                    text: results.user_phoneme_segments.map(p => p.phoneme),
+                    customdata: results.user_phoneme_segments.map(p => [
+                        p.duration,
+                        p.tajweed_rule ? getTajweedLabel(p.tajweed_rule) : 'No Tajweed rule'
+                    ])
+                };
+
+                traces.push(phonemeTrace);
+            }
+
+            const layout = {
+                xaxis: { title: 'Time (s)' },
+                yaxis: { title: 'Pitch (Hz)' },
+                height: 400,
+                margin: { l: 50, r: 20, t: 20, b: 40 },
+                shapes: shapes,
+                annotations: annotations,
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('userComparisonPlot', traces, layout);
+        }
+
+        function tryAgain() {
+            activateStep(3);
+            showCard('recordCard');
+            audioRecorder = null;
+            userAudioBlob = null;
+            document.getElementById('userAudio').classList.add('hidden');
+            document.getElementById('analyzeBtn').classList.add('hidden');
+            document.getElementById('silenceProgressBar').style.width = '0%';
+        }
+
+        function selectNewAyah() {
+            activateStep(1);
+            showCard('selectCard');
+            referenceData = null;
+            audioRecorder = null;
+            userAudioBlob = null;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Iqrah Audio - Offline Analysis Mode loaded');
+        });
+    </script>
+</body>
+</html>
