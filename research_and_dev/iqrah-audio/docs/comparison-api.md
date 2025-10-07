@@ -24,7 +24,9 @@ print(f"Rhythm: {result['rhythm']['score']}/100")
 print(f"Melody: {result['melody']['score']}/100")
 ```
 
-## HTTP API Endpoint
+## HTTP API Endpoints
+
+### 1. Basic Comparison
 
 **Endpoint**: `POST /api/compare`
 
@@ -95,6 +97,74 @@ curl -X POST "http://localhost:8000/api/compare" \
   "reference_analysis": {...}
 }
 ```
+
+### 2. Comparison with Visualizations
+
+**Endpoint**: `POST /api/compare/visualize`
+
+**Parameters**: Same as `/api/compare`
+
+**Example Request**:
+```bash
+curl -X POST "http://localhost:8004/api/compare/visualize" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_surah": 1,
+    "student_ayah": 1,
+    "reference_surah": 1,
+    "reference_ayah": 2,
+    "pitch_extractor": "swiftf0"
+  }'
+```
+
+**Response Structure**:
+```json
+{
+  "success": true,
+  "comparison": {...},
+  "visualizations": {
+    "dtw_path": "data:image/png;base64,iVBORw0KGgoA...",
+    "pitch_comparison": "data:image/png;base64,iVBORw0KGgoA...",
+    "rhythm_comparison": "data:image/png;base64,iVBORw0KGgoA...",
+    "student_spectrogram": "data:image/png;base64,iVBORw0KGgoA...",
+    "reference_spectrogram": "data:image/png;base64,iVBORw0KGgoA..."
+  },
+  "student_analysis": {...},
+  "reference_analysis": {...}
+}
+```
+
+**Visualization Descriptions**:
+
+- **dtw_path**: DTW alignment path overlaid on cost matrix
+  - Shows how student timing maps to reference timing
+  - Color-coded distance matrix with red path
+  - ~160 KB per image
+
+- **pitch_comparison**: Two-panel pitch contour comparison
+  - Top: Pitch contours in semitones (with key shift)
+  - Bottom: ΔF0 melodic contour (key-invariant)
+  - Green alignment markers between panels
+  - ~160 KB per image
+
+- **rhythm_comparison**: Three-panel rhythm analysis
+  - Top: Student onset strength
+  - Middle: Reference onset strength
+  - Bottom: Aligned comparison showing timing differences
+  - ~160 KB per image
+
+- **student_spectrogram**: Student spectrogram with annotations
+  - Frequency spectrogram (0-1000 Hz)
+  - Phoneme boundaries (cyan lines)
+  - Phoneme labels (black boxes)
+  - Pitch overlay (lime green)
+  - ~270 KB per image
+
+- **reference_spectrogram**: Reference spectrogram with annotations
+  - Same format as student spectrogram
+  - ~295 KB per image
+
+**Total Payload**: ~1.2 MB for all 5 visualizations (base64-encoded)
 
 ## Component Descriptions
 
