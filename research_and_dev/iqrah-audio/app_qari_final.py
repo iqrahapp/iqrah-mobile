@@ -44,6 +44,12 @@ async def home():
     return FileResponse("static/qari_final.html")
 
 
+@app.get("/comparison", response_class=HTMLResponse)
+async def comparison_page():
+    """Serve the comparison visualization page."""
+    return FileResponse("static/comparison_visualize.html")
+
+
 @app.get("/api/analyze/{surah}/{ayah}")
 async def analyze_qari(surah: int, ayah: int, pitch_extractor: str = "swiftf0"):
     """

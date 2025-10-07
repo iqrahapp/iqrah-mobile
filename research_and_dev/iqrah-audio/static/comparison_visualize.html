@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quranic Recitation Comparison - Visualizations</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Roboto:wght@300;400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .nav-links a {
+            display: inline-block;
+            padding: 10px 25px;
+            margin: 0 10px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .nav-links a.active {
+            background: #764ba2;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .form-group h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .compare-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .compare-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .compare-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .score-card h2 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .score-card p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .component-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .component-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+        }
+
+        .component-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .component-card .score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .component-card .notes {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .visualizations {
+            margin-top: 40px;
+        }
+
+        .viz-section {
+            margin-bottom: 40px;
+        }
+
+        .viz-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .viz-section img {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .viz-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .feedback {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .feedback h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .feedback ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feedback li {
+            padding: 8px 0;
+            color: #856404;
+        }
+
+        .feedback li:before {
+            content: "• ";
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Quranic Recitation Comparison</h1>
+        <p class="subtitle">Compare two recitations with detailed visualizations</p>
+
+        <div class="nav-links">
+            <a href="/">📊 Analysis</a>
+            <a href="/comparison" class="active">📈 Comparison</a>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <h3>👤 Student Recitation</h3>
+                <div class="input-group">
+                    <label>Surah Number (1-114)</label>
+                    <input type="number" id="studentSurah" min="1" max="114" value="1">
+                </div>
+                <div class="input-group">
+                    <label>Ayah Number</label>
+                    <input type="number" id="studentAyah" min="1" value="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <h3>📚 Reference Recitation</h3>
+                <div class="input-group">
+                    <label>Surah Number (1-114)</label>
+                    <input type="number" id="referenceSurah" min="1" max="114" value="1">
+                </div>
+                <div class="input-group">
+                    <label>Ayah Number</label>
+                    <input type="number" id="referenceAyah" min="1" value="2">
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group" style="max-width: 400px; margin: 0 auto 20px;">
+            <label>Pitch Extractor</label>
+            <select id="pitchExtractor">
+                <option value="swiftf0" selected>SwiftF0 (Fast)</option>
+                <option value="crepe">CREPE (Accurate)</option>
+            </select>
+        </div>
+
+        <button class="compare-btn" onclick="compareRecitations()">
+            🔍 Compare Recitations
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing and generating visualizations...</p>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">This may take 30-60 seconds</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="score-card">
+                <h2 id="overallScore">-</h2>
+                <p>Overall Score</p>
+                <p style="font-size: 0.9em; margin-top: 10px;">Confidence: <span id="confidence">-</span></p>
+            </div>
+
+            <div class="component-scores">
+                <div class="component-card">
+                    <h3>🎵 Rhythm</h3>
+                    <div class="score" id="rhythmScore">-</div>
+                    <div class="notes" id="rhythmNotes">-</div>
+                </div>
+
+                <div class="component-card">
+                    <h3>🎼 Melody</h3>
+                    <div class="score" id="melodyScore">-</div>
+                    <div class="notes" id="melodyNotes">-</div>
+                </div>
+
+                <div class="component-card">
+                    <h3>⏱️ Duration (Madd)</h3>
+                    <div class="score" id="durationScore">-</div>
+                    <div class="notes" id="durationNotes">-</div>
+                </div>
+            </div>
+
+            <div class="visualizations">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 30px;">📊 Detailed Visualizations</h2>
+
+                <div class="viz-section">
+                    <h3>🎯 DTW Alignment Path</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Shows how the timing of student recitation maps to the reference</p>
+                    <img id="vizDtwPath" alt="DTW Path">
+                </div>
+
+                <div class="viz-section">
+                    <h3>🎵 Pitch Comparison</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Pitch contours (top) and melodic contour ΔF0 (bottom)</p>
+                    <img id="vizPitchComparison" alt="Pitch Comparison">
+                </div>
+
+                <div class="viz-section">
+                    <h3>🥁 Rhythm Comparison</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Onset strength analysis with tempo alignment</p>
+                    <img id="vizRhythmComparison" alt="Rhythm Comparison">
+                </div>
+
+                <div class="viz-grid">
+                    <div class="viz-section">
+                        <h3>👤 Student Spectrogram</h3>
+                        <img id="vizStudentSpectrogram" alt="Student Spectrogram">
+                    </div>
+                    <div class="viz-section">
+                        <h3>📚 Reference Spectrogram</h3>
+                        <img id="vizReferenceSpectrogram" alt="Reference Spectrogram">
+                    </div>
+                </div>
+            </div>
+
+            <div class="feedback">
+                <h3>💡 Feedback & Suggestions</h3>
+                <ul id="feedbackList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function compareRecitations() {
+            const studentSurah = document.getElementById('studentSurah').value;
+            const studentAyah = document.getElementById('studentAyah').value;
+            const referenceSurah = document.getElementById('referenceSurah').value;
+            const referenceAyah = document.getElementById('referenceAyah').value;
+            const pitchExtractor = document.getElementById('pitchExtractor').value;
+
+            // Validation
+            if (!studentSurah || !studentAyah || !referenceSurah || !referenceAyah) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.querySelector('.compare-btn').disabled = true;
+
+            try {
+                const response = await fetch('/api/compare/visualize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        student_surah: parseInt(studentSurah),
+                        student_ayah: parseInt(studentAyah),
+                        reference_surah: parseInt(referenceSurah),
+                        reference_ayah: parseInt(referenceAyah),
+                        pitch_extractor: pitchExtractor
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to compare recitations: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.querySelector('.compare-btn').disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            const comparison = data.comparison;
+            const visualizations = data.visualizations;
+
+            // Overall score
+            document.getElementById('overallScore').textContent = comparison.overall.toFixed(1) + '/100';
+            document.getElementById('confidence').textContent = (comparison.confidence * 100).toFixed(0) + '%';
+
+            // Component scores
+            document.getElementById('rhythmScore').textContent = comparison.rhythm.score.toFixed(1) + '/100';
+            document.getElementById('rhythmNotes').textContent = comparison.rhythm.notes.join('. ');
+
+            document.getElementById('melodyScore').textContent = comparison.melody.score.toFixed(1) + '/100';
+            document.getElementById('melodyNotes').textContent = comparison.melody.notes.join('. ');
+
+            document.getElementById('durationScore').textContent = comparison.durations.overall.toFixed(1) + '/100';
+            document.getElementById('durationNotes').textContent = comparison.durations.notes.join('. ');
+
+            // Visualizations
+            document.getElementById('vizDtwPath').src = visualizations.dtw_path;
+            document.getElementById('vizPitchComparison').src = visualizations.pitch_comparison;
+            document.getElementById('vizRhythmComparison').src = visualizations.rhythm_comparison;
+            document.getElementById('vizStudentSpectrogram').src = visualizations.student_spectrogram;
+            document.getElementById('vizReferenceSpectrogram').src = visualizations.reference_spectrogram;
+
+            // Feedback
+            const feedbackList = document.getElementById('feedbackList');
+            feedbackList.innerHTML = '';
+            comparison.feedback.all_notes.forEach(note => {
+                const li = document.createElement('li');
+                li.textContent = note;
+                feedbackList.appendChild(li);
+            });
+
+            // Show results
+            document.getElementById('results').classList.add('active');
+
+            // Scroll to results
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
