@@ -642,38 +642,89 @@
             let pitchTrace;
 
             if (viewMode === 'bars') {
-                // Bar view: Show horizontal bars for each phoneme (easier to follow)
+                // Bar view: Detect stable pitch segments and draw horizontal lines
                 const voicedPhonemes = data.phonemes.filter(p => p.mean_pitch > 0);
+                
+                // Segment stable notes using simple anomaly detection
+                const segments = [];
+                let currentSegment = null;
+                const PITCH_TOLERANCE = 15; // Hz - notes within this range are "same"
+                
+                for (let i = 0; i < voicedPhonemes.length; i++) {
+                    const phoneme = voicedPhonemes[i];
+                    
+                    if (!currentSegment) {
+                        currentSegment = {
+                            start: phoneme.start,
+                            end: phoneme.end,
+                            pitches: [phoneme.mean_pitch],
+                            phonemes: [phoneme.phoneme],
+                            tajweed: phoneme.tajweed_rule
+                        };
+                    } else {
+                        const avgPitch = currentSegment.pitches.reduce((a,b) => a+b) / currentSegment.pitches.length;
+                        const pitchDiff = Math.abs(phoneme.mean_pitch - avgPitch);
+                        const timeDiff = phoneme.start - currentSegment.end;
+                        
+                        // Continue segment if pitch is similar and no big time gap
+                        if (pitchDiff < PITCH_TOLERANCE && timeDiff < 0.3) {
+                            currentSegment.end = phoneme.end;
+                            currentSegment.pitches.push(phoneme.mean_pitch);
+                            currentSegment.phonemes.push(phoneme.phoneme);
+                        } else {
+                            // Finalize current segment
+                            segments.push(currentSegment);
+                            currentSegment = {
+                                start: phoneme.start,
+                                end: phoneme.end,
+                                pitches: [phoneme.mean_pitch],
+                                phonemes: [phoneme.phoneme],
+                                tajweed: phoneme.tajweed_rule
+                            };
+                        }
+                    }
+                }
+                if (currentSegment) segments.push(currentSegment);
+                
+                // Create horizontal line segments
+                const xData = [];
+                const yData = [];
+                const colors = [];
+                const texts = [];
+                
+                segments.forEach(seg => {
+                    const avgPitch = seg.pitches.reduce((a,b) => a+b) / seg.pitches.length;
+                    const phonemeText = seg.phonemes.join('-');
+                    
+                    // Add line segment (two points)
+                    xData.push(seg.start, seg.end, null);  // null creates line break
+                    yData.push(avgPitch, avgPitch, null);
+                    
+                    const color = seg.tajweed === 'madd' ? '#FFC87C' :
+                                 seg.tajweed === 'ghunnah' ? '#64C8FF' :
+                                 seg.tajweed === 'shadda' ? '#FFB6C1' : '#764ba2';
+                    colors.push(color, color, null);
+                    texts.push(phonemeText, phonemeText, '');
+                });
 
                 pitchTrace = {
-                    x: voicedPhonemes.map(p => (p.start + p.end) / 2),
-                    y: voicedPhonemes.map(p => p.mean_pitch),
-                    error_y: {
-                        type: 'data',
-                        symmetric: false,
-                        array: voicedPhonemes.map(p => p.max_pitch - p.mean_pitch),
-                        arrayminus: voicedPhonemes.map(p => p.mean_pitch - p.min_pitch),
-                        color: 'rgba(102, 126, 234, 0.3)',
-                        thickness: 3
-                    },
-                    mode: 'markers',
+                    x: xData,
+                    y: yData,
+                    mode: 'lines+markers',
                     name: 'Pitch (Notes)',
-                    marker: {
-                        size: 16,
-                        color: voicedPhonemes.map(p => {
-                            const rule = p.tajweed_rule;
-                            if (rule === 'madd') return '#FFC87C';
-                            if (rule === 'ghunnah') return '#64C8FF';
-                            if (rule === 'shadda') return '#FFB6C1';
-                            return '#764ba2';
-                        }),
-                        line: { width: 2, color: 'white' }
+                    line: { 
+                        color: '#667eea',
+                        width: 6
                     },
-                    hovertemplate: '<b>Phoneme: %{text}</b><br>' +
-                                   'Time: %{x:.3f}s<br>' +
+                    marker: {
+                        size: 10,
+                        color: '#667eea',
+                        symbol: 'circle'
+                    },
+                    text: texts,
+                    hovertemplate: '<b>%{text}</b><br>' +
                                    'Pitch: %{y:.1f} Hz<br>' +
-                                   '<extra></extra>',
-                    text: voicedPhonemes.map(p => p.phoneme)
+                                   '<extra></extra>'
                 };
             } else {
                 // Line view: Traditional pitch contour
@@ -878,13 +929,19 @@
                 const progress = currentTime / duration;
                 const xPos = plotBounds.left + plotBounds.width * (1 - progress);  // RTL
 
-                // Get pitch for dot position
+                // Get pitch for dot position - use Plotly's Y-axis scale
                 const pitch = interpolatePitch(currentTime, currentData.pitch);
-                const pitchData = currentData.pitch.f0_hz.filter(f => f > 0);
-                const minPitch = Math.min(...pitchData);
-                const maxPitch = Math.max(...pitchData);
-                const pitchRange = maxPitch - minPitch;
-                const pitchProgress = pitchRange > 0 ? (pitch - minPitch) / pitchRange : 0.5;
+                
+                // Get Y-axis range from Plotly layout
+                const plotlyDiv = document.getElementById('pitchPlot');
+                const layout = plotlyDiv.layout;
+                const yaxis = layout.yaxis;
+                const yMin = yaxis.range ? yaxis.range[0] : 50;
+                const yMax = yaxis.range ? yaxis.range[1] : 400;
+                const yRange = yMax - yMin;
+                
+                // Map pitch to Y position
+                const pitchProgress = yRange > 0 ? (pitch - yMin) / yRange : 0.5;
                 const yPos = plotBounds.top + plotBounds.height * (1 - pitchProgress);
 
                 // Update DOM - MUCH faster than Plotly!
