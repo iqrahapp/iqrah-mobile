@@ -39,19 +39,29 @@ See [UI_GUIDE.md](UI_GUIDE.md) and [DEMO_GUIDE.md](DEMO_GUIDE.md) for detailed u
 
 ## Features
 
-### ✅ Path A: SOTA Accuracy (Complete)
-- **Advanced Pitch Tracking**: CREPE (neural) + YIN fallback
-- **Noise Reduction**: Spectral gating for robust analysis
-- **DTW Alignment**: Fast C-based alignment with Sakoe-Chiba band
-- **Comprehensive Scoring**:
-  - Overall score: 86.1/100 (weighted combination)
-  - Alignment score (DTW similarity)
-  - On-note percentage (pitch accuracy)
-  - Pitch stability (jitter measurement)
-  - Tempo matching
+### ✅ Phase 1: Phoneme-Level Analysis (Complete)
+- **Wav2Vec2 CTC Alignment**: Forced phoneme alignment with word boundaries
+- **Advanced Pitch Tracking**: SwiftF0 (ONNX) + CREPE fallback
+- **Comprehensive Statistics**:
+  - Tempo (syllables/second)
+  - Mean pitch (Hz)
+  - Phoneme duration (mean count)
+  - Detailed per-phoneme timing
+- **Tajweed Integration**: 83,668 words with Tajweed rules
 - **Mobile-Ready Format**: CBOR + zstd compression
 
-### ✅ Path B: Real-Time Streaming (Complete)
+### ✅ Phase 2: Comparison Engine (Complete)
+- **Rhythm Analysis**: Soft-DTW divergence for tempo-invariant comparison (0-100)
+- **Melody Analysis**: ΔF0 contour matching for key-invariant melody (0-100)
+- **Duration Analysis**: Tempo-adaptive Madd (elongation) scoring with Laplace (0-100)
+- **Overall Score**: Weighted combination (Rhythm 40%, Melody 25%, Duration 35%)
+- **REST API**: `/api/compare` endpoint for HTTP comparison
+- **Comprehensive Feedback**: Detailed notes and improvement suggestions
+- **Test Coverage**:
+  - Self-comparison: 100/100 ✅
+  - Different ayahs: 40-45/100 ✅
+
+### ✅ Real-Time Streaming (Complete)
 - **Real-Time Pipeline**: <10ms latency per chunk
 - **Incremental Pitch Extraction**: Optimized vectorized YIN (3-5ms)
 - **Online DTW**: Streaming alignment with drift correction (1-2ms)
@@ -66,11 +76,13 @@ See [UI_GUIDE.md](UI_GUIDE.md) and [DEMO_GUIDE.md](DEMO_GUIDE.md) for detailed u
 - **Performance Dashboard**: Latency, confidence, frame tracking
 - **Production Ready**: Docker, Nginx, multi-worker support
 
-### 📋 Future Enhancements
-- CTC forced alignment for phoneme-level analysis
-- GOP (Goodness of Pronunciation) scores
-- Tajweed rule detection integration
-- Multi-speaker support
+### 📋 Future Enhancements (Phase 2.5+)
+- SSL-GOP pronunciation scoring
+- RMVPE pitch extraction (more robust than CREPE)
+- HPCP/chroma fallback for melody
+- FAISS ANN for multi-reference comparison
+- DTW path visualization
+- Real-time streaming comparison
 - Progress tracking across sessions
 
 ## Installation
@@ -149,42 +161,73 @@ iqrah-audio inspect output/001001.cbor.zst
 
 ## Python API
 
+### Phase 1: Analysis API
 ```python
-from iqrah_audio import (
-    PitchExtractor,
-    AudioDenoiser,
-    DTWAligner,
-    RecitationScorer,
-    ReferenceProcessor
+from src.iqrah_audio.analysis import (
+    extract_pitch_swiftf0,
+    extract_phonemes_wav2vec2_ctc,
+    compute_full_statistics
 )
-import soundfile as sf
+from src.iqrah_audio.analysis.segments_loader import (
+    get_ayah_segments,
+    download_audio,
+    get_word_segments_with_text
+)
 
-# Load user audio
-user_audio, sr = sf.read("my_recitation.wav")
-
-# Denoise
-denoiser = AudioDenoiser(sample_rate=22050)
-user_audio = denoiser.denoise_adaptive(user_audio)
+# Load ayah audio
+surah, ayah = 1, 1
+seg_data = get_ayah_segments(surah, ayah)
+audio_path = download_audio(seg_data['audio_url'])
 
 # Extract pitch
-extractor = PitchExtractor(method="crepe")  # or "yin", "auto"
-user_contour = extractor.extract_stable_pitch(user_audio, sr=sr)
+pitch_data = extract_pitch_swiftf0(audio_path)
 
-# Load reference
-processor = ReferenceProcessor()
-ref_contour = processor.get_contour_from_cbor("reference.cbor.zst")
+# Extract phonemes with alignment
+word_segments = get_word_segments_with_text(surah, ayah)
+phonemes = extract_phonemes_wav2vec2_ctc(
+    audio_path=audio_path,
+    word_segments=word_segments,
+    transliteration="BismillaahirRahmaanirRaheem",
+    pitch_data=pitch_data,
+    surah=surah,
+    ayah=ayah
+)
 
-# Align
-aligner = DTWAligner()
-alignment = aligner.align(user_contour.f0_cents, ref_contour.f0_cents)
+# Compute statistics
+statistics = compute_full_statistics(phonemes, pitch_data)
 
-# Score
-scorer = RecitationScorer()
-score = scorer.score(user_contour, ref_contour, alignment)
-
-print(f"Overall Score: {score.overall_score:.1f}/100")
-print(f"On-Note: {score.on_note_percent:.1f}%")
+print(f"Tempo: {statistics['tempo']:.2f} syl/s")
+print(f"Mean Pitch: {statistics['mean_pitch']:.1f} Hz")
+print(f"Mean Count: {statistics['mean_count']:.3f}s")
 ```
+
+### Phase 2: Comparison API
+```python
+from src.iqrah_audio.comparison import compare_recitations
+
+# Compare student vs reference
+comparison = compare_recitations(
+    student_audio_path="student_1_1.mp3",
+    reference_audio_path="husary_1_1.mp3",
+    student_phonemes=student_phonemes,
+    reference_phonemes=reference_phonemes,
+    student_pitch=student_pitch_data,
+    reference_pitch=reference_pitch_data,
+    student_stats=student_stats,
+    reference_stats=reference_stats
+)
+
+print(f"Overall Score: {comparison['overall']:.1f}/100")
+print(f"Rhythm: {comparison['rhythm']['score']:.1f}/100")
+print(f"Melody: {comparison['melody']['score']:.1f}/100")
+print(f"Duration: {comparison['durations']['overall']:.1f}/100")
+
+# Get feedback
+for note in comparison['feedback']['all_notes']:
+    print(f"  • {note}")
+```
+
+See [docs/comparison-api.md](docs/comparison-api.md) for complete API documentation.
 
 ## Architecture
 
@@ -338,24 +381,34 @@ mypy src/
 
 ## Roadmap
 
-### Phase 2 (Current) ✅
-- [x] Offline pitch tracking
-- [x] DTW alignment
-- [x] Multi-metric scoring
+### ✅ Phase 1: Phoneme-Level Analysis (Complete)
+- [x] Wav2Vec2 CTC forced alignment
+- [x] SwiftF0/CREPE pitch extraction
+- [x] Comprehensive statistics (tempo, pitch, duration)
+- [x] Tajweed rule integration
 - [x] CBOR serialization
-- [x] CLI tool
 
-### Phase 3 (Next)
-- [ ] Online-DTW for real-time
-- [ ] Real-time audio streaming
-- [ ] Live pitch visualization
-- [ ] Arabic CTC model integration
+### ✅ Phase 2: Comparison Engine (Complete)
+- [x] Soft-DTW rhythm analysis
+- [x] ΔF0 melody analysis
+- [x] Tempo-adaptive Madd scoring
+- [x] Component fusion with feedback
+- [x] REST API integration
+- [x] Comprehensive testing
 
-### Phase 4 (Future)
-- [ ] GOP (pronunciation scoring)
-- [ ] Tajwid rule detection
-- [ ] Multi-qari support
-- [ ] Mobile app integration (Rust/Flutter)
+### 🔄 Phase 2.5: Enhancement (Planned)
+- [ ] SSL-GOP pronunciation scoring
+- [ ] RMVPE pitch extraction
+- [ ] HPCP/chroma melody fallback
+- [ ] DTW path visualization
+- [ ] Streaming comparison
+
+### Phase 3: Production (Next)
+- [ ] FAISS ANN for multi-reference
+- [ ] Real-time streaming comparison
+- [ ] Progress tracking dashboard
+- [ ] Mobile SDK (Rust/Flutter)
+- [ ] Cloud deployment
 
 ## Integration with Iqrah App
 
