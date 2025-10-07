@@ -13,11 +13,13 @@ This implements AI Report 2's approach CORRECTLY:
 ✅ RTL X-axis
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pathlib import Path
+import tempfile
+import shutil
 
 # Import analysis modules
 from src.iqrah_audio.analysis.pitch_extractor_swiftf0 import extract_pitch_swiftf0
@@ -47,8 +49,14 @@ async def home():
 
 @app.get("/comparison", response_class=HTMLResponse)
 async def comparison_page():
-    """Serve the comparison visualization page."""
+    """Serve the comparison visualization page (old version)."""
     return FileResponse("static/comparison_visualize.html")
+
+
+@app.get("/compare", response_class=HTMLResponse)
+async def compare_user_page():
+    """Serve the user comparison page."""
+    return FileResponse("static/compare_user.html")
 
 
 @app.get("/api/analyze/{surah}/{ayah}")
@@ -368,6 +376,143 @@ async def compare_visualize(request: ComparisonRequest):
 
     except Exception as e:
         print(f"\n❌ Visualization error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/compare/user")
+async def compare_user_audio(
+    audio: UploadFile = File(...),
+    surah: int = Form(...),
+    ayah: int = Form(...),
+    pitch_extractor: str = Form("swiftf0")
+):
+    """
+    Compare user's audio recording against Husary reference for the same ayah.
+
+    Args:
+        audio: User's audio file (MP3, WAV, WebM, etc.)
+        surah: Surah number (1-114)
+        ayah: Ayah number
+        pitch_extractor: Pitch extraction method
+
+    Returns:
+        Comparison with visualizations against Husary reference
+    """
+    try:
+        from src.iqrah_audio.comparison.features import extract_features
+
+        print(f"\n{'='*70}")
+        print(f"🎤 User Recitation vs Husary Reference: {surah}:{ayah}")
+        print(f"{'='*70}\n")
+
+        # Save uploaded audio to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as tmp_file:
+            shutil.copyfileobj(audio.file, tmp_file)
+            user_audio_path = tmp_file.name
+
+        print(f"📁 Saved user audio: {user_audio_path}")
+
+        # Analyze user's recitation
+        print("\n1️⃣ Analyzing your recitation...")
+        word_segments = get_word_segments_with_text(surah, ayah)
+        trans_data = load_transliteration_data()
+        transliteration = trans_data.get(f"{surah}:{ayah}", "")
+
+        # Extract pitch from user audio
+        if pitch_extractor == "crepe":
+            user_pitch = extract_pitch_crepe_fast(user_audio_path)
+        else:
+            user_pitch = extract_pitch_swiftf0(user_audio_path)
+
+        # Extract phonemes from user audio
+        user_phonemes = extract_phonemes_wav2vec2_ctc(
+            audio_path=user_audio_path,
+            word_segments=word_segments,
+            transliteration=transliteration,
+            pitch_data=user_pitch,
+            surah=surah,
+            ayah=ayah
+        )
+
+        # Compute statistics for user
+        user_stats = compute_full_statistics(user_phonemes, user_pitch)
+
+        # Analyze Husary reference (same ayah)
+        print("\n2️⃣ Loading Husary reference...")
+        husary_result = await analyze_qari(surah, ayah, pitch_extractor)
+
+        # Get Husary audio path
+        husary_seg = get_ayah_segments(surah, ayah)
+        husary_audio = download_audio(husary_seg['audio_url'])
+
+        # Extract features for comparison
+        print("\n3️⃣ Extracting features...")
+        user_features = extract_features(
+            user_audio_path,
+            user_phonemes,
+            user_pitch,
+            user_stats
+        )
+        husary_features = extract_features(
+            husary_audio,
+            husary_result['phonemes'],
+            husary_result['pitch'],
+            husary_result['statistics']
+        )
+
+        # Run comparison
+        print("\n4️⃣ Running comparison...")
+        comparison = compare_recitations(
+            student_audio_path=user_audio_path,
+            reference_audio_path=husary_audio,
+            student_phonemes=user_phonemes,
+            reference_phonemes=husary_result['phonemes'],
+            student_pitch=user_pitch,
+            reference_pitch=husary_result['pitch'],
+            student_stats=user_stats,
+            reference_stats=husary_result['statistics']
+        )
+
+        # Generate visualizations
+        print("\n5️⃣ Generating visualizations...")
+        visualizations = generate_comparison_visualizations(
+            comparison_result=comparison,
+            student_audio_path=user_audio_path,
+            reference_audio_path=husary_audio,
+            student_features=user_features,
+            reference_features=husary_features,
+            student_phonemes=user_phonemes,
+            reference_phonemes=husary_result['phonemes'],
+            student_pitch=user_pitch,
+            reference_pitch=husary_result['pitch']
+        )
+
+        print(f"\n✅ Comparison complete!")
+        print(f"   Overall: {comparison['overall']}/100")
+        print(f"   Rhythm: {comparison['rhythm']['score']}/100")
+        print(f"   Melody: {comparison['melody']['score']}/100")
+        print(f"   Duration: {comparison['durations']['overall']}/100")
+        print(f"{'='*70}\n")
+
+        # Clean up temp file
+        Path(user_audio_path).unlink(missing_ok=True)
+
+        return {
+            "success": True,
+            "comparison": comparison,
+            "visualizations": visualizations,
+            "user_analysis": {
+                'phonemes': user_phonemes,
+                'pitch': user_pitch,
+                'statistics': user_stats
+            },
+            "reference_analysis": husary_result
+        }
+
+    except Exception as e:
+        print(f"\n❌ User comparison error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

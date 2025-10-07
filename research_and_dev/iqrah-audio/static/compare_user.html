@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Your Recitation - Iqrah Audio</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Roboto:wght@300;400;600&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .nav-links a {
+            display: inline-block;
+            padding: 10px 25px;
+            margin: 0 10px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .nav-links a.active {
+            background: #764ba2;
+        }
+
+        .upload-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upload-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        .ayah-selector {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .ayah-selector select, .ayah-selector input {
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1.1em;
+            min-width: 150px;
+        }
+
+        .upload-methods {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .upload-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .upload-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-card button, .file-input-wrapper {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+
+        .upload-card button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-card button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .recording-indicator {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border-left: 5px solid #ffc107;
+        }
+
+        .recording-indicator.active {
+            display: block;
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #dc3545;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 8px;
+            border-left: 5px solid #28a745;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        .compare-btn {
+            width: 100%;
+            max-width: 500px;
+            margin: 30px auto;
+            display: block;
+            padding: 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.3em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .compare-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .compare-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: #6c757d;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .score-card h2 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .score-card p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .component-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .component-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+        }
+
+        .component-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .component-card .score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .component-card .notes {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .visualizations {
+            margin-top: 40px;
+        }
+
+        .viz-section {
+            margin-bottom: 40px;
+        }
+
+        .viz-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .viz-section img {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .viz-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .feedback {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .feedback h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .feedback ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feedback li {
+            padding: 8px 0;
+            color: #856404;
+        }
+
+        .feedback li:before {
+            content: "• ";
+            font-weight: bold;
+        }
+
+        .reference-info {
+            background: #e7f3ff;
+            border-left: 5px solid #0066cc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .reference-info h3 {
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .reference-info p {
+            color: #555;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Compare Your Recitation</h1>
+        <p class="subtitle">Record or upload your recitation and compare against Sheikh Husary's golden reference</p>
+
+        <div class="nav-links">
+            <a href="/">📊 Analysis</a>
+            <a href="/compare" class="active">🎯 Compare</a>
+        </div>
+
+        <div class="reference-info">
+            <h3>📚 Golden Reference</h3>
+            <p>Your recitation will be compared against <strong>Sheikh Mahmoud Khalil Al-Husary's</strong> masterful recitation,
+            which includes:</p>
+            <ul style="margin-top: 10px; margin-left: 20px;">
+                <li>✓ Perfect phoneme alignment with Wav2Vec2 CTC</li>
+                <li>✓ Precise pitch tracking with SwiftF0</li>
+                <li>✓ Comprehensive Tajweed rule annotations</li>
+                <li>✓ Statistical analysis (tempo, pitch, duration)</li>
+            </ul>
+        </div>
+
+        <div class="upload-section">
+            <h2>1️⃣ Select Ayah</h2>
+            <div class="ayah-selector">
+                <div>
+                    <label>Surah (1-114)</label>
+                    <select id="surahSelect">
+                        <option value="1">1 - Al-Fatiha</option>
+                        <!-- More options will be added dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label>Ayah</label>
+                    <input type="number" id="ayahInput" min="1" value="1">
+                </div>
+            </div>
+
+            <h2>2️⃣ Provide Your Recitation</h2>
+            <div class="upload-methods">
+                <div class="upload-card">
+                    <h3>🎤 Record Live</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Record your recitation directly in the browser</p>
+                    <button id="recordBtn" onclick="toggleRecording()">Start Recording</button>
+                    <div class="recording-indicator" id="recordingIndicator">
+                        <span class="pulse"></span>
+                        <span>Recording... <span id="recordTime">0:00</span></span>
+                    </div>
+                    <div class="file-info" id="recordInfo">
+                        ✅ Recording ready! Duration: <span id="recordDuration">-</span>
+                    </div>
+                </div>
+
+                <div class="upload-card">
+                    <h3>📁 Upload Audio File</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Upload a pre-recorded MP3, WAV, or OGG file</p>
+                    <label class="file-input-wrapper">
+                        <input type="file" id="audioFile" accept="audio/*" onchange="handleFileSelect(event)">
+                        📂 Choose File
+                    </label>
+                    <div class="file-info" id="fileInfo">
+                        ✅ File selected: <span id="fileName">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="compare-btn" id="compareBtn" onclick="compareWithReference()" disabled>
+            🔍 Compare Against Husary Reference
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing your recitation and generating comparisons...</p>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">This may take 30-60 seconds</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="score-card">
+                <h2 id="overallScore">-</h2>
+                <p>Overall Score vs Husary Reference</p>
+                <p style="font-size: 0.9em; margin-top: 10px;">Confidence: <span id="confidence">-</span></p>
+            </div>
+
+            <div class="component-scores">
+                <div class="component-card">
+                    <h3>🎵 Rhythm</h3>
+                    <div class="score" id="rhythmScore">-</div>
+                    <div class="notes" id="rhythmNotes">-</div>
+                </div>
+
+                <div class="component-card">
+                    <h3>🎼 Melody</h3>
+                    <div class="score" id="melodyScore">-</div>
+                    <div class="notes" id="melodyNotes">-</div>
+                </div>
+
+                <div class="component-card">
+                    <h3>⏱️ Duration (Madd)</h3>
+                    <div class="score" id="durationScore">-</div>
+                    <div class="notes" id="durationNotes">-</div>
+                </div>
+            </div>
+
+            <div class="visualizations">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 30px;">📊 Detailed Analysis</h2>
+
+                <div class="viz-section">
+                    <h3>🎯 DTW Alignment Path</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Shows how your timing maps to Husary's timing</p>
+                    <img id="vizDtwPath" alt="DTW Path">
+                </div>
+
+                <div class="viz-section">
+                    <h3>🎵 Pitch Comparison</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Your pitch vs Husary's pitch (top) and melodic contour (bottom)</p>
+                    <img id="vizPitchComparison" alt="Pitch Comparison">
+                </div>
+
+                <div class="viz-section">
+                    <h3>🥁 Rhythm Comparison</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Your rhythm patterns compared to Husary's</p>
+                    <img id="vizRhythmComparison" alt="Rhythm Comparison">
+                </div>
+
+                <div class="viz-grid">
+                    <div class="viz-section">
+                        <h3>🎤 Your Spectrogram</h3>
+                        <img id="vizStudentSpectrogram" alt="Your Spectrogram">
+                    </div>
+                    <div class="viz-section">
+                        <h3>📚 Husary Reference</h3>
+                        <img id="vizReferenceSpectrogram" alt="Husary Spectrogram">
+                    </div>
+                </div>
+            </div>
+
+            <div class="feedback">
+                <h3>💡 Feedback & Improvement Suggestions</h3>
+                <ul id="feedbackList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStartTime;
+        let recordingInterval;
+        let userAudioBlob = null;
+
+        // Populate surah dropdown
+        function populateSurahDropdown() {
+            const surahNames = [
+                "Al-Fatiha", "Al-Baqara", "Aal-E-Imran", "An-Nisa", "Al-Ma'ida",
+                // Add all 114 surahs here (truncated for brevity)
+            ];
+            const select = document.getElementById('surahSelect');
+            for (let i = 1; i <= 114; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${i} - ${surahNames[i-1] || `Surah ${i}`}`;
+                select.appendChild(option);
+            }
+        }
+
+        async function toggleRecording() {
+            const btn = document.getElementById('recordBtn');
+            const indicator = document.getElementById('recordingIndicator');
+            const info = document.getElementById('recordInfo');
+
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                // Start recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        userAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const duration = ((Date.now() - recordingStartTime) / 1000).toFixed(1);
+                        document.getElementById('recordDuration').textContent = duration + 's';
+                        info.classList.add('active');
+                        document.getElementById('compareBtn').disabled = false;
+
+                        // Hide file info if file was selected
+                        document.getElementById('fileInfo').classList.remove('active');
+                    };
+
+                    mediaRecorder.start();
+                    recordingStartTime = Date.now();
+
+                    btn.textContent = 'Stop Recording';
+                    btn.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+                    indicator.classList.add('active');
+                    info.classList.remove('active');
+
+                    // Update timer
+                    recordingInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                        const mins = Math.floor(elapsed / 60);
+                        const secs = elapsed % 60;
+                        document.getElementById('recordTime').textContent =
+                            `${mins}:${secs.toString().padStart(2, '0')}`;
+                    }, 1000);
+
+                } catch (err) {
+                    alert('Error accessing microphone: ' + err.message);
+                }
+            } else {
+                // Stop recording
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                clearInterval(recordingInterval);
+
+                btn.textContent = 'Start Recording';
+                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                indicator.classList.remove('active');
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                userAudioBlob = file;
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileInfo').classList.add('active');
+                document.getElementById('compareBtn').disabled = false;
+
+                // Hide recording info if recording was done
+                document.getElementById('recordInfo').classList.remove('active');
+            }
+        }
+
+        async function compareWithReference() {
+            if (!userAudioBlob) {
+                alert('Please record or upload your recitation first');
+                return;
+            }
+
+            const surah = document.getElementById('surahSelect').value;
+            const ayah = document.getElementById('ayahInput').value;
+
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('compareBtn').disabled = true;
+
+            try {
+                // Upload audio file
+                const formData = new FormData();
+                formData.append('audio', userAudioBlob, 'user_recitation.webm');
+                formData.append('surah', surah);
+                formData.append('ayah', ayah);
+                formData.append('pitch_extractor', 'swiftf0');
+
+                const response = await fetch('/api/compare/user', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to compare recitation: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('compareBtn').disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            const comparison = data.comparison;
+            const visualizations = data.visualizations;
+
+            // Overall score
+            document.getElementById('overallScore').textContent = comparison.overall.toFixed(1) + '/100';
+            document.getElementById('confidence').textContent = (comparison.confidence * 100).toFixed(0) + '%';
+
+            // Component scores
+            document.getElementById('rhythmScore').textContent = comparison.rhythm.score.toFixed(1) + '/100';
+            document.getElementById('rhythmNotes').textContent = comparison.rhythm.notes.join('. ');
+
+            document.getElementById('melodyScore').textContent = comparison.melody.score.toFixed(1) + '/100';
+            document.getElementById('melodyNotes').textContent = comparison.melody.notes.join('. ');
+
+            document.getElementById('durationScore').textContent = comparison.durations.overall.toFixed(1) + '/100';
+            document.getElementById('durationNotes').textContent = comparison.durations.notes.join('. ');
+
+            // Visualizations
+            document.getElementById('vizDtwPath').src = visualizations.dtw_path;
+            document.getElementById('vizPitchComparison').src = visualizations.pitch_comparison;
+            document.getElementById('vizRhythmComparison').src = visualizations.rhythm_comparison;
+            document.getElementById('vizStudentSpectrogram').src = visualizations.student_spectrogram;
+            document.getElementById('vizReferenceSpectrogram').src = visualizations.reference_spectrogram;
+
+            // Feedback
+            const feedbackList = document.getElementById('feedbackList');
+            feedbackList.innerHTML = '';
+            comparison.feedback.all_notes.forEach(note => {
+                const li = document.createElement('li');
+                li.textContent = note;
+                feedbackList.appendChild(li);
+            });
+
+            // Show results
+            document.getElementById('results').classList.add('active');
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Initialize
+        populateSurahDropdown();
+    </script>
+</body>
+</html>
