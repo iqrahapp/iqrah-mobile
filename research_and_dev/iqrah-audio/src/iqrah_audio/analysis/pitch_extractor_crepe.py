@@ -55,7 +55,9 @@ def extract_pitch_crepe(
     # hop_length=80 gives ~200 FPS at 16kHz (80/16000 = 0.005s = 200Hz)
     print(f"   Running CREPE ({model_capacity} model)...")
 
-    time, frequency, confidence, activation = torchcrepe.predict(
+    # torchcrepe.predict returns (time, frequency) or (time, frequency, confidence, activation)
+    # depending on return_periodicity parameter
+    result = torchcrepe.predict(
         waveform,
         sr,
         hop_length=80,
@@ -64,8 +66,16 @@ def extract_pitch_crepe(
         model=model_capacity,
         batch_size=512,
         device=device,
-        return_periodicity=True
+        return_periodicity=False  # Only return time and frequency
     )
+
+    # Unpack result
+    if len(result) == 2:
+        time, frequency = result
+        # Generate confidence from frequency (use presence of pitch as confidence)
+        confidence = torch.where(frequency > 0, torch.ones_like(frequency), torch.zeros_like(frequency))
+    else:
+        time, frequency, confidence, _ = result
 
     # Convert to numpy
     time = time.cpu().numpy()
