@@ -119,9 +119,17 @@ def plot_pitch_comparison(
     student_time = np.array(student_pitch['time'])
     reference_time = np.array(reference_pitch['time'])
 
+    # Debug: print durations
+    print(f"[DEBUG viz] Student duration: {student_time[-1]:.2f}s, Reference duration: {reference_time[-1]:.2f}s")
+
     # Top plot: Pitch contours
     ax1.plot(student_time, student_semitones, 'b-', linewidth=2, label='Student', alpha=0.7)
     ax1.plot(reference_time, reference_semitones, 'r-', linewidth=2, label='Reference', alpha=0.7)
+
+    # Set x-axis to cover both durations
+    max_time = max(student_time[-1] if len(student_time) > 0 else 0,
+                   reference_time[-1] if len(reference_time) > 0 else 0)
+    ax1.set_xlim(0, max_time)
 
     # Add alignment markers if path provided
     if path is not None and len(path) > 0:

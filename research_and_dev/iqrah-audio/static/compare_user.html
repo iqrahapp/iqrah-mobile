@@ -703,7 +703,13 @@
             feedbackList.innerHTML = '';
             comparison.feedback.all_notes.forEach(note => {
                 const li = document.createElement('li');
-                li.textContent = note;
+                // Handle both string and object formats
+                if (typeof note === 'object' && note.text) {
+                    const category = note.category || '';
+                    li.innerHTML = `<strong>[${category}]</strong> ${note.text}`;
+                } else {
+                    li.textContent = note;
+                }
                 feedbackList.appendChild(li);
             });
 
