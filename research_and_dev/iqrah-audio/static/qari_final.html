@@ -642,125 +642,121 @@
             let pitchTrace;
 
             if (viewMode === 'bars') {
-                // Bar view: Detect stable pitch segments from RAW PITCH DATA (not phonemes)
-                // This gives us many more bars and better accuracy
+                // Bar view: Detect pitch level changes (note transitions)
+                // Use outlier detection to break segments when pitch changes level
                 
                 const times = data.pitch.time;
                 const f0s = data.pitch.f0_hz;
                 
-                // Sliding window to detect stable pitch regions
-                const WINDOW_SIZE = 0.05; // 50ms window
-                const PITCH_VARIANCE_THRESHOLD = 25; // Hz - max variance to be "stable"
-                const MIN_SEGMENT_DURATION = 0.08; // 80ms minimum segment length
+                const MIN_SEGMENT_DURATION = 0.06; // 60ms minimum
+                const OUTLIER_THRESHOLD = 2.5; // Standard deviations
+                const WINDOW_SIZE = 5; // Look at recent samples
                 
                 const segments = [];
                 let i = 0;
                 
                 while (i < times.length) {
-                    // Skip unvoiced regions
+                    // Skip unvoiced
                     while (i < times.length && f0s[i] === 0) i++;
                     if (i >= times.length) break;
                     
                     // Start new segment
                     const segStart = times[i];
-                    const pitchSamples = [];
+                    const pitchSamples = [f0s[i]];
                     let segEnd = segStart;
+                    i++;
                     
-                    // Extend segment while pitch is stable
-                    while (i < times.length) {
-                        if (f0s[i] === 0) break;
+                    // Extend segment until we detect a level change
+                    while (i < times.length && f0s[i] > 0) {
+                        const currentPitch = f0s[i];
                         
-                        pitchSamples.push(f0s[i]);
-                        segEnd = times[i];
+                        // Calculate stats of recent window
+                        const windowStart = Math.max(0, pitchSamples.length - WINDOW_SIZE);
+                        const window = pitchSamples.slice(windowStart);
+                        const mean = window.reduce((a,b) => a+b) / window.length;
+                        const variance = window.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / window.length;
+                        const stdDev = Math.sqrt(variance);
                         
-                        // Calculate variance of current segment
-                        if (pitchSamples.length > 3) {
-                            const mean = pitchSamples.reduce((a,b) => a+b) / pitchSamples.length;
-                            const variance = pitchSamples.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / pitchSamples.length;
-                            const stdDev = Math.sqrt(variance);
-                            
-                            // If pitch becomes unstable, end segment
-                            if (stdDev > PITCH_VARIANCE_THRESHOLD) {
-                                // Remove last few samples and finalize
-                                pitchSamples.splice(-3);
-                                segEnd = times[i - 3];
-                                break;
-                            }
+                        // Check if current pitch is an outlier (level change detected)
+                        const zScore = stdDev > 0 ? Math.abs(currentPitch - mean) / stdDev : 0;
+                        
+                        if (zScore > OUTLIER_THRESHOLD && pitchSamples.length > 3) {
+                            // Level change detected! End this segment
+                            break;
                         }
                         
+                        pitchSamples.push(currentPitch);
+                        segEnd = times[i];
                         i++;
                     }
                     
-                    // Only add if segment is long enough
-                    if (segEnd - segStart >= MIN_SEGMENT_DURATION && pitchSamples.length > 0) {
-                        const avgPitch = pitchSamples.reduce((a,b) => a+b) / pitchSamples.length;
-                        const minPitch = Math.min(...pitchSamples);
-                        const maxPitch = Math.max(...pitchSamples);
+                    // Only add segment if long enough
+                    if (segEnd - segStart >= MIN_SEGMENT_DURATION && pitchSamples.length > 2) {
+                        // Use median instead of mean (more robust to outliers)
+                        const sorted = [...pitchSamples].sort((a,b) => a-b);
+                        const median = sorted[Math.floor(sorted.length / 2)];
                         
                         segments.push({
                             start: segStart,
                             end: segEnd,
-                            pitch: avgPitch,
-                            min: minPitch,
-                            max: maxPitch
+                            pitch: median,
+                            samples: pitchSamples.length
                         });
                     }
-                    
-                    i++;
                 }
                 
-                console.log(`📊 Detected ${segments.length} stable pitch segments`);
+                console.log(`📊 Detected ${segments.length} pitch levels (note segments)`);
                 
-                // Find corresponding phonemes for coloring
+                // Map to phonemes for labeling
                 function getPhonemeAtTime(time) {
                     for (const p of data.phonemes) {
-                        if (time >= p.start && time <= p.end) {
-                            return p;
-                        }
+                        if (time >= p.start && time <= p.end) return p;
                     }
                     return null;
                 }
                 
-                // Create horizontal line segments
+                // Build traces
                 const xData = [];
                 const yData = [];
-                const errorYArray = [];
-                const errorYArrayMinus = [];
                 const colors = [];
                 const texts = [];
+                const widths = [];
                 
                 segments.forEach(seg => {
                     const midTime = (seg.start + seg.end) / 2;
                     const phoneme = getPhonemeAtTime(midTime);
-                    const phonemeText = phoneme ? phoneme.phoneme : '?';
+                    const label = phoneme ? phoneme.phoneme : '';
                     const tajweed = phoneme ? phoneme.tajweed_rule : null;
                     
-                    // Add horizontal line as two points
-                    xData.push(seg.start, seg.end, null);
-                    yData.push(seg.pitch, seg.pitch, null);
-                    
-                    // Color by Tajweed rule
+                    // Color by Tajweed
                     const color = tajweed === 'madd' ? '#FFC87C' :
                                  tajweed === 'ghunnah' ? '#64C8FF' :
-                                 tajweed === 'shadda' ? '#FFB6C1' : '#764ba2';
-                    colors.push(color, color, 'rgba(0,0,0,0)');
+                                 tajweed === 'shadda' ? '#FFB6C1' : '#667eea';
                     
-                    texts.push(phonemeText, phonemeText, '');
+                    // Add line segment
+                    xData.push(seg.start, seg.end, null);
+                    yData.push(seg.pitch, seg.pitch, null);
+                    colors.push(color, color, 'transparent');
+                    texts.push(label, label, '');
                 });
 
                 pitchTrace = {
                     x: xData,
                     y: yData,
-                    mode: 'lines',
-                    name: 'Stable Notes',
+                    mode: 'lines+markers',
+                    name: 'Note Levels',
                     line: { 
                         color: '#667eea',
-                        width: 8
+                        width: 6
+                    },
+                    marker: {
+                        size: 8,
+                        color: colors,
+                        line: { width: 2, color: 'white' }
                     },
                     text: texts,
                     hovertemplate: '<b>%{text}</b><br>' +
                                    'Pitch: %{y:.1f} Hz<br>' +
-                                   'Time: %{x:.3f}s<br>' +
                                    '<extra></extra>'
                 };
             } else {
