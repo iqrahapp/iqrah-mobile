@@ -99,9 +99,11 @@ def extract_features(
     f0_interp = np.interp(frame_times, pitch_times, pitch_f0)
 
     # Convert to semitones (with NaN for unvoiced)
+    # Handle zeros to avoid log(0) warning
+    f0_safe = np.where(f0_interp > 0, f0_interp, 1.0)  # Replace 0 with 1 temporarily
     f0_semitones = np.where(
         f0_interp > 0,
-        12 * np.log2(f0_interp / 55.0),
+        12 * np.log2(f0_safe / 55.0),
         np.nan
     )
 

@@ -95,7 +95,22 @@ def madd_score_tempo_adaptive(
             })
 
     # Compute overall and per-type scores
-    overall_accuracy = np.mean(all_scores) if all_scores else 0
+    # If no Madds found, return perfect score (N/A case)
+    if len(all_scores) == 0:
+        overall_accuracy = 100
+        notes = ["No elongations (Madd) found in this ayah"]
+    else:
+        overall_accuracy = np.mean(all_scores)
+        notes = []
+
+        if overall_accuracy >= 95:
+            notes.append("Excellent elongation accuracy - all Madds held correctly")
+        elif overall_accuracy >= 85:
+            notes.append("Good elongation accuracy - minor timing issues")
+        elif overall_accuracy >= 70:
+            notes.append("Elongation accuracy needs improvement")
+        else:
+            notes.append("Significant elongation issues - focus on holding counts")
 
     by_type_summary = {}
     for key, data in scores_by_type.items():
@@ -105,18 +120,6 @@ def madd_score_tempo_adaptive(
             'mean_error': round(np.mean(data['errors']), 2),
             'std_error': round(np.std(data['errors']), 2)
         }
-
-    # Generate feedback notes
-    notes = []
-
-    if overall_accuracy >= 95:
-        notes.append("Excellent elongation accuracy - all Madds held correctly")
-    elif overall_accuracy >= 85:
-        notes.append("Good elongation accuracy - minor timing issues")
-    elif overall_accuracy >= 70:
-        notes.append("Elongation accuracy needs improvement")
-    else:
-        notes.append("Significant elongation issues - focus on holding counts")
 
     # Specific feedback by type
     for key, summary in by_type_summary.items():
@@ -130,7 +133,8 @@ def madd_score_tempo_adaptive(
         notes.append(f"{len(critical_issues)} critical elongation shortfalls detected")
 
     return {
-        'overall_accuracy': round(overall_accuracy, 1),
+        'score': round(overall_accuracy, 1),  # Use 'score' for consistency with other components
+        'overall_accuracy': round(overall_accuracy, 1),  # Keep for backward compatibility
         'by_type': by_type_summary,
         'total_madds': len(all_scores),
         'critical_issues': critical_issues,
