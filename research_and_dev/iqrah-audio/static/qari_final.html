@@ -642,88 +642,125 @@
             let pitchTrace;
 
             if (viewMode === 'bars') {
-                // Bar view: Detect stable pitch segments and draw horizontal lines
-                const voicedPhonemes = data.phonemes.filter(p => p.mean_pitch > 0);
+                // Bar view: Detect stable pitch segments from RAW PITCH DATA (not phonemes)
+                // This gives us many more bars and better accuracy
                 
-                // Segment stable notes using simple anomaly detection
+                const times = data.pitch.time;
+                const f0s = data.pitch.f0_hz;
+                
+                // Sliding window to detect stable pitch regions
+                const WINDOW_SIZE = 0.05; // 50ms window
+                const PITCH_VARIANCE_THRESHOLD = 25; // Hz - max variance to be "stable"
+                const MIN_SEGMENT_DURATION = 0.08; // 80ms minimum segment length
+                
                 const segments = [];
-                let currentSegment = null;
-                const PITCH_TOLERANCE = 15; // Hz - notes within this range are "same"
+                let i = 0;
                 
-                for (let i = 0; i < voicedPhonemes.length; i++) {
-                    const phoneme = voicedPhonemes[i];
+                while (i < times.length) {
+                    // Skip unvoiced regions
+                    while (i < times.length && f0s[i] === 0) i++;
+                    if (i >= times.length) break;
                     
-                    if (!currentSegment) {
-                        currentSegment = {
-                            start: phoneme.start,
-                            end: phoneme.end,
-                            pitches: [phoneme.mean_pitch],
-                            phonemes: [phoneme.phoneme],
-                            tajweed: phoneme.tajweed_rule
-                        };
-                    } else {
-                        const avgPitch = currentSegment.pitches.reduce((a,b) => a+b) / currentSegment.pitches.length;
-                        const pitchDiff = Math.abs(phoneme.mean_pitch - avgPitch);
-                        const timeDiff = phoneme.start - currentSegment.end;
+                    // Start new segment
+                    const segStart = times[i];
+                    const pitchSamples = [];
+                    let segEnd = segStart;
+                    
+                    // Extend segment while pitch is stable
+                    while (i < times.length) {
+                        if (f0s[i] === 0) break;
                         
-                        // Continue segment if pitch is similar and no big time gap
-                        if (pitchDiff < PITCH_TOLERANCE && timeDiff < 0.3) {
-                            currentSegment.end = phoneme.end;
-                            currentSegment.pitches.push(phoneme.mean_pitch);
-                            currentSegment.phonemes.push(phoneme.phoneme);
-                        } else {
-                            // Finalize current segment
-                            segments.push(currentSegment);
-                            currentSegment = {
-                                start: phoneme.start,
-                                end: phoneme.end,
-                                pitches: [phoneme.mean_pitch],
-                                phonemes: [phoneme.phoneme],
-                                tajweed: phoneme.tajweed_rule
-                            };
+                        pitchSamples.push(f0s[i]);
+                        segEnd = times[i];
+                        
+                        // Calculate variance of current segment
+                        if (pitchSamples.length > 3) {
+                            const mean = pitchSamples.reduce((a,b) => a+b) / pitchSamples.length;
+                            const variance = pitchSamples.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / pitchSamples.length;
+                            const stdDev = Math.sqrt(variance);
+                            
+                            // If pitch becomes unstable, end segment
+                            if (stdDev > PITCH_VARIANCE_THRESHOLD) {
+                                // Remove last few samples and finalize
+                                pitchSamples.splice(-3);
+                                segEnd = times[i - 3];
+                                break;
+                            }
+                        }
+                        
+                        i++;
+                    }
+                    
+                    // Only add if segment is long enough
+                    if (segEnd - segStart >= MIN_SEGMENT_DURATION && pitchSamples.length > 0) {
+                        const avgPitch = pitchSamples.reduce((a,b) => a+b) / pitchSamples.length;
+                        const minPitch = Math.min(...pitchSamples);
+                        const maxPitch = Math.max(...pitchSamples);
+                        
+                        segments.push({
+                            start: segStart,
+                            end: segEnd,
+                            pitch: avgPitch,
+                            min: minPitch,
+                            max: maxPitch
+                        });
+                    }
+                    
+                    i++;
+                }
+                
+                console.log(`📊 Detected ${segments.length} stable pitch segments`);
+                
+                // Find corresponding phonemes for coloring
+                function getPhonemeAtTime(time) {
+                    for (const p of data.phonemes) {
+                        if (time >= p.start && time <= p.end) {
+                            return p;
                         }
                     }
+                    return null;
                 }
-                if (currentSegment) segments.push(currentSegment);
                 
                 // Create horizontal line segments
                 const xData = [];
                 const yData = [];
+                const errorYArray = [];
+                const errorYArrayMinus = [];
                 const colors = [];
                 const texts = [];
                 
                 segments.forEach(seg => {
-                    const avgPitch = seg.pitches.reduce((a,b) => a+b) / seg.pitches.length;
-                    const phonemeText = seg.phonemes.join('-');
+                    const midTime = (seg.start + seg.end) / 2;
+                    const phoneme = getPhonemeAtTime(midTime);
+                    const phonemeText = phoneme ? phoneme.phoneme : '?';
+                    const tajweed = phoneme ? phoneme.tajweed_rule : null;
                     
-                    // Add line segment (two points)
-                    xData.push(seg.start, seg.end, null);  // null creates line break
-                    yData.push(avgPitch, avgPitch, null);
+                    // Add horizontal line as two points
+                    xData.push(seg.start, seg.end, null);
+                    yData.push(seg.pitch, seg.pitch, null);
                     
-                    const color = seg.tajweed === 'madd' ? '#FFC87C' :
-                                 seg.tajweed === 'ghunnah' ? '#64C8FF' :
-                                 seg.tajweed === 'shadda' ? '#FFB6C1' : '#764ba2';
-                    colors.push(color, color, null);
+                    // Color by Tajweed rule
+                    const color = tajweed === 'madd' ? '#FFC87C' :
+                                 tajweed === 'ghunnah' ? '#64C8FF' :
+                                 tajweed === 'shadda' ? '#FFB6C1' : '#764ba2';
+                    colors.push(color, color, 'rgba(0,0,0,0)');
+                    
                     texts.push(phonemeText, phonemeText, '');
                 });
 
                 pitchTrace = {
                     x: xData,
                     y: yData,
-                    mode: 'lines+markers',
-                    name: 'Pitch (Notes)',
+                    mode: 'lines',
+                    name: 'Stable Notes',
                     line: { 
                         color: '#667eea',
-                        width: 6
-                    },
-                    marker: {
-                        size: 10,
-                        color: '#667eea',
-                        symbol: 'circle'
+                        width: 8
                     },
                     text: texts,
                     hovertemplate: '<b>%{text}</b><br>' +
                                    'Pitch: %{y:.1f} Hz<br>' +
+                                   'Time: %{x:.3f}s<br>' +
                                    '<extra></extra>'
                 };
             } else {
