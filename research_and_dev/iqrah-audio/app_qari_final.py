@@ -91,6 +91,8 @@ async def analyze_qari(surah: int, ayah: int):
             word_segments=word_segments,
             transliteration=transliteration,
             pitch_data=pitch_data,
+            surah=surah,
+            ayah=ayah,
             device='cpu'
         )
         print(f"   ✓ {len(phonemes)} phoneme segments")

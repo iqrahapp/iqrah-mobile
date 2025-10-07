@@ -227,6 +227,8 @@ def extract_phonemes_mms_proper(
     word_segments: List[Dict],
     transliteration: str,
     pitch_data: Dict,
+    surah: int,
+    ayah: int,
     device='cpu'
 ) -> List[Dict]:
     """
@@ -237,11 +239,14 @@ def extract_phonemes_mms_proper(
         word_segments: Word-level segments [{'start_ms': ..., 'end_ms': ..., 'text': ...}]
         transliteration: Full transliteration
         pitch_data: Pitch data from SwiftF0
+        surah: Surah number
+        ayah: Ayah number
         device: 'cpu' or 'cuda'
 
     Returns:
         Phoneme segments with pitch
     """
+    from .tajweed_mapper import TajweedMapper
     trans_words = transliteration.split()
 
     if len(trans_words) != len(word_segments):
@@ -249,6 +254,9 @@ def extract_phonemes_mms_proper(
         # Fallback: use simple approach
         from .phoneme_simple import extract_phonemes_simple
         return extract_phonemes_simple(transliteration, pitch_data)
+
+    # Initialize Tajweed mapper once
+    tajweed_mapper = TajweedMapper()
 
     all_phonemes = []
 
@@ -273,25 +281,15 @@ def extract_phonemes_mms_proper(
         f0_array = np.array(pitch_data['f0_hz'])
 
         for syl_span in syl_spans:
-            # Detect Tajweed - improved rules
-            syl = syl_span['syllable'].lower()
-            tajweed_rule = None
-
-            # Madd (elongation): Look for long vowels
-            if any(long in syl for long in ['aa', ' aa', 'ee', 'ii', 'oo', 'uu', 'aani', 'eeni']):
-                tajweed_rule = 'madd'
-                # Longer duration expected for madd
-                expected_ratio = 1.5
-            # Shadda (doubled consonants): Look for gemination
-            elif any(c*2 in syl for c in 'lmnrbdtsjkfqghwyz'):
-                tajweed_rule = 'shadda'
-                expected_ratio = 1.3
-            # Ghunnah (nasal): m or n sounds, especially with tanween
-            elif any(pattern in syl for pattern in ['an', 'in', 'un', 'ng', 'nj']):
-                tajweed_rule = 'ghunnah'
-                expected_ratio = 1.2
-            else:
-                expected_ratio = 1.0
+            # Map to proper Tajweed rule from authoritative qpc-hafs-tajweed.json
+            tajweed_rule = tajweed_mapper.map_phoneme_to_tajweed(
+                phoneme_start=syl_span['start'],
+                phoneme_end=syl_span['end'],
+                word_idx=i,
+                word_segments=word_segments,
+                surah=surah,
+                ayah=ayah
+            )
 
             # Get pitch
             start, end = syl_span['start'], syl_span['end']
@@ -306,7 +304,7 @@ def extract_phonemes_mms_proper(
                 mean_pitch = min_pitch = max_pitch = 0.0
 
             all_phonemes.append({
-                'phoneme': syl,
+                'phoneme': syl_span['syllable'],
                 'start': syl_span['start'],
                 'end': syl_span['end'],
                 'duration': syl_span['duration'],

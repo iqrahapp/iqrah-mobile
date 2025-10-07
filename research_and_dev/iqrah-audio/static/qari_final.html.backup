@@ -523,28 +523,15 @@
                     wordSpan.appendChild(segSpan);
                 }
 
-                // Add click handler to seek to word
-                wordSpan.dataset.startMs = word.segments[0]?.start_ms || 0;
-                wordSpan.addEventListener('click', () => {
-                    const wordStartS = parseFloat(wordSpan.dataset.startMs) / 1000;
-                    audioPlayer.currentTime = wordStartS;
-                    if (audioPlayer.paused) {
-                        audioPlayer.play();
-                    }
-                });
-
                 arabicWords.appendChild(wordSpan);
             }
         }
-
-        let lastPitch = 100;  // For smoothing
-        const SMOOTHING_FACTOR = 0.3;  // Lower = smoother
 
         function interpolatePitch(time, pitchData) {
             const times = pitchData.time;
             const f0s = pitchData.f0_hz;
 
-            // Binary search
+            // Binary search for efficiency
             let left = 0, right = times.length - 1;
             while (left < right) {
                 const mid = Math.floor((left + right) / 2);
@@ -553,7 +540,6 @@
             }
 
             // Linear interpolation
-            let targetPitch = 100;
             if (left > 0 && left < times.length) {
                 const t0 = times[left - 1];
                 const t1 = times[left];
@@ -562,21 +548,15 @@
 
                 if (f0 > 0 && f1 > 0) {
                     const alpha = (time - t0) / (t1 - t0);
-                    targetPitch = f0 + alpha * (f1 - f0);
+                    return f0 + alpha * (f1 - f0);
                 } else if (f0 > 0) {
-                    targetPitch = f0;
+                    return f0;
                 } else if (f1 > 0) {
-                    targetPitch = f1;
-                } else {
-                    targetPitch = f0s[left] > 0 ? f0s[left] : 100;
+                    return f1;
                 }
-            } else {
-                targetPitch = f0s[left] > 0 ? f0s[left] : 100;
             }
 
-            // Exponential smoothing to remove jitter
-            lastPitch = lastPitch + SMOOTHING_FACTOR * (targetPitch - lastPitch);
-            return lastPitch;
+            return f0s[left] > 0 ? f0s[left] : 100;
         }
 
         function smoothPitchData(pitchData, windowMs = 50) {
@@ -689,8 +669,8 @@
 
             // Cursor dot (initially hidden off-screen)
             const cursorTrace = {
-                x: [0],
-                y: [100],
+                x: [-1000],
+                y: [0],
                 mode: 'markers',
                 name: 'Cursor',
                 showlegend: false,
@@ -752,10 +732,6 @@
                                 size: 18,
                                 color: '#333'
                             },
-                            bgcolor: 'rgba(255, 255, 255, 0.8)',
-                            bordercolor: '#ddd',
-                            borderwidth: 1,
-                            borderpad: 4,
                             yshift: -25,
                             xanchor: 'center'
                         });
