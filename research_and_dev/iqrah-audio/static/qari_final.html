@@ -314,6 +314,15 @@
                     <button id="viewBars">📊 Note Bars</button>
                 </div>
             </div>
+
+            <div class="control-group" style="margin-left: 20px;">
+                <label>Pitch Extractor:</label>
+                <select id="pitchExtractor" style="min-width: 150px;">
+                    <option value="swiftf0">SwiftF0 (Fast)</option>
+                    <option value="crepe-fast">CREPE-Tiny (Good)</option>
+                    <option value="crepe-accurate">CREPE-Full (Best)</option>
+                </select>
+            </div>
         </div>
 
         <div id="loading" class="loading hidden">
@@ -429,6 +438,7 @@
         let currentData = null;
         let animationFrameId = null;
         let viewMode = 'line'; // 'line' or 'bars'
+        let currentPitchExtractor = 'swiftf0';
 
         // Populate surah dropdown
         for (let i = 1; i <= 114; i++) {
@@ -479,7 +489,8 @@
             analyzeBtn.disabled = true;
 
             try {
-                const response = await fetch(`/api/analyze/${surah}/${ayah}`);
+                const pitchExtractor = document.getElementById('pitchExtractor').value;
+                const response = await fetch(`/api/analyze/${surah}/${ayah}?pitch_extractor=${pitchExtractor}`);
                 const data = await response.json();
 
                 if (!data.success) {

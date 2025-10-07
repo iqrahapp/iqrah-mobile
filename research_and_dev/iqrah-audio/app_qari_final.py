@@ -20,6 +20,7 @@ from pathlib import Path
 
 # Import analysis modules
 from src.iqrah_audio.analysis.pitch_extractor_swiftf0 import extract_pitch_swiftf0
+from src.iqrah_audio.analysis.pitch_extractor_crepe import extract_pitch_crepe_fast, extract_pitch_crepe_accurate
 from src.iqrah_audio.analysis.phoneme_mms_proper import extract_phonemes_mms_proper
 from src.iqrah_audio.analysis.phoneme_from_transliteration import load_transliteration_data
 from src.iqrah_audio.analysis.tajweed_loader import get_ayah_words, parse_tajweed_html, get_tajweed_color
@@ -40,9 +41,14 @@ async def home():
 
 
 @app.get("/api/analyze/{surah}/{ayah}")
-async def analyze_qari(surah: int, ayah: int):
+async def analyze_qari(surah: int, ayah: int, pitch_extractor: str = "swiftf0"):
     """
     Analyze Qari recitation using PROPER AI Report 2 approach.
+
+    Args:
+        surah: Surah number
+        ayah: Ayah number
+        pitch_extractor: 'swiftf0', 'crepe-fast', or 'crepe-accurate'
 
     Returns:
         - pitch: Pitch contour
@@ -53,6 +59,7 @@ async def analyze_qari(surah: int, ayah: int):
     try:
         print(f"\n{'='*70}")
         print(f"📊 Analyzing: Surah {surah}, Ayah {ayah}")
+        print(f"   Pitch Extractor: {pitch_extractor}")
         print(f"{'='*70}")
 
         # 1. Load segment data
@@ -69,8 +76,13 @@ async def analyze_qari(surah: int, ayah: int):
         audio_path = download_audio(audio_url)
 
         # 3. Extract pitch
-        print(f"\n3️⃣ Extracting pitch...")
-        pitch_data = extract_pitch_swiftf0(audio_path)
+        print(f"\n3️⃣ Extracting pitch with {pitch_extractor}...")
+        if pitch_extractor == "crepe-fast":
+            pitch_data = extract_pitch_crepe_fast(audio_path)
+        elif pitch_extractor == "crepe-accurate":
+            pitch_data = extract_pitch_crepe_accurate(audio_path)
+        else:  # swiftf0 (default)
+            pitch_data = extract_pitch_swiftf0(audio_path)
         print(f"   ✓ Duration: {pitch_data['duration']:.2f}s")
 
         # 4. Get word segments with Arabic text
