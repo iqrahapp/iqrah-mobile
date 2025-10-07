@@ -254,6 +254,35 @@
         .hidden {
             display: none !important;
         }
+
+        /* Overlay cursor - MUCH more efficient than Plotly updates */
+        #cursorOverlay {
+            position: absolute;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 0%, #ff4444 20%, #ff4444 80%, transparent 100%);
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.8;
+            transform: translateX(-50%);
+            transition: none;
+            will-change: left;
+        }
+
+        #cursorDot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #ff4444;
+            border: 3px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1001;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: none;
+            will-change: left, top;
+        }
     </style>
 </head>
 <body>
@@ -345,6 +374,8 @@
             <!-- Pitch Plot with Real-time Cursor -->
             <div style="position: relative;">
                 <div id="pitchPlot"></div>
+                <div id="cursorOverlay" style="display: none;"></div>
+                <div id="cursorDot" style="display: none;"></div>
             </div>
         </div>
     </div>
@@ -687,21 +718,7 @@
                                '<extra></extra>'
             };
 
-            // Cursor dot (initially hidden off-screen)
-            const cursorTrace = {
-                x: [0],
-                y: [100],
-                mode: 'markers',
-                name: 'Cursor',
-                showlegend: false,
-                marker: {
-                    size: 16,
-                    color: '#ff4444',
-                    symbol: 'circle',
-                    line: { width: 3, color: 'white' }
-                },
-                hoverinfo: 'skip'
-            };
+
 
             // Background shapes for phonemes
             const phonemeShapes = data.phonemes.map((p, idx) => ({
@@ -764,8 +781,8 @@
             }
 
             const traces = viewMode === 'bars'
-                ? [pitchTrace, cursorTrace]  // No phoneme labels in bar mode (redundant)
-                : [pitchTrace, phonemeTrace, cursorTrace];
+                ? [pitchTrace]  // No cursor trace - using DOM overlay
+                : [pitchTrace, phonemeTrace];
 
             const layout = {
                 title: {
@@ -810,8 +827,36 @@
             });
         }
 
+        let plotBounds = null;
+
         function setupSmoothCursor() {
             if (!currentData) return;
+
+            const cursorLine = document.getElementById('cursorOverlay');
+            const cursorDot = document.getElementById('cursorDot');
+            const plotDiv = document.getElementById('pitchPlot');
+
+            // Get plot bounds once
+            function updatePlotBounds() {
+                const plotlyDiv = plotDiv.querySelector('.plotly');
+                if (!plotlyDiv) return;
+                
+                const plotArea = plotlyDiv.querySelector('.plot');
+                if (!plotArea) return;
+
+                const rect = plotArea.getBoundingClientRect();
+                const containerRect = plotDiv.getBoundingClientRect();
+                
+                plotBounds = {
+                    left: rect.left - containerRect.left,
+                    top: rect.top - containerRect.top,
+                    width: rect.width,
+                    height: rect.height
+                };
+            }
+
+            // Update bounds after plot is ready
+            setTimeout(updatePlotBounds, 200);
 
             // Cancel any existing animation
             if (animationFrameId) {
@@ -819,33 +864,68 @@
             }
 
             function updateCursor() {
-                if (audioPlayer.paused || audioPlayer.ended) {
-                    animationFrameId = requestAnimationFrame(updateCursor);
+                if (!plotBounds || audioPlayer.paused || audioPlayer.ended) {
+                    if (!audioPlayer.paused && !audioPlayer.ended) {
+                        animationFrameId = requestAnimationFrame(updateCursor);
+                    }
                     return;
                 }
 
                 const currentTime = audioPlayer.currentTime;
-                const pitch = interpolatePitch(currentTime, currentData.pitch);
+                const duration = currentData.duration;
 
-                // Update cursor trace (last trace)
-                const cursorIndex = viewMode === 'bars' ? 1 : 2;
-                Plotly.restyle('pitchPlot', {
-                    x: [[currentTime]],
-                    y: [[pitch]]
-                }, [cursorIndex]);
+                // Calculate position (RTL: reversed x-axis)
+                const progress = currentTime / duration;
+                const xPos = plotBounds.left + plotBounds.width * (1 - progress);  // RTL
+
+                // Get pitch for dot position
+                const pitch = interpolatePitch(currentTime, currentData.pitch);
+                const pitchData = currentData.pitch.f0_hz.filter(f => f > 0);
+                const minPitch = Math.min(...pitchData);
+                const maxPitch = Math.max(...pitchData);
+                const pitchRange = maxPitch - minPitch;
+                const pitchProgress = pitchRange > 0 ? (pitch - minPitch) / pitchRange : 0.5;
+                const yPos = plotBounds.top + plotBounds.height * (1 - pitchProgress);
+
+                // Update DOM - MUCH faster than Plotly!
+                cursorLine.style.left = xPos + 'px';
+                cursorLine.style.top = plotBounds.top + 'px';
+                cursorLine.style.height = plotBounds.height + 'px';
+                cursorLine.style.display = 'block';
+
+                cursorDot.style.left = xPos + 'px';
+                cursorDot.style.top = yPos + 'px';
+                cursorDot.style.display = 'block';
 
                 animationFrameId = requestAnimationFrame(updateCursor);
             }
 
             // Start animation loop
-            updateCursor();
-
-            // Also update on play/pause
-            audioPlayer.addEventListener('play', updateCursor);
+            audioPlayer.addEventListener('play', () => {
+                updatePlotBounds();  // Refresh bounds
+                updateCursor();
+            });
+            
             audioPlayer.addEventListener('pause', () => {
                 if (animationFrameId) {
                     cancelAnimationFrame(animationFrameId);
                 }
+            });
+
+            audioPlayer.addEventListener('ended', () => {
+                cursorLine.style.display = 'none';
+                cursorDot.style.display = 'none';
+            });
+
+            audioPlayer.addEventListener('seeked', () => {
+                if (!audioPlayer.paused) {
+                    updatePlotBounds();
+                }
+            });
+
+            // Update bounds on window resize
+            window.addEventListener('resize', () => {
+                updatePlotBounds();
             });
         }
 
