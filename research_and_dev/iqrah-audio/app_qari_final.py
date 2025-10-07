@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from pathlib import Path
 import tempfile
 import shutil
+import time
 
 # Import analysis modules
 from src.iqrah_audio.analysis.pitch_extractor_swiftf0 import extract_pitch_swiftf0
@@ -496,6 +497,27 @@ async def compare_user_audio(
         print(f"   Duration: {comparison['durations']['overall']}/100")
         print(f"{'='*70}\n")
 
+        # Save user audio to static for playback
+        user_audio_static = f"static/temp/user_{surah}_{ayah}_{int(time.time())}.webm"
+        Path("static/temp").mkdir(parents=True, exist_ok=True)
+        shutil.copy(user_audio_path, user_audio_static)
+
+        # Get Tajweed words for student (need to regenerate with correct ayah)
+        from src.iqrah_audio.analysis.tajweed_loader import get_ayah_words, parse_tajweed_html, get_tajweed_color
+
+        student_tajweed_words = get_ayah_words(surah, ayah)
+        student_arabic_words = []
+        for word_data in student_tajweed_words:
+            segments = parse_tajweed_html(word_data['text'])
+            for seg in segments:
+                seg['color'] = get_tajweed_color(seg['class'])
+                seg['tajweed_class'] = seg['class']
+
+            student_arabic_words.append({
+                'word_num': word_data['word_num'],
+                'segments': segments
+            })
+
         # Clean up temp file
         Path(user_audio_path).unlink(missing_ok=True)
 
@@ -503,12 +525,20 @@ async def compare_user_audio(
             "success": True,
             "comparison": comparison,
             "visualizations": visualizations,
-            "user_analysis": {
-                'phonemes': user_phonemes,
-                'pitch': user_pitch,
-                'statistics': user_stats
-            },
-            "reference_analysis": husary_result
+            # Student data
+            "student_phonemes": user_phonemes,
+            "student_pitch": user_pitch,
+            "student_statistics": user_stats,
+            "student_arabic_words": student_arabic_words,
+            "student_word_segments": word_segments,
+            "student_audio_url": f"/{user_audio_static}",
+            # Reference data
+            "reference_phonemes": husary_result['phonemes'],
+            "reference_pitch": husary_result['pitch'],
+            "reference_statistics": husary_result['statistics'],
+            "reference_arabic_words": husary_result.get('arabic_words', []),
+            "reference_word_segments": husary_result.get('word_segments', []),
+            "reference_audio_url": husary_result['audio_url']
         }
 
     except Exception as e:
