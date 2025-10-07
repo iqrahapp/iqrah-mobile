@@ -22,6 +22,7 @@ from pathlib import Path
 from src.iqrah_audio.analysis.pitch_extractor_swiftf0 import extract_pitch_swiftf0
 from src.iqrah_audio.analysis.pitch_extractor_crepe import extract_pitch_crepe_fast, extract_pitch_crepe_accurate
 from src.iqrah_audio.analysis.phoneme_mms_proper import extract_phonemes_mms_proper
+from src.iqrah_audio.analysis.phoneme_wav2vec2_ctc import extract_phonemes_wav2vec2_ctc
 from src.iqrah_audio.analysis.phoneme_from_transliteration import load_transliteration_data
 from src.iqrah_audio.analysis.tajweed_loader import get_ayah_words, parse_tajweed_html, get_tajweed_color
 from src.iqrah_audio.analysis.segments_loader import get_ayah_segments, download_audio, get_word_segments_with_text
@@ -96,9 +97,9 @@ async def analyze_qari(surah: int, ayah: int, pitch_extractor: str = "swiftf0"):
         transliteration = trans_data.get(f"{surah}:{ayah}", "")
         print(f"   ✓ Transliteration: {transliteration}")
 
-        # 6. Extract phonemes using PROPER MMS-FA approach
-        print(f"\n6️⃣ Extracting phonemes with MMS-FA...")
-        phonemes = extract_phonemes_mms_proper(
+        # 6. Extract phonemes - use Wav2Vec2 CTC (better alignment!)
+        print(f"\n6️⃣ Extracting phonemes with Wav2Vec2 CTC...")
+        phonemes = extract_phonemes_wav2vec2_ctc(
             audio_path=audio_path,
             word_segments=word_segments,
             transliteration=transliteration,

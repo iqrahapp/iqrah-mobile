@@ -345,12 +345,32 @@
                     <span>Ghunnah (Nasal)</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #FFB6C1;"></div>
-                    <span>Shadda (Doubled)</span>
+                    <div class="legend-color" style="background: #90EE90;"></div>
+                    <span>Qalqalah (Echoing)</span>
                 </div>
                 <div class="legend-item">
-                    <div class="legend-color" style="background: #764ba2;"></div>
-                    <span>Other Phonemes</span>
+                    <div class="legend-color" style="background: #7FFF7F;"></div>
+                    <span>Idgham (Merging)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #B0E0E6;"></div>
+                    <span>Ikhfa (Concealing)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FFB6C1;"></div>
+                    <span>Iqlab (Converting)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #D8BFD8;"></div>
+                    <span>Hamza Wasl</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FFE4B5;"></div>
+                    <span>Laam Shamsiyah</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #CCCCCC;"></div>
+                    <span>Silent</span>
                 </div>
             </div>
 
@@ -405,7 +425,7 @@
             "Al-Munafiqun", "At-Taghabun", "At-Talaq", "At-Tahrim", "Al-Mulk",
             "Al-Qalam", "Al-Haqqah", "Al-Ma'arij", "Nuh", "Al-Jinn", "Al-Muzzammil",
             "Al-Muddaththir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat", "An-Naba",
-            "An-Nazi'at", "Abasa", "'Adiyat", "At-Takwir", "Al-Infitar", "Al-Mutaffifin",
+            "An-Nazi'at", "Abasa", "At-Takwir", "Al-Infitar", "Al-Mutaffifin",
             "Al-Inshiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", "Al-Ghashiyah", "Al-Fajr",
             "Al-Balad", "Ash-Shams", "Al-Layl", "Ad-Duhaa", "Ash-Sharh", "At-Tin",
             "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
@@ -519,7 +539,7 @@
                     minPitch.toFixed(0) + '-' + maxPitch.toFixed(0) + ' Hz';
 
                 // Display Arabic words with Tajweed colors
-                displayArabicWords(data.arabic_words);
+                displayArabicWords(data.arabic_words, data.word_segments);
 
                 // Set audio
                 audioPlayer.src = data.audio_url;
@@ -547,7 +567,7 @@
             }
         });
 
-        function displayArabicWords(words) {
+        function displayArabicWords(words, wordSegments) {
             arabicWords.innerHTML = '';
 
             for (const word of words) {
@@ -565,15 +585,20 @@
                     wordSpan.appendChild(segSpan);
                 }
 
-                // Add click handler to seek to word
-                wordSpan.dataset.startMs = word.segments[0]?.start_ms || 0;
-                wordSpan.addEventListener('click', () => {
-                    const wordStartS = parseFloat(wordSpan.dataset.startMs) / 1000;
-                    audioPlayer.currentTime = wordStartS;
-                    if (audioPlayer.paused) {
-                        audioPlayer.play();
-                    }
-                });
+                // Add click handler to seek to word segment
+                // Get actual segment data for this word
+                const wordSegment = wordSegments && wordSegments[word.word_num - 1];
+                if (wordSegment) {
+                    wordSpan.dataset.startMs = wordSegment.start_ms;
+                    wordSpan.style.cursor = 'pointer';
+                    wordSpan.addEventListener('click', () => {
+                        const wordStartS = parseFloat(wordSpan.dataset.startMs) / 1000;
+                        audioPlayer.currentTime = wordStartS;
+                        if (audioPlayer.paused) {
+                            audioPlayer.play();
+                        }
+                    });
+                }
 
                 arabicWords.appendChild(wordSpan);
             }
@@ -654,14 +679,18 @@
 
             if (viewMode === 'bars') {
                 // Bar view: Detect pitch level changes (note transitions)
-                // Use outlier detection to break segments when pitch changes level
+                // Adaptive to sample rate (CREPE has ~5x more samples than SwiftF0)
                 
                 const times = data.pitch.time;
                 const f0s = data.pitch.f0_hz;
                 
-                const MIN_SEGMENT_DURATION = 0.06; // 60ms minimum
-                const OUTLIER_THRESHOLD = 2.5; // Standard deviations
-                const WINDOW_SIZE = 5; // Look at recent samples
+                // Adapt thresholds based on sample density
+                const avgSampleRate = times.length / data.duration;
+                const isHighDensity = avgSampleRate > 100; // CREPE territory
+                
+                const MIN_SEGMENT_DURATION = isHighDensity ? 0.03 : 0.06;
+                const OUTLIER_THRESHOLD = isHighDensity ? 0.8 : 2.5; // VERY sensitive for CREPE
+                const WINDOW_SIZE = isHighDensity ? 12 : 5; // Large window for CREPE
                 
                 const segments = [];
                 let i = 0;
@@ -717,6 +746,8 @@
                 }
                 
                 console.log(`📊 Detected ${segments.length} pitch levels (note segments)`);
+                console.log(`   Settings: MIN_DURATION=${MIN_SEGMENT_DURATION}s, OUTLIER_THRESHOLD=${OUTLIER_THRESHOLD}, WINDOW_SIZE=${WINDOW_SIZE}`);
+                console.log(`   Sample rate: ${avgSampleRate.toFixed(1)} Hz (${isHighDensity ? 'HIGH DENSITY - CREPE' : 'normal - SwiftF0'})`);
                 
                 // Map to phonemes for labeling
                 function getPhonemeAtTime(time) {
@@ -864,7 +895,7 @@
                                 size: 18,
                                 color: '#333'
                             },
-                            bgcolor: 'rgba(255, 255, 255, 0.8)',
+                            bgcolor: 'rgba(255, 255, 255, 0.95)',
                             bordercolor: '#ddd',
                             borderwidth: 1,
                             borderpad: 4,
@@ -969,6 +1000,13 @@
                 const currentTime = audioPlayer.currentTime;
                 const duration = currentData.duration;
 
+                // Recalculate bounds on every frame (handles resize)
+                if (!plotBounds || Date.now() - (window.lastBoundsUpdate || 0) > 100) {
+                    updatePlotBounds();
+                    window.lastBoundsUpdate = Date.now();
+                }
+                if (!plotBounds) return;
+
                 // Calculate position (RTL: reversed x-axis)
                 const progress = currentTime / duration;
                 const xPos = plotBounds.left + plotBounds.width * (1 - progress);  // RTL
@@ -997,6 +1035,19 @@
                 cursorDot.style.left = xPos + 'px';
                 cursorDot.style.top = yPos + 'px';
                 cursorDot.style.display = 'block';
+
+                // Update X-axis range for moving window (long surahs only)
+                // Throttle relayout to every 100ms to avoid performance issues
+                if (currentData.duration > 10 && (!window.lastRelayoutTime || Date.now() - window.lastRelayoutTime > 100)) {
+                    const WINDOW_SIZE = 3;
+                    const windowEnd = Math.min(currentData.duration, currentTime + WINDOW_SIZE/2);
+                    const windowStart = Math.max(0, windowEnd - WINDOW_SIZE);
+
+                    Plotly.relayout('pitchPlot', {
+                        'xaxis.range': [windowEnd, windowStart]  // RTL reversed
+                    });
+                    window.lastRelayoutTime = Date.now();
+                }
 
                 animationFrameId = requestAnimationFrame(updateCursor);
             }

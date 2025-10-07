@@ -129,39 +129,41 @@ def get_tajweed_color(tajweed_class: str) -> str:
 
     # Tajweed color mapping (from qpc-hafs-tajweed specification)
     colors = {
-        # Madd (elongation) - Yellow tones
+        # Madd (elongation) - Orange/Yellow tones
         "madda_normal": "#FFC87C",
         "madda_permissible": "#FFB84D",
         "madda_necessary": "#FFA500",
-        "madda_obligatory": "#FF8C00",
+        "madda_obligatory_mottasel": "#FF8C00",
+        "madda_obligatory_monfasel": "#FF9500",
 
         # Ghunnah (nasal) - Blue tones
         "ghunnah": "#64C8FF",
+        "idgham_ghunnah": "#64C8FF",
 
-        # Qalqalah - Red tones
-        "qalqalah": "#FF7878",
+        # Qalqalah - Light Green
+        "qalaqah": "#90EE90",
 
-        # Idghaam - Green tones
-        "idgham": "#96FF96",
-        "idgham_shaddah": "#7FFF7F",
+        # Idghaam variants - Green tones
+        "idgham_wo_ghunnah": "#7FFF7F",
+        "idgham_mutajanisayn": "#96FF96",
+        "idgham_mutaqaribayn": "#A0FFA0",
+        "idgham_shafawi": "#B0FFB0",
 
         # Hamza wasl - Purple
-        "ham_wasl": "#B489E5",
+        "ham_wasl": "#D8BFD8",
 
         # Silent - Gray
-        "silent": "#AAAAAA",
+        "slnt": "#CCCCCC",
 
-        # Ikhfa - Light blue
-        "ikhfa": "#A0D8F0",
+        # Ikhfa variants - Light Blue/Cyan
+        "ikhafa": "#B0E0E6",
+        "ikhafa_shafawi": "#AFEEEE",
 
         # Iqlab - Pink
         "iqlab": "#FFB6C1",
 
-        # Lam shamsiyah - Orange
-        "lam_shamsiyah": "#FFD700",
-
-        # Lam qamariyah - Light gray
-        "lam_qamariyah": "#D3D3D3"
+        # Laam shamsiyah - Moccasin (FIXED spelling!)
+        "laam_shamsiyah": "#FFE4B5",
     }
 
     return colors.get(tajweed_class, "#000000")
