@@ -27,6 +27,7 @@ from src.iqrah_audio.analysis.phoneme_from_transliteration import load_translite
 from src.iqrah_audio.analysis.tajweed_loader import get_ayah_words, parse_tajweed_html, get_tajweed_color
 from src.iqrah_audio.analysis.segments_loader import get_ayah_segments, download_audio, get_word_segments_with_text
 from src.iqrah_audio.analysis.statistics_analyzer import compute_full_statistics
+from src.iqrah_audio.comparison import compare_recitations
 
 app = FastAPI(title="Qari Tajweed Analysis - Final")
 
@@ -181,6 +182,81 @@ async def get_audio(surah: int, ayah: int):
         media_type="audio/mpeg",
         headers={"Accept-Ranges": "bytes"}
     )
+
+
+@app.post("/api/compare")
+async def compare_api(
+    student_surah: int,
+    student_ayah: int,
+    reference_surah: int,
+    reference_ayah: int,
+    pitch_extractor: str = "swiftf0"
+):
+    """
+    Compare student recitation against reference (Qari).
+
+    Args:
+        student_surah: Student's surah number
+        student_ayah: Student's ayah number
+        reference_surah: Reference surah number
+        reference_ayah: Reference ayah number
+        pitch_extractor: Pitch extraction method
+
+    Returns:
+        Comprehensive comparison with overall score and component breakdowns
+    """
+    try:
+        print(f"\n{'='*70}")
+        print(f"🔄 Comparing: {student_surah}:{student_ayah} vs {reference_surah}:{reference_ayah}")
+        print(f"{'='*70}\n")
+
+        # Analyze both recordings (reuse existing analysis pipeline)
+        print("1️⃣ Analyzing student...")
+        student_result = await analyze_qari(student_surah, student_ayah, pitch_extractor)
+
+        print("\n2️⃣ Analyzing reference...")
+        reference_result = await analyze_qari(reference_surah, reference_ayah, pitch_extractor)
+
+        # Get audio paths
+        student_seg = get_ayah_segments(student_surah, student_ayah)
+        reference_seg = get_ayah_segments(reference_surah, reference_ayah)
+
+        student_audio = download_audio(student_seg['audio_url'])
+        reference_audio = download_audio(reference_seg['audio_url'])
+
+        # Run comparison engine
+        print("\n3️⃣ Running comparison engine...")
+        comparison = compare_recitations(
+            student_audio_path=student_audio,
+            reference_audio_path=reference_audio,
+            student_phonemes=student_result['phonemes'],
+            reference_phonemes=reference_result['phonemes'],
+            student_pitch=student_result['pitch'],
+            reference_pitch=reference_result['pitch'],
+            student_stats=student_result['statistics'],
+            reference_stats=reference_result['statistics']
+        )
+
+        print(f"\n{'='*70}")
+        print(f"✅ Comparison complete!")
+        print(f"   Overall: {comparison['overall']}/100")
+        print(f"   Rhythm: {comparison['rhythm']['score']}/100")
+        print(f"   Melody: {comparison['melody']['score']}/100")
+        print(f"   Duration: {comparison['durations']['overall']}/100")
+        print(f"{'='*70}\n")
+
+        return {
+            "success": True,
+            "comparison": comparison,
+            "student_analysis": student_result,
+            "reference_analysis": reference_result
+        }
+
+    except Exception as e:
+        print(f"\n❌ Comparison error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
