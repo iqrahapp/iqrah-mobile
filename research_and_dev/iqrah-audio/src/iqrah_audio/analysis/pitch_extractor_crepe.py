@@ -55,9 +55,8 @@ def extract_pitch_crepe(
     # hop_length=80 gives ~200 FPS at 16kHz (80/16000 = 0.005s = 200Hz)
     print(f"   Running CREPE ({model_capacity} model)...")
 
-    # torchcrepe.predict returns (time, frequency) or (time, frequency, confidence, activation)
-    # depending on return_periodicity parameter
-    result = torchcrepe.predict(
+    # torchcrepe.predict returns just the frequency tensor
+    frequency = torchcrepe.predict(
         waveform,
         sr,
         hop_length=80,
@@ -65,32 +64,25 @@ def extract_pitch_crepe(
         fmax=550,
         model=model_capacity,
         batch_size=512,
-        device=device,
-        return_periodicity=False  # Only return time and frequency
+        device=device
     )
 
-    # Unpack result
-    if len(result) == 2:
-        time, frequency = result
-        # Generate confidence from frequency (use presence of pitch as confidence)
-        confidence = torch.where(frequency > 0, torch.ones_like(frequency), torch.zeros_like(frequency))
-    else:
-        time, frequency, confidence, _ = result
-
     # Convert to numpy
-    time = time.cpu().numpy()
     frequency = frequency.cpu().numpy().squeeze()
-    confidence = confidence.cpu().numpy().squeeze()
 
-    # Apply confidence threshold
-    CONFIDENCE_THRESHOLD = 0.5
-    voiced_mask = confidence >= CONFIDENCE_THRESHOLD
+    # Generate time array
+    hop_length = 80
+    num_frames = len(frequency)
+    time = np.arange(num_frames) * hop_length / sr
+
+    # CREPE returns 0 for unvoiced regions
+    # Generate simple confidence: 1.0 where pitch exists, 0.0 otherwise
+    confidence = np.where(frequency > 0, 1.0, 0.0)
     f0_hz = frequency.copy()
-    f0_hz[~voiced_mask] = 0.0
 
-    # Light smoothing with median filter
+    # Light smoothing with median filter on voiced regions only
     voiced_indices = np.where(f0_hz > 0)[0]
-    if len(voiced_indices) > 0:
+    if len(voiced_indices) > 3:
         f0_voiced = f0_hz[voiced_indices]
         f0_voiced = medfilt(f0_voiced, kernel_size=3)
         f0_hz[voiced_indices] = f0_voiced
