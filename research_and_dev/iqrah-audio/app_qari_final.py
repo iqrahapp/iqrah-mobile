@@ -16,6 +16,7 @@ This implements AI Report 2's approach CORRECTLY:
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from pathlib import Path
 
 # Import analysis modules
@@ -266,29 +267,33 @@ async def compare_api(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/compare/visualize")
-async def compare_visualize(
-    student_surah: int,
-    student_ayah: int,
-    reference_surah: int,
-    reference_ayah: int,
+class ComparisonRequest(BaseModel):
+    student_surah: int
+    student_ayah: int
+    reference_surah: int
+    reference_ayah: int
     pitch_extractor: str = "swiftf0"
-):
+
+
+@app.post("/api/compare/visualize")
+async def compare_visualize(request: ComparisonRequest):
     """
     Compare two recitations and generate visualizations.
 
     Args:
-        student_surah: Student's surah number
-        student_ayah: Student's ayah number
-        reference_surah: Reference surah number
-        reference_ayah: Reference ayah number
-        pitch_extractor: Pitch extraction method
+        request: ComparisonRequest with surah/ayah numbers
 
     Returns:
         Comparison with base64-encoded visualization images
     """
     try:
         from src.iqrah_audio.comparison.features import extract_features
+
+        student_surah = request.student_surah
+        student_ayah = request.student_ayah
+        reference_surah = request.reference_surah
+        reference_ayah = request.reference_ayah
+        pitch_extractor = request.pitch_extractor
 
         print(f"\n{'='*70}")
         print(f"📊 Comparing with visualizations: {student_surah}:{student_ayah} vs {reference_surah}:{reference_ayah}")
