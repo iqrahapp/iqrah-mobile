@@ -26,6 +26,7 @@ from src.iqrah_audio.analysis.phoneme_wav2vec2_ctc import extract_phonemes_wav2v
 from src.iqrah_audio.analysis.phoneme_from_transliteration import load_transliteration_data
 from src.iqrah_audio.analysis.tajweed_loader import get_ayah_words, parse_tajweed_html, get_tajweed_color
 from src.iqrah_audio.analysis.segments_loader import get_ayah_segments, download_audio, get_word_segments_with_text
+from src.iqrah_audio.analysis.statistics_analyzer import compute_full_statistics
 
 app = FastAPI(title="Qari Tajweed Analysis - Final")
 
@@ -131,6 +132,15 @@ async def analyze_qari(surah: int, ayah: int, pitch_extractor: str = "swiftf0"):
 
         print(f"   ✓ {len(words_with_tajweed)} Arabic words")
 
+        # 8. Compute statistics
+        print(f"\n8️⃣ Computing statistics...")
+        statistics = compute_full_statistics(phonemes, pitch_data)
+        print(f"   ✓ Tempo: {statistics['tempo']['syllables_per_second']} syl/s (stability: {statistics['tempo']['stability_score']})")
+        print(f"   ✓ Pitch: {statistics['pitch']['mean_pitch']} Hz (±{statistics['pitch']['std_pitch']} Hz)")
+        print(f"   ✓ Count: {statistics['count']['mean_count']}s (precision: {statistics['count']['precision_score']})")
+        if statistics['madd']['total_madds'] > 0:
+            print(f"   ✓ Madd accuracy: {statistics['madd']['overall_accuracy']}% ({statistics['madd']['total_madds']} total)")
+
         print(f"\n{'='*70}")
         print(f"✅ Analysis complete!")
         print(f"{'='*70}\n")
@@ -146,7 +156,8 @@ async def analyze_qari(surah: int, ayah: int, pitch_extractor: str = "swiftf0"):
             "arabic_words": words_with_tajweed,
             "word_segments": word_segments,  # Add word segments for visualization
             "transliteration": transliteration,
-            "duration": pitch_data['duration']
+            "duration": pitch_data['duration'],
+            "statistics": statistics  # NEW: Add statistics
         }
 
     except Exception as e:

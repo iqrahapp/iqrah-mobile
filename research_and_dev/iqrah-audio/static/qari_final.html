@@ -385,12 +385,32 @@
                     <div class="stat-value" id="statPhonemes">-</div>
                 </div>
                 <div class="stat-card">
+                    <div class="stat-label">Tempo</div>
+                    <div class="stat-value" id="statTempo">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Tempo Stability</div>
+                    <div class="stat-value" id="statTempoStability">-</div>
+                </div>
+                <div class="stat-card">
                     <div class="stat-label">Avg Pitch</div>
                     <div class="stat-value" id="statPitch">-</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Pitch Range</div>
                     <div class="stat-value" id="statRange">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Count Duration</div>
+                    <div class="stat-value" id="statCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Count Precision</div>
+                    <div class="stat-value" id="statCountPrecision">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Madd Accuracy</div>
+                    <div class="stat-value" id="statMaddAccuracy">-</div>
                 </div>
             </div>
 
@@ -529,14 +549,38 @@
                 document.getElementById('statDuration').textContent = data.duration.toFixed(2) + 's';
                 document.getElementById('statPhonemes').textContent = data.phonemes.length;
 
-                const voicedPitch = data.pitch.f0_hz.filter(f => f > 0);
-                const avgPitch = voicedPitch.reduce((a, b) => a + b, 0) / voicedPitch.length;
-                const minPitch = Math.min(...voicedPitch);
-                const maxPitch = Math.max(...voicedPitch);
+                // Update statistics from backend
+                if (data.statistics) {
+                    const stats = data.statistics;
 
-                document.getElementById('statPitch').textContent = avgPitch.toFixed(1) + ' Hz';
-                document.getElementById('statRange').textContent =
-                    minPitch.toFixed(0) + '-' + maxPitch.toFixed(0) + ' Hz';
+                    // Tempo
+                    document.getElementById('statTempo').textContent =
+                        stats.tempo.syllables_per_second.toFixed(2) + ' syl/s';
+                    document.getElementById('statTempoStability').textContent =
+                        stats.tempo.stability_score + '/100' + (stats.tempo.stability_score >= 90 ? ' ⭐' : '');
+
+                    // Pitch
+                    document.getElementById('statPitch').textContent =
+                        stats.pitch.mean_pitch + ' Hz';
+                    document.getElementById('statRange').textContent =
+                        stats.pitch.range[0] + '-' + stats.pitch.range[1] + ' Hz';
+
+                    // Count
+                    document.getElementById('statCount').textContent =
+                        stats.count.mean_count.toFixed(3) + 's ± ' + stats.count.std_count.toFixed(3) + 's';
+                    document.getElementById('statCountPrecision').textContent =
+                        stats.count.precision_score + '/100' + (stats.count.precision_score >= 90 ? ' ⭐' : '');
+
+                    // Madd
+                    if (stats.madd.total_madds > 0) {
+                        document.getElementById('statMaddAccuracy').textContent =
+                            stats.madd.overall_accuracy + '%' + (stats.madd.overall_accuracy >= 95 ? ' ⭐' : '');
+                    } else {
+                        document.getElementById('statMaddAccuracy').textContent = 'N/A';
+                    }
+
+                    console.log('📈 Statistics:', stats);
+                }
 
                 // Display Arabic words with Tajweed colors
                 displayArabicWords(data.arabic_words, data.word_segments);
