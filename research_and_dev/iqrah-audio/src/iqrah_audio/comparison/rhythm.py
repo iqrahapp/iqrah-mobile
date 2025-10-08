@@ -42,14 +42,18 @@ def soft_dtw_divergence(
     x_t = torch.from_numpy(x).float()
     y_t = torch.from_numpy(y).float()
 
-    # Compute pairwise distance matrix (Euclidean)
+    # Compute pairwise distance matrix (squared Euclidean)
     cost_xy = pairwise_euclidean(x_t, y_t)
     cost_xx = pairwise_euclidean(x_t, x_t)
     cost_yy = pairwise_euclidean(y_t, y_t)
 
-    # Apply Sakoe-Chiba band if specified
+    # CRITICAL FIX: Apply Sakoe-Chiba band to ALL cost matrices
+    # If we only band xy, then xx/yy stay artificially small → divergence explodes
     if bandwidth is not None:
-        cost_xy = apply_sakoe_chiba_band(cost_xy, bandwidth)
+        T1, T2 = x_t.size(0), y_t.size(0)
+        cost_xy = apply_sakoe_chiba_band(cost_xy, bandwidth, T1, T2)
+        cost_xx = apply_sakoe_chiba_band(cost_xx, bandwidth, T1, T1)
+        cost_yy = apply_sakoe_chiba_band(cost_yy, bandwidth, T2, T2)
 
     # Compute Soft-DTW values
     sdtw_xy = soft_dtw_forward(cost_xy, gamma)
@@ -59,10 +63,19 @@ def soft_dtw_divergence(
     # Divergence formula
     divergence = 2 * sdtw_xy - sdtw_xx - sdtw_yy
 
-    # Extract approximate path (for visualization)
-    path = extract_path_from_cost(cost_xy.numpy())
+    # Normalize by path length to make scores comparable across different clip lengths
+    path = extract_path_from_cost(cost_xy.cpu().numpy())
+    path_len = max(len(path), 1)
+    divergence_per_step = max(0.0, float(divergence)) / path_len
 
-    return float(divergence), path
+    # Diagnostic logging
+    print(f"[DTW] T_student={len(x)}, T_reference={len(y)}, bandwidth={bandwidth} frames")
+    print(f"[DTW] sdtw_xy={sdtw_xy:.3f}, sdtw_xx={sdtw_xx:.3f}, sdtw_yy={sdtw_yy:.3f}")
+    print(f"[DTW] divergence={divergence:.3f}, path_len={path_len}, per_step={divergence_per_step:.4f}")
+    print(f"[DTW] path coverage: {len(np.unique(path[:,1]))}/{len(y)} ref frames ({100*len(np.unique(path[:,1]))/len(y):.1f}%)")
+    print(f"[DTW] path monotonic: {np.all(np.diff(path[:,0]) >= 0) and np.all(np.diff(path[:,1]) >= 0)}")
+
+    return divergence_per_step, path
 
 
 def pairwise_euclidean(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -142,7 +155,7 @@ def soft_min_3(a: float, b: float, c: float, gamma: float) -> float:
     ) + m
 
 
-def apply_sakoe_chiba_band(cost: torch.Tensor, bandwidth: int) -> torch.Tensor:
+def apply_sakoe_chiba_band(cost: torch.Tensor, bandwidth: int, T1: int = None, T2: int = None) -> torch.Tensor:
     """
     Apply Sakoe-Chiba band constraint to cost matrix.
 
@@ -151,20 +164,29 @@ def apply_sakoe_chiba_band(cost: torch.Tensor, bandwidth: int) -> torch.Tensor:
     Args:
         cost: Cost matrix [T1, T2]
         bandwidth: Band width (in frames)
+        T1: Optional override for T1 dimension
+        T2: Optional override for T2 dimension
 
     Returns:
         Banded cost matrix
     """
-    T1, T2 = cost.shape
+    if T1 is None or T2 is None:
+        T1, T2 = cost.shape
+
+    # Vectorized band application (much faster than loops)
+    device = cost.device
+    i = torch.arange(T1, device=device).unsqueeze(1)
+    j = torch.arange(T2, device=device).unsqueeze(0)
+
+    # Compute diagonal position for each (i,j)
+    diag_pos = j - (T2 / float(T1)) * i
+
+    # Create mask for points outside band
+    band_mask = diag_pos.abs() > bandwidth
+
+    # Clone and apply mask
     cost_banded = cost.clone()
-
-    for i in range(T1):
-        for j in range(T2):
-            # Compute diagonal position
-            diag_pos = j - (T2 / T1) * i
-
-            if abs(diag_pos) > bandwidth:
-                cost_banded[i, j] = float('inf')
+    cost_banded[band_mask] = float('inf')
 
     return cost_banded
 
@@ -246,15 +268,15 @@ def rhythm_score(
         bandwidth=bandwidth
     )
 
-    # Convert divergence to score (0-100)
-    # Lower divergence = better match
-    # Use exponential decay: score = 100 * exp(-divergence / scale)
-    # Calibration: divergence ~0 -> 100, ~50 -> 70, ~100 -> 45, ~150 -> 30
-    scale = 60.0  # Adjusted for proper discrimination
+    # Convert divergence_per_step to score (0-100)
+    # CRITICAL FIX: divergence is now normalized by path length
+    # Much smaller scale needed: 1.6 instead of 60
+    # With div_per_step ~ 0.87, score ~ 59 (expected range for good imitation)
+    scale = 1.6  # Calibrated for per-step divergence (0.5-2.0 typical range)
     score = 100 * np.exp(-divergence / scale)
     score = max(0, min(100, score))
 
-    print(f"[DEBUG rhythm] Soft-DTW divergence: {divergence:.3f}")
+    print(f"[DEBUG rhythm] Divergence per step: {divergence:.4f}")
     print(f"[DEBUG rhythm] Rhythm score: {score:.1f}")
     print(f"[DEBUG rhythm] Student features: {len(student_features)} frames")
     print(f"[DEBUG rhythm] Reference features: {len(ref_features)} frames")
