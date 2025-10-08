@@ -1013,20 +1013,65 @@
             const studentPitch = data.student_pitch;
             const referencePitch = data.reference_pitch;
 
+            // Get DTW alignment path from rhythm comparison
+            const dtwPath = data.comparison.rhythm.path;  // [[student_idx, ref_idx], ...]
+
+            console.log('DTW path length:', dtwPath ? dtwPath.length : 0);
+
+            // Build time warping function: student_time -> reference_time
+            function warpStudentTime(studentTime) {
+                if (!dtwPath || dtwPath.length === 0) {
+                    // Fallback to linear scaling
+                    const studentDuration = studentPitch.time[studentPitch.time.length - 1];
+                    const refDuration = referencePitch.time[referencePitch.time.length - 1];
+                    return (studentTime / studentDuration) * refDuration;
+                }
+
+                // Find student time in pitch array
+                let studentIdx = 0;
+                for (let i = 0; i < studentPitch.time.length; i++) {
+                    if (studentPitch.time[i] >= studentTime) {
+                        studentIdx = i;
+                        break;
+                    }
+                }
+
+                // Find corresponding reference index in DTW path
+                // DTW path maps feature indices (downsampled), need to scale
+                const studentFeatureIdx = Math.floor(studentIdx / (studentPitch.time.length / dtwPath[dtwPath.length-1][0]));
+
+                for (let i = 0; i < dtwPath.length; i++) {
+                    if (dtwPath[i][0] >= studentFeatureIdx) {
+                        const refFeatureIdx = dtwPath[i][1];
+                        // Map back to reference time
+                        const refIdx = Math.floor(refFeatureIdx * (referencePitch.time.length / dtwPath[dtwPath.length-1][1]));
+                        return referencePitch.time[Math.min(refIdx, referencePitch.time.length - 1)];
+                    }
+                }
+
+                return referencePitch.time[referencePitch.time.length - 1];
+            }
+
+            // Warp student time to reference time for plotting
+            const studentTimeWarped = studentPitch.time.map(t => warpStudentTime(t));
+
+            // Save warping function globally for cursor tracking
+            window.warpStudentTimeGlobal = warpStudentTime;
+
             // Filter out unvoiced (0 Hz) segments - replace with null to break lines
             const studentPitchFiltered = studentPitch.f0_hz.map(f0 => f0 > 0 ? f0 : null);
             const referencePitchFiltered = referencePitch.f0_hz.map(f0 => f0 > 0 ? f0 : null);
 
-            // Student trace (blue)
+            // Student trace (blue) - use WARPED time for x-axis
             const studentTrace = {
-                x: studentPitch.time,
+                x: studentTimeWarped,
                 y: studentPitchFiltered,
                 mode: 'lines',
                 name: 'Student (You)',
                 line: { color: '#4169e1', width: 2 },
                 connectgaps: false,  // Don't connect across unvoiced segments
                 hovertemplate: '<b>Student</b><br>' +
-                               'Time: %{x:.3f}s<br>' +
+                               'Time: %{x:.3f}s (warped)<br>' +
                                'Pitch: %{y:.1f} Hz<br>' +
                                '<extra></extra>'
             };
@@ -1070,10 +1115,13 @@
                 return f0s[0] > 0 ? f0s[0] : 100;
             }
 
-            // Student phonemes (above the line) - use actual pitch from contour, not mean
+            // Student phonemes (above the line) - use WARPED time and actual pitch from contour
             const studentVoicedPhonemes = (data.student_phonemes || []).filter(p => p.mean_pitch > 0);
             const studentPhonemeTrace = {
-                x: studentVoicedPhonemes.map(p => (p.start + p.end) / 2),
+                x: studentVoicedPhonemes.map(p => {
+                    const centerTime = (p.start + p.end) / 2;
+                    return warpStudentTime(centerTime);  // Warp to reference time
+                }),
                 y: studentVoicedPhonemes.map(p => {
                     const centerTime = (p.start + p.end) / 2;
                     return getPitchAtTime(centerTime, studentPitch);
@@ -1090,7 +1138,7 @@
                     symbol: 'circle'
                 },
                 hovertemplate: '<b>Student: %{text}</b><br>' +
-                               'Time: %{x:.3f}s<br>' +
+                               'Time: %{x:.3f}s (warped)<br>' +
                                'Pitch: %{y:.1f} Hz<br>' +
                                '<extra></extra>'
             };
@@ -1315,9 +1363,12 @@
 
                 const pitch = interpolatePitch(currentTime, comparisonData.student_pitch);
 
+                // Warp student time to reference time for plot positioning
+                const warpedTime = window.warpStudentTimeGlobal ? window.warpStudentTimeGlobal(currentTime) : currentTime;
+
                 // Convert data coordinates to normalized [0,1] then to pixels
-                // RTL: larger time values are on the LEFT, so we need (xMax - currentTime) / xRange
-                const xNorm = (xMax - currentTime) / xRange;  // RTL: reversed
+                // RTL: larger time values are on the LEFT, so we need (xMax - warpedTime) / xRange
+                const xNorm = (xMax - warpedTime) / xRange;  // RTL: reversed, using WARPED time
                 const yNorm = (pitch - yMin) / yRange;
 
                 const xPos = plotBounds.left + plotBounds.width * xNorm;
