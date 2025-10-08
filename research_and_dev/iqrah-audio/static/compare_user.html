@@ -974,13 +974,18 @@
             const studentPitch = data.student_pitch;
             const referencePitch = data.reference_pitch;
 
+            // Filter out unvoiced (0 Hz) segments - replace with null to break lines
+            const studentPitchFiltered = studentPitch.f0_hz.map(f0 => f0 > 0 ? f0 : null);
+            const referencePitchFiltered = referencePitch.f0_hz.map(f0 => f0 > 0 ? f0 : null);
+
             // Student trace (blue)
             const studentTrace = {
                 x: studentPitch.time,
-                y: studentPitch.f0_hz,
+                y: studentPitchFiltered,
                 mode: 'lines',
                 name: 'Student (You)',
                 line: { color: '#4169e1', width: 2 },
+                connectgaps: false,  // Don't connect across unvoiced segments
                 hovertemplate: '<b>Student</b><br>' +
                                'Time: %{x:.3f}s<br>' +
                                'Pitch: %{y:.1f} Hz<br>' +
@@ -990,38 +995,56 @@
             // Reference trace (red)
             const referenceTrace = {
                 x: referencePitch.time,
-                y: referencePitch.f0_hz,
+                y: referencePitchFiltered,
                 mode: 'lines',
                 name: 'Husary Reference',
                 line: { color: '#dc3545', width: 2 },
+                connectgaps: false,  // Don't connect across unvoiced segments
                 hovertemplate: '<b>Husary</b><br>' +
                                'Time: %{x:.3f}s<br>' +
                                'Pitch: %{y:.1f} Hz<br>' +
                                '<extra></extra>'
             };
 
-            // Phoneme markers for student
-            const voicedPhonemes = (data.student_phonemes || []).filter(p => p.mean_pitch > 0);
-            const phonemeTrace = {
-                x: voicedPhonemes.map(p => (p.start + p.end) / 2),
-                y: voicedPhonemes.map(p => p.mean_pitch),
+            // Student phonemes (above the line)
+            const studentVoicedPhonemes = (data.student_phonemes || []).filter(p => p.mean_pitch > 0);
+            const studentPhonemeTrace = {
+                x: studentVoicedPhonemes.map(p => (p.start + p.end) / 2),
+                y: studentVoicedPhonemes.map(p => p.mean_pitch),
                 mode: 'markers+text',
-                name: 'Phonemes',
-                text: voicedPhonemes.map(p => p.phoneme),
+                name: 'Student Phonemes',
+                text: studentVoicedPhonemes.map(p => p.phoneme),
                 textposition: 'top center',
-                textfont: { size: 14, family: 'Roboto', color: '#000', weight: 'bold' },
+                textfont: { size: 12, family: 'Roboto', color: '#4169e1', weight: 'bold' },
                 marker: {
-                    size: 12,
-                    color: voicedPhonemes.map(p => {
-                        const rule = p.tajweed_rule;
-                        if (rule === 'madd') return '#FFC87C';
-                        if (rule === 'ghunnah') return '#64C8FF';
-                        if (rule === 'shadda') return '#FFB6C1';
-                        return '#764ba2';
-                    }),
-                    line: { width: 2, color: 'white' }
+                    size: 10,
+                    color: '#4169e1',
+                    line: { width: 2, color: 'white' },
+                    symbol: 'circle'
                 },
-                hovertemplate: '<b>%{text}</b><br>' +
+                hovertemplate: '<b>Student: %{text}</b><br>' +
+                               'Time: %{x:.3f}s<br>' +
+                               'Pitch: %{y:.1f} Hz<br>' +
+                               '<extra></extra>'
+            };
+
+            // Reference phonemes (below the line)
+            const referenceVoicedPhonemes = (data.reference_phonemes || []).filter(p => p.mean_pitch > 0);
+            const referencePhonemeTrace = {
+                x: referenceVoicedPhonemes.map(p => (p.start + p.end) / 2),
+                y: referenceVoicedPhonemes.map(p => p.mean_pitch),
+                mode: 'markers+text',
+                name: 'Reference Phonemes',
+                text: referenceVoicedPhonemes.map(p => p.phoneme),
+                textposition: 'bottom center',
+                textfont: { size: 12, family: 'Roboto', color: '#dc3545', weight: 'bold' },
+                marker: {
+                    size: 10,
+                    color: '#dc3545',
+                    line: { width: 2, color: 'white' },
+                    symbol: 'square'
+                },
+                hovertemplate: '<b>Reference: %{text}</b><br>' +
                                'Time: %{x:.3f}s<br>' +
                                'Pitch: %{y:.1f} Hz<br>' +
                                '<extra></extra>'
@@ -1087,7 +1110,7 @@
                 });
             }
 
-            const traces = [studentTrace, referenceTrace, phonemeTrace];
+            const traces = [studentTrace, referenceTrace, studentPhonemeTrace, referencePhonemeTrace];
 
             const layout = {
                 title: {
