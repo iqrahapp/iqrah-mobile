@@ -1018,42 +1018,71 @@
 
             console.log('DTW path length:', dtwPath ? dtwPath.length : 0);
 
-            // Build time warping function: student_time -> reference_time
+            // PRE-COMPUTE warping lookup table for performance (called 60fps!)
+            console.time('DTW warping computation');
+
+            const warpingLookup = {};
+
+            if (!dtwPath || dtwPath.length === 0) {
+                // Fallback: linear scaling
+                const studentDuration = studentPitch.time[studentPitch.time.length - 1];
+                const refDuration = referencePitch.time[referencePitch.time.length - 1];
+                studentPitch.time.forEach(t => {
+                    warpingLookup[t] = (t / studentDuration) * refDuration;
+                });
+            } else {
+                // Use DTW path to build lookup
+                studentPitch.time.forEach((studentTime, studentIdx) => {
+                    // DTW path maps feature indices (downsampled), need to scale
+                    const studentFeatureIdx = Math.floor(studentIdx / (studentPitch.time.length / dtwPath[dtwPath.length-1][0]));
+
+                    // Find in DTW path
+                    for (let i = 0; i < dtwPath.length; i++) {
+                        if (dtwPath[i][0] >= studentFeatureIdx) {
+                            const refFeatureIdx = dtwPath[i][1];
+                            const refIdx = Math.floor(refFeatureIdx * (referencePitch.time.length / dtwPath[dtwPath.length-1][1]));
+                            warpingLookup[studentTime] = referencePitch.time[Math.min(refIdx, referencePitch.time.length - 1)];
+                            break;
+                        }
+                    }
+
+                    if (!(studentTime in warpingLookup)) {
+                        warpingLookup[studentTime] = referencePitch.time[referencePitch.time.length - 1];
+                    }
+                });
+            }
+
+            console.timeEnd('DTW warping computation');
+
+            // Fast lookup function using pre-computed table
             function warpStudentTime(studentTime) {
-                if (!dtwPath || dtwPath.length === 0) {
-                    // Fallback to linear scaling
-                    const studentDuration = studentPitch.time[studentPitch.time.length - 1];
-                    const refDuration = referencePitch.time[referencePitch.time.length - 1];
-                    return (studentTime / studentDuration) * refDuration;
-                }
+                // Find closest time in lookup table
+                let closest = studentPitch.time[0];
+                let minDiff = Math.abs(studentTime - closest);
 
-                // Find student time in pitch array
-                let studentIdx = 0;
-                for (let i = 0; i < studentPitch.time.length; i++) {
-                    if (studentPitch.time[i] >= studentTime) {
-                        studentIdx = i;
-                        break;
+                for (const t of studentPitch.time) {
+                    const diff = Math.abs(studentTime - t);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closest = t;
                     }
+                    if (t > studentTime) break;  // Stop early
                 }
 
-                // Find corresponding reference index in DTW path
-                // DTW path maps feature indices (downsampled), need to scale
-                const studentFeatureIdx = Math.floor(studentIdx / (studentPitch.time.length / dtwPath[dtwPath.length-1][0]));
-
-                for (let i = 0; i < dtwPath.length; i++) {
-                    if (dtwPath[i][0] >= studentFeatureIdx) {
-                        const refFeatureIdx = dtwPath[i][1];
-                        // Map back to reference time
-                        const refIdx = Math.floor(refFeatureIdx * (referencePitch.time.length / dtwPath[dtwPath.length-1][1]));
-                        return referencePitch.time[Math.min(refIdx, referencePitch.time.length - 1)];
-                    }
-                }
-
-                return referencePitch.time[referencePitch.time.length - 1];
+                return warpingLookup[closest] || studentTime;
             }
 
             // Warp student time to reference time for plotting
-            const studentTimeWarped = studentPitch.time.map(t => warpStudentTime(t));
+            const studentTimeWarped = studentPitch.time.map(t => warpingLookup[t]);
+
+            // Debug: check warped time range
+            const maxWarpedTime = Math.max(...studentTimeWarped);
+            const maxRefTime = referencePitch.time[referencePitch.time.length - 1];
+            console.log('Max warped student time:', maxWarpedTime.toFixed(3));
+            console.log('Max reference time:', maxRefTime.toFixed(3));
+            if (maxWarpedTime > maxRefTime) {
+                console.warn('Warped student time exceeds reference time by', (maxWarpedTime - maxRefTime).toFixed(3), 's');
+            }
 
             // Save warping function globally for cursor tracking
             window.warpStudentTimeGlobal = warpStudentTime;
@@ -1238,7 +1267,8 @@
                 xaxis: {
                     title: 'Time (seconds)',
                     gridcolor: '#eee',
-                    autorange: 'reversed'  // RTL
+                    range: [maxRefTime, 0],  // RTL: [max, min] - use reference duration as max
+                    autorange: false
                 },
                 yaxis: {
                     title: 'Pitch (Hz)',
