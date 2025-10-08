@@ -935,8 +935,23 @@
             const studentUrl = data.student_audio_url || URL.createObjectURL(userAudioBlob);
             const referenceUrl = data.reference_audio_url;
 
-            document.getElementById('studentAudioPlayer').src = studentUrl;
-            document.getElementById('referenceAudioPlayer').src = referenceUrl;
+            const studentPlayer = document.getElementById('studentAudioPlayer');
+            const referencePlayer = document.getElementById('referenceAudioPlayer');
+
+            studentPlayer.src = studentUrl;
+            referencePlayer.src = referenceUrl;
+
+            // DEBUG: Log actual audio durations when loaded
+            studentPlayer.addEventListener('loadedmetadata', () => {
+                console.log('Student audio duration (browser):', studentPlayer.duration);
+                console.log('Student pitch duration (extracted):', data.student_pitch.time[data.student_pitch.time.length - 1]);
+                console.log('Duration mismatch:', Math.abs(studentPlayer.duration - data.student_pitch.time[data.student_pitch.time.length - 1]));
+            }, { once: true });
+
+            referencePlayer.addEventListener('loadedmetadata', () => {
+                console.log('Reference audio duration (browser):', referencePlayer.duration);
+                console.log('Reference pitch duration (extracted):', data.reference_pitch.time[data.reference_pitch.time.length - 1]);
+            }, { once: true });
 
             // Display Arabic words
             displayArabicWords(data.student_arabic_words, data.student_word_segments);
