@@ -1031,24 +1031,40 @@
                     warpingLookup[t] = (t / studentDuration) * refDuration;
                 });
             } else {
-                // Use DTW path to build lookup
-                studentPitch.time.forEach((studentTime, studentIdx) => {
-                    // DTW path maps feature indices (downsampled), need to scale
-                    const studentFeatureIdx = Math.floor(studentIdx / (studentPitch.time.length / dtwPath[dtwPath.length-1][0]));
+                // Use DTW path to build lookup - FIXED: proper feature-to-time mapping
+                const maxStudentFeat = dtwPath[dtwPath.length - 1][0];
+                const maxRefFeat = dtwPath[dtwPath.length - 1][1];
 
-                    // Find in DTW path
-                    for (let i = 0; i < dtwPath.length; i++) {
-                        if (dtwPath[i][0] >= studentFeatureIdx) {
-                            const refFeatureIdx = dtwPath[i][1];
-                            const refIdx = Math.floor(refFeatureIdx * (referencePitch.time.length / dtwPath[dtwPath.length-1][1]));
-                            warpingLookup[studentTime] = referencePitch.time[Math.min(refIdx, referencePitch.time.length - 1)];
+                console.log('DTW path range: student [0,' + maxStudentFeat + '], ref [0,' + maxRefFeat + ']');
+                console.log('Pitch time arrays: student ' + studentPitch.time.length + ' samples, ref ' + referencePitch.time.length + ' samples');
+
+                studentPitch.time.forEach((studentTime, studentIdx) => {
+                    // Map pitch sample index to feature index (features are downsampled)
+                    const studentFeatureIdx = studentIdx * (maxStudentFeat / studentPitch.time.length);
+
+                    // Find closest point in DTW path using binary-like search
+                    let bestJ = 0;
+                    let minDist = Math.abs(dtwPath[0][0] - studentFeatureIdx);
+
+                    for (let j = 1; j < dtwPath.length; j++) {
+                        const dist = Math.abs(dtwPath[j][0] - studentFeatureIdx);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            bestJ = j;
+                        } else if (dist > minDist) {
+                            // DTW path is monotonic, stop when distance increases
                             break;
                         }
                     }
 
-                    if (!(studentTime in warpingLookup)) {
-                        warpingLookup[studentTime] = referencePitch.time[referencePitch.time.length - 1];
-                    }
+                    // Get corresponding reference feature index from path
+                    const refFeatureIdx = dtwPath[bestJ][1];
+
+                    // Map reference feature index back to reference time array
+                    const refTimeIdx = Math.floor(refFeatureIdx * (referencePitch.time.length / maxRefFeat));
+                    const clampedRefIdx = Math.min(refTimeIdx, referencePitch.time.length - 1);
+
+                    warpingLookup[studentTime] = referencePitch.time[clampedRefIdx];
                 });
             }
 
@@ -1468,12 +1484,21 @@
                 referenceAnimationFrame = requestAnimationFrame(updateReferenceCursor);
             }
 
-            // Student player events
+            // Student player events - add comprehensive timing debug
+            studentPlayer.addEventListener('loadstart', () => console.log('[STUDENT] loadstart'));
+            studentPlayer.addEventListener('loadedmetadata', () => console.log('[STUDENT] loadedmetadata'));
+            studentPlayer.addEventListener('loadeddata', () => console.log('[STUDENT] loadeddata'));
+            studentPlayer.addEventListener('canplay', () => console.log('[STUDENT] canplay'));
+            studentPlayer.addEventListener('canplaythrough', () => console.log('[STUDENT] canplaythrough'));
+            studentPlayer.addEventListener('waiting', () => console.log('[STUDENT] waiting (buffering)'));
+            studentPlayer.addEventListener('playing', () => console.log('[STUDENT] playing (actually started)'));
+
             studentPlayer.addEventListener('play', () => {
-                console.time('Student play handler');
+                console.time('[STUDENT] play event handler');
+                console.log('[STUDENT] play event fired at', performance.now());
                 updatePlotBounds();
                 updateStudentCursor();
-                console.timeEnd('Student play handler');
+                console.timeEnd('[STUDENT] play event handler');
             });
             studentPlayer.addEventListener('pause', () => {
                 if (studentAnimationFrame) {
@@ -1485,10 +1510,21 @@
                 studentDot.style.display = 'none';
             });
 
-            // Reference player events
+            // Reference player events - add comprehensive timing debug
+            referencePlayer.addEventListener('loadstart', () => console.log('[REFERENCE] loadstart'));
+            referencePlayer.addEventListener('loadedmetadata', () => console.log('[REFERENCE] loadedmetadata'));
+            referencePlayer.addEventListener('loadeddata', () => console.log('[REFERENCE] loadeddata'));
+            referencePlayer.addEventListener('canplay', () => console.log('[REFERENCE] canplay'));
+            referencePlayer.addEventListener('canplaythrough', () => console.log('[REFERENCE] canplaythrough'));
+            referencePlayer.addEventListener('waiting', () => console.log('[REFERENCE] waiting (buffering)'));
+            referencePlayer.addEventListener('playing', () => console.log('[REFERENCE] playing (actually started)'));
+
             referencePlayer.addEventListener('play', () => {
+                console.time('[REFERENCE] play event handler');
+                console.log('[REFERENCE] play event fired at', performance.now());
                 updatePlotBounds();
                 updateReferenceCursor();
+                console.timeEnd('[REFERENCE] play event handler');
             });
             referencePlayer.addEventListener('pause', () => {
                 if (referenceAnimationFrame) {

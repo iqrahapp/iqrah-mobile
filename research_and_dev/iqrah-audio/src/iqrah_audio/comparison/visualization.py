@@ -128,25 +128,44 @@ def plot_pitch_comparison(
         student_time_warped = np.zeros_like(student_time_original)
 
         # Build warping from DTW path
-        # Path maps feature indices to reference indices
+        # Path contains feature-space indices, need to map to time-space
         max_student_feat = path[-1][0]
         max_ref_feat = path[-1][1]
 
-        for i, t in enumerate(student_time_original):
-            # Map pitch index to feature index
-            student_feat_idx = int(i / len(student_time_original) * max_student_feat)
+        # Create interpolated warping function from path
+        # Map each student time to reference time using DTW path
+        for i in range(len(student_time_original)):
+            # Map pitch sample index to feature index (linear interpolation)
+            # Features are computed at lower rate than pitch samples
+            student_feat_idx = i * (max_student_feat / len(student_time_original))
 
-            # Find corresponding reference index in path
-            for j in range(len(path)):
-                if path[j][0] >= student_feat_idx:
-                    ref_feat_idx = path[j][1]
-                    # Map back to reference time
-                    ref_idx = int(ref_feat_idx / max_ref_feat * (len(reference_time) - 1))
-                    student_time_warped[i] = reference_time[min(ref_idx, len(reference_time) - 1)]
+            # Find closest path point
+            # Binary search would be faster, but linear is fine for small paths
+            best_j = 0
+            min_dist = abs(path[0][0] - student_feat_idx)
+            for j in range(1, len(path)):
+                dist = abs(path[j][0] - student_feat_idx)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_j = j
+                elif dist > min_dist:
+                    # Path is monotonic, so we can stop once distance increases
                     break
+
+            # Get corresponding reference feature index
+            ref_feat_idx = path[best_j][1]
+
+            # Map reference feature index back to reference time
+            # Use linear interpolation to find time
+            ref_time_idx = ref_feat_idx * (len(reference_time) / max_ref_feat)
+            ref_time_idx = min(int(ref_time_idx), len(reference_time) - 1)
+
+            student_time_warped[i] = reference_time[ref_time_idx]
 
         student_time = student_time_warped
         print(f"[DEBUG viz] Warped student time: {student_time[0]:.2f}s to {student_time[-1]:.2f}s")
+        print(f"[DEBUG viz] Student feat max: {max_student_feat}, Ref feat max: {max_ref_feat}")
+        print(f"[DEBUG viz] Student pitch samples: {len(student_time_original)}, Ref pitch samples: {len(reference_time)}")
     else:
         student_time = student_time_original
         print(f"[DEBUG viz] No DTW path, using original student time")
