@@ -1043,11 +1043,17 @@
             } else {
                 // Use DTW path with CORRECT feature-to-time mapping
                 // DTW path uses feature frame indices, need to map via frame_times
+                console.log('[DEBUG] data.comparison.rhythm keys:', Object.keys(data.comparison.rhythm));
                 const studentFrameTimes = data.comparison.rhythm.student_frame_times;
                 const referenceFrameTimes = data.comparison.rhythm.reference_frame_times;
 
+                console.log('[DEBUG] studentFrameTimes:', studentFrameTimes ? studentFrameTimes.length : 'undefined');
+                console.log('[DEBUG] referenceFrameTimes:', referenceFrameTimes ? referenceFrameTimes.length : 'undefined');
+
                 if (!studentFrameTimes || !referenceFrameTimes) {
                     console.error('Missing frame_times in DTW data, falling back to linear scaling');
+                    console.error('  studentFrameTimes:', studentFrameTimes);
+                    console.error('  referenceFrameTimes:', referenceFrameTimes);
                     const studentDuration = studentPitch.time[studentPitch.time.length - 1];
                     const refDuration = referencePitch.time[referencePitch.time.length - 1];
                     studentPitch.time.forEach(t => {
