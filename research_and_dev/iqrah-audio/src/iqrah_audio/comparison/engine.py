@@ -125,7 +125,10 @@ def compare_recitations(
             'score': rhythm_result['score'],
             'notes': rhythm_result['notes'],
             'path': rhythm_result['path'],
-            'divergence': rhythm_result['divergence']
+            'divergence': rhythm_result['divergence'],
+            # CRITICAL: Include frame_times for proper DTW visualization warping
+            'student_frame_times': rhythm_result['student_frame_times'],
+            'reference_frame_times': rhythm_result['reference_frame_times']
         },
 
         'melody': {
