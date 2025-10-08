@@ -512,7 +512,7 @@ async def compare_user_audio(
                 seg['tajweed_class'] = seg['class']
 
             student_arabic_words.append({
-                'word_num': word_data['word_num'],
+                'word_num': int(word_data['word']),
                 'segments': segments
             })
 

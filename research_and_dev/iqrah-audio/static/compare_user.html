@@ -850,12 +850,14 @@
                 });
 
                 const data = await response.json();
+                console.log('API Response:', data);
 
                 if (data.success) {
                     comparisonData = data;
                     displayResults(data);
                 } else {
-                    alert('Error: ' + (data.error || 'Unknown error'));
+                    console.error('API Error:', data);
+                    alert('Error: ' + (data.error || data.detail || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Error:', error);
