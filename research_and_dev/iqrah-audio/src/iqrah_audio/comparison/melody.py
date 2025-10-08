@@ -17,18 +17,20 @@ from .rhythm import soft_dtw_divergence
 def melody_score(
     student: FeaturePack,
     reference: FeaturePack,
-    gamma: float = 0.15
+    gamma: float = 0.12,
+    bandwidth_pct: float = 0.10
 ) -> dict:
     """
     Compute melody similarity score using key-invariant contour matching.
 
     Primary method: ΔF0 (first difference of semitones)
-    Fallback: HPCP/chroma (not yet implemented)
+    Uses same robust DTW approach as rhythm (banded, normalized).
 
     Args:
         student: Student feature pack
         reference: Reference (Qari) feature pack
-        gamma: Soft-DTW temperature
+        gamma: Soft-DTW temperature (0.10-0.15)
+        bandwidth_pct: Sakoe-Chiba band as % of sequence length
 
     Returns:
         Dictionary with:
@@ -52,22 +54,29 @@ def melody_score(
     student_seq = student_df0_clean.reshape(-1, 1)
     ref_seq = ref_df0_clean.reshape(-1, 1)
 
+    # Compute bandwidth (tighter than before: 0.10 instead of 0.15)
+    max_len = max(len(student_seq), len(ref_seq))
+    bandwidth = int(bandwidth_pct * max_len)
+
     # Compute Soft-DTW divergence on contour
-    divergence, path = soft_dtw_divergence(
+    # NOTE: divergence is now PER-STEP (normalized by path length in soft_dtw_divergence)
+    divergence_per_step, path = soft_dtw_divergence(
         student_seq,
         ref_seq,
         gamma=gamma,
-        bandwidth=int(0.15 * max(len(student_seq), len(ref_seq)))
+        bandwidth=bandwidth
     )
 
     # Convert to similarity score
-    # Lower divergence = better contour match
-    scale = 2.0  # Tunable
-    contour_similarity = 100 * np.exp(-divergence / scale)
+    # CRITICAL FIX: divergence is per-step, use smaller scale (1.4 instead of 2.0)
+    # Melody typically has lower divergence than rhythm (smoother signal)
+    scale = 1.4  # Calibrated for per-step ΔF0 divergence
+    contour_similarity = 100 * np.exp(-divergence_per_step / scale)
     contour_similarity = max(0, min(100, contour_similarity))
 
-    print(f"[DEBUG melody] ΔF0 divergence: {divergence:.3f}")
+    print(f"[DEBUG melody] ΔF0 divergence per step: {divergence_per_step:.4f}")
     print(f"[DEBUG melody] Contour similarity: {contour_similarity:.1f}")
+    print(f"[DEBUG melody] Bandwidth: {bandwidth} frames ({bandwidth_pct*100:.0f}%)")
     print(f"[DEBUG melody] Student ΔF0 range: [{student_df0_clean.min():.2f}, {student_df0_clean.max():.2f}]")
     print(f"[DEBUG melody] Reference ΔF0 range: [{ref_df0_clean.min():.2f}, {ref_df0_clean.max():.2f}]")
 
