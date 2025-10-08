@@ -1470,8 +1470,10 @@
 
             // Student player events
             studentPlayer.addEventListener('play', () => {
+                console.time('Student play handler');
                 updatePlotBounds();
                 updateStudentCursor();
+                console.timeEnd('Student play handler');
             });
             studentPlayer.addEventListener('pause', () => {
                 if (studentAnimationFrame) {

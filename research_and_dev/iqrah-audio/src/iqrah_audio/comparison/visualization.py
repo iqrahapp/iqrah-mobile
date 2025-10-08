@@ -116,13 +116,42 @@ def plot_pitch_comparison(
     reference_semitones = hz_to_semitones(reference_pitch['f0_hz'])
 
     # Use pitch data's own time arrays
-    student_time = np.array(student_pitch['time'])
+    student_time_original = np.array(student_pitch['time'])
     reference_time = np.array(reference_pitch['time'])
 
     # Debug: print durations
-    print(f"[DEBUG viz] Student duration: {student_time[-1]:.2f}s, Reference duration: {reference_time[-1]:.2f}s")
+    print(f"[DEBUG viz] Student duration: {student_time_original[-1]:.2f}s, Reference duration: {reference_time[-1]:.2f}s")
 
-    # Top plot: Pitch contours
+    # Apply DTW warping to student time if path provided
+    if path is not None and len(path) > 0:
+        print(f"[DEBUG viz] Applying DTW warping with path length {len(path)}")
+        student_time_warped = np.zeros_like(student_time_original)
+
+        # Build warping from DTW path
+        # Path maps feature indices to reference indices
+        max_student_feat = path[-1][0]
+        max_ref_feat = path[-1][1]
+
+        for i, t in enumerate(student_time_original):
+            # Map pitch index to feature index
+            student_feat_idx = int(i / len(student_time_original) * max_student_feat)
+
+            # Find corresponding reference index in path
+            for j in range(len(path)):
+                if path[j][0] >= student_feat_idx:
+                    ref_feat_idx = path[j][1]
+                    # Map back to reference time
+                    ref_idx = int(ref_feat_idx / max_ref_feat * (len(reference_time) - 1))
+                    student_time_warped[i] = reference_time[min(ref_idx, len(reference_time) - 1)]
+                    break
+
+        student_time = student_time_warped
+        print(f"[DEBUG viz] Warped student time: {student_time[0]:.2f}s to {student_time[-1]:.2f}s")
+    else:
+        student_time = student_time_original
+        print(f"[DEBUG viz] No DTW path, using original student time")
+
+    # Top plot: Pitch contours (student time is now warped!)
     ax1.plot(student_time, student_semitones, 'b-', linewidth=2, label='Student', alpha=0.7)
     ax1.plot(reference_time, reference_semitones, 'r-', linewidth=2, label='Reference', alpha=0.7)
 
