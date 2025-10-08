@@ -1018,11 +1018,39 @@
                                '<extra></extra>'
             };
 
-            // Student phonemes (above the line)
+            // Helper: interpolate pitch at specific time
+            function getPitchAtTime(time, pitchData) {
+                const times = pitchData.time;
+                const f0s = pitchData.f0_hz;
+
+                // Find closest time index
+                for (let i = 0; i < times.length - 1; i++) {
+                    if (times[i] <= time && time <= times[i+1]) {
+                        // Linear interpolation
+                        const alpha = (time - times[i]) / (times[i+1] - times[i]);
+                        const f0_start = f0s[i];
+                        const f0_end = f0s[i+1];
+                        if (f0_start > 0 && f0_end > 0) {
+                            return f0_start + alpha * (f0_end - f0_start);
+                        } else if (f0_start > 0) {
+                            return f0_start;
+                        } else if (f0_end > 0) {
+                            return f0_end;
+                        }
+                    }
+                }
+                // Fallback to closest
+                return f0s[0] > 0 ? f0s[0] : 100;
+            }
+
+            // Student phonemes (above the line) - use actual pitch from contour, not mean
             const studentVoicedPhonemes = (data.student_phonemes || []).filter(p => p.mean_pitch > 0);
             const studentPhonemeTrace = {
                 x: studentVoicedPhonemes.map(p => (p.start + p.end) / 2),
-                y: studentVoicedPhonemes.map(p => p.mean_pitch),
+                y: studentVoicedPhonemes.map(p => {
+                    const centerTime = (p.start + p.end) / 2;
+                    return getPitchAtTime(centerTime, studentPitch);
+                }),
                 mode: 'markers+text',
                 name: 'Student Phonemes',
                 text: studentVoicedPhonemes.map(p => p.phoneme),
@@ -1040,11 +1068,14 @@
                                '<extra></extra>'
             };
 
-            // Reference phonemes (below the line)
+            // Reference phonemes (below the line) - use actual pitch from contour, not mean
             const referenceVoicedPhonemes = (data.reference_phonemes || []).filter(p => p.mean_pitch > 0);
             const referencePhonemeTrace = {
                 x: referenceVoicedPhonemes.map(p => (p.start + p.end) / 2),
-                y: referenceVoicedPhonemes.map(p => p.mean_pitch),
+                y: referenceVoicedPhonemes.map(p => {
+                    const centerTime = (p.start + p.end) / 2;
+                    return getPitchAtTime(centerTime, referencePitch);
+                }),
                 mode: 'markers+text',
                 name: 'Reference Phonemes',
                 text: referenceVoicedPhonemes.map(p => p.phoneme),
@@ -1245,8 +1276,9 @@
                 // Get current axis ranges from Plotly
                 const plotlyDiv = document.getElementById('pitchPlot');
                 const layout = plotlyDiv.layout;
-                const xMin = layout.xaxis.range ? layout.xaxis.range[1] : 0;  // RTL: reversed
-                const xMax = layout.xaxis.range ? layout.xaxis.range[0] : 10;  // RTL: reversed
+                // RTL: xaxis.range[0] is MAX (right), xaxis.range[1] is MIN (left)
+                const xMax = layout.xaxis.range ? layout.xaxis.range[0] : 10;
+                const xMin = layout.xaxis.range ? layout.xaxis.range[1] : 0;
                 const yMin = layout.yaxis.range ? layout.yaxis.range[0] : 50;
                 const yMax = layout.yaxis.range ? layout.yaxis.range[1] : 400;
 
@@ -1257,8 +1289,9 @@
                 const pitch = interpolatePitch(currentTime, comparisonData.student_pitch);
 
                 // Convert data coordinates to normalized [0,1] then to pixels
-                const xNorm = (currentTime - xMin) / xRange;  // Position in data range
-                const yNorm = (pitch - yMin) / yRange;  // Position in data range
+                // RTL: larger time values are on the LEFT, so we need (xMax - currentTime) / xRange
+                const xNorm = (xMax - currentTime) / xRange;  // RTL: reversed
+                const yNorm = (pitch - yMin) / yRange;
 
                 const xPos = plotBounds.left + plotBounds.width * xNorm;
                 const yPos = plotBounds.top + plotBounds.height * (1 - yNorm);  // Flip Y
@@ -1295,8 +1328,9 @@
                 // Get current axis ranges from Plotly
                 const plotlyDiv = document.getElementById('pitchPlot');
                 const layout = plotlyDiv.layout;
-                const xMin = layout.xaxis.range ? layout.xaxis.range[1] : 0;  // RTL: reversed
-                const xMax = layout.xaxis.range ? layout.xaxis.range[0] : 10;  // RTL: reversed
+                // RTL: xaxis.range[0] is MAX (right), xaxis.range[1] is MIN (left)
+                const xMax = layout.xaxis.range ? layout.xaxis.range[0] : 10;
+                const xMin = layout.xaxis.range ? layout.xaxis.range[1] : 0;
                 const yMin = layout.yaxis.range ? layout.yaxis.range[0] : 50;
                 const yMax = layout.yaxis.range ? layout.yaxis.range[1] : 400;
 
@@ -1307,8 +1341,9 @@
                 const pitch = interpolatePitch(currentTime, comparisonData.reference_pitch);
 
                 // Convert data coordinates to normalized [0,1] then to pixels
-                const xNorm = (currentTime - xMin) / xRange;  // Position in data range
-                const yNorm = (pitch - yMin) / yRange;  // Position in data range
+                // RTL: larger time values are on the LEFT, so we need (xMax - currentTime) / xRange
+                const xNorm = (xMax - currentTime) / xRange;  // RTL: reversed
+                const yNorm = (pitch - yMin) / yRange;
 
                 const xPos = plotBounds.left + plotBounds.width * xNorm;
                 const yPos = plotBounds.top + plotBounds.height * (1 - yNorm);  // Flip Y
