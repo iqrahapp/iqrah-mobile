@@ -275,15 +275,30 @@ def plot_rhythm_comparison(
     ax2.grid(True, alpha=0.3)
 
     # Bottom: Aligned comparison
-    # Warp student time using DTW path
+    # CRITICAL FIX: Proper interpolation warping (not slot-filling)
     if path is not None and len(path) > 0:
-        warped_time = np.zeros(len(reference_time))
-        warped_onset = np.zeros(len(reference_time))
+        from scipy.interpolate import interp1d
 
-        for i, (idx_student, idx_reference) in enumerate(path):
-            if idx_reference < len(reference_time) and idx_student < len(student_time):
-                warped_time[idx_reference] = student_time[idx_student]
-                warped_onset[idx_reference] = student_onset[idx_student]
+        # Build time warp function from DTW path
+        path = np.asarray(path)
+        i_stu, j_ref = path[:, 0], path[:, 1]
+
+        # Map feature indices to actual times
+        t_stu_path = student_time[np.clip(i_stu, 0, len(student_time) - 1)]
+        t_ref_path = reference_time[np.clip(j_ref, 0, len(reference_time) - 1)]
+
+        # Make reference times unique (keep first occurrence)
+        uniq_ref, idx = np.unique(t_ref_path, return_index=True)
+        map_stu = t_stu_path[idx]
+
+        # Create interpolation function: ref_time -> student_time
+        f_warp = interp1d(uniq_ref, map_stu, kind='linear',
+                          bounds_error=False,
+                          fill_value=(map_stu[0], map_stu[-1]))
+
+        # Warp student onset onto reference timeline
+        warped_student_times = f_warp(reference_time)
+        warped_onset = np.interp(warped_student_times, student_time, student_onset)
 
         ax3.plot(reference_time, reference_onset, 'r-', linewidth=2, label='Reference', alpha=0.7)
         ax3.plot(reference_time, warped_onset, 'b-', linewidth=2, label='Student (aligned)', alpha=0.7)

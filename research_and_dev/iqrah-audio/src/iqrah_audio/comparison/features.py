@@ -42,7 +42,7 @@ def extract_features(
     phonemes: list,
     pitch_data: dict,
     statistics: dict,
-    target_length: int = 150
+    target_length: int = 200
 ) -> FeaturePack:
     """
     Extract comparison features from analysis results.
@@ -150,23 +150,30 @@ def build_multi_feature_stack(feat: FeaturePack) -> np.ndarray:
     """
     Build the multi-feature stack for rhythm alignment.
 
-    According to spec: [onset_strength, syllable_onset_flag, normalized_time, ΔF0_scaled]
+    CRITICAL FIX: Make onset-dominant for rhythm (not ΔF0-dominant).
+    Weights: onset=1.0, syllable_mask=0.3, norm_time=0.2
+    ΔF0 removed - use only for melody comparison, not rhythm warping.
 
     Args:
         feat: FeaturePack
 
     Returns:
-        Feature matrix [T, 4]
+        Feature matrix [T, 3] - onset-led rhythm features
     """
-    # Scale ΔF0 to ~semitone per 100 cents (as recommended)
-    df0_scaled = feat.df0 / 100.0
+    # Already z-scored in extract_features
+    onset = feat.onset_strength
 
-    # Stack features
+    # Scale binary mask to have small influence
+    mask = feat.syll_onset_mask.astype(float) * 0.5
+
+    # Normalize time to ~unit variance (range [0,1] -> std ~0.29)
+    tnorm = (feat.norm_time - 0.5) / 0.29
+
+    # Weight features: onset dominates
     feature_stack = np.stack([
-        feat.onset_strength,
-        feat.syll_onset_mask,
-        feat.norm_time,
-        df0_scaled
+        1.0 * onset,    # Primary: onset envelope
+        0.3 * mask,     # Secondary: syllable markers
+        0.2 * tnorm     # Tertiary: time progression (prevent wild warping)
     ], axis=1)
 
     return feature_stack

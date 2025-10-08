@@ -67,14 +67,17 @@ def soft_dtw_divergence(
 
 def pairwise_euclidean(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     """
-    Compute pairwise Euclidean distance matrix.
+    Compute pairwise SQUARED Euclidean distance matrix.
+
+    CRITICAL FIX: Use squared distance (no sqrt) for better numerical stability
+    and to avoid sqrt's non-linearity distorting the cost landscape.
 
     Args:
         x: [T1, D]
         y: [T2, D]
 
     Returns:
-        cost: [T1, T2]
+        cost: [T1, T2] - squared Euclidean distances
     """
     # ||x - y||^2 = ||x||^2 + ||y||^2 - 2<x,y>
     xx = (x ** 2).sum(dim=1, keepdim=True)  # [T1, 1]
@@ -82,7 +85,8 @@ def pairwise_euclidean(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     xy = torch.mm(x, y.t())                  # [T1, T2]
 
     cost = xx + yy.t() - 2 * xy
-    return torch.sqrt(torch.clamp(cost, min=0))
+    # Return SQUARED distance (no sqrt)
+    return torch.clamp(cost, min=0)
 
 
 def soft_dtw_forward(cost: torch.Tensor, gamma: float) -> float:
@@ -204,17 +208,20 @@ def extract_path_from_cost(cost: np.ndarray) -> np.ndarray:
 def rhythm_score(
     student: FeaturePack,
     reference: FeaturePack,
-    gamma: float = 0.15,
-    bandwidth_pct: float = 0.12
+    gamma: float = 0.12,
+    bandwidth_pct: float = 0.09
 ) -> dict:
     """
     Compute rhythm similarity score using Soft-DTW divergence.
 
+    CRITICAL FIX: Tighter band (0.09 instead of 0.12) to prevent wild warping.
+    Lower gamma (0.12) for sharper alignment.
+
     Args:
         student: Student feature pack
         reference: Reference (Qari) feature pack
-        gamma: Soft-DTW temperature (0.1-0.3)
-        bandwidth_pct: Sakoe-Chiba band as % of sequence length
+        gamma: Soft-DTW temperature (0.10-0.15 recommended)
+        bandwidth_pct: Sakoe-Chiba band as % of sequence length (0.08-0.10)
 
     Returns:
         Dictionary with:
