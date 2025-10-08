@@ -1234,28 +1234,34 @@
                 }
 
                 const currentTime = studentPlayer.currentTime;
-                const duration = comparisonData.student_pitch.time[comparisonData.student_pitch.time.length - 1];
 
+                // Update plot bounds on resize
                 if (Date.now() - (window.lastBoundsUpdate || 0) > 100) {
                     updatePlotBounds();
                     window.lastBoundsUpdate = Date.now();
                 }
                 if (!plotBounds) return;
 
-                const progress = currentTime / duration;
-                const xPos = plotBounds.left + plotBounds.width * (1 - progress);  // RTL
+                // Get current axis ranges from Plotly
+                const plotlyDiv = document.getElementById('pitchPlot');
+                const layout = plotlyDiv.layout;
+                const xMin = layout.xaxis.range ? layout.xaxis.range[1] : 0;  // RTL: reversed
+                const xMax = layout.xaxis.range ? layout.xaxis.range[0] : 10;  // RTL: reversed
+                const yMin = layout.yaxis.range ? layout.yaxis.range[0] : 50;
+                const yMax = layout.yaxis.range ? layout.yaxis.range[1] : 400;
+
+                // Map data coordinates to pixel coordinates
+                const xRange = xMax - xMin;
+                const yRange = yMax - yMin;
 
                 const pitch = interpolatePitch(currentTime, comparisonData.student_pitch);
 
-                const plotlyDiv = document.getElementById('pitchPlot');
-                const layout = plotlyDiv.layout;
-                const yaxis = layout.yaxis;
-                const yMin = yaxis.range ? yaxis.range[0] : 50;
-                const yMax = yaxis.range ? yaxis.range[1] : 400;
-                const yRange = yMax - yMin;
+                // Convert data coordinates to normalized [0,1] then to pixels
+                const xNorm = (currentTime - xMin) / xRange;  // Position in data range
+                const yNorm = (pitch - yMin) / yRange;  // Position in data range
 
-                const pitchProgress = yRange > 0 ? (pitch - yMin) / yRange : 0.5;
-                const yPos = plotBounds.top + plotBounds.height * (1 - pitchProgress);
+                const xPos = plotBounds.left + plotBounds.width * xNorm;
+                const yPos = plotBounds.top + plotBounds.height * (1 - yNorm);  // Flip Y
 
                 studentCursor.style.left = xPos + 'px';
                 studentCursor.style.top = plotBounds.top + 'px';
@@ -1278,28 +1284,34 @@
                 }
 
                 const currentTime = referencePlayer.currentTime;
-                const duration = comparisonData.reference_pitch.time[comparisonData.reference_pitch.time.length - 1];
 
+                // Update plot bounds on resize
                 if (Date.now() - (window.lastBoundsUpdate || 0) > 100) {
                     updatePlotBounds();
                     window.lastBoundsUpdate = Date.now();
                 }
                 if (!plotBounds) return;
 
-                const progress = currentTime / duration;
-                const xPos = plotBounds.left + plotBounds.width * (1 - progress);  // RTL
+                // Get current axis ranges from Plotly
+                const plotlyDiv = document.getElementById('pitchPlot');
+                const layout = plotlyDiv.layout;
+                const xMin = layout.xaxis.range ? layout.xaxis.range[1] : 0;  // RTL: reversed
+                const xMax = layout.xaxis.range ? layout.xaxis.range[0] : 10;  // RTL: reversed
+                const yMin = layout.yaxis.range ? layout.yaxis.range[0] : 50;
+                const yMax = layout.yaxis.range ? layout.yaxis.range[1] : 400;
+
+                // Map data coordinates to pixel coordinates
+                const xRange = xMax - xMin;
+                const yRange = yMax - yMin;
 
                 const pitch = interpolatePitch(currentTime, comparisonData.reference_pitch);
 
-                const plotlyDiv = document.getElementById('pitchPlot');
-                const layout = plotlyDiv.layout;
-                const yaxis = layout.yaxis;
-                const yMin = yaxis.range ? yaxis.range[0] : 50;
-                const yMax = yaxis.range ? yaxis.range[1] : 400;
-                const yRange = yMax - yMin;
+                // Convert data coordinates to normalized [0,1] then to pixels
+                const xNorm = (currentTime - xMin) / xRange;  // Position in data range
+                const yNorm = (pitch - yMin) / yRange;  // Position in data range
 
-                const pitchProgress = yRange > 0 ? (pitch - yMin) / yRange : 0.5;
-                const yPos = plotBounds.top + plotBounds.height * (1 - pitchProgress);
+                const xPos = plotBounds.left + plotBounds.width * xNorm;
+                const yPos = plotBounds.top + plotBounds.height * (1 - yNorm);  // Flip Y
 
                 referenceCursor.style.left = xPos + 'px';
                 referenceCursor.style.top = plotBounds.top + 'px';
