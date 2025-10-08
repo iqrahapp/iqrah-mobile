@@ -932,11 +932,21 @@
             });
 
             // Set audio players
-            const studentUrl = data.student_audio_url || URL.createObjectURL(userAudioBlob);
+            // CRITICAL FIX: Use backend-provided URL directly, NOT blob URL
+            // Creating blob URL from WebM causes 18s decoding delay
+            const studentUrl = data.student_audio_url;  // Backend always provides this
             const referenceUrl = data.reference_audio_url;
+
+            if (!studentUrl || !referenceUrl) {
+                console.error('Missing audio URLs from backend!', { studentUrl, referenceUrl });
+                return;
+            }
 
             const studentPlayer = document.getElementById('studentAudioPlayer');
             const referencePlayer = document.getElementById('referenceAudioPlayer');
+
+            console.log('[AUDIO] Setting student audio:', studentUrl);
+            console.log('[AUDIO] Setting reference audio:', referenceUrl);
 
             studentPlayer.src = studentUrl;
             referencePlayer.src = referenceUrl;
