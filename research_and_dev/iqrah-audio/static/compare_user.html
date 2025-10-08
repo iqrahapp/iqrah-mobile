@@ -639,14 +639,26 @@
                     </div>
                 </div>
 
-                <!-- Pitch Extractor Selector -->
-                <div class="pitch-extractor-selector">
-                    <label for="pitchExtractorSelect">Pitch Algorithm:</label>
-                    <select id="pitchExtractorSelect" onchange="updatePitchExtractor()">
-                        <option value="swiftf0">SwiftF0 (Fast)</option>
-                        <option value="crepe-fast">CREPE-Tiny (Good)</option>
-                        <option value="crepe-accurate">CREPE-Full (Best)</option>
-                    </select>
+                <!-- Visualization Controls -->
+                <div style="display: flex; justify-content: center; gap: 30px; margin-bottom: 20px;">
+                    <div class="pitch-extractor-selector">
+                        <label for="pitchExtractorSelect">Pitch Algorithm:</label>
+                        <select id="pitchExtractorSelect" onchange="updatePitchExtractor()">
+                            <option value="swiftf0">SwiftF0 (Fast)</option>
+                            <option value="crepe-fast">CREPE-Tiny (Good)</option>
+                            <option value="crepe-accurate">CREPE-Full (Best)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="showStudentPhonemes" checked onchange="togglePhonemes()">
+                            <span style="color: #4169e1; font-weight: 600;">🔵 Student Phonemes</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="showReferencePhonemes" checked onchange="togglePhonemes()">
+                            <span style="color: #dc3545; font-weight: 600;">🔴 Reference Phonemes</span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Arabic Words (RTL) -->
@@ -1337,6 +1349,17 @@
         function updatePitchExtractor() {
             // TODO: Re-analyze with new pitch extractor
             alert('Pitch extractor changed. Please re-submit your recitation to use the new extractor.');
+        }
+
+        function togglePhonemes() {
+            if (!comparisonData) return;
+
+            const showStudent = document.getElementById('showStudentPhonemes').checked;
+            const showReference = document.getElementById('showReferencePhonemes').checked;
+
+            // Update trace visibility using Plotly.restyle
+            Plotly.restyle('pitchPlot', { visible: showStudent }, [2]);  // Student phonemes (trace index 2)
+            Plotly.restyle('pitchPlot', { visible: showReference }, [3]);  // Reference phonemes (trace index 3)
         }
 
         // Initialize
