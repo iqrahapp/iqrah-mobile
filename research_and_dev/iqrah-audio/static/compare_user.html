@@ -884,6 +884,18 @@
             const comparison = data.comparison;
             const visualizations = data.visualizations;
 
+            // DEBUG: Check pitch data
+            console.log('Student pitch data:', {
+                length: data.student_pitch.time.length,
+                duration: data.student_pitch.time[data.student_pitch.time.length - 1],
+                zero_frames: data.student_pitch.f0_hz.filter(f => f === 0).length
+            });
+            console.log('Reference pitch data:', {
+                length: data.reference_pitch.time.length,
+                duration: data.reference_pitch.time[data.reference_pitch.time.length - 1],
+                zero_frames: data.reference_pitch.f0_hz.filter(f => f === 0).length
+            });
+
             // Overall score
             document.getElementById('overallScore').textContent = comparison.overall.toFixed(1) + '/100';
             document.getElementById('confidence').textContent = (comparison.confidence * 100).toFixed(0) + '%';
