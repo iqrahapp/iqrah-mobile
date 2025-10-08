@@ -1031,41 +1031,62 @@
                     warpingLookup[t] = (t / studentDuration) * refDuration;
                 });
             } else {
-                // Use DTW path to build lookup - FIXED: proper feature-to-time mapping
-                const maxStudentFeat = dtwPath[dtwPath.length - 1][0];
-                const maxRefFeat = dtwPath[dtwPath.length - 1][1];
+                // Use DTW path with CORRECT feature-to-time mapping
+                // DTW path uses feature frame indices, need to map via frame_times
+                const studentFrameTimes = data.comparison.rhythm.student_frame_times;
+                const referenceFrameTimes = data.comparison.rhythm.reference_frame_times;
 
-                console.log('DTW path range: student [0,' + maxStudentFeat + '], ref [0,' + maxRefFeat + ']');
-                console.log('Pitch time arrays: student ' + studentPitch.time.length + ' samples, ref ' + referencePitch.time.length + ' samples');
+                if (!studentFrameTimes || !referenceFrameTimes) {
+                    console.error('Missing frame_times in DTW data, falling back to linear scaling');
+                    const studentDuration = studentPitch.time[studentPitch.time.length - 1];
+                    const refDuration = referencePitch.time[referencePitch.time.length - 1];
+                    studentPitch.time.forEach(t => {
+                        warpingLookup[t] = (t / studentDuration) * refDuration;
+                    });
+                } else {
+                    console.log('DTW frame_times: student ' + studentFrameTimes.length + ', ref ' + referenceFrameTimes.length);
 
-                studentPitch.time.forEach((studentTime, studentIdx) => {
-                    // Map pitch sample index to feature index (features are downsampled)
-                    const studentFeatureIdx = studentIdx * (maxStudentFeat / studentPitch.time.length);
+                    // CORRECT 3-step mapping:
+                    // 1. Student pitch time -> Student feature frame (via frame_times)
+                    // 2. Student feature frame -> Ref feature frame (via DTW path)
+                    // 3. Ref feature frame -> Ref pitch time (via frame_times)
 
-                    // Find closest point in DTW path using binary-like search
-                    let bestJ = 0;
-                    let minDist = Math.abs(dtwPath[0][0] - studentFeatureIdx);
-
-                    for (let j = 1; j < dtwPath.length; j++) {
-                        const dist = Math.abs(dtwPath[j][0] - studentFeatureIdx);
-                        if (dist < minDist) {
-                            minDist = dist;
-                            bestJ = j;
-                        } else if (dist > minDist) {
-                            // DTW path is monotonic, stop when distance increases
-                            break;
+                    studentPitch.time.forEach((pitchTime, idx) => {
+                        // Step 1: Find closest student feature frame
+                        let studentFeatIdx = 0;
+                        let minDist = Math.abs(studentFrameTimes[0] - pitchTime);
+                        for (let i = 1; i < studentFrameTimes.length; i++) {
+                            const dist = Math.abs(studentFrameTimes[i] - pitchTime);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                studentFeatIdx = i;
+                            } else if (dist > minDist) {
+                                break;  // Monotonic, stop early
+                            }
                         }
-                    }
 
-                    // Get corresponding reference feature index from path
-                    const refFeatureIdx = dtwPath[bestJ][1];
+                        // Step 2: Find corresponding reference feature frame in DTW path
+                        let bestJ = 0;
+                        let minPathDist = Math.abs(dtwPath[0][0] - studentFeatIdx);
+                        for (let j = 1; j < dtwPath.length; j++) {
+                            const dist = Math.abs(dtwPath[j][0] - studentFeatIdx);
+                            if (dist < minPathDist) {
+                                minPathDist = dist;
+                                bestJ = j;
+                            } else if (dist > minPathDist) {
+                                break;
+                            }
+                        }
+                        const refFeatIdx = dtwPath[bestJ][1];
 
-                    // Map reference feature index back to reference time array
-                    const refTimeIdx = Math.floor(refFeatureIdx * (referencePitch.time.length / maxRefFeat));
-                    const clampedRefIdx = Math.min(refTimeIdx, referencePitch.time.length - 1);
+                        // Step 3: Get reference time for this feature frame
+                        const refTime = refFeatIdx < referenceFrameTimes.length
+                            ? referenceFrameTimes[refFeatIdx]
+                            : referenceFrameTimes[referenceFrameTimes.length - 1];
 
-                    warpingLookup[studentTime] = referencePitch.time[clampedRefIdx];
-                });
+                        warpingLookup[pitchTime] = refTime;
+                    });
+                }
             }
 
             console.timeEnd('DTW warping computation');

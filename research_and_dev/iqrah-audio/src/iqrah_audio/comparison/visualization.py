@@ -85,7 +85,9 @@ def plot_pitch_comparison(
     reference_time: np.ndarray,
     path: Optional[np.ndarray] = None,
     pitch_shift_cents: float = 0,
-    figsize: Tuple[int, int] = (14, 6)
+    figsize: Tuple[int, int] = (14, 6),
+    student_frame_times: Optional[np.ndarray] = None,
+    reference_frame_times: Optional[np.ndarray] = None
 ) -> str:
     """
     Plot pitch contour comparison with alignment.
@@ -122,25 +124,26 @@ def plot_pitch_comparison(
     # Debug: print durations
     print(f"[DEBUG viz] Student duration: {student_time_original[-1]:.2f}s, Reference duration: {reference_time[-1]:.2f}s")
 
-    # Apply DTW warping to student time if path provided
-    if path is not None and len(path) > 0:
+    # Apply DTW warping to student time if path and frame_times provided
+    if path is not None and len(path) > 0 and student_frame_times is not None and reference_frame_times is not None:
         print(f"[DEBUG viz] Applying DTW warping with path length {len(path)}")
+        print(f"[DEBUG viz] Feature frame_times: student {len(student_frame_times)}, ref {len(reference_frame_times)}")
+
         student_time_warped = np.zeros_like(student_time_original)
+        student_frame_times_np = np.array(student_frame_times)
+        reference_frame_times_np = np.array(reference_frame_times)
 
-        # Build warping from DTW path
-        # Path contains feature-space indices, need to map to time-space
-        max_student_feat = path[-1][0]
-        max_ref_feat = path[-1][1]
+        # CORRECT MAPPING:
+        # 1. Student pitch time -> Student feature frame index (via frame_times)
+        # 2. Student feature frame -> Reference feature frame (via DTW path)
+        # 3. Reference feature frame -> Reference pitch time (via frame_times)
 
-        # Create interpolated warping function from path
-        # Map each student time to reference time using DTW path
-        for i in range(len(student_time_original)):
-            # Map pitch sample index to feature index (linear interpolation)
-            # Features are computed at lower rate than pitch samples
-            student_feat_idx = i * (max_student_feat / len(student_time_original))
+        for i, pitch_time in enumerate(student_time_original):
+            # Step 1: Find closest student feature frame for this pitch time
+            student_feat_idx = np.argmin(np.abs(student_frame_times_np - pitch_time))
 
-            # Find closest path point
-            # Binary search would be faster, but linear is fine for small paths
+            # Step 2: Find corresponding reference feature frame in DTW path
+            # Path is list of (student_feat_idx, ref_feat_idx) pairs
             best_j = 0
             min_dist = abs(path[0][0] - student_feat_idx)
             for j in range(1, len(path)):
@@ -149,23 +152,22 @@ def plot_pitch_comparison(
                     min_dist = dist
                     best_j = j
                 elif dist > min_dist:
-                    # Path is monotonic, so we can stop once distance increases
                     break
 
-            # Get corresponding reference feature index
             ref_feat_idx = path[best_j][1]
 
-            # Map reference feature index back to reference time
-            # Use linear interpolation to find time
-            ref_time_idx = ref_feat_idx * (len(reference_time) / max_ref_feat)
-            ref_time_idx = min(int(ref_time_idx), len(reference_time) - 1)
+            # Step 3: Get reference time for this feature frame
+            if ref_feat_idx < len(reference_frame_times_np):
+                ref_time = reference_frame_times_np[ref_feat_idx]
+            else:
+                ref_time = reference_frame_times_np[-1]
 
-            student_time_warped[i] = reference_time[ref_time_idx]
+            student_time_warped[i] = ref_time
 
         student_time = student_time_warped
         print(f"[DEBUG viz] Warped student time: {student_time[0]:.2f}s to {student_time[-1]:.2f}s")
-        print(f"[DEBUG viz] Student feat max: {max_student_feat}, Ref feat max: {max_ref_feat}")
-        print(f"[DEBUG viz] Student pitch samples: {len(student_time_original)}, Ref pitch samples: {len(reference_time)}")
+        print(f"[DEBUG viz] Original student time: {student_time_original[0]:.2f}s to {student_time_original[-1]:.2f}s")
+        print(f"[DEBUG viz] Reference time: {reference_time[0]:.2f}s to {reference_time[-1]:.2f}s")
     else:
         student_time = student_time_original
         print(f"[DEBUG viz] No DTW path, using original student time")
@@ -423,13 +425,18 @@ def generate_comparison_visualizations(
         )
 
     # 2. Pitch Comparison
+    student_frame_times = comparison_result['rhythm'].get('student_frame_times')
+    reference_frame_times = comparison_result['rhythm'].get('reference_frame_times')
+
     visualizations['pitch_comparison'] = plot_pitch_comparison(
         student_pitch,
         reference_pitch,
         student_features.frame_times,
         reference_features.frame_times,
         path=rhythm_path if len(rhythm_path) > 0 else None,
-        pitch_shift_cents=comparison_result['melody']['pitch_shift_cents']
+        pitch_shift_cents=comparison_result['melody']['pitch_shift_cents'],
+        student_frame_times=np.array(student_frame_times) if student_frame_times else None,
+        reference_frame_times=np.array(reference_frame_times) if reference_frame_times else None
     )
 
     # 3. Rhythm Comparison

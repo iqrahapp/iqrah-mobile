@@ -268,7 +268,10 @@ def rhythm_score(
         'divergence': round(divergence, 3),
         'path': path.tolist(),
         'notes': notes,
-        'bandwidth_used': bandwidth
+        'bandwidth_used': bandwidth,
+        # Add feature metadata for proper time warping
+        'student_frame_times': student.frame_times.tolist(),
+        'reference_frame_times': reference.frame_times.tolist()
     }
 
 
