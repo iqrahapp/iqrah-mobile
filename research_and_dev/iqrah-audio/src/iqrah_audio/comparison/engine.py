@@ -116,6 +116,18 @@ def compare_recitations(
         overall_result['top_issues']
     )
 
+    # Debug: Check what rhythm_result contains
+    print(f"[DEBUG engine] rhythm_result keys: {list(rhythm_result.keys())}")
+    if 'student_frame_times' in rhythm_result:
+        print(f"[DEBUG engine] student_frame_times length: {len(rhythm_result['student_frame_times'])}")
+    else:
+        print(f"[DEBUG engine] ERROR: student_frame_times NOT in rhythm_result!")
+
+    if 'reference_frame_times' in rhythm_result:
+        print(f"[DEBUG engine] reference_frame_times length: {len(rhythm_result['reference_frame_times'])}")
+    else:
+        print(f"[DEBUG engine] ERROR: reference_frame_times NOT in rhythm_result!")
+
     # Build final result (matches JSON contract from spec)
     result = {
         'overall': overall_result['overall'],
@@ -127,8 +139,8 @@ def compare_recitations(
             'path': rhythm_result['path'],
             'divergence': rhythm_result['divergence'],
             # CRITICAL: Include frame_times for proper DTW visualization warping
-            'student_frame_times': rhythm_result['student_frame_times'],
-            'reference_frame_times': rhythm_result['reference_frame_times']
+            'student_frame_times': rhythm_result.get('student_frame_times'),
+            'reference_frame_times': rhythm_result.get('reference_frame_times')
         },
 
         'melody': {
