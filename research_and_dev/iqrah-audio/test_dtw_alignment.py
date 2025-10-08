@@ -7,18 +7,21 @@ Debug script to test DTW alignment directly with:
 - Student: data/me/surahs/001/01.mp3
 - Reference: data/husary/surahs/001/01.mp3
 
-This allows fast iteration without going through the full web UI.
+This simulates the full API flow to debug DTW alignment and scoring.
 """
 
 import sys
 sys.path.insert(0, 'src')
 
-import numpy as np
+import asyncio
 from pathlib import Path
-from iqrah_audio.comparison.engine import compare_recitations
 import json
 
-def main():
+# Import from the actual app
+sys.path.insert(0, '.')
+from app_qari_final import analyze_qari_from_file
+
+async def main():
     print("=" * 80)
     print("DTW Alignment Test - Direct Audio Comparison")
     print("=" * 80)
@@ -38,14 +41,26 @@ def main():
     print(f"Reference: {reference_path}")
     print()
 
-    # Use the full comparison engine
-    print("Running full comparison engine...")
+    # Analyze both using the same pipeline as the API
+    print("1️⃣ Analyzing student recitation...")
+    student_result = await analyze_qari_from_file(student_path, surah=1, ayah=1)
+
+    print("\n2️⃣ Analyzing reference (Husary)...")
+    reference_result = await analyze_qari_from_file(reference_path, surah=1, ayah=1)
+
+    # Now run comparison
+    print("\n3️⃣ Running comparison engine...")
+    from iqrah_audio.comparison.engine import compare_recitations
 
     result = compare_recitations(
         student_audio_path=student_path,
         reference_audio_path=reference_path,
-        surah=1,
-        ayah=1
+        student_phonemes=student_result['phonemes'],
+        reference_phonemes=reference_result['phonemes'],
+        student_pitch=student_result['pitch'],
+        reference_pitch=reference_result['pitch'],
+        student_stats=student_result['statistics'],
+        reference_stats=reference_result['statistics']
     )
 
     print("\n" + "=" * 80)
@@ -90,4 +105,4 @@ def main():
     print("\n" + "=" * 80)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
