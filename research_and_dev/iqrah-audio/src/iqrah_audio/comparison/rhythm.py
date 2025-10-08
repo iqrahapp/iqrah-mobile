@@ -247,6 +247,11 @@ def rhythm_score(
     score = 100 * np.exp(-divergence / scale)
     score = max(0, min(100, score))
 
+    print(f"[DEBUG rhythm] Soft-DTW divergence: {divergence:.3f}")
+    print(f"[DEBUG rhythm] Rhythm score: {score:.1f}")
+    print(f"[DEBUG rhythm] Student features: {len(student_features)} frames")
+    print(f"[DEBUG rhythm] Reference features: {len(ref_features)} frames")
+
     # Generate feedback notes
     notes = []
     if score >= 90:

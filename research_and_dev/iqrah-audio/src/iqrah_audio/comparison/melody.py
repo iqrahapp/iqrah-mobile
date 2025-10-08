@@ -66,6 +66,11 @@ def melody_score(
     contour_similarity = 100 * np.exp(-divergence / scale)
     contour_similarity = max(0, min(100, contour_similarity))
 
+    print(f"[DEBUG melody] ΔF0 divergence: {divergence:.3f}")
+    print(f"[DEBUG melody] Contour similarity: {contour_similarity:.1f}")
+    print(f"[DEBUG melody] Student ΔF0 range: [{student_df0_clean.min():.2f}, {student_df0_clean.max():.2f}]")
+    print(f"[DEBUG melody] Reference ΔF0 range: [{ref_df0_clean.min():.2f}, {ref_df0_clean.max():.2f}]")
+
     # Compute pitch range coverage
     student_range = compute_pitch_range(student.f0_semitones)
     ref_range = compute_pitch_range(reference.f0_semitones)
