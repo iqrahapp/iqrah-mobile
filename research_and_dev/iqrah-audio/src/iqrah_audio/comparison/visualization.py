@@ -180,12 +180,14 @@ def plot_pitch_comparison(
     ax1.legend(loc='upper right')
     ax1.grid(True, alpha=0.3)
 
-    # Bottom plot: ΔF0 (first difference)
+    # Bottom plot: ΔF0 (first difference) - melodic contour
     student_df0 = np.diff(student_semitones)
     reference_df0 = np.diff(reference_semitones)
 
+    # Use warped student_time (already applied above if DTW path provided)
     ax2.plot(student_time[1:], student_df0, 'b-', linewidth=1.5, label='Student ΔF0', alpha=0.7)
     ax2.plot(reference_time[1:], reference_df0, 'r-', linewidth=1.5, label='Reference ΔF0', alpha=0.7)
+    ax2.set_xlim(0, max_time)  # Match x-axis range with top plot
     ax2.axhline(0, color='k', linestyle='--', alpha=0.3)
 
     ax2.set_xlabel('Time (seconds)', fontsize=12)
