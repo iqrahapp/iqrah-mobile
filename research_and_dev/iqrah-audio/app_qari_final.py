@@ -503,8 +503,6 @@ async def compare_user_audio(
         shutil.copy(user_audio_path, user_audio_static)
 
         # Get Tajweed words for student (need to regenerate with correct ayah)
-        from src.iqrah_audio.analysis.tajweed_loader import get_ayah_words, parse_tajweed_html, get_tajweed_color
-
         student_tajweed_words = get_ayah_words(surah, ayah)
         student_arabic_words = []
         for word_data in student_tajweed_words:
