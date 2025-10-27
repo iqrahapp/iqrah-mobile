@@ -1,8 +1,0 @@
-# Legacy requirements.txt - Use pyproject.toml instead!
-#
-# To install the package properly, run:
-#   pip install -e ".[dev]"
-#
-# This file is kept for backwards compatibility only.
-
--e .

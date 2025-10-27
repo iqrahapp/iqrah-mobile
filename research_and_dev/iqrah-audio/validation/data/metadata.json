@@ -1,0 +1,47 @@
+{
+  "files": {
+    "clean_30s.wav": {
+      "duration": 30.0,
+      "sample_rate": 16000,
+      "purpose": "M1 performance benchmark",
+      "expected_properties": {
+        "sample_rate": 16000,
+        "duration": 30.0,
+        "quality_flag": "excellent",
+        "min_snr_db": 15.0
+      }
+    },
+    "clean_5s.wav": {
+      "duration": 5.0,
+      "sample_rate": 16000,
+      "purpose": "Quick validation tests",
+      "expected_properties": {
+        "sample_rate": 16000,
+        "duration": 5.0,
+        "quality_flag": "excellent"
+      }
+    },
+    "noisy_10s.wav": {
+      "duration": 10.0,
+      "sample_rate": 16000,
+      "purpose": "Quality metric validation",
+      "expected_properties": {
+        "sample_rate": 16000,
+        "duration": 10.0,
+        "quality_flag": "good",
+        "max_snr_db": 15.0
+      }
+    },
+    "high_sr_3s.wav": {
+      "duration": 3.0,
+      "sample_rate": 48000,
+      "purpose": "Resampling validation",
+      "expected_properties": {
+        "sample_rate": 16000,
+        "duration": 3.0
+      }
+    }
+  },
+  "description": "Reference audio files for Iqrah Audio validation",
+  "generated_with": "validation/data/generate_reference_audio.py"
+}

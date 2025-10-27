@@ -1,0 +1,12 @@
+{
+  "timestamp": 1761496766.2944553,
+  "tests": {
+    "exit_code": 0,
+    "status": "passed"
+  },
+  "benchmarks": {
+    "exit_code": 0,
+    "status": "passed"
+  },
+  "summary": {}
+}
