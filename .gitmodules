@@ -1,0 +1,6 @@
+[submodule "research_and_dev/iqrah-audio/3rd/quran-muaalem"]
+	path = research_and_dev/iqrah-audio/3rd/quran-muaalem
+	url = https://github.com/obadx/quran-muaalem.git
+[submodule "research_and_dev/iqrah-audio/3rd/quran-transcript"]
+	path = research_and_dev/iqrah-audio/3rd/quran-transcript
+	url = https://github.com/obadx/quran-transcript.git

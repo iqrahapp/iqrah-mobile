@@ -1,0 +1,1012 @@
+{
+  "phonemes": [
+    {
+      "phoneme": "ب",
+      "start": 0.0,
+      "end": 0.20026490066225167,
+      "confidence": 1.170434984487656e-06,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9997588992118835,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "shadeed",
+          "prob": 0.9999444484710693,
+          "idx": 1
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.999692440032959,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9997417330741882,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9991260170936584,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9776021242141724,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9805068969726562,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9999852776527405,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9993645548820496,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9998691082000732,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ِ",
+      "start": 0.20026490066225167,
+      "end": 0.40052980132450333,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "hams",
+          "prob": 0.9984463453292847,
+          "idx": 1
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.9789068698883057,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9972196817398071,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9860341548919678,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "safeer",
+          "prob": 0.9476836919784546,
+          "idx": 1
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.8290342092514038,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9981040358543396,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.983135998249054,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9943365454673767,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9981838464736938,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "س",
+      "start": 0.40052980132450333,
+      "end": 0.600794701986755,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9995699524879456,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.9994218349456787,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9765565395355225,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.996551513671875,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.8823443055152893,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.8054757118225098,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9967390894889832,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9917559623718262,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.8533974885940552,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "maghnoon",
+          "prob": 0.9993751645088196,
+          "idx": 1
+        }
+      }
+    },
+    {
+      "phoneme": "م",
+      "start": 0.600794701986755,
+      "end": 0.8010596026490067,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9999443292617798,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.9992215633392334,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9905534982681274,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.8731205463409424,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9491947293281555,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9812518954277039,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.969675600528717,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9603074193000793,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.96186763048172,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9998123049736023,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ِ",
+      "start": 0.8010596026490067,
+      "end": 1.0013245033112583,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9999066591262817,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.992788553237915,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9999858736991882,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9999052286148071,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9995033740997314,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.999800980091095,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9764353036880493,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9750704169273376,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9998804330825806,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9998697638511658,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ل",
+      "start": 1.0013245033112583,
+      "end": 1.20158940397351,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "hams",
+          "prob": 0.9998195767402649,
+          "idx": 1
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.9997382760047913,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.982780933380127,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.8113117218017578,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.92726731300354,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9103456139564514,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.973712146282196,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9607428312301636,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9750611186027527,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.8589531779289246,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ل",
+      "start": 1.20158940397351,
+      "end": 1.4018543046357617,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9790275692939758,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.9999613761901855,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.7793219089508057,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9917960166931152,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9991312026977539,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9481518268585205,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "mokarar",
+          "prob": 0.8268964290618896,
+          "idx": 1
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9972313642501831,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9980301856994629,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9800418615341187,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "َ",
+      "start": 1.4018543046357617,
+      "end": 1.6021192052980133,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "hams",
+          "prob": 0.9979204535484314,
+          "idx": 1
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.9981538653373718,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9979597926139832,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9483628273010254,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9867655038833618,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.8403720259666443,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9991778135299683,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9725587964057922,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9962480068206787,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9194459915161133,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ا",
+      "start": 1.6021192052980133,
+      "end": 1.8023841059602648,
+      "confidence": 5.729427599021619e-09,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9998711347579956,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.9997625946998596,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.7265532612800598,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9998613595962524,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9996013045310974,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9202595353126526,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9998801350593567,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9812062382698059,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9997901320457458,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "maghnoon",
+          "prob": 0.9996569156646729,
+          "idx": 1
+        }
+      }
+    },
+    {
+      "phoneme": "ا",
+      "start": 1.8023841059602648,
+      "end": 2.0026490066225167,
+      "confidence": 1.5489620182052022e-06,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.829663097858429,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.9996980428695679,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9894136190414429,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9178707599639893,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.999758780002594,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.7206576466560364,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9934518337249756,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9856373071670532,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.8942273855209351,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.8449123501777649,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ه",
+      "start": 2.0026490066225167,
+      "end": 2.2029139072847683,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9999481439590454,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.9999234676361084,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9990409016609192,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9997157454490662,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9993436932563782,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9823006391525269,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9624820947647095,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9156752228736877,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9994161128997803,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "maghnoon",
+          "prob": 0.999665379524231,
+          "idx": 1
+        }
+      }
+    },
+    {
+      "phoneme": "ِ",
+      "start": 2.2029139072847683,
+      "end": 2.40317880794702,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9835407733917236,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.9979110360145569,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "mofakham",
+          "prob": 0.9049080610275269,
+          "idx": 1
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9910223484039307,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9496152400970459,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9996066689491272,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "mokarar",
+          "prob": 0.9988633394241333,
+          "idx": 1
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9972174167633057,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9089186191558838,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9847872257232666,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ر",
+      "start": 2.40317880794702,
+      "end": 2.6034437086092717,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "hams",
+          "prob": 0.9998952150344849,
+          "idx": 1
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.9997496008872986,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.816179633140564,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9999945163726807,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9999983310699463,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9995015859603882,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9658685922622681,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9997732639312744,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9999977350234985,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9999984502792358,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "ر",
+      "start": 2.6034437086092717,
+      "end": 2.8037086092715233,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9999812245368958,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "rikhw",
+          "prob": 0.9998056292533875,
+          "idx": 3
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9669927954673767,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9999684691429138,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9999412894248962,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9999276399612427,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9903113842010498,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9973560571670532,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9999248385429382,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "not_maghnoon",
+          "prob": 0.9999706149101257,
+          "idx": 2
+        }
+      }
+    },
+    {
+      "phoneme": "َ",
+      "start": 2.8037086092715233,
+      "end": 3.003973509933775,
+      "confidence": 0.5,
+      "sifa": {
+        "hams_or_jahr": {
+          "text": "jahr",
+          "prob": 0.9999806880950928,
+          "idx": 2
+        },
+        "shidda_or_rakhawa": {
+          "text": "between",
+          "prob": 0.999980092048645,
+          "idx": 2
+        },
+        "tafkheem_or_taqeeq": {
+          "text": "moraqaq",
+          "prob": 0.9950414896011353,
+          "idx": 2
+        },
+        "itbaq": {
+          "text": "monfateh",
+          "prob": 0.9846681356430054,
+          "idx": 1
+        },
+        "safeer": {
+          "text": "no_safeer",
+          "prob": 0.9973887205123901,
+          "idx": 2
+        },
+        "qalqla": {
+          "text": "not_moqalqal",
+          "prob": 0.9842355251312256,
+          "idx": 2
+        },
+        "tikraar": {
+          "text": "not_mokarar",
+          "prob": 0.9999957084655762,
+          "idx": 2
+        },
+        "tafashie": {
+          "text": "not_motafashie",
+          "prob": 0.9772893786430359,
+          "idx": 2
+        },
+        "istitala": {
+          "text": "not_mostateel",
+          "prob": 0.9983604550361633,
+          "idx": 2
+        },
+        "ghonna": {
+          "text": "maghnoon",
+          "prob": 0.9999487400054932,
+          "idx": 1
+        }
+      }
+    },
+    {
+      "phoneme": "ح",
+      "start": 3.003973509933775,
+      "end": 3.2042384105960267,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "م",
+      "start": 3.2042384105960267,
+      "end": 3.404503311258278,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "َ",
+      "start": 3.404503311258278,
+      "end": 3.6047682119205295,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ا",
+      "start": 3.6047682119205295,
+      "end": 3.805033112582781,
+      "confidence": 2.295546863706477e-07,
+      "sifa": null
+    },
+    {
+      "phoneme": "ا",
+      "start": 3.805033112582781,
+      "end": 4.005298013245033,
+      "confidence": 4.5691518835155875e-07,
+      "sifa": null
+    },
+    {
+      "phoneme": "ن",
+      "start": 4.005298013245033,
+      "end": 4.2055629139072845,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ِ",
+      "start": 4.2055629139072845,
+      "end": 4.405827814569537,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ر",
+      "start": 4.405827814569537,
+      "end": 4.606092715231788,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ر",
+      "start": 4.606092715231788,
+      "end": 4.80635761589404,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "َ",
+      "start": 4.80635761589404,
+      "end": 5.006622516556291,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ح",
+      "start": 5.006622516556291,
+      "end": 5.206887417218543,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ِ",
+      "start": 5.206887417218543,
+      "end": 5.4071523178807945,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ۦ",
+      "start": 5.4071523178807945,
+      "end": 5.607417218543047,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "ۦ",
+      "start": 5.607417218543047,
+      "end": 5.807682119205298,
+      "confidence": 0.5,
+      "sifa": null
+    },
+    {
+      "phoneme": "م",
+      "start": 5.807682119205298,
+      "end": 6.048,
+      "confidence": 0.5,
+      "sifa": null
+    }
+  ],
+  "words": [],
+  "gate_result": {
+    "passed": false,
+    "per": 0.13333333333333333,
+    "confidence": 0.8666666666666667,
+    "errors": [
+      {
+        "type": "substitution",
+        "position": 14,
+        "reference_phoneme": "َ",
+        "predicted_phoneme": "ِ"
+      },
+      {
+        "type": "substitution",
+        "position": 17,
+        "reference_phoneme": "َ",
+        "predicted_phoneme": "ِ"
+      },
+      {
+        "type": "substitution",
+        "position": 18,
+        "reference_phoneme": "ا",
+        "predicted_phoneme": "ۦ"
+      },
+      {
+        "type": "substitution",
+        "position": 19,
+        "reference_phoneme": "ا",
+        "predicted_phoneme": "ۦ"
+      }
+    ]
+  },
+  "alignment_method": "ctc_phoneme_fallback"
+}
