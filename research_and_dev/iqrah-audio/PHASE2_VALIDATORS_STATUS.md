@@ -19,12 +19,16 @@ Phase 2 validators have been **implemented and unit tested** but are **NOT yet v
 - **Graceful fallback**: Works without optional libraries
 
 ### What's NOT Complete ❌
-- **Real audio validation**: No demos with actual recitations
-- **Formant analysis**: Parselmouth not installed (Ghunnah)
-- **Burst detection**: Works but not validated on real audio (Qalqalah)
+- **Real Quran audio validation**: No demos with actual nasal/qalqalah phonemes
 - **Integration testing**: Phase 2 not integrated with orchestrator demos
 - **Expert validation**: No expert annotations
 - **Performance benchmarks**: No timing data
+
+### Updated (2025-10-28) ✅
+- **Parselmouth installed**: 0.4.6
+- **Librosa installed**: 0.11.0
+- **Feature extraction verified**: Both formant and burst extraction tested with audio
+- **Qalqalah bug fixed**: `_get_baseline_confidence` now works correctly
 
 ---
 
@@ -66,19 +70,17 @@ Phase 2 validators have been **implemented and unit tested** but are **NOT yet v
 - ✅ Formant scoring logic
 
 **What's NOT Done**:
-- ❌ **No real audio validation**
-- ❌ **Parselmouth not installed** (formant extraction untested)
+- ❌ **No real Quran audio validation** (need nasal phonemes: ن، م)
 - ❌ **No demo script**
 - ❌ **Not integrated with orchestrator demos**
-- ❌ **Formant extraction code path not tested**
 
-**Blockers**:
-1. Need to install: `pip install praat-parselmouth`
-2. Need demo with real audio
-3. Need to verify formant features actually work
+**Blockers** (Updated):
+1. ~~Need to install: `pip install praat-parselmouth`~~ ✅ **DONE** (v0.4.6)
+2. ~~Need to verify formant features actually work~~ ✅ **DONE** (tested, working)
+3. Need demo with real Quran audio containing nasal phonemes
 4. Need expert validation
 
-**Estimated Work**: 4-6 hours
+**Estimated Work**: 2-3 hours (down from 4-6)
 - 1h: Install parselmouth, test formant extraction
 - 2h: Create demo with real audio
 - 1h: Integrate with orchestrator
@@ -101,19 +103,17 @@ Phase 2 validators have been **implemented and unit tested** but are **NOT yet v
 - ✅ Burst scoring logic
 
 **What's NOT Done**:
-- ❌ **No real audio validation**
-- ❌ **Burst detection code path not fully tested**
+- ❌ **No real Quran audio validation** (need qalqalah letters: ق، ط، ب، ج، د)
 - ❌ **No demo script**
 - ❌ **Not integrated with orchestrator demos**
-- ❌ **ZCR/centroid/RMS extraction not validated**
 
-**Blockers**:
-1. Need demo with real audio
-2. Need to verify burst features actually work
-3. Need expert validation
-4. Librosa is installed, but extraction untested
+**Blockers** (Updated):
+1. ~~Librosa is installed, but extraction untested~~ ✅ **DONE** (tested, working)
+2. ~~Need to verify burst features actually work~~ ✅ **DONE** (ZCR/centroid/RMS verified)
+3. Need demo with real Quran audio containing qalqalah letters
+4. Need expert validation
 
-**Estimated Work**: 4-6 hours
+**Estimated Work**: 2-3 hours (down from 4-6)
 - 2h: Create demo with real audio
 - 1h: Test burst extraction on real audio
 - 1h: Integrate with orchestrator
@@ -230,4 +230,17 @@ Recommend:
 2. Mark Ghunnah/Qalqalah as "experimental"
 3. Complete validation in next sprint
 
-Total remaining work: **8-12 hours** for full Phase 2 completion.
+Total remaining work: **4-6 hours** for full Phase 2 completion (down from 8-12 after library installation and feature verification).
+
+---
+
+## Update Log
+
+### 2025-10-28 (Evening)
+- ✅ Installed parselmouth 0.4.6
+- ✅ Installed librosa 0.11.0
+- ✅ Verified formant extraction works (F1/F2/F3, nasal energy)
+- ✅ Verified burst detection works (ZCR, centroid, RMS)
+- ✅ Fixed Qalqalah `_get_baseline_confidence` bug
+- ✅ All 40 tests passing
+- ⏳ Still need: Real Quran audio demos with nasal/qalqalah phonemes
