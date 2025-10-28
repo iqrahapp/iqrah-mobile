@@ -34,7 +34,13 @@ class TestGhunnahValidator:
             formant_weight=0.3
         )
 
-        assert validator.use_formants == True
+        # use_formants will be False if parselmouth is unavailable (graceful fallback)
+        try:
+            import parselmouth
+            assert validator.use_formants == True
+        except ImportError:
+            assert validator.use_formants == False  # Graceful fallback
+
         assert validator.formant_weight == 0.3
         assert validator.confidence_threshold == 0.7
 

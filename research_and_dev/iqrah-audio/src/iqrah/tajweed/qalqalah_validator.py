@@ -188,11 +188,20 @@ class QalqalahValidator:
         if not hasattr(phoneme, 'sifa') or phoneme.sifa is None:
             return 0.5  # Neutral if no sifat
 
-        # Check qalqla property
-        if hasattr(phoneme.sifa, 'qalqla') and phoneme.sifa.get('qalqla') is not None:
-            qalqla = phoneme.sifa['qalqla']
-            if isinstance(qalqla, dict) and 'prob' in qalqla:
+        # Sifat can be dict or object
+        if isinstance(phoneme.sifa, dict):
+            qalqla = phoneme.sifa.get('qalqla')
+            if qalqla is not None and isinstance(qalqla, dict) and 'prob' in qalqla:
                 return float(qalqla['prob'])
+        else:
+            # Object with attributes
+            if hasattr(phoneme.sifa, 'qalqla'):
+                qalqla = phoneme.sifa.qalqla
+                if qalqla is not None:
+                    if isinstance(qalqla, dict) and 'prob' in qalqla:
+                        return float(qalqla['prob'])
+                    elif hasattr(qalqla, 'prob'):
+                        return float(qalqla.prob)
 
         return 0.5  # Neutral if no qalqla info
 
