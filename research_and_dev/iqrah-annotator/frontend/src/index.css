@@ -1,0 +1,29 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Trimmer + Annotator (wavesurfer v7) */
+#waveform ::part(region),
+#trimmer ::part(region) {
+  opacity: 0.7;
+  border-radius: 2px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+wave-region[data-type="surah"]::part(region) { outline: 2px solid rgba(0,0,0,0.2); }
+wave-region[data-type="word"]::part(region)  { outline: 1px dashed rgba(0,0,0,0.2); }
+wave-region[data-type="other"]::part(region) { outline: 1px dotted rgba(0,0,0,0.25); }
+
+#waveform ::part(cursor)::before,
+#trimmer ::part(cursor)::before {
+  content: '|';
+}
