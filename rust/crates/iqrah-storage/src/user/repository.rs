@@ -35,9 +35,9 @@ impl UserRepository for SqliteUserRepository {
                 difficulty: r.get("difficulty"),
                 energy: r.get("energy"),
                 last_reviewed: DateTime::from_timestamp_millis(r.get("last_reviewed"))
-                    .unwrap_or_else(|| Utc::now()),
+                    .unwrap_or_else(Utc::now),
                 due_at: DateTime::from_timestamp_millis(r.get("due_at"))
-                    .unwrap_or_else(|| Utc::now()),
+                    .unwrap_or_else(Utc::now),
                 review_count: r.get::<i64, _>("review_count") as u32,
             }
         }))
@@ -93,9 +93,9 @@ impl UserRepository for SqliteUserRepository {
                 difficulty: r.get("difficulty"),
                 energy: r.get("energy"),
                 last_reviewed: DateTime::from_timestamp_millis(r.get("last_reviewed"))
-                    .unwrap_or_else(|| Utc::now()),
+                    .unwrap_or_else(Utc::now),
                 due_at: DateTime::from_timestamp_millis(r.get("due_at"))
-                    .unwrap_or_else(|| Utc::now()),
+                    .unwrap_or_else(Utc::now),
                 review_count: r.get::<i64, _>("review_count") as u32,
             }
         }).collect())
