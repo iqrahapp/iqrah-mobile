@@ -7,6 +7,29 @@ members = [
 ]
 resolver = "2"
 
+[package]
+name = "rust_lib_iqrah"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+path = "src/lib.rs"
+
+[dependencies]
+iqrah-api = { path = "crates/iqrah-api" }
+flutter_rust_bridge = "=2.11.1"
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+async-trait = { workspace = true }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
 # Shared workspace dependencies
 [workspace.dependencies]
 # Error handling

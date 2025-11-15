@@ -3823,6 +3823,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_lib_iqrah"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "flutter_rust_bridge",
+ "iqrah-api",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"

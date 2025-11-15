@@ -1003,7 +1003,7 @@ impl SseDecode for crate::repository::NodeData {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_id = <String>::sse_decode(deserializer);
-        let mut var_nodeType = <crate::cbor_import::NodeType>::sse_decode(deserializer);
+        let mut var_nodeType = <crate::repository::NodeType>::sse_decode(deserializer);
         let mut var_metadata =
             <std::collections::HashMap<String, String>>::sse_decode(deserializer);
         return crate::repository::NodeData {
@@ -1014,18 +1014,18 @@ impl SseDecode for crate::repository::NodeData {
     }
 }
 
-impl SseDecode for crate::cbor_import::NodeType {
+impl SseDecode for crate::repository::NodeType {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <i32>::sse_decode(deserializer);
         return match inner {
-            0 => crate::cbor_import::NodeType::Root,
-            1 => crate::cbor_import::NodeType::Lemma,
-            2 => crate::cbor_import::NodeType::Word,
-            3 => crate::cbor_import::NodeType::WordInstance,
-            4 => crate::cbor_import::NodeType::Verse,
-            5 => crate::cbor_import::NodeType::Chapter,
-            6 => crate::cbor_import::NodeType::Knowledge,
+            0 => crate::repository::NodeType::Root,
+            1 => crate::repository::NodeType::Lemma,
+            2 => crate::repository::NodeType::Word,
+            3 => crate::repository::NodeType::WordInstance,
+            4 => crate::repository::NodeType::Verse,
+            5 => crate::repository::NodeType::Chapter,
+            6 => crate::repository::NodeType::Knowledge,
             _ => unreachable!("Invalid variant for NodeType: {}", inner),
         };
     }
@@ -1470,7 +1470,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::repository::NodeData>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::cbor_import::NodeType {
+impl flutter_rust_bridge::IntoDart for crate::repository::NodeType {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
             Self::Root => 0.into_dart(),
@@ -1484,11 +1484,11 @@ impl flutter_rust_bridge::IntoDart for crate::cbor_import::NodeType {
         }
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::cbor_import::NodeType {}
-impl flutter_rust_bridge::IntoIntoDart<crate::cbor_import::NodeType>
-    for crate::cbor_import::NodeType
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::repository::NodeType {}
+impl flutter_rust_bridge::IntoIntoDart<crate::repository::NodeType>
+    for crate::repository::NodeType
 {
-    fn into_into_dart(self) -> crate::cbor_import::NodeType {
+    fn into_into_dart(self) -> crate::repository::NodeType {
         self
     }
 }
@@ -1891,23 +1891,23 @@ impl SseEncode for crate::repository::NodeData {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.id, serializer);
-        <crate::cbor_import::NodeType>::sse_encode(self.node_type, serializer);
+        <crate::repository::NodeType>::sse_encode(self.node_type, serializer);
         <std::collections::HashMap<String, String>>::sse_encode(self.metadata, serializer);
     }
 }
 
-impl SseEncode for crate::cbor_import::NodeType {
+impl SseEncode for crate::repository::NodeType {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(
             match self {
-                crate::cbor_import::NodeType::Root => 0,
-                crate::cbor_import::NodeType::Lemma => 1,
-                crate::cbor_import::NodeType::Word => 2,
-                crate::cbor_import::NodeType::WordInstance => 3,
-                crate::cbor_import::NodeType::Verse => 4,
-                crate::cbor_import::NodeType::Chapter => 5,
-                crate::cbor_import::NodeType::Knowledge => 6,
+                crate::repository::NodeType::Root => 0,
+                crate::repository::NodeType::Lemma => 1,
+                crate::repository::NodeType::Word => 2,
+                crate::repository::NodeType::WordInstance => 3,
+                crate::repository::NodeType::Verse => 4,
+                crate::repository::NodeType::Chapter => 5,
+                crate::repository::NodeType::Knowledge => 6,
                 _ => {
                     unimplemented!("");
                 }

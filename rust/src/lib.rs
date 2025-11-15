@@ -1,13 +1,8 @@
-mod app;
 mod frb_generated;
 
-// --- for testing only ---
-pub mod cbor_import;
-pub mod database;
+// Old modules kept for type compatibility (will be removed in future)
 pub mod exercises;
-pub mod propagation;
 pub mod repository;
-pub mod sqlite_repo;
 
 // --- public api ---
 pub mod api;

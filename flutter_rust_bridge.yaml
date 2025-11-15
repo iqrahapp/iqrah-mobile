@@ -1,3 +1,5 @@
-rust_input: crate::api
-rust_root: rust/
+rust_input: iqrah_api::api
+rust_root: rust/crates/iqrah-api
 dart_output: lib/rust_bridge
+dart_format: false
+rust_format: false
