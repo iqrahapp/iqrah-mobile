@@ -1,7 +1,8 @@
-use sqlx::{SqlitePool, Row};
+use sqlx::{SqlitePool, query_as, query};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use iqrah_core::{UserRepository, MemoryState, PropagationEvent};
+use iqrah_core::{UserRepository, MemoryState, PropagationEvent, PropagationDetail};
+use super::models::{MemoryStateRow, PropagationEventRow, PropagationDetailRow, SessionStateRow, UserStatRow};
 
 pub struct SqliteUserRepository {
     pool: SqlitePool,
@@ -16,7 +17,7 @@ impl SqliteUserRepository {
 #[async_trait]
 impl UserRepository for SqliteUserRepository {
     async fn get_memory_state(&self, user_id: &str, node_id: &str) -> anyhow::Result<Option<MemoryState>> {
-        let row = sqlx::query(
+        let row = query_as::<_, MemoryStateRow>(
             "SELECT user_id, node_id, stability, difficulty, energy,
                     last_reviewed, due_at, review_count
              FROM user_memory_states
@@ -27,24 +28,20 @@ impl UserRepository for SqliteUserRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| {
-            MemoryState {
-                user_id: r.get("user_id"),
-                node_id: r.get("node_id"),
-                stability: r.get("stability"),
-                difficulty: r.get("difficulty"),
-                energy: r.get("energy"),
-                last_reviewed: DateTime::from_timestamp_millis(r.get("last_reviewed"))
-                    .unwrap_or_else(Utc::now),
-                due_at: DateTime::from_timestamp_millis(r.get("due_at"))
-                    .unwrap_or_else(Utc::now),
-                review_count: r.get::<i64, _>("review_count") as u32,
-            }
+        Ok(row.map(|r| MemoryState {
+            user_id: r.user_id,
+            node_id: r.node_id,
+            stability: r.stability,
+            difficulty: r.difficulty,
+            energy: r.energy,
+            last_reviewed: DateTime::from_timestamp_millis(r.last_reviewed).unwrap_or_else(Utc::now),
+            due_at: DateTime::from_timestamp_millis(r.due_at).unwrap_or_else(Utc::now),
+            review_count: r.review_count as u32,
         }))
     }
 
     async fn save_memory_state(&self, state: &MemoryState) -> anyhow::Result<()> {
-        sqlx::query(
+        query(
             "INSERT INTO user_memory_states
              (user_id, node_id, stability, difficulty, energy, last_reviewed, due_at, review_count)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -71,7 +68,7 @@ impl UserRepository for SqliteUserRepository {
     }
 
     async fn get_due_states(&self, user_id: &str, due_before: DateTime<Utc>, limit: u32) -> anyhow::Result<Vec<MemoryState>> {
-        let rows = sqlx::query(
+        let rows = query_as::<_, MemoryStateRow>(
             "SELECT user_id, node_id, stability, difficulty, energy,
                     last_reviewed, due_at, review_count
              FROM user_memory_states
@@ -85,24 +82,20 @@ impl UserRepository for SqliteUserRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| {
-            MemoryState {
-                user_id: r.get("user_id"),
-                node_id: r.get("node_id"),
-                stability: r.get("stability"),
-                difficulty: r.get("difficulty"),
-                energy: r.get("energy"),
-                last_reviewed: DateTime::from_timestamp_millis(r.get("last_reviewed"))
-                    .unwrap_or_else(Utc::now),
-                due_at: DateTime::from_timestamp_millis(r.get("due_at"))
-                    .unwrap_or_else(Utc::now),
-                review_count: r.get::<i64, _>("review_count") as u32,
-            }
+        Ok(rows.into_iter().map(|r| MemoryState {
+            user_id: r.user_id,
+            node_id: r.node_id,
+            stability: r.stability,
+            difficulty: r.difficulty,
+            energy: r.energy,
+            last_reviewed: DateTime::from_timestamp_millis(r.last_reviewed).unwrap_or_else(Utc::now),
+            due_at: DateTime::from_timestamp_millis(r.due_at).unwrap_or_else(Utc::now),
+            review_count: r.review_count as u32,
         }).collect())
     }
 
     async fn update_energy(&self, user_id: &str, node_id: &str, new_energy: f64) -> anyhow::Result<()> {
-        sqlx::query(
+        query(
             "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND node_id = ?"
         )
         .bind(new_energy)
@@ -116,7 +109,7 @@ impl UserRepository for SqliteUserRepository {
 
     async fn log_propagation(&self, event: &PropagationEvent) -> anyhow::Result<()> {
         // Insert event
-        let result = sqlx::query(
+        let result = query(
             "INSERT INTO propagation_events (source_node_id, event_timestamp)
              VALUES (?, ?)"
         )
@@ -129,7 +122,7 @@ impl UserRepository for SqliteUserRepository {
 
         // Insert details
         for detail in &event.details {
-            sqlx::query(
+            query(
                 "INSERT INTO propagation_details (event_id, target_node_id, energy_change, reason)
                  VALUES (?, ?, ?, ?)"
             )
@@ -145,13 +138,13 @@ impl UserRepository for SqliteUserRepository {
     }
 
     async fn get_session_state(&self) -> anyhow::Result<Vec<String>> {
-        let rows = sqlx::query(
-            "SELECT node_id FROM session_state ORDER BY session_order ASC"
+        let rows = query_as::<_, SessionStateRow>(
+            "SELECT node_id, session_order FROM session_state ORDER BY session_order ASC"
         )
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| r.get("node_id")).collect())
+        Ok(rows.into_iter().map(|r| r.node_id).collect())
     }
 
     async fn save_session_state(&self, node_ids: &[String]) -> anyhow::Result<()> {
@@ -160,7 +153,7 @@ impl UserRepository for SqliteUserRepository {
 
         // Insert new
         for (idx, node_id) in node_ids.iter().enumerate() {
-            sqlx::query(
+            query(
                 "INSERT INTO session_state (node_id, session_order) VALUES (?, ?)"
             )
             .bind(node_id)
@@ -173,7 +166,7 @@ impl UserRepository for SqliteUserRepository {
     }
 
     async fn clear_session_state(&self) -> anyhow::Result<()> {
-        sqlx::query("DELETE FROM session_state")
+        query("DELETE FROM session_state")
             .execute(&self.pool)
             .await?;
 
@@ -181,18 +174,18 @@ impl UserRepository for SqliteUserRepository {
     }
 
     async fn get_stat(&self, key: &str) -> anyhow::Result<Option<String>> {
-        let row = sqlx::query(
-            "SELECT value FROM user_stats WHERE key = ?"
+        let row = query_as::<_, UserStatRow>(
+            "SELECT key, value FROM user_stats WHERE key = ?"
         )
         .bind(key)
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| r.get("value")))
+        Ok(row.map(|r| r.value))
     }
 
     async fn set_stat(&self, key: &str, value: &str) -> anyhow::Result<()> {
-        sqlx::query(
+        query(
             "INSERT INTO user_stats (key, value) VALUES (?, ?)
              ON CONFLICT(key) DO UPDATE SET value = excluded.value"
         )
