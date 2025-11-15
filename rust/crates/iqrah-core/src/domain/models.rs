@@ -36,6 +36,13 @@ impl From<NodeType> for String {
     }
 }
 
+impl std::fmt::Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s: String = self.clone().into();
+        write!(f, "{}", s)
+    }
+}
+
 // Core node entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
