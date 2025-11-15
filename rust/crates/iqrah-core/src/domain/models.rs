@@ -36,6 +36,13 @@ impl From<NodeType> for String {
     }
 }
 
+impl std::fmt::Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s: String = self.clone().into();
+        write!(f, "{}", s)
+    }
+}
+
 // Core node entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
@@ -120,7 +127,6 @@ impl From<u8> for ReviewGrade {
 // Propagation event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationEvent {
-    pub id: Option<i64>,
     pub source_node_id: String,
     pub event_timestamp: DateTime<Utc>,
     pub details: Vec<PropagationDetail>,
