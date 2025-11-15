@@ -120,7 +120,6 @@ impl From<u8> for ReviewGrade {
 // Propagation event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationEvent {
-    pub id: Option<i64>,
     pub source_node_id: String,
     pub event_timestamp: DateTime<Utc>,
     pub details: Vec<PropagationDetail>,
