@@ -2,7 +2,7 @@ use std::sync::Arc;
 use once_cell::sync::OnceCell;
 use iqrah_core::{
     ContentRepository, UserRepository,
-    LearningService, SessionService, ReviewGrade, Exercise,
+    LearningService, SessionService, ReviewGrade,
 };
 use iqrah_storage::{
     SqliteContentRepository, SqliteUserRepository,

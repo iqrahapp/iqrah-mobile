@@ -28,7 +28,8 @@ enum Commands {
     },
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
 
@@ -42,15 +43,15 @@ fn main() -> Result<()> {
             println!("  User DB: {}", user_db);
             println!();
 
-            let stats = iqrah_storage::migrate_database(&old_db, &content_db, &user_db)?;
+            // Initialize database connections
+            let content_pool = iqrah_storage::init_content_db(&content_db).await?;
+            let user_pool = iqrah_storage::init_user_db(&user_db).await?;
+
+            // Run migration
+            iqrah_storage::migrate_from_old_db(&old_db, &content_pool, &user_pool).await?;
 
             println!("\n✅ Migration Complete!");
-            println!("  Nodes: {}", stats.nodes_migrated);
-            println!("  Edges: {}", stats.edges_migrated);
-            println!("  Arabic texts: {}", stats.arabic_texts_migrated);
-            println!("  Translations: {}", stats.translations_migrated);
-            println!("  Memory states: {}", stats.memory_states_migrated);
-            println!("  Propagation events: {}", stats.propagation_events_migrated);
+            println!("  (Migration implementation pending - databases initialized)");
 
             Ok(())
         }
