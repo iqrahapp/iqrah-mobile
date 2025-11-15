@@ -1,0 +1,57 @@
+# Basic Knowledge Graph Configuration
+# Minimal graph with essential learning connections
+
+name: basic
+description: Minimal knowledge graph with core memorization and translation edges
+
+# Chapters to include (default: full Quran)
+chapters: "1-114"
+
+# Memorization edges (word -> verse -> chapter hierarchy)
+memorization:
+  enabled: true
+  params:
+    window_size: 3  # Context window for words
+    base_weight: 0.5
+    std_scale: 0.15
+
+# Tajweed edges (disabled for basic)
+tajweed:
+  enabled: false
+  params: {}
+
+# Translation edges (word-to-verse understanding)
+translation:
+  enabled: true
+  params:
+    connect_duplicates: true  # Connect duplicate verses
+
+# Grammar edges (disabled for basic)
+grammar:
+  enabled: false
+  params: {}
+
+# Deep understanding (disabled for basic)
+deep_understanding:
+  enabled: false
+  params: {}
+
+# Scoring configuration
+scoring:
+  enabled: false  # Skip scoring for basic graphs
+  alpha: 0.85
+  max_iter: 50000
+  personalize_foundational: true
+  personalize_influence: false
+
+# Export configuration
+export:
+  format: cbor  # cbor, graphml, or both
+  compression_level: 9
+  include_scores: false
+
+# Additional metadata
+metadata:
+  use_case: basic_learning
+  target_audience: beginners
+  estimated_size_mb: 5
