@@ -1,4 +1,5 @@
 pub mod repository;
+mod models;
 
 pub use repository::SqliteUserRepository;
 
