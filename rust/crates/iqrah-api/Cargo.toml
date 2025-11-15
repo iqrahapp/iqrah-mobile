@@ -19,3 +19,14 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
+sqlx = { workspace = true }
+
+# CBOR and compression
+ciborium = "0.2"
+zstd = "0.13"
+
+# FSRS
+fsrs = "5.1.0"
+
+# Random for exercise generation
+rand = "0.9"
