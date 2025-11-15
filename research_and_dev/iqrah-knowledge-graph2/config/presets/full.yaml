@@ -1,0 +1,74 @@
+# Full Knowledge Graph Configuration
+# Complete graph with all features enabled for production use
+
+name: full
+description: Complete knowledge graph with all learning dimensions and scoring
+
+# Chapters to include (default: full Quran)
+chapters: "1-114"
+
+# Memorization edges (hierarchical and contextual)
+memorization:
+  enabled: true
+  params:
+    window_size: 3
+    base_weight: 0.5
+    std_scale: 0.15
+
+# Tajweed edges (placeholder - requires tajweed rule detection)
+tajweed:
+  enabled: false
+  params:
+    impact_on_memorization: 0.7
+    neighboring_weight: 0.3
+
+# Translation edges (comprehensive understanding)
+translation:
+  enabled: true
+  params:
+    connect_duplicates: true
+    word_to_verse_weight: auto
+    verse_to_chapter_weight: auto
+    translation_helps_memorization: 0.4
+
+# Grammar edges (word-lemma-root connections)
+grammar:
+  enabled: true
+  params:
+    word_lemma_weight: auto
+    lemma_root_weight: beta  # beta(4, 2)
+
+# Deep understanding edges (advanced connections)
+deep_understanding:
+  enabled: false  # Requires tafsir data
+  params:
+    translation_to_tafsir: 0.3
+    root_to_lemma_meaning: beta
+
+# Scoring configuration (PageRank-based)
+scoring:
+  enabled: true
+  alpha: 0.85
+  max_iter: 100000  # Higher for full graph
+  personalize_foundational: true
+  personalize_influence: false
+
+# Export configuration
+export:
+  format: cbor  # Structure-only CBOR
+  compression_level: 9
+  include_scores: true
+
+# Additional metadata
+metadata:
+  use_case: production
+  target_audience: all_users
+  estimated_size_mb: 15
+  features:
+    - memorization_hierarchy
+    - contextual_memorization
+    - translation_understanding
+    - grammar_connections
+    - duplicate_verse_linking
+    - foundational_scoring
+    - influence_scoring

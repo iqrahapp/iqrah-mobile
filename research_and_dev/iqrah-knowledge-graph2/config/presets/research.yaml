@@ -1,0 +1,93 @@
+# Research Knowledge Graph Configuration
+# Experimental features for research and development
+
+name: research
+description: Research configuration with experimental features and enhanced scoring
+
+# Chapters to include (smaller for faster iteration)
+chapters: "1-10"  # First 10 chapters for research
+
+# Memorization edges (with experimental parameters)
+memorization:
+  enabled: true
+  params:
+    window_size: 5  # Larger context window
+    base_weight: 0.5
+    std_scale: 0.15
+    include_position_bias: true  # Experimental: position in chapter affects learning
+
+# Tajweed edges (experimental)
+tajweed:
+  enabled: true
+  params:
+    impact_on_memorization: 0.7
+    neighboring_weight: 0.3
+    cross_verse_rules: true
+
+# Translation edges (with advanced features)
+translation:
+  enabled: true
+  params:
+    connect_duplicates: true
+    word_to_verse_weight: auto
+    verse_to_chapter_weight: auto
+    translation_helps_memorization: 0.4
+    multimodal_learning: true  # Experimental: multiple axes reinforce
+
+# Grammar edges (comprehensive)
+grammar:
+  enabled: true
+  params:
+    word_lemma_weight: auto
+    lemma_root_weight: beta
+    bidirectional_propagation: true
+
+# Deep understanding edges (full experimental features)
+deep_understanding:
+  enabled: true
+  params:
+    translation_to_tafsir: 0.3
+    root_to_lemma_meaning: beta
+    semantic_clustering: true  # Experimental: cluster similar meanings
+
+# Scoring configuration (enhanced for research)
+scoring:
+  enabled: true
+  alpha: 0.85
+  max_iter: 200000  # Very high for research
+  personalize_foundational: true
+  personalize_influence: true  # Also personalize influence
+  node_type_weights:
+    root: 3.0
+    lemma: 2.5
+    chapter: 2.0
+    verse: 1.5
+    word: 1.0
+    word_instance: 0.5
+
+# Export configuration
+export:
+  format: both  # Export both CBOR and GraphML for analysis
+  compression_level: 9
+  include_scores: true
+  include_statistics: true
+
+# Additional metadata
+metadata:
+  use_case: research_and_development
+  target_audience: researchers
+  estimated_size_mb: 20
+  features:
+    - all_full_features
+    - experimental_tajweed
+    - multimodal_learning
+    - position_based_learning
+    - differential_propagation
+    - semantic_clustering
+    - enhanced_scoring
+  experiments:
+    - hypothesis_1: "Larger context windows improve memorization"
+    - hypothesis_2: "Position in chapter affects learning difficulty"
+    - hypothesis_3: "Multiple knowledge types reinforce each other"
+    - hypothesis_4: "Understanding propagates differently than memorization"
+  notes: "This configuration includes experimental features that may not be stable"
