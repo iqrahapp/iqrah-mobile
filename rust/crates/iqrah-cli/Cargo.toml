@@ -1,0 +1,18 @@
+[package]
+name = "iqrah-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "iqrah"
+path = "src/main.rs"
+
+[dependencies]
+iqrah-core = { path = "../iqrah-core" }
+iqrah-storage = { path = "../iqrah-storage" }
+
+clap = { version = "4", features = ["derive"] }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

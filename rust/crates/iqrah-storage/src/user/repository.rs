@@ -1,0 +1,206 @@
+use sqlx::{SqlitePool, Row};
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use iqrah_core::{UserRepository, MemoryState, PropagationEvent};
+
+pub struct SqliteUserRepository {
+    pool: SqlitePool,
+}
+
+impl SqliteUserRepository {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl UserRepository for SqliteUserRepository {
+    async fn get_memory_state(&self, user_id: &str, node_id: &str) -> anyhow::Result<Option<MemoryState>> {
+        let row = sqlx::query(
+            "SELECT user_id, node_id, stability, difficulty, energy,
+                    last_reviewed, due_at, review_count
+             FROM user_memory_states
+             WHERE user_id = ? AND node_id = ?"
+        )
+        .bind(user_id)
+        .bind(node_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| {
+            MemoryState {
+                user_id: r.get("user_id"),
+                node_id: r.get("node_id"),
+                stability: r.get("stability"),
+                difficulty: r.get("difficulty"),
+                energy: r.get("energy"),
+                last_reviewed: DateTime::from_timestamp_millis(r.get("last_reviewed"))
+                    .unwrap_or_else(Utc::now),
+                due_at: DateTime::from_timestamp_millis(r.get("due_at"))
+                    .unwrap_or_else(Utc::now),
+                review_count: r.get::<i64, _>("review_count") as u32,
+            }
+        }))
+    }
+
+    async fn save_memory_state(&self, state: &MemoryState) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO user_memory_states
+             (user_id, node_id, stability, difficulty, energy, last_reviewed, due_at, review_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, node_id) DO UPDATE SET
+                stability = excluded.stability,
+                difficulty = excluded.difficulty,
+                energy = excluded.energy,
+                last_reviewed = excluded.last_reviewed,
+                due_at = excluded.due_at,
+                review_count = excluded.review_count"
+        )
+        .bind(&state.user_id)
+        .bind(&state.node_id)
+        .bind(state.stability)
+        .bind(state.difficulty)
+        .bind(state.energy)
+        .bind(state.last_reviewed.timestamp_millis())
+        .bind(state.due_at.timestamp_millis())
+        .bind(state.review_count as i64)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn get_due_states(&self, user_id: &str, due_before: DateTime<Utc>, limit: u32) -> anyhow::Result<Vec<MemoryState>> {
+        let rows = sqlx::query(
+            "SELECT user_id, node_id, stability, difficulty, energy,
+                    last_reviewed, due_at, review_count
+             FROM user_memory_states
+             WHERE user_id = ? AND due_at <= ?
+             ORDER BY due_at ASC
+             LIMIT ?"
+        )
+        .bind(user_id)
+        .bind(due_before.timestamp_millis())
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| {
+            MemoryState {
+                user_id: r.get("user_id"),
+                node_id: r.get("node_id"),
+                stability: r.get("stability"),
+                difficulty: r.get("difficulty"),
+                energy: r.get("energy"),
+                last_reviewed: DateTime::from_timestamp_millis(r.get("last_reviewed"))
+                    .unwrap_or_else(Utc::now),
+                due_at: DateTime::from_timestamp_millis(r.get("due_at"))
+                    .unwrap_or_else(Utc::now),
+                review_count: r.get::<i64, _>("review_count") as u32,
+            }
+        }).collect())
+    }
+
+    async fn update_energy(&self, user_id: &str, node_id: &str, new_energy: f64) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND node_id = ?"
+        )
+        .bind(new_energy)
+        .bind(user_id)
+        .bind(node_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn log_propagation(&self, event: &PropagationEvent) -> anyhow::Result<()> {
+        // Insert event
+        let result = sqlx::query(
+            "INSERT INTO propagation_events (source_node_id, event_timestamp)
+             VALUES (?, ?)"
+        )
+        .bind(&event.source_node_id)
+        .bind(event.event_timestamp.timestamp_millis())
+        .execute(&self.pool)
+        .await?;
+
+        let event_id = result.last_insert_rowid();
+
+        // Insert details
+        for detail in &event.details {
+            sqlx::query(
+                "INSERT INTO propagation_details (event_id, target_node_id, energy_change, reason)
+                 VALUES (?, ?, ?, ?)"
+            )
+            .bind(event_id)
+            .bind(&detail.target_node_id)
+            .bind(detail.energy_change)
+            .bind(&detail.reason)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn get_session_state(&self) -> anyhow::Result<Vec<String>> {
+        let rows = sqlx::query(
+            "SELECT node_id FROM session_state ORDER BY session_order ASC"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.get("node_id")).collect())
+    }
+
+    async fn save_session_state(&self, node_ids: &[String]) -> anyhow::Result<()> {
+        // Clear existing
+        self.clear_session_state().await?;
+
+        // Insert new
+        for (idx, node_id) in node_ids.iter().enumerate() {
+            sqlx::query(
+                "INSERT INTO session_state (node_id, session_order) VALUES (?, ?)"
+            )
+            .bind(node_id)
+            .bind(idx as i64)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn clear_session_state(&self) -> anyhow::Result<()> {
+        sqlx::query("DELETE FROM session_state")
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_stat(&self, key: &str) -> anyhow::Result<Option<String>> {
+        let row = sqlx::query(
+            "SELECT value FROM user_stats WHERE key = ?"
+        )
+        .bind(key)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| r.get("value")))
+    }
+
+    async fn set_stat(&self, key: &str, value: &str) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO user_stats (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        )
+        .bind(key)
+        .bind(value)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+}
