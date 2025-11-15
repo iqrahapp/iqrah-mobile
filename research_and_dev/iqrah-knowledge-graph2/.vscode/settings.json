@@ -1,0 +1,5 @@
+{
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/conda-forge/conda-smithy/main/conda_smithy/data/conda-forge.json": "file:///home/samiisd/ws/iqrah/iqrah-knowledge-graph/requirements.yml"
+  }
+}
