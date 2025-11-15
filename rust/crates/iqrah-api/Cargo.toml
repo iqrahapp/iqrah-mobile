@@ -1,0 +1,21 @@
+[package]
+name = "iqrah-api"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+iqrah-core = { path = "../iqrah-core" }
+iqrah-storage = { path = "../iqrah-storage" }
+
+flutter_rust_bridge = "=2.11.1"
+anyhow = { workspace = true }
+tokio = { workspace = true }
+once_cell = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
