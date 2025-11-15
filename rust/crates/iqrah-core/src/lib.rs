@@ -1,5 +1,6 @@
 pub mod domain;
 pub mod ports;
+pub mod services;
 
 // Re-export commonly used types
 pub use domain::{
@@ -10,3 +11,5 @@ pub use domain::{
 };
 
 pub use ports::{ContentRepository, UserRepository};
+
+pub use services::{LearningService, SessionService, ScoredItem, ScoreWeights};
