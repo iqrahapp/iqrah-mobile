@@ -13,7 +13,6 @@ async-trait = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
-# rusqlite = { workspace = true }  # TODO: Re-enable for migration tool (causes conflict with sqlx)
 
 [dev-dependencies]
 tokio-test = "0.4"
