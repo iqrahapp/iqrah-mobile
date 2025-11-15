@@ -100,7 +100,7 @@ impl LearningService {
         };
 
         // Calculate due date from interval
-        let due_at = now + chrono::Duration::try_days((selected_state.interval as i64))
+        let due_at = now + chrono::Duration::try_days(selected_state.interval as i64)
             .unwrap_or(chrono::Duration::days(1));
 
         // Convert back to our MemoryState (cast f32 to f64)

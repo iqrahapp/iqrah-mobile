@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
-use crate::domain::{Node, Edge};
+use crate::domain::{Node, Edge, NodeType};
 
 #[async_trait]
 pub trait ContentRepository: Send + Sync {
@@ -10,7 +10,13 @@ pub trait ContentRepository: Send + Sync {
     /// Get edges from a source node
     async fn get_edges_from(&self, source_id: &str) -> anyhow::Result<Vec<Edge>>;
 
-    /// Get node metadata by key
+    /// Get Quranic text (Arabic) for a node
+    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>>;
+
+    /// Get translation for a node in a specific language
+    async fn get_translation(&self, node_id: &str, lang: &str) -> anyhow::Result<Option<String>>;
+
+    /// Get node metadata by key (for backwards compatibility)
     async fn get_metadata(&self, node_id: &str, key: &str) -> anyhow::Result<Option<String>>;
 
     /// Get all metadata for a node
@@ -18,4 +24,10 @@ pub trait ContentRepository: Send + Sync {
 
     /// Check if node exists
     async fn node_exists(&self, node_id: &str) -> anyhow::Result<bool>;
+
+    /// Get all nodes
+    async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>>;
+
+    /// Get nodes by type
+    async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>>;
 }
