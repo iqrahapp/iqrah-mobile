@@ -1,0 +1,14 @@
+name: iqrah
+channels:
+  - conda-forge
+dependencies:
+  - httpx
+  - pydantic
+  - matplotlib
+  - plotly
+  - jupyter
+  - nest-asyncio
+  - loguru
+  - diskcache
+  - tqdm
+  - tenacity
