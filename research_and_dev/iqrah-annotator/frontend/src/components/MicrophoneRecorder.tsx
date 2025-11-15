@@ -3,7 +3,7 @@
  * Records audio from microphone using MediaRecorder API
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, Button, Stack, Typography, Alert } from '@mui/material';
 import { Mic, Stop, Replay } from '@mui/icons-material';
 
@@ -99,6 +99,23 @@ const MicrophoneRecorder: React.FC<MicrophoneRecorderProps> = ({
     const secs = (seconds % 60).toFixed(1);
     return `${mins}:${secs.padStart(4, '0')}`;
   };
+
+  // Cleanup on unmount: stop recording and clear timer
+  useEffect(() => {
+    return () => {
+      // Clear timer to prevent memory leak
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+
+      // Stop recording and release media stream
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <Box>

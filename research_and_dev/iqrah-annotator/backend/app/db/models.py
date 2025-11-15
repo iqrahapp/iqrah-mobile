@@ -1,6 +1,6 @@
 """SQLAlchemy models for annotation database."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Boolean,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -29,7 +30,8 @@ class Recording(Base):
     sample_rate = Column(Integer, nullable=False)  # e.g., 16000
     duration_sec = Column(Float, nullable=False)  # seconds
     audio_path = Column(String, nullable=False)  # relative path
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    deleted_at = Column(DateTime, nullable=True)  # Soft delete support
 
     # Relationship
     regions = relationship(
@@ -40,6 +42,8 @@ class Recording(Base):
     __table_args__ = (
         Index("idx_recordings_rule_ap", "rule", "anti_pattern"),
         Index("idx_recordings_qpc", "qpc_location"),
+        Index("idx_recordings_created_at", "created_at"),
+        Index("idx_recordings_deleted_at", "deleted_at"),
     )
 
 
@@ -57,7 +61,7 @@ class Region(Base):
     label = Column(String, nullable=False)  # e.g., "weak-ghunnah-onset"
     confidence = Column(Float, nullable=True)  # 0..1
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationship
     recording = relationship("Recording", back_populates="regions")

@@ -1,9 +1,9 @@
 """Utility functions for file handling and validation."""
 
 import os
-import tempfile
-import shutil
-from datetime import datetime
+import uuid
+import aiofiles
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -18,14 +18,13 @@ def get_audio_dir() -> Path:
 
 def generate_audio_path(extension: str = "wav") -> str:
     """
-    Generate a unique audio file path with date-based organization.
+    Generate a unique audio file path with date-based organization using UUID.
 
     Returns:
-        Relative path like "2025-10-28/123456789.wav"
+        Relative path like "2025-10-28/uuid4.wav"
     """
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    timestamp = int(datetime.utcnow().timestamp() * 1000)  # milliseconds
-    filename = f"{timestamp}.{extension}"
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    filename = f"{uuid.uuid4()}.{extension}"
 
     # Create date subdirectory
     date_dir = get_audio_dir() / today
@@ -35,13 +34,13 @@ def generate_audio_path(extension: str = "wav") -> str:
     return f"{today}/{filename}"
 
 
-def save_audio_file(file_data: bytes, relative_path: str) -> Path:
+async def save_audio_file(file_data: bytes, relative_path: str) -> Path:
     """
-    Save audio file atomically (temp → fsync → rename).
+    Save audio file atomically using async I/O (temp → fsync → rename).
 
     Args:
         file_data: Audio file bytes
-        relative_path: Relative path (e.g., "2025-10-28/123.wav")
+        relative_path: Relative path (e.g., "2025-10-28/uuid4.wav")
 
     Returns:
         Absolute path to saved file
@@ -50,28 +49,23 @@ def save_audio_file(file_data: bytes, relative_path: str) -> Path:
     target_path = audio_dir / relative_path
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write to temp file first
-    with tempfile.NamedTemporaryFile(
-        mode="wb",
-        delete=False,
-        dir=target_path.parent,
-        prefix=".tmp_",
-        suffix=".wav"
-    ) as tmp_file:
-        tmp_file.write(file_data)
-        tmp_file.flush()
-        os.fsync(tmp_file.fileno())
-        tmp_path = tmp_file.name
+    # Generate temp file path
+    tmp_path = target_path.parent / f".tmp_{uuid.uuid4()}.wav"
 
-    # Atomic rename
-    shutil.move(tmp_path, target_path)
+    # Write to temp file first using async I/O
+    async with aiofiles.open(tmp_path, 'wb') as f:
+        await f.write(file_data)
+        await f.flush()
+
+    # Atomic rename (sync operation, but very fast)
+    os.rename(tmp_path, target_path)
 
     return target_path
 
 
-def delete_audio_file(relative_path: str) -> bool:
+async def delete_audio_file(relative_path: str) -> bool:
     """
-    Delete audio file, return True if deleted or didn't exist.
+    Delete audio file asynchronously, return True if deleted or didn't exist.
 
     Args:
         relative_path: Relative path to audio file
@@ -84,7 +78,9 @@ def delete_audio_file(relative_path: str) -> bool:
 
     if file_path.exists():
         try:
-            file_path.unlink()
+            # Use aiofiles for async deletion
+            import asyncio
+            await asyncio.to_thread(file_path.unlink)
             return True
         except Exception as e:
             print(f"Warning: Failed to delete {file_path}: {e}")
@@ -108,6 +104,46 @@ def get_audio_file_path(relative_path: str) -> Optional[Path]:
     file_path = audio_dir / relative_path
 
     return file_path if file_path.exists() else None
+
+
+async def validate_audio_file(file_data: bytes, expected_sample_rate: int) -> dict:
+    """
+    Validate audio file format and properties.
+
+    Args:
+        file_data: Audio file bytes
+        expected_sample_rate: Expected sample rate
+
+    Returns:
+        Dict with audio info (sample_rate, duration, channels)
+
+    Raises:
+        ValueError: If audio file is invalid
+    """
+    import soundfile as sf
+    from io import BytesIO
+
+    try:
+        # Read audio file info
+        with BytesIO(file_data) as audio_buffer:
+            info = sf.info(audio_buffer)
+
+            # Validate sample rate
+            if info.samplerate != expected_sample_rate:
+                raise ValueError(
+                    f"Sample rate mismatch: expected {expected_sample_rate}Hz, "
+                    f"got {info.samplerate}Hz"
+                )
+
+            return {
+                "sample_rate": info.samplerate,
+                "duration": info.duration,
+                "channels": info.channels,
+                "format": info.format,
+                "subtype": info.subtype,
+            }
+    except Exception as e:
+        raise ValueError(f"Invalid audio file: {str(e)}")
 
 
 def validate_region_boundaries(start_sec: float, end_sec: float, duration_sec: float) -> bool:

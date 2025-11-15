@@ -79,7 +79,18 @@ export class AnnotationManager {
 
     this.regions = this.ws.registerPlugin(Regions.create());
     this.timeline = this.ws.registerPlugin(Timeline.create({ container: timelineContainer }));
-    this.hover    = this.ws.registerPlugin(Hover.create());
+    this.hover    = this.ws.registerPlugin(Hover.create({
+      lineColor: '#ff0000',
+      lineWidth: 2,
+      labelBackground: '#555',
+      labelColor: '#fff',
+      labelSize: '11px',
+      formatTimeCallback: (seconds: number) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = (seconds % 60).toFixed(3);
+        return minutes > 0 ? `${minutes}:${secs.padStart(6, '0')}` : `${secs}s`;
+      }
+    }));
     if (withMinimap)  this.minimap  = this.ws.registerPlugin(Minimap.create({ height: 24 }));
 
     if (audio && typeof audio !== 'string') {
@@ -177,18 +188,35 @@ export class AnnotationManager {
       if (ann) this.ui.onClick?.(ann);
     });
 
-    this.ws.on('click', (relativeY: number) => {
-      // Note: In wavesurfer v7, click event gives relativeY, not time
-      // We need to calculate time from relativeY and duration
+    // WaveSurfer click event (may not fire with Ctrl held)
+    this.ws.on('click', (relativeX: number) => {
       const duration = this.ws.getDuration();
-      const time = relativeY * duration;
-
-      // Check for modifier keys via window event
-      const hasModifier = (window.event as MouseEvent | undefined)?.ctrlKey || (window.event as MouseEvent | undefined)?.metaKey;
-      if (!hasModifier) return;
-
-      this.createPoint(Math.max(0, Math.min(time, duration)));
+      const time = relativeX * duration;
+      console.log('[AnnotationManager] WS click event:', { relativeX, time });
     });
+
+    // Container-level click handler for Ctrl+Click
+    let ctrlClickHandler: ((e: MouseEvent) => void) | null = null;
+    ctrlClickHandler = (e: MouseEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+
+      // Get click position relative to waveform
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const relativeX = x / rect.width;
+      const duration = this.ws.getDuration();
+      const time = relativeX * duration;
+
+      console.log('[AnnotationManager] Ctrl+Click detected:', { x, relativeX, time, duration });
+
+      if (time >= 0 && time <= duration) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('[AnnotationManager] Creating point at:', time);
+        this.createPoint(time);
+      }
+    };
+    container.addEventListener('click', ctrlClickHandler);
 
     container.addEventListener('keydown', (ev) => {
       if ((ev.target as HTMLElement)?.tagName === 'INPUT') return;
@@ -213,11 +241,14 @@ export class AnnotationManager {
     };
     window.addEventListener('play-range', playRangeHandler);
 
-    // Clean up play-range listener on destroy
-    const originalDestroy = this.destroy.bind(this);
+    // Update destroy to clean up both handlers
+    const previousDestroy = this.destroy.bind(this);
     this.destroy = () => {
+      if (ctrlClickHandler) {
+        container.removeEventListener('click', ctrlClickHandler);
+      }
       window.removeEventListener('play-range', playRangeHandler);
-      originalDestroy();
+      previousDestroy();
     };
   }
 
@@ -229,7 +260,34 @@ export class AnnotationManager {
   setConstraints(table: ConstraintTable) { this.constraints = table; }
 
   createPoint(atSec: number, kind: AnnotationKind = this.selectedKind, meta: Partial<AnnotationMeta> = {}) {
-    const len = 0.02, start = atSec, end = atSec + len;
+    // Calculate zoom-dependent segment size (10-20ms based on zoom level)
+    // At low zoom (50-100 px/s): 20ms, at high zoom (1000+ px/s): 10ms
+    const getZoomDependentSegmentSize = (): number => {
+      try {
+        // Get current zoom level (pixels per second)
+        const zoom = (this.ws as any).options?.minPxPerSec ?? 100;
+
+        // Interpolate between 20ms (0.020s) at low zoom and 10ms (0.010s) at high zoom
+        // zoom = 50-100: 20ms
+        // zoom = 100-500: 20ms -> 15ms
+        // zoom = 500-1000: 15ms -> 10ms
+        // zoom = 1000+: 10ms
+
+        if (zoom <= 100) return 0.020; // 20ms
+        if (zoom >= 1000) return 0.010; // 10ms
+
+        // Linear interpolation
+        const t = (zoom - 100) / 900; // Normalize 100-1000 to 0-1
+        return 0.020 - (t * 0.010); // 20ms -> 10ms
+      } catch {
+        return 0.015; // Default 15ms if error
+      }
+    };
+
+    const len = getZoomDependentSegmentSize();
+    const start = atSec;
+    const end = Math.min(atSec + len, this.ws.getDuration());
+
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     const color = meta.color ?? this.colorFor(id, kind, meta.alpha);
     const ann: Annotation = {
@@ -237,7 +295,12 @@ export class AnnotationManager {
       meta: { label: meta.label ?? (kind === 'word' ? 'word' : kind), alpha: this.alphaFor(kind), ...meta, color },
     };
     const res = validateAnnotation(ann, this.annotations, this.constraints);
-    if (!res.valid) { this.ui.onViolation?.(res.issues); this.flash('#e53935'); return null; }
+    if (!res.valid) {
+      console.error('[AnnotationManager] createPoint validation failed:', res.issues);
+      this.ui.onViolation?.(res.issues);
+      this.flash('#e53935');
+      return null;
+    }
     this.annotations[id] = ann;
     this.lastGeometry.set(id, { start, end });
     const region = this.regions.addRegion({ id, start, end, color, content: ann.meta.label ?? '', drag: true, resize: true });
@@ -245,7 +308,34 @@ export class AnnotationManager {
       region.element.setAttribute('data-type', kind);
       region.element.setAttribute('data-id', id);
     }
-    this.ui.onCreate?.(ann); return ann;
+    console.log('[AnnotationManager] createPoint success (segment size:', (end - start).toFixed(4), 's), calling onCreate:', ann);
+    this.ui.onCreate?.(ann);
+    return ann;
+  }
+
+  /** Restore an annotation without triggering onCreate callback */
+  restoreAnnotation(id: string, start: number, end: number, kind: AnnotationKind, meta: Partial<AnnotationMeta> = {}) {
+    // Check if already exists
+    if (this.annotations[id]) return false;
+
+    const color = meta.color ?? this.colorFor(id, kind, meta.alpha);
+    const ann: Annotation = {
+      id, kind, start, end,
+      meta: { label: meta.label ?? (kind === 'word' ? 'word' : kind), alpha: this.alphaFor(kind), ...meta, color },
+    };
+
+    // Add to internal state
+    this.annotations[id] = ann;
+    this.lastGeometry.set(id, { start, end });
+
+    // Add visual region
+    const region = this.regions.addRegion({ id, start, end, color, content: ann.meta.label ?? '', drag: true, resize: true });
+    if (region.element) {
+      region.element.setAttribute('data-type', kind);
+      region.element.setAttribute('data-id', id);
+    }
+
+    return true;
   }
 
   updateAnnotation(id: AnnotationId, patch: Partial<Pick<Annotation, 'start'|'end'|'meta'>>) {
@@ -264,6 +354,61 @@ export class AnnotationManager {
     const region = this.regions.getRegions().find(r => String(r.id) === id);
     region?.remove();
     if (this.annotations[id]) { delete this.annotations[id]; this.lastGeometry.delete(id); this.ui.onDelete?.(id); }
+  }
+
+  /** PERF FIX #3.4: Batch remove annotations by kind (more efficient than one-by-one) */
+  removeByKind(kind: AnnotationKind): void {
+    const toRemove = Object.values(this.annotations).filter(a => a.kind === kind);
+    toRemove.forEach(a => {
+      const region = this.regions.getRegions().find(r => String(r.id) === a.id);
+      region?.remove();
+      delete this.annotations[a.id];
+      this.lastGeometry.delete(a.id);
+      this.ui.onDelete?.(a.id);
+    });
+  }
+
+  /** FIX #16: Clear all annotations */
+  clearAll(): void {
+    const allIds = Object.keys(this.annotations);
+    allIds.forEach(id => {
+      const region = this.regions.getRegions().find(r => String(r.id) === id);
+      region?.remove();
+      delete this.annotations[id];
+      this.lastGeometry.delete(id);
+      this.ui.onDelete?.(id);
+    });
+  }
+
+  /** FIX #16: Batch update annotations (useful for undo/redo or batch edits) */
+  batchUpdate(updates: Array<{ id: AnnotationId; start?: number; end?: number; meta?: Partial<AnnotationMeta> }>): void {
+    updates.forEach(({ id, start, end, meta }) => {
+      this.updateAnnotation(id, { start, end, meta });
+    });
+  }
+
+  /** FIX #16: Get statistics about annotations */
+  getStats(): {
+    total: number;
+    byKind: Record<AnnotationKind, number>;
+    totalDuration: number;
+    avgDuration: number;
+  } {
+    const annotations = this.getAll();
+    const byKind: Record<AnnotationKind, number> = { surah: 0, word: 0, other: 0 };
+    let totalDuration = 0;
+
+    annotations.forEach(a => {
+      byKind[a.kind] = (byKind[a.kind] || 0) + 1;
+      totalDuration += a.end - a.start;
+    });
+
+    return {
+      total: annotations.length,
+      byKind,
+      totalDuration,
+      avgDuration: annotations.length > 0 ? totalDuration / annotations.length : 0,
+    };
   }
 
   getAll(): Annotation[] { return Object.values(this.annotations).sort((a,b)=>a.start-b.start); }

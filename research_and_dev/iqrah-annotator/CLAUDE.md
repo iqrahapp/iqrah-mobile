@@ -11,22 +11,38 @@ Web-based tool for experts to record Tajweed violations (anti-patterns) with fra
 
 ## Quick Start
 
+### Option 1: Dev Script (Recommended)
+```bash
+# Start both backend + frontend together
+./dev.sh
+
+# Or if you're already in conda env:
+conda activate iqrah
+./dev-simple.sh
+
+# Kill with Ctrl+C (stops both)
+```
+
+### Option 2: Manual Setup
 ```bash
 # Activate environment
 conda activate iqrah
 
-# Install dependencies
-cd backend
-pip install -r requirements.txt
+# Install dependencies (first time only)
+cd backend && pip install -r requirements.txt
+cd ../frontend && npm install
 
-# Initialize database
-python -m app.db.init_db
+# Initialize database (first time only)
+cd ../backend && python -m app.db.init_db
 
-# Run server
-uvicorn app.main:app --reload
+# Run backend
+cd backend && uvicorn app.main:app --reload
+
+# Run frontend (in another terminal)
+cd frontend && npm run dev
 
 # Run tests
-python test_api.py
+cd backend && python test_api.py
 ```
 
 ## Current Status: v0.1 MVP ✅ COMPLETE

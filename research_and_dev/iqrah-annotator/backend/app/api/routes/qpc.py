@@ -1,9 +1,10 @@
 """API routes for querying QPC database."""
 
 import sqlite3
-from typing import List, Optional
-from fastapi import APIRouter, Query, HTTPException
-from pydantic import BaseModel
+from typing import List, Optional, Dict
+from functools import lru_cache
+from fastapi import APIRouter, Query, HTTPException, Body
+from pydantic import BaseModel, Field
 import os
 import re
 
@@ -75,9 +76,10 @@ def get_qpc_words(
             params.append(surah)
 
         if rule:
-            # Filter by rule in HTML tags
-            query += f" AND text LIKE ?"
-            params.append(f'%<rule class={rule}>%')
+            # Filter by rule in HTML tags (escape special LIKE characters)
+            escaped_rule = rule.replace('%', '\\%').replace('_', '\\_').replace('[', '\\[')
+            query += " AND text LIKE ? ESCAPE '\\'"
+            params.append(f'%<rule class={escaped_rule}>%')
 
         query += " ORDER BY id LIMIT ? OFFSET ?"
         params.extend([limit, offset])
@@ -123,16 +125,18 @@ def get_surahs(
         qpc_cursor = qpc_conn.cursor()
 
         if rule:
+            # Escape special LIKE characters to prevent SQL injection
+            escaped_rule = rule.replace('%', '\\%').replace('_', '\\_').replace('[', '\\[')
             query = """
                 SELECT surah,
                        COUNT(DISTINCT ayah) as ayah_count,
                        COUNT(*) as word_count
                 FROM words
-                WHERE text LIKE ?
+                WHERE text LIKE ? ESCAPE '\\'
                 GROUP BY surah
                 ORDER BY surah
             """
-            qpc_cursor.execute(query, (f'%<rule class={rule}>%',))
+            qpc_cursor.execute(query, (f'%<rule class={escaped_rule}>%',))
         else:
             query = """
                 SELECT surah,
@@ -176,8 +180,9 @@ def get_surahs(
 
 
 @router.get("/rules", response_model=List[str])
+@lru_cache(maxsize=1)
 def get_available_rules():
-    """Get list of all available tajweed rules in the database."""
+    """Get list of all available tajweed rules in the database (cached)."""
     if not os.path.exists(QPC_DB_PATH):
         raise HTTPException(status_code=500, detail="QPC database not found")
 
@@ -251,6 +256,163 @@ def get_ayahs(
 
         conn.close()
         return ayahs
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.get("/words/{location}/anti-patterns", response_model=List[dict])
+def get_word_anti_patterns(location: str):
+    """Get applicable anti-patterns for a specific word based on its rules."""
+    if not os.path.exists(QPC_DB_PATH):
+        raise HTTPException(status_code=500, detail="QPC database not found")
+
+    try:
+        conn = sqlite3.connect(QPC_DB_PATH)
+        cursor = conn.cursor()
+
+        # Parse location: "surah:ayah:word"
+        parts = location.split(':')
+        if len(parts) != 3:
+            raise HTTPException(status_code=400, detail="Invalid location format. Expected 'surah:ayah:word'")
+
+        try:
+            surah, ayah, word = map(int, parts)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Location parts must be integers")
+
+        # Get word and extract rules
+        cursor.execute(
+            "SELECT text FROM words WHERE surah=? AND ayah=? AND word=?",
+            (surah, ayah, word)
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            raise HTTPException(status_code=404, detail=f"Word not found at location {location}")
+
+        rules = extract_rules_from_text(row[0])
+
+        # Get anti-patterns for these rules
+        from app.api.routes.taxonomy import TAXONOMY
+
+        result = []
+        for rule in rules:
+            if rule in TAXONOMY.anti_patterns:
+                result.extend([
+                    {
+                        "name": ap.name,
+                        "display_name": ap.display_name,
+                        "description": ap.description,
+                        "rule": rule
+                    }
+                    for ap in TAXONOMY.anti_patterns[rule]
+                ])
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+class BatchLocationsRequest(BaseModel):
+    """Request model for batch locations."""
+    locations: List[str] = Field(..., max_length=100, description="List of locations (max 100)")
+
+
+@router.post("/words/batch/anti-patterns", response_model=Dict[str, List[dict]])
+def get_batch_word_anti_patterns(request: BatchLocationsRequest):
+    """Get applicable anti-patterns for multiple words in batch.
+
+    Returns a dictionary mapping word location to list of applicable anti-patterns.
+    Words without anti-patterns will have an empty list.
+
+    Limit: Maximum 100 locations per request.
+    """
+    if not os.path.exists(QPC_DB_PATH):
+        raise HTTPException(status_code=500, detail="QPC database not found")
+
+    locations = request.locations
+
+    # Validate batch size
+    if len(locations) > 100:
+        raise HTTPException(
+            status_code=400,
+            detail="Batch size exceeds limit. Maximum 100 locations per request."
+        )
+
+    try:
+        from app.api.routes.taxonomy import TAXONOMY
+
+        conn = sqlite3.connect(QPC_DB_PATH)
+        cursor = conn.cursor()
+
+        result = {}
+
+        # Parse all locations first
+        parsed_locations = []
+        for location in locations:
+            parts = location.split(':')
+            if len(parts) != 3:
+                result[location] = []
+                continue
+
+            try:
+                surah, ayah, word = map(int, parts)
+                parsed_locations.append((location, surah, ayah, word))
+            except ValueError:
+                result[location] = []
+                continue
+
+        if not parsed_locations:
+            return result
+
+        # Build single query with IN clause
+        placeholders = ','.join(['(?,?,?)'] * len(parsed_locations))
+        query = f"SELECT surah, ayah, word, text FROM words WHERE (surah, ayah, word) IN ({placeholders})"
+
+        # Flatten the parameters
+        params = []
+        for _, surah, ayah, word in parsed_locations:
+            params.extend([surah, ayah, word])
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        # Create a mapping of (surah, ayah, word) -> text
+        word_texts = {(row[0], row[1], row[2]): row[3] for row in rows}
+
+        # Process each location
+        for location, surah, ayah, word in parsed_locations:
+            text = word_texts.get((surah, ayah, word))
+
+            if not text:
+                result[location] = []
+                continue
+
+            rules = extract_rules_from_text(text)
+
+            # Get anti-patterns for these rules
+            anti_patterns = []
+            for rule in rules:
+                if rule in TAXONOMY.anti_patterns:
+                    anti_patterns.extend([
+                        {
+                            "name": ap.name,
+                            "display_name": ap.display_name,
+                            "description": ap.description,
+                            "rule": rule
+                        }
+                        for ap in TAXONOMY.anti_patterns[rule]
+                    ])
+
+            result[location] = anti_patterns
+
+        conn.close()
+        return result
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

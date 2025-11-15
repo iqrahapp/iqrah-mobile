@@ -1,8 +1,18 @@
 """Pydantic schemas for API validation."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
+
+
+# ============ Error Response Schema ============
+
+
+class ErrorResponse(BaseModel):
+    """Standardized error response."""
+    error: str = Field(..., description="Error type/category")
+    detail: str = Field(..., description="Detailed error message")
+    code: str = Field(..., description="Machine-readable error code")
 
 
 # ============ Recording Schemas ============
@@ -16,6 +26,37 @@ class RecordingCreate(BaseModel):
     qpc_location: Optional[str] = Field(None, description="QPC location (e.g., '89:27:3')")
     sample_rate: int = Field(..., ge=8000, le=48000, description="Sample rate in Hz")
     duration_sec: float = Field(..., gt=0, description="Duration in seconds")
+
+    @field_validator("rule")
+    @classmethod
+    def validate_rule(cls, v):
+        """Validate rule exists in taxonomy."""
+        # Import here to avoid circular dependency
+        from app.api.routes.taxonomy import TAXONOMY
+        valid_rules = [r.name for r in TAXONOMY.rules]
+        if v not in valid_rules:
+            raise ValueError(f"Invalid rule. Must be one of: {', '.join(valid_rules)}")
+        return v
+
+    @field_validator("anti_pattern")
+    @classmethod
+    def validate_anti_pattern(cls, v, info):
+        """Validate anti_pattern exists for the rule."""
+        # Import here to avoid circular dependency
+        from app.api.routes.taxonomy import TAXONOMY
+
+        # Get the rule from the data
+        if "rule" not in info.data:
+            # Rule validation will handle this
+            return v
+
+        rule = info.data["rule"]
+        if rule in TAXONOMY.anti_patterns:
+            valid_patterns = [ap.name for ap in TAXONOMY.anti_patterns[rule]]
+            if v not in valid_patterns:
+                raise ValueError(f"Invalid anti_pattern for rule '{rule}'. Must be one of: {', '.join(valid_patterns)}")
+
+        return v
 
     @field_validator("sample_rate")
     @classmethod
@@ -49,6 +90,18 @@ class RecordingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============ Pagination Schema ============
+
+
+class PaginatedResponse(BaseModel):
+    """Paginated response wrapper for recordings."""
+    items: List[RecordingResponse]
+    total: int = Field(..., description="Total number of items")
+    limit: int = Field(..., description="Items per page")
+    offset: int = Field(..., description="Current offset")
+    has_more: bool = Field(..., description="Whether there are more items")
 
 
 # ============ Region Schemas ============

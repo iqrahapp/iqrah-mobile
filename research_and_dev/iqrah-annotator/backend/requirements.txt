@@ -14,3 +14,9 @@ aiofiles==24.1.0
 
 # Environment variables
 python-dotenv==1.0.0
+
+# Audio file validation
+soundfile==0.12.1
+
+# Rate limiting
+slowapi==0.1.9

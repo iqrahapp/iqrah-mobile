@@ -1,25 +1,74 @@
 /**
- * Component to render Quranic text with tajweed colors
+ * Component to render Quranic text with tajweed colors and hover tooltips
  */
 
-import React from 'react';
-import { Box } from '@mui/material';
+import React, { useRef, useEffect, useState } from 'react';
+import { Box, Popper, Paper, Typography } from '@mui/material';
+import { RULE_NAMES, RULE_DESCRIPTIONS } from '../constants/tajweed';
 
 interface TajweedTextProps {
   htmlText: string;
   fontSize?: number;
 }
 
-const TajweedText: React.FC<TajweedTextProps> = ({ htmlText, fontSize = 24 }) => {
+// PERF FIX #3.6: Memoize component to prevent unnecessary re-renders
+const TajweedText: React.FC<TajweedTextProps> = React.memo(({ htmlText, fontSize = 24 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tooltip, setTooltip] = useState<{
+    text: string;
+    description: string;
+    anchorEl: HTMLElement | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() === 'rule') {
+        const ruleClass = target.getAttribute('class');
+        if (ruleClass) {
+          setTooltip({
+            text: RULE_NAMES[ruleClass] || ruleClass,
+            description: RULE_DESCRIPTIONS[ruleClass] || '',
+            anchorEl: target,
+          });
+        }
+      }
+    };
+
+    const handleMouseOut = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName.toLowerCase() === 'rule') {
+        setTooltip(null);
+      }
+    };
+
+    container.addEventListener('mouseover', handleMouseOver);
+    container.addEventListener('mouseout', handleMouseOut);
+
+    return () => {
+      container.removeEventListener('mouseover', handleMouseOver);
+      container.removeEventListener('mouseout', handleMouseOut);
+    };
+  }, [htmlText]);
+
   return (
-    <Box
-      component="div"
-      sx={{
-        fontFamily: '"Amiri Quran", "Traditional Arabic", "Arabic Typesetting", serif',
-        fontSize: `${fontSize}px`,
-        lineHeight: 2,
-        direction: 'rtl',
-        textAlign: 'right',
+    <>
+      <Box
+        ref={containerRef}
+        component="div"
+        sx={{
+          fontFamily: '"Amiri Quran", "Traditional Arabic", "Arabic Typesetting", serif',
+          fontSize: `${fontSize}px`,
+          lineHeight: 2,
+          direction: 'rtl',
+          textAlign: 'right',
+          '& rule': {
+            cursor: 'help',
+            position: 'relative',
+          },
         '& rule[class="ghunnah"]': {
           color: '#4CAF50', // Green
         },
@@ -74,7 +123,31 @@ const TajweedText: React.FC<TajweedTextProps> = ({ htmlText, fontSize = 24 }) =>
       }}
       dangerouslySetInnerHTML={{ __html: htmlText }}
     />
+
+    {tooltip && tooltip.anchorEl && (
+      <Popper
+        open
+        anchorEl={tooltip.anchorEl}
+        placement="top"
+        sx={{ zIndex: 9999 }}
+      >
+        <Paper sx={{ p: 1, maxWidth: 250 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+            {tooltip.text}
+          </Typography>
+          {tooltip.description && (
+            <Typography variant="caption" color="text.secondary">
+              {tooltip.description}
+            </Typography>
+          )}
+        </Paper>
+      </Popper>
+    )}
+    </>
   );
-};
+}, (prevProps, nextProps) =>
+  // Custom comparison: only re-render if props actually changed
+  prevProps.htmlText === nextProps.htmlText && prevProps.fontSize === nextProps.fontSize
+);
 
 export default TajweedText;

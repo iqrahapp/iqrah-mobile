@@ -1,5 +1,6 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { getFriendlyFFmpegError, formatCompactError } from '../utils/errorMessages';
 
 type Mode = 'mt' | 'st';
 let _ffmpeg: FFmpeg | null = null;
@@ -60,41 +61,97 @@ export async function ensureFFmpegLoaded(timeoutMs = 20000) {
 /**
  * Trim an audio Blob between [startSec, endSec].
  * Fast path: stream copy. Fallback: re-encode to WAV 16k mono.
+ *
+ * FIX #2: Reduced default timeout from 45s to 15s for word segments
+ * Progress callback reports 0-1 (0% to 100%)
  */
 export async function trimAudioBlob(
   input: Blob,
   startSec: number,
   endSec: number,
-  timeoutMs = 45000,
+  timeoutMs = 15000, // FIX #2: Reduced from 45000 to 15000 (15s)
   onProgress?: (p: number) => void
 ): Promise<{ blob: Blob; mime: string }> {
   const { ffmpeg } = await ensureFFmpegLoaded();
 
-  if (onProgress) {
-    ffmpeg.on('progress', ({ progress }) => onProgress(progress));
-  }
+  // Create progress handler that we can remove later
+  const progressHandler = onProgress
+    ? ({ progress }: { progress: number }) => onProgress(progress)
+    : undefined;
 
-  // Input
-  await ffmpeg.writeFile('in.webm', await fetchFile(input));
-
-  const dur = Math.max(0, endSec - startSec).toFixed(3);
-
-  // Try stream copy (fast, if container slice is clean)
   try {
-    await ffmpeg.exec(
-      ['-ss', `${startSec}`, '-t', `${dur}`, '-i', 'in.webm', '-vn', '-c:a', 'copy', '-avoid_negative_ts', 'make_zero', 'out.webm'],
-      timeoutMs
-    );
-    const data = await ffmpeg.readFile('out.webm');
-    return { blob: new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: 'audio/webm' }), mime: 'audio/webm' };
-  } catch {
-    // Fallback: deterministic re-encode to WAV 16k mono
-    await ffmpeg.exec(
-      ['-ss', `${startSec}`, '-t', `${dur}`, '-i', 'in.webm', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', 'out.wav'],
-      timeoutMs
-    );
+    if (progressHandler) {
+      ffmpeg.on('progress', progressHandler);
+    }
+
+    // Clean up any existing files first to prevent state corruption
+    try {
+      await ffmpeg.deleteFile('in.webm').catch(() => {});
+      await ffmpeg.deleteFile('out.webm').catch(() => {});
+      await ffmpeg.deleteFile('out.wav').catch(() => {});
+    } catch {
+      // Ignore cleanup errors
+    }
+
+    // Input
+    await ffmpeg.writeFile('in.webm', await fetchFile(input));
+
+    const dur = Math.max(0, endSec - startSec).toFixed(3);
+
+    console.log('[FFmpeg] Trimming command params:', {
+      startSec: startSec.toFixed(3),
+      endSec: endSec.toFixed(3),
+      duration: dur,
+      inputSize: input.size,
+    });
+
+    // IMPORTANT: Use re-encode for precise trimming instead of stream copy
+    // Stream copy with -ss before -i seeks to nearest keyframe (imprecise)
+    // For word-level segments, we need frame-accurate trimming
+    let result: { blob: Blob; mime: string };
+
+    // Use accurate seeking: -ss AFTER -i for precision (slower but accurate)
+    // Re-encode to WAV 16k mono for deterministic output
+    const encodeCmd = ['-i', 'in.webm', '-ss', `${startSec}`, '-t', `${dur}`, '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', 'out.wav'];
+    console.log('[FFmpeg] Executing precise re-encode:', encodeCmd.join(' '));
+
+    await ffmpeg.exec(encodeCmd, timeoutMs);
     const data = await ffmpeg.readFile('out.wav');
-    return { blob: new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: 'audio/wav' }), mime: 'audio/wav' };
+    result = {
+      blob: new Blob([new Uint8Array(data as unknown as ArrayBuffer)], { type: 'audio/wav' }),
+      mime: 'audio/wav'
+    };
+
+    console.log('[FFmpeg] Re-encode succeeded, output size:', result.blob.size);
+    console.log('[FFmpeg] Expected WAV size for', dur, 's at 16kHz mono:', parseInt(dur) * 16000 * 2 + 44, 'bytes');
+
+    return result;
+  } catch (error) {
+    // Convert FFmpeg errors to user-friendly messages
+    const friendlyError = getFriendlyFFmpegError(error as Error);
+    const errorMessage = formatCompactError(friendlyError);
+    console.error('[FFmpeg] Error:', error);
+    console.error('[FFmpeg] Friendly message:', errorMessage);
+
+    // Throw a new error with the friendly message
+    const enhancedError = new Error(errorMessage);
+    (enhancedError as any).originalError = error;
+    (enhancedError as any).friendlyError = friendlyError;
+    throw enhancedError;
+  } finally {
+    // CRITICAL: Always clean up, even on error
+    if (progressHandler) {
+      ffmpeg.off('progress', progressHandler);
+    }
+
+    // Clean up virtual filesystem
+    try {
+      await ffmpeg.deleteFile('in.webm').catch(() => {});
+      await ffmpeg.deleteFile('out.webm').catch(() => {});
+      await ffmpeg.deleteFile('out.wav').catch(() => {});
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }
 
