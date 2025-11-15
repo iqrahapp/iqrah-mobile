@@ -12,6 +12,7 @@ from iqrah.morphology.corpus import QuranicArabicCorpus
 from iqrah.graph.builder import QuranGraphBuilder
 from iqrah.graph.knowledge_builder import KnowledgeGraphBuilder
 from iqrah.graph.scoring import calculate_knowledge_scores
+from iqrah.graph.statistics import compute_graph_statistics
 from iqrah.content.builder import ContentDatabaseBuilder
 from iqrah.export import export_graph_to_cbor
 from iqrah.config import load_config, load_preset, get_available_presets
@@ -340,6 +341,17 @@ def build_dependency_graph(args) -> nx.DiGraph:
 
         logger.success(f"Dependency graph saved: {args.output}")
 
+        # Compute basic statistics for dependency graph
+        logger.info("Computing dependency graph statistics...")
+        stats_path = args.output.replace(".graphml", ".stats.json").replace(".gexf", ".stats.json")
+        compute_graph_statistics(
+            G,
+            export_path=stats_path,
+            print_summary=False  # Don't print full summary for dependency graph
+        )
+        logger.info(f"Basic statistics: {len(G.nodes)} nodes, {len(G.edges)} edges")
+        logger.success(f"Statistics saved: {stats_path}")
+
     return G
 
 
@@ -457,6 +469,16 @@ def build_knowledge_graph(args) -> nx.DiGraph:
         graphml_path = args.output if output_format == "graphml" else args.output.replace(".cbor.zst", ".graphml")
         nx.write_graphml(G, graphml_path)
         logger.success(f"GraphML export saved: {graphml_path}")
+
+    # Compute and display statistics
+    logger.info("Computing graph statistics...")
+    stats_path = args.output.replace(".cbor.zst", ".stats.json").replace(".graphml", ".stats.json")
+    compute_graph_statistics(
+        G,
+        export_path=stats_path,
+        print_summary=True
+    )
+    logger.success(f"Statistics saved: {stats_path}")
 
     return G
 
