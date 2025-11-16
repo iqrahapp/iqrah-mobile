@@ -13,9 +13,10 @@ pub async fn init_content_db(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
 
     let pool = SqlitePool::connect_with(options).await?;
 
-    // Run schema creation
-    let schema = include_str!("../content_schema.sql");
-    sqlx::raw_sql(schema).execute(&pool).await?;
+    // Run migrations for content database
+    sqlx::migrate!("./migrations_content")
+        .run(&pool)
+        .await?;
 
     Ok(pool)
 }
