@@ -22,6 +22,7 @@ setup(
         "plotly",
         "networkx",
         "numpy",
+        "scipy",
         "beautifulsoup4",
     ],
     entry_points={
