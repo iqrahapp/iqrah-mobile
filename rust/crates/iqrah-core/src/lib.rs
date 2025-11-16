@@ -10,6 +10,8 @@ pub use domain::{
     PropagationEvent, PropagationDetail,
     DomainError,
     ImportedNode, ImportedEdge, ImportStats,
+    // Echo Recall types
+    Hint, WordVisibility, EchoRecallWord, EchoRecallState,
 };
 
 pub use ports::{ContentRepository, UserRepository};

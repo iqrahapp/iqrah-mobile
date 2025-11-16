@@ -101,6 +101,14 @@ mod tests {
         async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
             Ok(())
         }
+
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> anyhow::Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
+        async fn get_adjacent_words(&self, _word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)> {
+            Ok((None, None))
+        }
     }
 
     // Mock UserRepository

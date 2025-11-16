@@ -90,3 +90,98 @@ pub async fn run(server_url: &str, exercise_type: &str, node_id: &str) -> Result
 
     Ok(())
 }
+
+/// Start an Echo Recall exercise session
+pub async fn start(server_url: &str, exercise_type: &str, ayah_node_ids: &[String]) -> Result<()> {
+    // Convert HTTP URL to WebSocket URL
+    let ws_url = server_url.replace("http://", "ws://").replace("https://", "wss://");
+    let url = Url::parse(&format!("{}/ws", ws_url))?;
+
+    let (ws_stream, _) = connect_async(url).await?;
+    let (mut write, mut read) = ws_stream.split();
+
+    // Send StartEchoRecall command
+    let command = json!({
+        "type": "StartEchoRecall",
+        "ayah_node_ids": ayah_node_ids,
+    });
+
+    write.send(Message::Text(command.to_string())).await?;
+
+    // Wait for response
+    if let Some(Ok(Message::Text(text))) = read.next().await {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+            println!("{}", serde_json::to_string_pretty(&json)?);
+        } else {
+            println!("{}", text);
+        }
+    }
+
+    Ok(())
+}
+
+/// Submit an action in an Echo Recall exercise
+pub async fn action(
+    server_url: &str,
+    _exercise_type: &str,
+    session_id: &str,
+    word_node_id: &str,
+    recall_time_ms: u32,
+) -> Result<()> {
+    // Convert HTTP URL to WebSocket URL
+    let ws_url = server_url.replace("http://", "ws://").replace("https://", "wss://");
+    let url = Url::parse(&format!("{}/ws", ws_url))?;
+
+    let (ws_stream, _) = connect_async(url).await?;
+    let (mut write, mut read) = ws_stream.split();
+
+    // Send SubmitEchoRecall command
+    let command = json!({
+        "type": "SubmitEchoRecall",
+        "session_id": session_id,
+        "word_node_id": word_node_id,
+        "recall_time_ms": recall_time_ms,
+    });
+
+    write.send(Message::Text(command.to_string())).await?;
+
+    // Wait for response
+    if let Some(Ok(Message::Text(text))) = read.next().await {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+            println!("{}", serde_json::to_string_pretty(&json)?);
+        } else {
+            println!("{}", text);
+        }
+    }
+
+    Ok(())
+}
+
+/// End an exercise session
+pub async fn end(server_url: &str, session_id: &str) -> Result<()> {
+    // Convert HTTP URL to WebSocket URL
+    let ws_url = server_url.replace("http://", "ws://").replace("https://", "wss://");
+    let url = Url::parse(&format!("{}/ws", ws_url))?;
+
+    let (ws_stream, _) = connect_async(url).await?;
+    let (mut write, mut read) = ws_stream.split();
+
+    // Send EndSession command
+    let command = json!({
+        "type": "EndSession",
+        "session_id": session_id,
+    });
+
+    write.send(Message::Text(command.to_string())).await?;
+
+    // Wait for response
+    if let Some(Ok(Message::Text(text))) = read.next().await {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) {
+            println!("{}", serde_json::to_string_pretty(&json)?);
+        } else {
+            println!("{}", text);
+        }
+    }
+
+    Ok(())
+}
