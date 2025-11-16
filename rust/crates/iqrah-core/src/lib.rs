@@ -1,6 +1,7 @@
 pub mod domain;
 pub mod ports;
 pub mod services;
+pub mod cbor_import;
 
 // Re-export commonly used types
 pub use domain::{
@@ -8,8 +9,11 @@ pub use domain::{
     MemoryState, ReviewGrade, Exercise,
     PropagationEvent, PropagationDetail,
     DomainError,
+    ImportedNode, ImportedEdge, ImportStats,
 };
 
 pub use ports::{ContentRepository, UserRepository};
 
 pub use services::{LearningService, SessionService, ScoredItem, ScoreWeights};
+
+pub use cbor_import::import_cbor_graph_from_bytes;
