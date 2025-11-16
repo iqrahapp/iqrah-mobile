@@ -23,6 +23,16 @@ pub enum Command {
         word_node_id: String,
         action: String, // "Tap", "LongPress", etc.
     },
+    /// Start an Echo Recall session with one or more ayahs
+    StartEchoRecall {
+        ayah_node_ids: Vec<String>,
+    },
+    /// Submit a word recall in Echo Recall mode
+    SubmitEchoRecall {
+        session_id: Uuid,
+        word_node_id: String,
+        recall_time_ms: u32,
+    },
     /// End the current session and save state
     EndSession {
         #[serde(skip_serializing_if = "Option::is_none")]

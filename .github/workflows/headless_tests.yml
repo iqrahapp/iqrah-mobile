@@ -76,6 +76,12 @@ jobs:
         export CLI_BIN="./target/release/iqrah"
         ./tests/headless/test_memorization_mvp.sh
 
+    - name: Run Echo Recall Advanced test
+      run: |
+        cd rust
+        export CLI_BIN="./target/release/iqrah"
+        ./tests/headless/test_echo_recall_advanced.sh
+
     - name: Show server logs on failure
       if: failure()
       run: |
