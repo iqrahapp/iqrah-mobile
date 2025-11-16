@@ -1,24 +1,30 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
 // Node types
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum NodeType {
+    Root,
+    Lemma,
+    Word,
     WordInstance,
     Verse,
-    Surah,
-    Lemma,
-    Root,
+    Chapter,
+    Knowledge,
 }
 
 impl From<String> for NodeType {
     fn from(s: String) -> Self {
         match s.as_str() {
+            "root" => NodeType::Root,
+            "lemma" => NodeType::Lemma,
+            "word" => NodeType::Word,
             "word_instance" => NodeType::WordInstance,
             "verse" => NodeType::Verse,
-            "surah" => NodeType::Surah,
-            "lemma" => NodeType::Lemma,
-            "root" => NodeType::Root,
+            "chapter" => NodeType::Chapter,
+            "knowledge" => NodeType::Knowledge,
             _ => NodeType::WordInstance,
         }
     }
@@ -27,11 +33,13 @@ impl From<String> for NodeType {
 impl From<NodeType> for String {
     fn from(nt: NodeType) -> Self {
         match nt {
+            NodeType::Root => "root".to_string(),
+            NodeType::Lemma => "lemma".to_string(),
+            NodeType::Word => "word".to_string(),
             NodeType::WordInstance => "word_instance".to_string(),
             NodeType::Verse => "verse".to_string(),
-            NodeType::Surah => "surah".to_string(),
-            NodeType::Lemma => "lemma".to_string(),
-            NodeType::Root => "root".to_string(),
+            NodeType::Chapter => "chapter".to_string(),
+            NodeType::Knowledge => "knowledge".to_string(),
         }
     }
 }
@@ -164,4 +172,30 @@ pub enum Exercise {
         correct_answer: String,
         distractors: Vec<String>,
     },
+}
+
+// CBOR Import types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportedNode {
+    pub id: String,
+    pub node_type: NodeType,
+    pub created_at: i64,
+    pub metadata: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportedEdge {
+    pub source_id: String,
+    pub target_id: String,
+    pub edge_type: EdgeType,
+    pub distribution_type: DistributionType,
+    pub param1: f64,
+    pub param2: f64,
+}
+
+#[derive(Debug)]
+pub struct ImportStats {
+    pub nodes_imported: u32,
+    pub edges_imported: u32,
+    pub duration_ms: u64,
 }
