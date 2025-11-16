@@ -34,8 +34,8 @@ if command -v jq &> /dev/null; then
     SESSION_ID=$(echo "$SESSION_JSON" | jq -r '.session_id')
     echo "Session ID: $SESSION_ID"
 
-    # ASSERT 1: The first word should be hidden (energy >= 0.85 is actually only 0.9, but should be visible based on logic)
-    # Actually, with energy=0.9, it should be Hidden. The second word with energy=0.0 should be Visible
+    # ASSERT 1: With energy=0.9, the first word should be Hidden (energy >= 0.85 threshold)
+    # The second word with energy=0.0 should be Visible (energy < 0.15 threshold)
     SECOND_WORD_VIS=$(echo "$SESSION_JSON" | jq -r '.initial_state.words[1].visibility.type')
     echo "Second word visibility type: $SECOND_WORD_VIS"
 
@@ -78,8 +78,9 @@ if command -v jq &> /dev/null; then
     FINAL_SECOND_ENERGY=$(echo "$LATEST_STATE" | jq -r '.new_state.words[1].energy')
     echo "Second word final energy: $FINAL_SECOND_ENERGY"
 
-    # Each fast recall (500ms) should give approximately +0.1 energy (close to optimal 700ms)
-    # After 5 recalls: ~0.0 + 5*0.1 = 0.5 energy
+    # Each fast recall (500ms) gives approximately +0.096 energy
+    # (per recall_model.rs: 0.16 * exp(-0.001 * (500 - 700)) - 0.06 ≈ 0.096)
+    # After 5 recalls: ~0.0 + 5*0.096 ≈ 0.48 energy
     # Check that energy > 0.3 (anchor threshold)
     if (( $(echo "$FINAL_SECOND_ENERGY > 0.3" | bc -l) )); then
         echo "✅ PASSED: Second word energy increased to anchor level (>0.3): $FINAL_SECOND_ENERGY"
@@ -109,10 +110,11 @@ if command -v jq &> /dev/null; then
     PERSISTED_ENERGY=$(echo "$FINAL_STATE" | jq -r '.energy')
     echo "Persisted energy for second word: $PERSISTED_ENERGY"
 
-    if (( $(echo "$PERSISTED_ENERGY > 0.4" | bc -l) )); then
-        echo "✅ PASSED: Final energy for second word persisted correctly (>0.4): $PERSISTED_ENERGY"
+    # Expected: ~0.48 from 5 recalls, so check for >0.45 with small tolerance
+    if (( $(echo "$PERSISTED_ENERGY > 0.45" | bc -l) )); then
+        echo "✅ PASSED: Final energy for second word persisted correctly (>0.45): $PERSISTED_ENERGY"
     else
-        echo "❌ FAILED: Persisted energy should be >0.4, got: $PERSISTED_ENERGY"
+        echo "❌ FAILED: Persisted energy should be >0.45, got: $PERSISTED_ENERGY"
         exit 1
     fi
 fi

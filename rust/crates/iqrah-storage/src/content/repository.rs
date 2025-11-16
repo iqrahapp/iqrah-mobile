@@ -293,8 +293,19 @@ impl ContentRepository for SqliteContentRepository {
 
         // If no next word in current verse, try first word of next verse
         let next_word = if next_word.is_none() {
-            let pattern = format!("WORD:{}:{}:1", chapter, verse + 1);
-            self.get_node(&pattern).await?
+            // Find the first word of the next verse by querying in order
+            let pattern = format!("WORD:{}:{}:%", chapter, verse + 1);
+            let row = query_as::<_, NodeRow>(
+                "SELECT id, node_type, created_at FROM nodes WHERE id LIKE ? AND node_type = 'word' ORDER BY id ASC LIMIT 1"
+            )
+            .bind(&pattern)
+            .fetch_optional(&self.pool)
+            .await?;
+
+            row.map(|r| Node {
+                id: r.id,
+                node_type: NodeType::from(r.node_type),
+            })
         } else {
             next_word
         };

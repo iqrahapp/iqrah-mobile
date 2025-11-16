@@ -606,16 +606,17 @@ async fn handle_submit_echo_recall(
     state.words[word_index].energy = (state.words[word_index].energy + energy_delta).clamp(0.0, 1.0);
 
     // Recalculate visibility for the target word and its neighbors
-    let indices_to_update = [
-        word_index.saturating_sub(1),
-        word_index,
-        (word_index + 1).min(state.words.len() - 1),
-    ];
+    // Use a HashSet to deduplicate indices (important for single-word sessions)
+    let mut indices_to_update = std::collections::HashSet::new();
+    if word_index > 0 {
+        indices_to_update.insert(word_index - 1);
+    }
+    indices_to_update.insert(word_index);
+    if word_index + 1 < state.words.len() {
+        indices_to_update.insert(word_index + 1);
+    }
 
     for &i in &indices_to_update {
-        if i >= state.words.len() {
-            continue;
-        }
 
         let prev_energy = if i > 0 {
             Some(state.words[i - 1].energy)
