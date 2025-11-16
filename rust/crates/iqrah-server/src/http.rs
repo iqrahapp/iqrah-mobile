@@ -5,8 +5,8 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use iqrah_core::domain::{MemoryState, ReviewGrade};
-use serde::{Deserialize, Serialize};
+use iqrah_core::domain::ReviewGrade;
+use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 
