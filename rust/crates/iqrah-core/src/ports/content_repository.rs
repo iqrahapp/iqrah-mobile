@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::collections::HashMap;
-use crate::domain::{Node, Edge, NodeType};
+use crate::domain::{Node, Edge, NodeType, ImportedNode, ImportedEdge};
 
 #[async_trait]
 pub trait ContentRepository: Send + Sync {
@@ -30,4 +30,10 @@ pub trait ContentRepository: Send + Sync {
 
     /// Get nodes by type
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>>;
+
+    /// Batch insert nodes (for CBOR import)
+    async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()>;
+
+    /// Batch insert edges (for CBOR import)
+    async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> anyhow::Result<()>;
 }

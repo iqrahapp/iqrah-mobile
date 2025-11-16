@@ -1,7 +1,7 @@
 use sqlx::{SqlitePool, query_as, query};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use iqrah_core::{ContentRepository, Node, NodeType, Edge, EdgeType, DistributionType};
+use iqrah_core::{ContentRepository, Node, NodeType, Edge, EdgeType, DistributionType, ImportedNode, ImportedEdge};
 use super::models::{NodeRow, EdgeRow, QuranTextRow, TranslationRow};
 
 pub struct SqliteContentRepository {
@@ -145,5 +145,75 @@ impl ContentRepository for SqliteContentRepository {
             id: r.id,
             node_type: NodeType::from(r.node_type),
         }).collect())
+    }
+
+    async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()> {
+        // Batch insert nodes
+        for node in nodes {
+            let node_type_str = node.node_type.to_string();
+            query(
+                "INSERT OR IGNORE INTO nodes (id, node_type, created_at) VALUES (?, ?, ?)"
+            )
+            .bind(&node.id)
+            .bind(&node_type_str)
+            .bind(node.created_at)
+            .execute(&self.pool)
+            .await?;
+
+            // Insert metadata into quran_text and translations tables
+            if let Some(arabic) = node.metadata.get("arabic") {
+                query(
+                    "INSERT OR IGNORE INTO quran_text (node_id, arabic) VALUES (?, ?)"
+                )
+                .bind(&node.id)
+                .bind(arabic)
+                .execute(&self.pool)
+                .await?;
+            }
+
+            if let Some(translation) = node.metadata.get("translation") {
+                query(
+                    "INSERT OR IGNORE INTO translations (node_id, language_code, translation) VALUES (?, ?, ?)"
+                )
+                .bind(&node.id)
+                .bind("en")
+                .bind(translation)
+                .execute(&self.pool)
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> anyhow::Result<()> {
+        // Batch insert edges
+        for edge in edges {
+            let edge_type = match edge.edge_type {
+                EdgeType::Dependency => 0,
+                EdgeType::Knowledge => 1,
+            };
+
+            let dist_type = match edge.distribution_type {
+                DistributionType::Const => 0,
+                DistributionType::Normal => 1,
+                DistributionType::Beta => 2,
+            };
+
+            query(
+                "INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&edge.source_id)
+            .bind(&edge.target_id)
+            .bind(edge_type)
+            .bind(dist_type)
+            .bind(edge.param1)
+            .bind(edge.param2)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
     }
 }
