@@ -94,7 +94,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pydantic tqdm loguru networkx beautifulsoup4 httpx
+          pip install -e . --no-cache-dir
 
       - name: Download morphology corpus (sample)
         run: |
@@ -145,7 +145,7 @@ jobs:
 
       - name: Install all dependencies
         run: |
-          pip install pydantic tqdm loguru networkx beautifulsoup4 httpx nest-asyncio diskcache tenacity
+          pip install -e . --no-cache-dir
 
       - name: Build content database
         id: build
