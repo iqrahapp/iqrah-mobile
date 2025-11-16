@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
 use anyhow::Result;
-use tracing_subscriber;
 
 #[derive(Parser)]
 #[command(name = "iqrah")]

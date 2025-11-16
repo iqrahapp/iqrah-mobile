@@ -1,8 +1,8 @@
 use sqlx::{SqlitePool, query_as, query};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use iqrah_core::{UserRepository, MemoryState, PropagationEvent, PropagationDetail};
-use super::models::{MemoryStateRow, PropagationEventRow, PropagationDetailRow, SessionStateRow, UserStatRow};
+use iqrah_core::{UserRepository, MemoryState, PropagationEvent};
+use super::models::{MemoryStateRow, SessionStateRow, UserStatRow};
 
 pub struct SqliteUserRepository {
     pool: SqlitePool,
