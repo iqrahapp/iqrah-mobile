@@ -17,9 +17,11 @@ use crate::{protocol::{Command, Event}, AppState};
 /// Session state for a running exercise
 #[derive(Debug, Clone)]
 pub struct ExerciseSession {
+    #[allow(dead_code)]
     pub session_id: Uuid,
     pub exercise_type: String,
     pub node_id: String,
+    #[allow(dead_code)]
     pub user_id: String,
     /// Exercise-specific state (word energies for Memorization, etc.)
     pub state: serde_json::Value,
@@ -159,7 +161,7 @@ async fn handle_start_exercise(
     let session_id = Uuid::new_v4();
 
     // Get the node to ensure it exists
-    let node = match app_state.content_repo.get_node(&node_id).await {
+    let _node = match app_state.content_repo.get_node(&node_id).await {
         Ok(Some(node)) => node,
         Ok(None) => {
             return vec![Event::Error {
@@ -222,7 +224,7 @@ async fn initialize_memorization_state(
     let mut words = Vec::new();
     for edge in edges {
         if edge.target_id.starts_with("WORD:") {
-            let word_node = app_state
+            let _word_node = app_state
                 .content_repo
                 .get_node(&edge.target_id)
                 .await?
