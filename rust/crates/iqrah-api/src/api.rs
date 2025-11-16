@@ -3,7 +3,7 @@ use once_cell::sync::OnceCell;
 use iqrah_core::{
     ContentRepository, UserRepository,
     LearningService, SessionService, ReviewGrade,
-    import_cbor_graph_from_bytes, ImportStats,
+    import_cbor_graph_from_bytes,
 };
 use iqrah_storage::{
     SqliteContentRepository, SqliteUserRepository,
@@ -85,7 +85,7 @@ pub async fn setup_database_in_memory(kg_bytes: Vec<u8>) -> Result<String> {
 pub async fn get_exercises(
     user_id: String,
     limit: u32,
-    surah_filter: Option<i32>,
+    _surah_filter: Option<i32>,
     is_high_yield: bool,
 ) -> Result<Vec<ExerciseDto>> {
     let app = app();
