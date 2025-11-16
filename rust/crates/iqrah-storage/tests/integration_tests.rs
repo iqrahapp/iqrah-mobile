@@ -33,18 +33,20 @@ async fn test_user_db_initialization_and_migrations() {
 async fn test_content_repository_crud() {
     let pool = init_content_db(":memory:").await.unwrap();
 
-    // Insert test data manually
+    // Insert test data manually using new schema
     sqlx::query("INSERT INTO nodes VALUES ('node1', 'word_instance', 0)")
         .execute(&pool)
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO node_metadata VALUES ('node1', 'arabic', 'بِسْمِ')")
+    // Use quran_text table instead of node_metadata
+    sqlx::query("INSERT INTO quran_text VALUES ('node1', 'بِسْمِ')")
         .execute(&pool)
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO node_metadata VALUES ('node1', 'translation', 'In the name')")
+    // Use translations table instead of node_metadata
+    sqlx::query("INSERT INTO translations (node_id, language_code, translation) VALUES ('node1', 'en', 'In the name')")
         .execute(&pool)
         .await
         .unwrap();
@@ -240,13 +242,14 @@ async fn test_two_database_integration() {
     let content_pool = init_content_db(":memory:").await.unwrap();
     let user_pool = init_user_db(":memory:").await.unwrap();
 
-    // Insert test content
+    // Insert test content using new schema
     sqlx::query("INSERT INTO nodes VALUES ('word1', 'word_instance', 0)")
         .execute(&content_pool)
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO node_metadata VALUES ('word1', 'arabic', 'كتاب')")
+    // Use quran_text table instead of node_metadata
+    sqlx::query("INSERT INTO quran_text VALUES ('word1', 'كتاب')")
         .execute(&content_pool)
         .await
         .unwrap();

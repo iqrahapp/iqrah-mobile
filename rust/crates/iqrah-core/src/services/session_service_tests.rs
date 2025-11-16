@@ -48,7 +48,7 @@ mod tests {
                 "surah_1".to_string(),
                 Node {
                     id: "surah_1".to_string(),
-                    node_type: NodeType::Surah,
+                    node_type: NodeType::Chapter,
                 },
             );
 
@@ -92,6 +92,14 @@ mod tests {
 
         async fn get_nodes_by_type(&self, _node_type: NodeType) -> anyhow::Result<Vec<Node>> {
             Ok(vec![])
+        }
+
+        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
+            Ok(())
         }
     }
 
