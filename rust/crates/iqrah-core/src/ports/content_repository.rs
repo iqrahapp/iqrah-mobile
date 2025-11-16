@@ -36,4 +36,11 @@ pub trait ContentRepository: Send + Sync {
 
     /// Batch insert edges (for CBOR import)
     async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> anyhow::Result<()>;
+
+    /// Get all WORD nodes within the given ayah node IDs (ordered by position)
+    async fn get_words_in_ayahs(&self, ayah_node_ids: &[String]) -> anyhow::Result<Vec<Node>>;
+
+    /// Get the adjacent word nodes (previous and next) for a given word
+    /// Returns (previous_word, next_word) where either can be None if at boundaries
+    async fn get_adjacent_words(&self, word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)>;
 }

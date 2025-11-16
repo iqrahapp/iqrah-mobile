@@ -199,3 +199,38 @@ pub struct ImportStats {
     pub edges_imported: u32,
     pub duration_ms: u64,
 }
+
+// ===== Echo Recall Exercise Models =====
+
+/// Represents the hint provided for an obscured word.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "type")]
+pub enum Hint {
+    First { char: char },
+    Last { char: char },
+    Both { first: char, last: char },
+}
+
+/// Represents how a single word should be displayed.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "type")]
+pub enum WordVisibility {
+    Visible,
+    Obscured { hint: Hint, coverage: f64 }, // coverage is a percentage from 0.0 to 1.0
+    Hidden,
+}
+
+/// Represents a single word in an Echo Recall session.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EchoRecallWord {
+    pub node_id: String,
+    pub text: String,
+    pub visibility: WordVisibility,
+    pub energy: f64,
+}
+
+/// The complete state of an Echo Recall session.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EchoRecallState {
+    pub words: Vec<EchoRecallWord>,
+}
