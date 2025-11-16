@@ -3,95 +3,254 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
-import 'cbor_import.dart';
-import 'exercises.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'repository.dart';
 
-// These functions are ignored because they are not marked as `pub`: `build_mcq_from_word_instance`, `simple_map_to_exercise`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `app`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
-/// One-time setup: initializes DB, imports graph, and syncs the default user.
-/// Should be called on first app launch.
-Future<String> setupDatabase({String? dbPath, required List<int> kgBytes}) =>
-    RustLib.instance.api.crateApiSetupDatabase(
-      dbPath: dbPath,
-      kgBytes: kgBytes,
-    );
+/// One-time setup: initializes databases and imports graph
+Future<String> setupDatabase({
+  required String contentDbPath,
+  required String userDbPath,
+  required List<int> kgBytes,
+}) => RustLib.instance.api.crateApiSetupDatabase(
+  contentDbPath: contentDbPath,
+  userDbPath: userDbPath,
+  kgBytes: kgBytes,
+);
 
+/// Setup with in-memory databases (for testing)
 Future<String> setupDatabaseInMemory({required List<int> kgBytes}) =>
     RustLib.instance.api.crateApiSetupDatabaseInMemory(kgBytes: kgBytes);
 
-Future<List<Exercise>> getExercises({
+/// Get exercises for review session
+Future<List<ExerciseDto>> getExercises({
   required String userId,
   required int limit,
   int? surahFilter,
-  required bool isHighYieldMode,
+  required bool isHighYield,
 }) => RustLib.instance.api.crateApiGetExercises(
   userId: userId,
   limit: limit,
   surahFilter: surahFilter,
-  isHighYieldMode: isHighYieldMode,
+  isHighYield: isHighYield,
 );
 
-Future<MemoryState> processReview({
+/// Process a review
+Future<String> processReview({
   required String userId,
   required String nodeId,
-  required ReviewGrade grade,
+  required int grade,
 }) => RustLib.instance.api.crateApiProcessReview(
   userId: userId,
   nodeId: nodeId,
   grade: grade,
 );
 
-Future<DebugStats> getDebugStats({required String userId}) =>
+/// Get dashboard stats
+Future<DashboardStatsDto> getDashboardStats({required String userId}) =>
+    RustLib.instance.api.crateApiGetDashboardStats(userId: userId);
+
+/// Get debug stats
+Future<DebugStatsDto> getDebugStats({required String userId}) =>
     RustLib.instance.api.crateApiGetDebugStats(userId: userId);
 
-Future<String> reseedDatabase() =>
-    RustLib.instance.api.crateApiReseedDatabase();
+/// Reset user progress
+Future<String> reseedDatabase({required String userId}) =>
+    RustLib.instance.api.crateApiReseedDatabase(userId: userId);
 
-Future<String> refreshPriorityScores({required String userId}) =>
-    RustLib.instance.api.crateApiRefreshPriorityScores(userId: userId);
-
-Future<List<ItemPreview>> getSessionPreview({
+/// Get session preview
+Future<List<SessionPreviewDto>> getSessionPreview({
   required String userId,
   required int limit,
-  int? surahFilter,
-  required bool isHighYieldMode,
+  required bool isHighYield,
 }) => RustLib.instance.api.crateApiGetSessionPreview(
   userId: userId,
   limit: limit,
-  surahFilter: surahFilter,
-  isHighYieldMode: isHighYieldMode,
+  isHighYield: isHighYield,
 );
 
-/// Search node IDs by prefix (used for sandbox suggestions)
-Future<List<NodeData>> searchNodes({
+/// Clear session
+Future<String> clearSession() => RustLib.instance.api.crateApiClearSession();
+
+/// Search nodes
+Future<List<NodeSearchDto>> searchNodes({
   required String query,
   required int limit,
 }) => RustLib.instance.api.crateApiSearchNodes(query: query, limit: limit);
 
-/// Fetch a single node with its metadata by ID
-Future<NodeData?> fetchNodeWithMetadata({required String nodeId}) =>
-    RustLib.instance.api.crateApiFetchNodeWithMetadata(nodeId: nodeId);
-
-/// Get existing session if one exists
-Future<List<NodeData>?> getExistingSession() =>
-    RustLib.instance.api.crateApiGetExistingSession();
-
-/// Get dashboard stats (reviews today, streak)
-Future<DashboardStats> getDashboardStats({required String userId}) =>
-    RustLib.instance.api.crateApiGetDashboardStats(userId: userId);
-
-/// Clear the current session
-Future<String> clearSession() => RustLib.instance.api.crateApiClearSession();
-
-Future<List<Exercise>> getExercisesForNode({required String nodeId}) =>
-    RustLib.instance.api.crateApiGetExercisesForNode(nodeId: nodeId);
-
+/// Get available surahs
 Future<List<SurahInfo>> getAvailableSurahs() =>
     RustLib.instance.api.crateApiGetAvailableSurahs();
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>>
+abstract class AppState implements RustOpaqueInterface {
+  ArcContentRepository get contentRepo;
+
+  ArcLearningService get learningService;
+
+  ArcSessionService get sessionService;
+
+  ArcUserRepository get userRepo;
+
+  set contentRepo(ArcContentRepository contentRepo);
+
+  set learningService(ArcLearningService learningService);
+
+  set sessionService(ArcSessionService sessionService);
+
+  set userRepo(ArcUserRepository userRepo);
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < LearningService >>>
+abstract class ArcLearningService implements RustOpaqueInterface {}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < SessionService >>>
+abstract class ArcSessionService implements RustOpaqueInterface {}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn ContentRepository >>>
+abstract class ArcContentRepository implements RustOpaqueInterface {}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>
+abstract class ArcUserRepository implements RustOpaqueInterface {}
+
+class DashboardStatsDto {
+  final int reviewsToday;
+  final int streakDays;
+  final int dueCount;
+
+  const DashboardStatsDto({
+    required this.reviewsToday,
+    required this.streakDays,
+    required this.dueCount,
+  });
+
+  @override
+  int get hashCode =>
+      reviewsToday.hashCode ^ streakDays.hashCode ^ dueCount.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DashboardStatsDto &&
+          runtimeType == other.runtimeType &&
+          reviewsToday == other.reviewsToday &&
+          streakDays == other.streakDays &&
+          dueCount == other.dueCount;
+}
+
+class DebugStatsDto {
+  final int totalNodesCount;
+  final int totalEdgesCount;
+  final int dueCount;
+
+  const DebugStatsDto({
+    required this.totalNodesCount,
+    required this.totalEdgesCount,
+    required this.dueCount,
+  });
+
+  @override
+  int get hashCode =>
+      totalNodesCount.hashCode ^ totalEdgesCount.hashCode ^ dueCount.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DebugStatsDto &&
+          runtimeType == other.runtimeType &&
+          totalNodesCount == other.totalNodesCount &&
+          totalEdgesCount == other.totalEdgesCount &&
+          dueCount == other.dueCount;
+}
+
+class ExerciseDto {
+  final String nodeId;
+  final String question;
+  final String answer;
+  final String nodeType;
+
+  const ExerciseDto({
+    required this.nodeId,
+    required this.question,
+    required this.answer,
+    required this.nodeType,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^ question.hashCode ^ answer.hashCode ^ nodeType.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ExerciseDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          question == other.question &&
+          answer == other.answer &&
+          nodeType == other.nodeType;
+}
+
+class NodeSearchDto {
+  final String nodeId;
+  final String nodeType;
+  final String preview;
+
+  const NodeSearchDto({
+    required this.nodeId,
+    required this.nodeType,
+    required this.preview,
+  });
+
+  @override
+  int get hashCode => nodeId.hashCode ^ nodeType.hashCode ^ preview.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeSearchDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          nodeType == other.nodeType &&
+          preview == other.preview;
+}
+
+class SessionPreviewDto {
+  final String nodeId;
+  final String nodeType;
+  final String previewText;
+  final double energy;
+  final double priorityScore;
+
+  const SessionPreviewDto({
+    required this.nodeId,
+    required this.nodeType,
+    required this.previewText,
+    required this.energy,
+    required this.priorityScore,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^
+      nodeType.hashCode ^
+      previewText.hashCode ^
+      energy.hashCode ^
+      priorityScore.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SessionPreviewDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          nodeType == other.nodeType &&
+          previewText == other.previewText &&
+          energy == other.energy &&
+          priorityScore == other.priorityScore;
+}
 
 class SurahInfo {
   final int number;

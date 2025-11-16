@@ -4,17 +4,12 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api.dart';
-import 'api/simple.dart';
-import 'api/types.dart';
-import 'cbor_import.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'exercises.dart';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'repository.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -71,72 +66,140 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1263272094;
+  int get rustContentHash => 2047187040;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-        stem: 'rust_lib_iqrah',
-        ioDirectory: 'rust/target/release/',
+        stem: 'iqrah_api',
+        ioDirectory: 'rust/crates/iqrah-api/target/release/',
         webPrefix: 'pkg/',
       );
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<String> crateApiClearSession();
+  ArcContentRepository crateApiAppStateAutoAccessorGetContentRepo({
+    required AppState that,
+  });
 
-  Future<NodeData?> crateApiFetchNodeWithMetadata({required String nodeId});
+  ArcLearningService crateApiAppStateAutoAccessorGetLearningService({
+    required AppState that,
+  });
+
+  ArcSessionService crateApiAppStateAutoAccessorGetSessionService({
+    required AppState that,
+  });
+
+  ArcUserRepository crateApiAppStateAutoAccessorGetUserRepo({
+    required AppState that,
+  });
+
+  void crateApiAppStateAutoAccessorSetContentRepo({
+    required AppState that,
+    required ArcContentRepository contentRepo,
+  });
+
+  void crateApiAppStateAutoAccessorSetLearningService({
+    required AppState that,
+    required ArcLearningService learningService,
+  });
+
+  void crateApiAppStateAutoAccessorSetSessionService({
+    required AppState that,
+    required ArcSessionService sessionService,
+  });
+
+  void crateApiAppStateAutoAccessorSetUserRepo({
+    required AppState that,
+    required ArcUserRepository userRepo,
+  });
+
+  Future<String> crateApiClearSession();
 
   Future<List<SurahInfo>> crateApiGetAvailableSurahs();
 
-  Future<DashboardStats> crateApiGetDashboardStats({required String userId});
+  Future<DashboardStatsDto> crateApiGetDashboardStats({required String userId});
 
-  Future<DebugStats> crateApiGetDebugStats({required String userId});
+  Future<DebugStatsDto> crateApiGetDebugStats({required String userId});
 
-  Future<List<Exercise>> crateApiGetExercises({
+  Future<List<ExerciseDto>> crateApiGetExercises({
     required String userId,
     required int limit,
     int? surahFilter,
-    required bool isHighYieldMode,
+    required bool isHighYield,
   });
 
-  Future<List<Exercise>> crateApiGetExercisesForNode({required String nodeId});
-
-  Future<List<NodeData>?> crateApiGetExistingSession();
-
-  Future<List<ItemPreview>> crateApiGetSessionPreview({
+  Future<List<SessionPreviewDto>> crateApiGetSessionPreview({
     required String userId,
     required int limit,
-    int? surahFilter,
-    required bool isHighYieldMode,
+    required bool isHighYield,
   });
 
   Future<void> crateApiInitApp();
 
-  Future<MemoryState> crateApiProcessReview({
+  Future<String> crateApiProcessReview({
     required String userId,
     required String nodeId,
-    required ReviewGrade grade,
+    required int grade,
   });
 
-  Future<List<PropagationDetailSummary>> crateApiSimpleQueryPropagationDetails({
-    required PropagationFilter filter,
-  });
+  Future<String> crateApiReseedDatabase({required String userId});
 
-  Future<String> crateApiRefreshPriorityScores({required String userId});
-
-  Future<String> crateApiReseedDatabase();
-
-  Future<List<NodeData>> crateApiSearchNodes({
+  Future<List<NodeSearchDto>> crateApiSearchNodes({
     required String query,
     required int limit,
   });
 
   Future<String> crateApiSetupDatabase({
-    String? dbPath,
+    required String contentDbPath,
+    required String userDbPath,
     required List<int> kgBytes,
   });
 
   Future<String> crateApiSetupDatabaseInMemory({required List<int> kgBytes});
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_AppState;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_AppState;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_AppStatePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcLearningService;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcLearningService;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ArcLearningServicePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcSessionService;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcSessionService;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ArcSessionServicePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcContentRepository;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcContentRepository;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ArcContentRepositoryPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcUserRepository;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcUserRepository;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_ArcUserRepositoryPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -148,6 +211,278 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  ArcContentRepository crateApiAppStateAutoAccessorGetContentRepo({
+    required AppState that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorGetContentRepoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorGetContentRepoConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_get_content_repo",
+        argNames: ["that"],
+      );
+
+  @override
+  ArcLearningService crateApiAppStateAutoAccessorGetLearningService({
+    required AppState that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorGetLearningServiceConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorGetLearningServiceConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_get_learning_service",
+        argNames: ["that"],
+      );
+
+  @override
+  ArcSessionService crateApiAppStateAutoAccessorGetSessionService({
+    required AppState that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorGetSessionServiceConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorGetSessionServiceConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_get_session_service",
+        argNames: ["that"],
+      );
+
+  @override
+  ArcUserRepository crateApiAppStateAutoAccessorGetUserRepo({
+    required AppState that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorGetUserRepoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorGetUserRepoConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_get_user_repo",
+        argNames: ["that"],
+      );
+
+  @override
+  void crateApiAppStateAutoAccessorSetContentRepo({
+    required AppState that,
+    required ArcContentRepository contentRepo,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+            contentRepo,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorSetContentRepoConstMeta,
+        argValues: [that, contentRepo],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorSetContentRepoConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_set_content_repo",
+        argNames: ["that", "contentRepo"],
+      );
+
+  @override
+  void crateApiAppStateAutoAccessorSetLearningService({
+    required AppState that,
+    required ArcLearningService learningService,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+            learningService,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorSetLearningServiceConstMeta,
+        argValues: [that, learningService],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorSetLearningServiceConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_set_learning_service",
+        argNames: ["that", "learningService"],
+      );
+
+  @override
+  void crateApiAppStateAutoAccessorSetSessionService({
+    required AppState that,
+    required ArcSessionService sessionService,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+            sessionService,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorSetSessionServiceConstMeta,
+        argValues: [that, sessionService],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorSetSessionServiceConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_set_session_service",
+        argNames: ["that", "sessionService"],
+      );
+
+  @override
+  void crateApiAppStateAutoAccessorSetUserRepo({
+    required AppState that,
+    required ArcUserRepository userRepo,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+            userRepo,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiAppStateAutoAccessorSetUserRepoConstMeta,
+        argValues: [that, userRepo],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAppStateAutoAccessorSetUserRepoConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_auto_accessor_set_user_repo",
+        argNames: ["that", "userRepo"],
+      );
+
+  @override
   Future<String> crateApiClearSession() {
     return handler.executeNormal(
       NormalTask(
@@ -156,7 +491,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 9,
             port: port_,
           );
         },
@@ -175,37 +510,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "clear_session", argNames: []);
 
   @override
-  Future<NodeData?> crateApiFetchNodeWithMetadata({required String nodeId}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(nodeId, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 2,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_opt_box_autoadd_node_data,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiFetchNodeWithMetadataConstMeta,
-        argValues: [nodeId],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiFetchNodeWithMetadataConstMeta =>
-      const TaskConstMeta(
-        debugName: "fetch_node_with_metadata",
-        argNames: ["nodeId"],
-      );
-
-  @override
   Future<List<SurahInfo>> crateApiGetAvailableSurahs() {
     return handler.executeNormal(
       NormalTask(
@@ -214,7 +518,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 10,
             port: port_,
           );
         },
@@ -233,7 +537,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_available_surahs", argNames: []);
 
   @override
-  Future<DashboardStats> crateApiGetDashboardStats({required String userId}) {
+  Future<DashboardStatsDto> crateApiGetDashboardStats({
+    required String userId,
+  }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -242,12 +548,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 11,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_dashboard_stats,
+          decodeSuccessData: sse_decode_dashboard_stats_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetDashboardStatsConstMeta,
@@ -263,7 +569,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<DebugStats> crateApiGetDebugStats({required String userId}) {
+  Future<DebugStatsDto> crateApiGetDebugStats({required String userId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -272,12 +578,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 12,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_debug_stats,
+          decodeSuccessData: sse_decode_debug_stats_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetDebugStatsConstMeta,
@@ -291,11 +597,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_debug_stats", argNames: ["userId"]);
 
   @override
-  Future<List<Exercise>> crateApiGetExercises({
+  Future<List<ExerciseDto>> crateApiGetExercises({
     required String userId,
     required int limit,
     int? surahFilter,
-    required bool isHighYieldMode,
+    required bool isHighYield,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -304,20 +610,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(userId, serializer);
           sse_encode_u_32(limit, serializer);
           sse_encode_opt_box_autoadd_i_32(surahFilter, serializer);
-          sse_encode_bool(isHighYieldMode, serializer);
+          sse_encode_bool(isHighYield, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 13,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_exercise,
+          decodeSuccessData: sse_decode_list_exercise_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetExercisesConstMeta,
-        argValues: [userId, limit, surahFilter, isHighYieldMode],
+        argValues: [userId, limit, surahFilter, isHighYield],
         apiImpl: this,
       ),
     );
@@ -325,73 +631,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiGetExercisesConstMeta => const TaskConstMeta(
     debugName: "get_exercises",
-    argNames: ["userId", "limit", "surahFilter", "isHighYieldMode"],
+    argNames: ["userId", "limit", "surahFilter", "isHighYield"],
   );
 
   @override
-  Future<List<Exercise>> crateApiGetExercisesForNode({required String nodeId}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(nodeId, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 7,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_exercise,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGetExercisesForNodeConstMeta,
-        argValues: [nodeId],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGetExercisesForNodeConstMeta =>
-      const TaskConstMeta(
-        debugName: "get_exercises_for_node",
-        argNames: ["nodeId"],
-      );
-
-  @override
-  Future<List<NodeData>?> crateApiGetExistingSession() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 8,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_opt_list_node_data,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiGetExistingSessionConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiGetExistingSessionConstMeta =>
-      const TaskConstMeta(debugName: "get_existing_session", argNames: []);
-
-  @override
-  Future<List<ItemPreview>> crateApiGetSessionPreview({
+  Future<List<SessionPreviewDto>> crateApiGetSessionPreview({
     required String userId,
     required int limit,
-    int? surahFilter,
-    required bool isHighYieldMode,
+    required bool isHighYield,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -399,21 +646,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(userId, serializer);
           sse_encode_u_32(limit, serializer);
-          sse_encode_opt_box_autoadd_i_32(surahFilter, serializer);
-          sse_encode_bool(isHighYieldMode, serializer);
+          sse_encode_bool(isHighYield, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 14,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_item_preview,
+          decodeSuccessData: sse_decode_list_session_preview_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetSessionPreviewConstMeta,
-        argValues: [userId, limit, surahFilter, isHighYieldMode],
+        argValues: [userId, limit, isHighYield],
         apiImpl: this,
       ),
     );
@@ -421,7 +667,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiGetSessionPreviewConstMeta => const TaskConstMeta(
     debugName: "get_session_preview",
-    argNames: ["userId", "limit", "surahFilter", "isHighYieldMode"],
+    argNames: ["userId", "limit", "isHighYield"],
   );
 
   @override
@@ -433,7 +679,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 15,
             port: port_,
           );
         },
@@ -452,10 +698,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
-  Future<MemoryState> crateApiProcessReview({
+  Future<String> crateApiProcessReview({
     required String userId,
     required String nodeId,
-    required ReviewGrade grade,
+    required int grade,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -463,16 +709,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(userId, serializer);
           sse_encode_String(nodeId, serializer);
-          sse_encode_review_grade(grade, serializer);
+          sse_encode_u_8(grade, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 16,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_memory_state,
+          decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiProcessReviewConstMeta,
@@ -488,40 +734,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<List<PropagationDetailSummary>> crateApiSimpleQueryPropagationDetails({
-    required PropagationFilter filter,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_box_autoadd_propagation_filter(filter, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 12,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_propagation_detail_summary,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiSimpleQueryPropagationDetailsConstMeta,
-        argValues: [filter],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiSimpleQueryPropagationDetailsConstMeta =>
-      const TaskConstMeta(
-        debugName: "query_propagation_details",
-        argNames: ["filter"],
-      );
-
-  @override
-  Future<String> crateApiRefreshPriorityScores({required String userId}) {
+  Future<String> crateApiReseedDatabase({required String userId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -530,37 +743,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-        constMeta: kCrateApiRefreshPriorityScoresConstMeta,
-        argValues: [userId],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiRefreshPriorityScoresConstMeta =>
-      const TaskConstMeta(
-        debugName: "refresh_priority_scores",
-        argNames: ["userId"],
-      );
-
-  @override
-  Future<String> crateApiReseedDatabase() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 14,
+            funcId: 17,
             port: port_,
           );
         },
@@ -569,17 +752,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiReseedDatabaseConstMeta,
-        argValues: [],
+        argValues: [userId],
         apiImpl: this,
       ),
     );
   }
 
   TaskConstMeta get kCrateApiReseedDatabaseConstMeta =>
-      const TaskConstMeta(debugName: "reseed_database", argNames: []);
+      const TaskConstMeta(debugName: "reseed_database", argNames: ["userId"]);
 
   @override
-  Future<List<NodeData>> crateApiSearchNodes({
+  Future<List<NodeSearchDto>> crateApiSearchNodes({
     required String query,
     required int limit,
   }) {
@@ -592,12 +775,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 18,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_node_data,
+          decodeSuccessData: sse_decode_list_node_search_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiSearchNodesConstMeta,
@@ -614,19 +797,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<String> crateApiSetupDatabase({
-    String? dbPath,
+    required String contentDbPath,
+    required String userDbPath,
     required List<int> kgBytes,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_opt_String(dbPath, serializer);
+          sse_encode_String(contentDbPath, serializer);
+          sse_encode_String(userDbPath, serializer);
           sse_encode_list_prim_u_8_loose(kgBytes, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 19,
             port: port_,
           );
         },
@@ -635,7 +820,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiSetupDatabaseConstMeta,
-        argValues: [dbPath, kgBytes],
+        argValues: [contentDbPath, userDbPath, kgBytes],
         apiImpl: this,
       ),
     );
@@ -643,7 +828,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiSetupDatabaseConstMeta => const TaskConstMeta(
     debugName: "setup_database",
-    argNames: ["dbPath", "kgBytes"],
+    argNames: ["contentDbPath", "userDbPath", "kgBytes"],
   );
 
   @override
@@ -656,7 +841,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -677,6 +862,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: ["kgBytes"],
       );
 
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_AppState => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_AppState => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcLearningService => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcLearningService => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcSessionService => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcSessionService => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcContentRepository => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcContentRepository => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_ArcUserRepository => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_ArcUserRepository => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository;
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -684,13 +909,111 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
+  AppState
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-      dco_decode_list_record_string_string(
-        raw,
-      ).map((e) => MapEntry(e.$1, e.$2)),
-    );
+    return AppStateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcLearningService
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcLearningServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcSessionService
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcSessionServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcContentRepository
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcContentRepositoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcUserRepository
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcUserRepositoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  AppState
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AppStateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  AppState
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AppStateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  AppState
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AppStateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcLearningService
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcLearningServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcSessionService
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcSessionServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcContentRepository
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcContentRepositoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ArcUserRepository
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ArcUserRepositoryImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -712,105 +1035,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_i_64(raw);
-  }
-
-  @protected
-  NodeData dco_decode_box_autoadd_node_data(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_node_data(raw);
-  }
-
-  @protected
-  PropagationFilter dco_decode_box_autoadd_propagation_filter(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_propagation_filter(raw);
-  }
-
-  @protected
-  DashboardStats dco_decode_dashboard_stats(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return DashboardStats(
-      reviewsToday: dco_decode_u_32(arr[0]),
-      streakDays: dco_decode_u_32(arr[1]),
-    );
-  }
-
-  @protected
-  DebugStats dco_decode_debug_stats(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return DebugStats(
-      dueToday: dco_decode_u_32(arr[0]),
-      totalReviewed: dco_decode_u_32(arr[1]),
-      avgEnergy: dco_decode_f_64(arr[2]),
-      nextDueItems: dco_decode_list_due_item(arr[3]),
-      totalNodesCount: dco_decode_usize(arr[4]),
-      totalEdgesCount: dco_decode_usize(arr[5]),
-    );
-  }
-
-  @protected
-  DueItem dco_decode_due_item(dynamic raw) {
+  DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 3)
       throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return DueItem(
-      nodeId: dco_decode_String(arr[0]),
-      arabic: dco_decode_opt_String(arr[1]),
-      state: dco_decode_memory_state(arr[2]),
+    return DashboardStatsDto(
+      reviewsToday: dco_decode_u_32(arr[0]),
+      streakDays: dco_decode_u_32(arr[1]),
+      dueCount: dco_decode_u_32(arr[2]),
     );
   }
 
   @protected
-  Exercise dco_decode_exercise(dynamic raw) {
+  DebugStatsDto dco_decode_debug_stats_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return Exercise_Recall(
-          nodeId: dco_decode_String(raw[1]),
-          arabic: dco_decode_String(raw[2]),
-          translation: dco_decode_String(raw[3]),
-        );
-      case 1:
-        return Exercise_Cloze(
-          nodeId: dco_decode_String(raw[1]),
-          question: dco_decode_String(raw[2]),
-          answer: dco_decode_String(raw[3]),
-        );
-      case 2:
-        return Exercise_McqArToEn(
-          nodeId: dco_decode_String(raw[1]),
-          arabic: dco_decode_String(raw[2]),
-          verseArabic: dco_decode_String(raw[3]),
-          surahNumber: dco_decode_i_32(raw[4]),
-          ayahNumber: dco_decode_i_32(raw[5]),
-          wordIndex: dco_decode_i_32(raw[6]),
-          choicesEn: dco_decode_list_String(raw[7]),
-          correctIndex: dco_decode_i_32(raw[8]),
-        );
-      case 3:
-        return Exercise_McqEnToAr(
-          nodeId: dco_decode_String(raw[1]),
-          english: dco_decode_String(raw[2]),
-          verseArabic: dco_decode_String(raw[3]),
-          surahNumber: dco_decode_i_32(raw[4]),
-          ayahNumber: dco_decode_i_32(raw[5]),
-          wordIndex: dco_decode_i_32(raw[6]),
-          choicesAr: dco_decode_list_String(raw[7]),
-          correctIndex: dco_decode_i_32(raw[8]),
-        );
-      default:
-        throw Exception("unreachable");
-    }
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return DebugStatsDto(
+      totalNodesCount: dco_decode_u_32(arr[0]),
+      totalEdgesCount: dco_decode_u_32(arr[1]),
+      dueCount: dco_decode_u_32(arr[2]),
+    );
+  }
+
+  @protected
+  ExerciseDto dco_decode_exercise_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ExerciseDto(
+      nodeId: dco_decode_String(arr[0]),
+      question: dco_decode_String(arr[1]),
+      answer: dco_decode_String(arr[2]),
+      nodeType: dco_decode_String(arr[3]),
+    );
   }
 
   @protected
@@ -826,55 +1087,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64 dco_decode_i_64(dynamic raw) {
+  List<ExerciseDto> dco_decode_list_exercise_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dcoDecodeI64(raw);
+    return (raw as List<dynamic>).map(dco_decode_exercise_dto).toList();
   }
 
   @protected
-  ItemPreview dco_decode_item_preview(dynamic raw) {
+  List<NodeSearchDto> dco_decode_list_node_search_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return ItemPreview(
-      nodeId: dco_decode_String(arr[0]),
-      arabic: dco_decode_opt_String(arr[1]),
-      translation: dco_decode_opt_String(arr[2]),
-      priorityScore: dco_decode_f_64(arr[3]),
-      scoreBreakdown: dco_decode_score_breakdown(arr[4]),
-      memoryState: dco_decode_memory_state(arr[5]),
-    );
-  }
-
-  @protected
-  List<String> dco_decode_list_String(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_String).toList();
-  }
-
-  @protected
-  List<DueItem> dco_decode_list_due_item(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_due_item).toList();
-  }
-
-  @protected
-  List<Exercise> dco_decode_list_exercise(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_exercise).toList();
-  }
-
-  @protected
-  List<ItemPreview> dco_decode_list_item_preview(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_item_preview).toList();
-  }
-
-  @protected
-  List<NodeData> dco_decode_list_node_data(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_node_data).toList();
+    return (raw as List<dynamic>).map(dco_decode_node_search_dto).toList();
   }
 
   @protected
@@ -890,19 +1111,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<PropagationDetailSummary> dco_decode_list_propagation_detail_summary(
-    dynamic raw,
-  ) {
+  List<SessionPreviewDto> dco_decode_list_session_preview_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_propagation_detail_summary)
-        .toList();
-  }
-
-  @protected
-  List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+    return (raw as List<dynamic>).map(dco_decode_session_preview_dto).toList();
   }
 
   @protected
@@ -912,44 +1123,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  MemoryState dco_decode_memory_state(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return MemoryState(
-      stability: dco_decode_f_64(arr[0]),
-      difficulty: dco_decode_f_64(arr[1]),
-      energy: dco_decode_f_64(arr[2]),
-      lastReviewed: dco_decode_i_64(arr[3]),
-      dueAt: dco_decode_i_64(arr[4]),
-      reviewCount: dco_decode_i_32(arr[5]),
-    );
-  }
-
-  @protected
-  NodeData dco_decode_node_data(dynamic raw) {
+  NodeSearchDto dco_decode_node_search_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 3)
       throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return NodeData(
-      id: dco_decode_String(arr[0]),
-      nodeType: dco_decode_node_type(arr[1]),
-      metadata: dco_decode_Map_String_String_None(arr[2]),
+    return NodeSearchDto(
+      nodeId: dco_decode_String(arr[0]),
+      nodeType: dco_decode_String(arr[1]),
+      preview: dco_decode_String(arr[2]),
     );
-  }
-
-  @protected
-  NodeType dco_decode_node_type(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return NodeType.values[raw as int];
-  }
-
-  @protected
-  String? dco_decode_opt_String(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_String(raw);
   }
 
   @protected
@@ -959,92 +1142,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_i_64(raw);
-  }
-
-  @protected
-  NodeData? dco_decode_opt_box_autoadd_node_data(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_node_data(raw);
-  }
-
-  @protected
-  List<NodeData>? dco_decode_opt_list_node_data(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_list_node_data(raw);
-  }
-
-  @protected
-  PropagationDetailSummary dco_decode_propagation_detail_summary(dynamic raw) {
+  SessionPreviewDto dco_decode_session_preview_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return PropagationDetailSummary(
-      eventTimestamp: dco_decode_i_64(arr[0]),
-      sourceNodeText: dco_decode_String(arr[1]),
-      targetNodeText: dco_decode_String(arr[2]),
-      energyChange: dco_decode_f_64(arr[3]),
-      path: dco_decode_opt_String(arr[4]),
-      reason: dco_decode_opt_String(arr[5]),
-    );
-  }
-
-  @protected
-  PropagationFilter dco_decode_propagation_filter(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return PropagationFilter(
-      startTimeSecs: dco_decode_opt_box_autoadd_i_64(arr[0]),
-      endTimeSecs: dco_decode_opt_box_autoadd_i_64(arr[1]),
-      limit: dco_decode_u_32(arr[2]),
-    );
-  }
-
-  @protected
-  (String, String) dco_decode_record_string_string(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2) {
-      throw Exception('Expected 2 elements, got ${arr.length}');
-    }
-    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
-  }
-
-  @protected
-  ReviewGrade dco_decode_review_grade(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ReviewGrade.values[raw as int];
-  }
-
-  @protected
-  ScoreBreakdown dco_decode_score_breakdown(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return ScoreBreakdown(
-      daysOverdue: dco_decode_f_64(arr[0]),
-      masteryGap: dco_decode_f_64(arr[1]),
-      importance: dco_decode_f_64(arr[2]),
-      weights: dco_decode_score_weights(arr[3]),
-    );
-  }
-
-  @protected
-  ScoreWeights dco_decode_score_weights(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return ScoreWeights(
-      wDue: dco_decode_f_64(arr[0]),
-      wNeed: dco_decode_f_64(arr[1]),
-      wYield: dco_decode_f_64(arr[2]),
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return SessionPreviewDto(
+      nodeId: dco_decode_String(arr[0]),
+      nodeType: dco_decode_String(arr[1]),
+      previewText: dco_decode_String(arr[2]),
+      energy: dco_decode_f_64(arr[3]),
+      priorityScore: dco_decode_f_64(arr[4]),
     );
   }
 
@@ -1092,12 +1200,147 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Map<String, String> sse_decode_Map_String_String_None(
+  AppState
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_list_record_string_string(deserializer);
-    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+    return AppStateImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcLearningService
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcLearningServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcSessionService
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcSessionServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcContentRepository
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcContentRepositoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcUserRepository
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcUserRepositoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  AppState
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return AppStateImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  AppState
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return AppStateImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  AppState
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return AppStateImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcLearningService
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcLearningServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcSessionService
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcSessionServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcContentRepository
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcContentRepositoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  ArcUserRepository
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ArcUserRepositoryImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
   }
 
   @protected
@@ -1120,129 +1363,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_i_64(deserializer));
-  }
-
-  @protected
-  NodeData sse_decode_box_autoadd_node_data(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_node_data(deserializer));
-  }
-
-  @protected
-  PropagationFilter sse_decode_box_autoadd_propagation_filter(
+  DashboardStatsDto sse_decode_dashboard_stats_dto(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_propagation_filter(deserializer));
-  }
-
-  @protected
-  DashboardStats sse_decode_dashboard_stats(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
     var var_reviewsToday = sse_decode_u_32(deserializer);
     var var_streakDays = sse_decode_u_32(deserializer);
-    return DashboardStats(
+    var var_dueCount = sse_decode_u_32(deserializer);
+    return DashboardStatsDto(
       reviewsToday: var_reviewsToday,
       streakDays: var_streakDays,
+      dueCount: var_dueCount,
     );
   }
 
   @protected
-  DebugStats sse_decode_debug_stats(SseDeserializer deserializer) {
+  DebugStatsDto sse_decode_debug_stats_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_dueToday = sse_decode_u_32(deserializer);
-    var var_totalReviewed = sse_decode_u_32(deserializer);
-    var var_avgEnergy = sse_decode_f_64(deserializer);
-    var var_nextDueItems = sse_decode_list_due_item(deserializer);
-    var var_totalNodesCount = sse_decode_usize(deserializer);
-    var var_totalEdgesCount = sse_decode_usize(deserializer);
-    return DebugStats(
-      dueToday: var_dueToday,
-      totalReviewed: var_totalReviewed,
-      avgEnergy: var_avgEnergy,
-      nextDueItems: var_nextDueItems,
+    var var_totalNodesCount = sse_decode_u_32(deserializer);
+    var var_totalEdgesCount = sse_decode_u_32(deserializer);
+    var var_dueCount = sse_decode_u_32(deserializer);
+    return DebugStatsDto(
       totalNodesCount: var_totalNodesCount,
       totalEdgesCount: var_totalEdgesCount,
+      dueCount: var_dueCount,
     );
   }
 
   @protected
-  DueItem sse_decode_due_item(SseDeserializer deserializer) {
+  ExerciseDto sse_decode_exercise_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_nodeId = sse_decode_String(deserializer);
-    var var_arabic = sse_decode_opt_String(deserializer);
-    var var_state = sse_decode_memory_state(deserializer);
-    return DueItem(nodeId: var_nodeId, arabic: var_arabic, state: var_state);
-  }
-
-  @protected
-  Exercise sse_decode_exercise(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        var var_nodeId = sse_decode_String(deserializer);
-        var var_arabic = sse_decode_String(deserializer);
-        var var_translation = sse_decode_String(deserializer);
-        return Exercise_Recall(
-          nodeId: var_nodeId,
-          arabic: var_arabic,
-          translation: var_translation,
-        );
-      case 1:
-        var var_nodeId = sse_decode_String(deserializer);
-        var var_question = sse_decode_String(deserializer);
-        var var_answer = sse_decode_String(deserializer);
-        return Exercise_Cloze(
-          nodeId: var_nodeId,
-          question: var_question,
-          answer: var_answer,
-        );
-      case 2:
-        var var_nodeId = sse_decode_String(deserializer);
-        var var_arabic = sse_decode_String(deserializer);
-        var var_verseArabic = sse_decode_String(deserializer);
-        var var_surahNumber = sse_decode_i_32(deserializer);
-        var var_ayahNumber = sse_decode_i_32(deserializer);
-        var var_wordIndex = sse_decode_i_32(deserializer);
-        var var_choicesEn = sse_decode_list_String(deserializer);
-        var var_correctIndex = sse_decode_i_32(deserializer);
-        return Exercise_McqArToEn(
-          nodeId: var_nodeId,
-          arabic: var_arabic,
-          verseArabic: var_verseArabic,
-          surahNumber: var_surahNumber,
-          ayahNumber: var_ayahNumber,
-          wordIndex: var_wordIndex,
-          choicesEn: var_choicesEn,
-          correctIndex: var_correctIndex,
-        );
-      case 3:
-        var var_nodeId = sse_decode_String(deserializer);
-        var var_english = sse_decode_String(deserializer);
-        var var_verseArabic = sse_decode_String(deserializer);
-        var var_surahNumber = sse_decode_i_32(deserializer);
-        var var_ayahNumber = sse_decode_i_32(deserializer);
-        var var_wordIndex = sse_decode_i_32(deserializer);
-        var var_choicesAr = sse_decode_list_String(deserializer);
-        var var_correctIndex = sse_decode_i_32(deserializer);
-        return Exercise_McqEnToAr(
-          nodeId: var_nodeId,
-          english: var_english,
-          verseArabic: var_verseArabic,
-          surahNumber: var_surahNumber,
-          ayahNumber: var_ayahNumber,
-          wordIndex: var_wordIndex,
-          choicesAr: var_choicesAr,
-          correctIndex: var_correctIndex,
-        );
-      default:
-        throw UnimplementedError('');
-    }
+    var var_question = sse_decode_String(deserializer);
+    var var_answer = sse_decode_String(deserializer);
+    var var_nodeType = sse_decode_String(deserializer);
+    return ExerciseDto(
+      nodeId: var_nodeId,
+      question: var_question,
+      answer: var_answer,
+      nodeType: var_nodeType,
+    );
   }
 
   @protected
@@ -1258,86 +1418,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getPlatformInt64();
-  }
-
-  @protected
-  ItemPreview sse_decode_item_preview(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_nodeId = sse_decode_String(deserializer);
-    var var_arabic = sse_decode_opt_String(deserializer);
-    var var_translation = sse_decode_opt_String(deserializer);
-    var var_priorityScore = sse_decode_f_64(deserializer);
-    var var_scoreBreakdown = sse_decode_score_breakdown(deserializer);
-    var var_memoryState = sse_decode_memory_state(deserializer);
-    return ItemPreview(
-      nodeId: var_nodeId,
-      arabic: var_arabic,
-      translation: var_translation,
-      priorityScore: var_priorityScore,
-      scoreBreakdown: var_scoreBreakdown,
-      memoryState: var_memoryState,
-    );
-  }
-
-  @protected
-  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+  List<ExerciseDto> sse_decode_list_exercise_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <String>[];
+    var ans_ = <ExerciseDto>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_String(deserializer));
+      ans_.add(sse_decode_exercise_dto(deserializer));
     }
     return ans_;
   }
 
   @protected
-  List<DueItem> sse_decode_list_due_item(SseDeserializer deserializer) {
+  List<NodeSearchDto> sse_decode_list_node_search_dto(
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <DueItem>[];
+    var ans_ = <NodeSearchDto>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_due_item(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<Exercise> sse_decode_list_exercise(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <Exercise>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_exercise(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<ItemPreview> sse_decode_list_item_preview(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <ItemPreview>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_item_preview(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<NodeData> sse_decode_list_node_data(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <NodeData>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_node_data(deserializer));
+      ans_.add(sse_decode_node_search_dto(deserializer));
     }
     return ans_;
   }
@@ -1357,29 +1458,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<PropagationDetailSummary> sse_decode_list_propagation_detail_summary(
+  List<SessionPreviewDto> sse_decode_list_session_preview_dto(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <PropagationDetailSummary>[];
+    var ans_ = <SessionPreviewDto>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_propagation_detail_summary(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<(String, String)> sse_decode_list_record_string_string(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <(String, String)>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_record_string_string(deserializer));
+      ans_.add(sse_decode_session_preview_dto(deserializer));
     }
     return ans_;
   }
@@ -1397,49 +1484,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  MemoryState sse_decode_memory_state(SseDeserializer deserializer) {
+  NodeSearchDto sse_decode_node_search_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_stability = sse_decode_f_64(deserializer);
-    var var_difficulty = sse_decode_f_64(deserializer);
-    var var_energy = sse_decode_f_64(deserializer);
-    var var_lastReviewed = sse_decode_i_64(deserializer);
-    var var_dueAt = sse_decode_i_64(deserializer);
-    var var_reviewCount = sse_decode_i_32(deserializer);
-    return MemoryState(
-      stability: var_stability,
-      difficulty: var_difficulty,
-      energy: var_energy,
-      lastReviewed: var_lastReviewed,
-      dueAt: var_dueAt,
-      reviewCount: var_reviewCount,
+    var var_nodeId = sse_decode_String(deserializer);
+    var var_nodeType = sse_decode_String(deserializer);
+    var var_preview = sse_decode_String(deserializer);
+    return NodeSearchDto(
+      nodeId: var_nodeId,
+      nodeType: var_nodeType,
+      preview: var_preview,
     );
-  }
-
-  @protected
-  NodeData sse_decode_node_data(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_id = sse_decode_String(deserializer);
-    var var_nodeType = sse_decode_node_type(deserializer);
-    var var_metadata = sse_decode_Map_String_String_None(deserializer);
-    return NodeData(id: var_id, nodeType: var_nodeType, metadata: var_metadata);
-  }
-
-  @protected
-  NodeType sse_decode_node_type(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return NodeType.values[inner];
-  }
-
-  @protected
-  String? sse_decode_opt_String(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_String(deserializer));
-    } else {
-      return null;
-    }
   }
 
   @protected
@@ -1454,113 +1508,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_i_64(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  NodeData? sse_decode_opt_box_autoadd_node_data(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_node_data(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  List<NodeData>? sse_decode_opt_list_node_data(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_list_node_data(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  PropagationDetailSummary sse_decode_propagation_detail_summary(
+  SessionPreviewDto sse_decode_session_preview_dto(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_eventTimestamp = sse_decode_i_64(deserializer);
-    var var_sourceNodeText = sse_decode_String(deserializer);
-    var var_targetNodeText = sse_decode_String(deserializer);
-    var var_energyChange = sse_decode_f_64(deserializer);
-    var var_path = sse_decode_opt_String(deserializer);
-    var var_reason = sse_decode_opt_String(deserializer);
-    return PropagationDetailSummary(
-      eventTimestamp: var_eventTimestamp,
-      sourceNodeText: var_sourceNodeText,
-      targetNodeText: var_targetNodeText,
-      energyChange: var_energyChange,
-      path: var_path,
-      reason: var_reason,
+    var var_nodeId = sse_decode_String(deserializer);
+    var var_nodeType = sse_decode_String(deserializer);
+    var var_previewText = sse_decode_String(deserializer);
+    var var_energy = sse_decode_f_64(deserializer);
+    var var_priorityScore = sse_decode_f_64(deserializer);
+    return SessionPreviewDto(
+      nodeId: var_nodeId,
+      nodeType: var_nodeType,
+      previewText: var_previewText,
+      energy: var_energy,
+      priorityScore: var_priorityScore,
     );
-  }
-
-  @protected
-  PropagationFilter sse_decode_propagation_filter(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_startTimeSecs = sse_decode_opt_box_autoadd_i_64(deserializer);
-    var var_endTimeSecs = sse_decode_opt_box_autoadd_i_64(deserializer);
-    var var_limit = sse_decode_u_32(deserializer);
-    return PropagationFilter(
-      startTimeSecs: var_startTimeSecs,
-      endTimeSecs: var_endTimeSecs,
-      limit: var_limit,
-    );
-  }
-
-  @protected
-  (String, String) sse_decode_record_string_string(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_field0 = sse_decode_String(deserializer);
-    var var_field1 = sse_decode_String(deserializer);
-    return (var_field0, var_field1);
-  }
-
-  @protected
-  ReviewGrade sse_decode_review_grade(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return ReviewGrade.values[inner];
-  }
-
-  @protected
-  ScoreBreakdown sse_decode_score_breakdown(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_daysOverdue = sse_decode_f_64(deserializer);
-    var var_masteryGap = sse_decode_f_64(deserializer);
-    var var_importance = sse_decode_f_64(deserializer);
-    var var_weights = sse_decode_score_weights(deserializer);
-    return ScoreBreakdown(
-      daysOverdue: var_daysOverdue,
-      masteryGap: var_masteryGap,
-      importance: var_importance,
-      weights: var_weights,
-    );
-  }
-
-  @protected
-  ScoreWeights sse_decode_score_weights(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_wDue = sse_decode_f_64(deserializer);
-    var var_wNeed = sse_decode_f_64(deserializer);
-    var var_wYield = sse_decode_f_64(deserializer);
-    return ScoreWeights(wDue: var_wDue, wNeed: var_wNeed, wYield: var_wYield);
   }
 
   @protected
@@ -1604,13 +1567,157 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_Map_String_String_None(
-    Map<String, String> self,
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    AppState self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_record_string_string(
-      self.entries.map((e) => (e.key, e.value)).toList(),
+    sse_encode_usize(
+      (self as AppStateImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+    ArcLearningService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcLearningServiceImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+    ArcSessionService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcSessionServiceImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+    ArcContentRepository self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcContentRepositoryImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+    ArcUserRepository self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcUserRepositoryImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    AppState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as AppStateImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    AppState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as AppStateImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    AppState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as AppStateImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcLearningService(
+    ArcLearningService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcLearningServiceImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcSessionService(
+    ArcSessionService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcSessionServiceImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynContentRepository(
+    ArcContentRepository self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcContentRepositoryImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
+    ArcUserRepository self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as ArcUserRepositoryImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -1634,122 +1741,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_box_autoadd_i_64(
-    PlatformInt64 self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_64(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_node_data(
-    NodeData self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_node_data(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_propagation_filter(
-    PropagationFilter self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_propagation_filter(self, serializer);
-  }
-
-  @protected
-  void sse_encode_dashboard_stats(
-    DashboardStats self,
+  void sse_encode_dashboard_stats_dto(
+    DashboardStatsDto self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.reviewsToday, serializer);
     sse_encode_u_32(self.streakDays, serializer);
+    sse_encode_u_32(self.dueCount, serializer);
   }
 
   @protected
-  void sse_encode_debug_stats(DebugStats self, SseSerializer serializer) {
+  void sse_encode_debug_stats_dto(
+    DebugStatsDto self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_u_32(self.dueToday, serializer);
-    sse_encode_u_32(self.totalReviewed, serializer);
-    sse_encode_f_64(self.avgEnergy, serializer);
-    sse_encode_list_due_item(self.nextDueItems, serializer);
-    sse_encode_usize(self.totalNodesCount, serializer);
-    sse_encode_usize(self.totalEdgesCount, serializer);
+    sse_encode_u_32(self.totalNodesCount, serializer);
+    sse_encode_u_32(self.totalEdgesCount, serializer);
+    sse_encode_u_32(self.dueCount, serializer);
   }
 
   @protected
-  void sse_encode_due_item(DueItem self, SseSerializer serializer) {
+  void sse_encode_exercise_dto(ExerciseDto self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.nodeId, serializer);
-    sse_encode_opt_String(self.arabic, serializer);
-    sse_encode_memory_state(self.state, serializer);
-  }
-
-  @protected
-  void sse_encode_exercise(Exercise self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case Exercise_Recall(
-        nodeId: final nodeId,
-        arabic: final arabic,
-        translation: final translation,
-      ):
-        sse_encode_i_32(0, serializer);
-        sse_encode_String(nodeId, serializer);
-        sse_encode_String(arabic, serializer);
-        sse_encode_String(translation, serializer);
-      case Exercise_Cloze(
-        nodeId: final nodeId,
-        question: final question,
-        answer: final answer,
-      ):
-        sse_encode_i_32(1, serializer);
-        sse_encode_String(nodeId, serializer);
-        sse_encode_String(question, serializer);
-        sse_encode_String(answer, serializer);
-      case Exercise_McqArToEn(
-        nodeId: final nodeId,
-        arabic: final arabic,
-        verseArabic: final verseArabic,
-        surahNumber: final surahNumber,
-        ayahNumber: final ayahNumber,
-        wordIndex: final wordIndex,
-        choicesEn: final choicesEn,
-        correctIndex: final correctIndex,
-      ):
-        sse_encode_i_32(2, serializer);
-        sse_encode_String(nodeId, serializer);
-        sse_encode_String(arabic, serializer);
-        sse_encode_String(verseArabic, serializer);
-        sse_encode_i_32(surahNumber, serializer);
-        sse_encode_i_32(ayahNumber, serializer);
-        sse_encode_i_32(wordIndex, serializer);
-        sse_encode_list_String(choicesEn, serializer);
-        sse_encode_i_32(correctIndex, serializer);
-      case Exercise_McqEnToAr(
-        nodeId: final nodeId,
-        english: final english,
-        verseArabic: final verseArabic,
-        surahNumber: final surahNumber,
-        ayahNumber: final ayahNumber,
-        wordIndex: final wordIndex,
-        choicesAr: final choicesAr,
-        correctIndex: final correctIndex,
-      ):
-        sse_encode_i_32(3, serializer);
-        sse_encode_String(nodeId, serializer);
-        sse_encode_String(english, serializer);
-        sse_encode_String(verseArabic, serializer);
-        sse_encode_i_32(surahNumber, serializer);
-        sse_encode_i_32(ayahNumber, serializer);
-        sse_encode_i_32(wordIndex, serializer);
-        sse_encode_list_String(choicesAr, serializer);
-        sse_encode_i_32(correctIndex, serializer);
-    }
+    sse_encode_String(self.question, serializer);
+    sse_encode_String(self.answer, serializer);
+    sse_encode_String(self.nodeType, serializer);
   }
 
   @protected
@@ -1765,70 +1784,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putPlatformInt64(self);
-  }
-
-  @protected
-  void sse_encode_item_preview(ItemPreview self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.nodeId, serializer);
-    sse_encode_opt_String(self.arabic, serializer);
-    sse_encode_opt_String(self.translation, serializer);
-    sse_encode_f_64(self.priorityScore, serializer);
-    sse_encode_score_breakdown(self.scoreBreakdown, serializer);
-    sse_encode_memory_state(self.memoryState, serializer);
-  }
-
-  @protected
-  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_String(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_due_item(List<DueItem> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_due_item(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_exercise(List<Exercise> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_exercise(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_item_preview(
-    List<ItemPreview> self,
+  void sse_encode_list_exercise_dto(
+    List<ExerciseDto> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_item_preview(item, serializer);
+      sse_encode_exercise_dto(item, serializer);
     }
   }
 
   @protected
-  void sse_encode_list_node_data(
-    List<NodeData> self,
+  void sse_encode_list_node_search_dto(
+    List<NodeSearchDto> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_node_data(item, serializer);
+      sse_encode_node_search_dto(item, serializer);
     }
   }
 
@@ -1855,26 +1830,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_propagation_detail_summary(
-    List<PropagationDetailSummary> self,
+  void sse_encode_list_session_preview_dto(
+    List<SessionPreviewDto> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_propagation_detail_summary(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_record_string_string(
-    List<(String, String)> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_record_string_string(item, serializer);
+      sse_encode_session_preview_dto(item, serializer);
     }
   }
 
@@ -1891,38 +1854,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_memory_state(MemoryState self, SseSerializer serializer) {
+  void sse_encode_node_search_dto(
+    NodeSearchDto self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_f_64(self.stability, serializer);
-    sse_encode_f_64(self.difficulty, serializer);
-    sse_encode_f_64(self.energy, serializer);
-    sse_encode_i_64(self.lastReviewed, serializer);
-    sse_encode_i_64(self.dueAt, serializer);
-    sse_encode_i_32(self.reviewCount, serializer);
-  }
-
-  @protected
-  void sse_encode_node_data(NodeData self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.id, serializer);
-    sse_encode_node_type(self.nodeType, serializer);
-    sse_encode_Map_String_String_None(self.metadata, serializer);
-  }
-
-  @protected
-  void sse_encode_node_type(NodeType self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_opt_String(String? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_String(self, serializer);
-    }
+    sse_encode_String(self.nodeId, serializer);
+    sse_encode_String(self.nodeType, serializer);
+    sse_encode_String(self.preview, serializer);
   }
 
   @protected
@@ -1936,103 +1875,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_opt_box_autoadd_i_64(
-    PlatformInt64? self,
+  void sse_encode_session_preview_dto(
+    SessionPreviewDto self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_i_64(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_node_data(
-    NodeData? self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_node_data(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_list_node_data(
-    List<NodeData>? self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_list_node_data(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_propagation_detail_summary(
-    PropagationDetailSummary self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_64(self.eventTimestamp, serializer);
-    sse_encode_String(self.sourceNodeText, serializer);
-    sse_encode_String(self.targetNodeText, serializer);
-    sse_encode_f_64(self.energyChange, serializer);
-    sse_encode_opt_String(self.path, serializer);
-    sse_encode_opt_String(self.reason, serializer);
-  }
-
-  @protected
-  void sse_encode_propagation_filter(
-    PropagationFilter self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_opt_box_autoadd_i_64(self.startTimeSecs, serializer);
-    sse_encode_opt_box_autoadd_i_64(self.endTimeSecs, serializer);
-    sse_encode_u_32(self.limit, serializer);
-  }
-
-  @protected
-  void sse_encode_record_string_string(
-    (String, String) self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.$1, serializer);
-    sse_encode_String(self.$2, serializer);
-  }
-
-  @protected
-  void sse_encode_review_grade(ReviewGrade self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
-  }
-
-  @protected
-  void sse_encode_score_breakdown(
-    ScoreBreakdown self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_f_64(self.daysOverdue, serializer);
-    sse_encode_f_64(self.masteryGap, serializer);
-    sse_encode_f_64(self.importance, serializer);
-    sse_encode_score_weights(self.weights, serializer);
-  }
-
-  @protected
-  void sse_encode_score_weights(ScoreWeights self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_f_64(self.wDue, serializer);
-    sse_encode_f_64(self.wNeed, serializer);
-    sse_encode_f_64(self.wYield, serializer);
+    sse_encode_String(self.nodeId, serializer);
+    sse_encode_String(self.nodeType, serializer);
+    sse_encode_String(self.previewText, serializer);
+    sse_encode_f_64(self.energy, serializer);
+    sse_encode_f_64(self.priorityScore, serializer);
   }
 
   @protected
@@ -2064,4 +1916,158 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
   }
+}
+
+@sealed
+class AppStateImpl extends RustOpaque implements AppState {
+  // Not to be used by end users
+  AppStateImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  AppStateImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_AppState,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_AppState,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_AppStatePtr,
+  );
+
+  ArcContentRepository get contentRepo => RustLib.instance.api
+      .crateApiAppStateAutoAccessorGetContentRepo(that: this);
+
+  ArcLearningService get learningService => RustLib.instance.api
+      .crateApiAppStateAutoAccessorGetLearningService(that: this);
+
+  ArcSessionService get sessionService => RustLib.instance.api
+      .crateApiAppStateAutoAccessorGetSessionService(that: this);
+
+  ArcUserRepository get userRepo =>
+      RustLib.instance.api.crateApiAppStateAutoAccessorGetUserRepo(that: this);
+
+  set contentRepo(ArcContentRepository contentRepo) =>
+      RustLib.instance.api.crateApiAppStateAutoAccessorSetContentRepo(
+        that: this,
+        contentRepo: contentRepo,
+      );
+
+  set learningService(ArcLearningService learningService) =>
+      RustLib.instance.api.crateApiAppStateAutoAccessorSetLearningService(
+        that: this,
+        learningService: learningService,
+      );
+
+  set sessionService(ArcSessionService sessionService) =>
+      RustLib.instance.api.crateApiAppStateAutoAccessorSetSessionService(
+        that: this,
+        sessionService: sessionService,
+      );
+
+  set userRepo(ArcUserRepository userRepo) => RustLib.instance.api
+      .crateApiAppStateAutoAccessorSetUserRepo(that: this, userRepo: userRepo);
+}
+
+@sealed
+class ArcContentRepositoryImpl extends RustOpaque
+    implements ArcContentRepository {
+  // Not to be used by end users
+  ArcContentRepositoryImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ArcContentRepositoryImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_increment_strong_count_ArcContentRepository,
+    rustArcDecrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ArcContentRepository,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ArcContentRepositoryPtr,
+  );
+}
+
+@sealed
+class ArcLearningServiceImpl extends RustOpaque implements ArcLearningService {
+  // Not to be used by end users
+  ArcLearningServiceImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ArcLearningServiceImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_ArcLearningService,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ArcLearningService,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ArcLearningServicePtr,
+  );
+}
+
+@sealed
+class ArcSessionServiceImpl extends RustOpaque implements ArcSessionService {
+  // Not to be used by end users
+  ArcSessionServiceImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ArcSessionServiceImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_ArcSessionService,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ArcSessionService,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ArcSessionServicePtr,
+  );
+}
+
+@sealed
+class ArcUserRepositoryImpl extends RustOpaque implements ArcUserRepository {
+  // Not to be used by end users
+  ArcUserRepositoryImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ArcUserRepositoryImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_ArcUserRepository,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ArcUserRepository,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_ArcUserRepositoryPtr,
+  );
 }
