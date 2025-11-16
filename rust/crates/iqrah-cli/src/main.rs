@@ -129,36 +129,41 @@ async fn main() -> Result<()> {
                 debug::process_review(&cli.server, &user_id, &node_id, &grade).await?;
             }
         },
-        Commands::Exercise { command } => match command {
-            ExerciseCommands::Run {
-                exercise_type,
-                node_id,
-            } => {
-                exercise::run(&cli.server, &exercise_type, &node_id).await?;
-            }
-            ExerciseCommands::Start {
-                exercise_type,
-                ayah_node_ids,
-            } => {
-                exercise::start(&cli.server, &exercise_type, &ayah_node_ids).await?;
-            }
-            ExerciseCommands::Action {
-                exercise_type,
-                session_id,
-                word_node_id,
-                recall_time_ms,
-            } => {
-                exercise::action(
-                    &cli.server,
-                    &exercise_type,
-                    &session_id,
-                    &word_node_id,
+        Commands::Exercise { command } => {
+            // Create server configuration once for all exercise commands
+            let config = exercise::ServerConfig::new(&cli.server)?;
+
+            match command {
+                ExerciseCommands::Run {
+                    exercise_type,
+                    node_id,
+                } => {
+                    exercise::run(&config, &exercise_type, &node_id).await?;
+                }
+                ExerciseCommands::Start {
+                    exercise_type,
+                    ayah_node_ids,
+                } => {
+                    exercise::start(&config, &exercise_type, &ayah_node_ids).await?;
+                }
+                ExerciseCommands::Action {
+                    exercise_type,
+                    session_id,
+                    word_node_id,
                     recall_time_ms,
-                )
-                .await?;
-            }
-            ExerciseCommands::End { session_id } => {
-                exercise::end(&cli.server, &session_id).await?;
+                } => {
+                    exercise::action(
+                        &config,
+                        &exercise_type,
+                        &session_id,
+                        &word_node_id,
+                        recall_time_ms,
+                    )
+                    .await?;
+                }
+                ExerciseCommands::End { session_id } => {
+                    exercise::end(&config, &session_id).await?;
+                }
             }
         },
     }
