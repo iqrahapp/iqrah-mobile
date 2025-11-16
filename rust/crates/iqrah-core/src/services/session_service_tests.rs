@@ -536,7 +536,7 @@ mod tests {
         assert_eq!(items.len(), 1);
 
         let days_overdue = items[0].days_overdue;
-        assert!(days_overdue >= 2.9 && days_overdue <= 3.1,
+        assert!((2.9..=3.1).contains(&days_overdue),
             "Days overdue should be approximately 3, got {}", days_overdue);
     }
 }

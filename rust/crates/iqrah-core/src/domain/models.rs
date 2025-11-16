@@ -46,7 +46,7 @@ impl From<NodeType> for String {
 
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s: String = self.clone().into();
+        let s: String = (*self).into();
         write!(f, "{}", s)
     }
 }
