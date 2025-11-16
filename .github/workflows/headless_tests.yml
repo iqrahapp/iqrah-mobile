@@ -1,0 +1,90 @@
+name: Headless Integration Tests
+
+on:
+  push:
+    branches: [ main, develop, claude/** ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  headless-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc jq
+
+    - name: Build iqrah-server
+      run: |
+        cd rust
+        cargo build --package iqrah-server --release
+
+    - name: Build iqrah-cli
+      run: |
+        cd rust
+        cargo build --package iqrah-cli --release
+
+    - name: Prepare test databases
+      run: |
+        mkdir -p rust/data
+        
+    - name: Start iqrah-server in background
+      run: |
+        cd rust
+        export CONTENT_DB_PATH="../data/content.db"
+        export USER_DB_PATH="../data/user.db"
+        ./target/release/iqrah-server > /tmp/server.log 2>&1 &
+        SERVER_PID=$!
+        echo $SERVER_PID > /tmp/server.pid
+        
+        # Wait for server to start
+        for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+          if curl -s http://127.0.0.1:3000/health > /dev/null 2>&1; then
+            echo "Server is ready!"
+            break
+          fi
+          echo "Waiting for server to start..."
+          sleep 1
+        done
+        
+        # Check if server started successfully
+        if ! curl -s http://127.0.0.1:3000/health > /dev/null 2>&1; then
+          echo "Server failed to start!"
+          cat /tmp/server.log
+          exit 1
+        fi
+
+    - name: Run MCQ flow test
+      run: |
+        cd rust
+        export CLI_BIN="./target/release/iqrah"
+        ./tests/headless/test_mcq_flow.sh
+
+    - name: Run Memorization MVP test
+      run: |
+        cd rust
+        export CLI_BIN="./target/release/iqrah"
+        ./tests/headless/test_memorization_mvp.sh
+
+    - name: Show server logs on failure
+      if: failure()
+      run: |
+        echo "=== Server Logs ==="
+        cat /tmp/server.log
+
+    - name: Stop server
+      if: always()
+      run: |
+        if [ -f /tmp/server.pid ]; then
+          kill $(cat /tmp/server.pid) || true
+        fi
