@@ -4,6 +4,7 @@ members = [
     "crates/iqrah-storage",
     "crates/iqrah-api",
     "crates/iqrah-cli",
+    "crates/iqrah-server",
 ]
 resolver = "2"
 
