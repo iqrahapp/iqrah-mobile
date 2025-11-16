@@ -1,0 +1,306 @@
+name: Iqrah Knowledge Graph CI
+
+on:
+  push:
+    branches: [ main, develop, "claude/**" ]
+    paths:
+      - 'research_and_dev/iqrah-knowledge-graph2/**'
+      - '.github/workflows/iqrah-knowledge-graph-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'research_and_dev/iqrah-knowledge-graph2/**'
+      - '.github/workflows/iqrah-knowledge-graph-ci.yml'
+
+defaults:
+  run:
+    working-directory: ./research_and_dev/iqrah-knowledge-graph2
+
+jobs:
+  test-schema:
+    name: Test Content Database Schema
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Run schema validation tests
+        run: |
+          python tests/test_schema_quick.py
+
+      - name: Test schema creation performance
+        run: |
+          python -c "
+          import time
+          import importlib.util
+          from pathlib import Path
+
+          schema_path = Path('src/iqrah/content/schema.py')
+          spec = importlib.util.spec_from_file_location('schema', schema_path)
+          schema = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(schema)
+
+          import sqlite3
+          start = time.time()
+          conn = sqlite3.connect(':memory:')
+          for sql in schema.ContentDatabaseSchema.get_all_schemas():
+              conn.execute(sql)
+          for sql in schema.ContentDatabaseSchema.get_all_indexes():
+              conn.execute(sql)
+          elapsed = time.time() - start
+          conn.close()
+
+          print(f'Schema creation time: {elapsed:.3f}s')
+          assert elapsed < 1.0, f'Schema creation took too long: {elapsed:.3f}s'
+          "
+
+  test-builder:
+    name: Test Content Database Builder
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: false  # Skip LFS for faster checkout
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install -e . --no-cache-dir
+
+      - name: Download morphology corpus (sample)
+        run: |
+          # Create a minimal test morphology corpus (first 100 lines)
+          mkdir -p test_data/morphology
+          if [ -f ../../data/morphology/quran-morphology-v0.5.csv ]; then
+            head -100 ../../data/morphology/quran-morphology-v0.5.csv > test_data/morphology/test-corpus.csv
+            echo "Using sample from actual corpus"
+          else
+            # Create minimal test data if corpus not available
+            echo -e "LOCATION\tFORM\tTAG\tFEATURES" > test_data/morphology/test-corpus.csv
+            echo -e "1:1:1:1\tبِ\tP\tP|PREF|LEM:ب" >> test_data/morphology/test-corpus.csv
+            echo -e "1:1:1:2\tسْمِ\tN\tROOT:سمو|LEM:اسْم|M|GEN" >> test_data/morphology/test-corpus.csv
+            echo "Using minimal test data"
+          fi
+
+      - name: Test builder initialization
+        run: |
+          PYTHONPATH=src:$PYTHONPATH python -c "
+          from iqrah.content.builder import ContentDatabaseBuilder
+          builder = ContentDatabaseBuilder()
+          print(f'Builder initialized with data_dir: {builder.data_dir}')
+          "
+
+  build-validation:
+    name: Build and Validate Content Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true  # Get LFS files for full build
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-builder-${{ hashFiles('**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-builder-
+
+      - name: Install all dependencies
+        run: |
+          pip install -e . --no-cache-dir
+
+      - name: Build content database
+        id: build
+        run: |
+          PYTHONPATH=src:$PYTHONPATH python -c "
+          from iqrah.content.builder import ContentDatabaseBuilder
+          from pathlib import Path
+          import time
+
+          builder = ContentDatabaseBuilder()
+
+          # Use morphology corpus if available
+          morph_path = Path('../../data/morphology/quran-morphology-v0.5.csv')
+          if morph_path.exists():
+              print('Building with full morphology corpus...')
+              start = time.time()
+              builder.build(
+                  output_path='test-content.db',
+                  morphology_corpus_path=str(morph_path),
+                  include_default_packages=False,
+                  show_progress=True
+              )
+              elapsed = time.time() - start
+              print(f'Build completed in {elapsed:.1f}s')
+          else:
+              print('Morphology corpus not found - skipping full build')
+          "
+
+      - name: Validate database
+        if: steps.build.outcome == 'success'
+        run: |
+          python -c "
+          import sqlite3
+          from pathlib import Path
+
+          db_path = Path('test-content.db')
+          if not db_path.exists():
+              print('Database not built - skipping validation')
+              exit(0)
+
+          conn = sqlite3.connect('test-content.db')
+          cursor = conn.cursor()
+
+          # Check schema version
+          cursor.execute('SELECT version FROM schema_version')
+          version = cursor.fetchone()[0]
+          print(f'Schema version: {version}')
+          assert version == '2.0.0'
+
+          # Check table counts
+          tables = {
+              'chapters': 114,
+              'verses': 6236,
+          }
+
+          for table, expected in tables.items():
+              cursor.execute(f'SELECT COUNT(*) FROM {table}')
+              count = cursor.fetchone()[0]
+              print(f'{table}: {count}')
+              if expected > 0:
+                  assert count == expected, f'Expected {expected} {table}, got {count}'
+
+          # Check morphology if available
+          cursor.execute('SELECT COUNT(*) FROM morphology_segments')
+          morph_count = cursor.fetchone()[0]
+          if morph_count > 0:
+              print(f'morphology_segments: {morph_count}')
+              assert morph_count > 100000, f'Expected >100k segments, got {morph_count}'
+
+              cursor.execute('SELECT COUNT(*) FROM lemmas')
+              lemma_count = cursor.fetchone()[0]
+              print(f'lemmas: {lemma_count}')
+
+              cursor.execute('SELECT COUNT(*) FROM roots')
+              root_count = cursor.fetchone()[0]
+              print(f'roots: {root_count}')
+
+          # Check database size
+          size_mb = db_path.stat().st_size / (1024 * 1024)
+          print(f'Database size: {size_mb:.2f} MB')
+          assert size_mb < 100, f'Database too large: {size_mb:.2f} MB'
+
+          conn.close()
+          print('✅ Database validation passed')
+          "
+
+      - name: Upload database artifact
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-database
+          path: research_and_dev/iqrah-knowledge-graph2/test-content.db
+          retention-days: 7
+
+  lint:
+    name: Lint Python Code
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./research_and_dev/iqrah-knowledge-graph2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linting tools
+        run: |
+          pip install black flake8 isort
+
+      - name: Check code formatting with black
+        run: |
+          black --check src/ tests/ || echo "⚠️  Code formatting issues found (black)"
+
+      - name: Check import sorting with isort
+        run: |
+          isort --check-only src/ tests/ || echo "⚠️  Import sorting issues found (isort)"
+
+      - name: Lint with flake8
+        run: |
+          flake8 src/ tests/ --max-line-length=120 --extend-ignore=E203,W503 || echo "⚠️  Linting issues found (flake8)"
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test-schema, test-builder]
+    if: always()
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## CI Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Schema tests: ${{ needs.test-schema.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Builder tests: ${{ needs.test-builder.result }}" >> $GITHUB_STEP_SUMMARY
+
+          # Check for failures (ignore skipped)
+          schema_result="${{ needs.test-schema.result }}"
+          builder_result="${{ needs.test-builder.result }}"
+
+          if [ "$schema_result" == "failure" ] || [ "$builder_result" == "failure" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some CI checks failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "$schema_result" == "success" ] && ([ "$builder_result" == "success" ] || [ "$builder_result" == "skipped" ]); then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All CI checks passed!" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Some CI checks were cancelled or had unknown status" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

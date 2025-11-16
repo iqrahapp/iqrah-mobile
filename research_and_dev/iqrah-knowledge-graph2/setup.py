@@ -21,6 +21,9 @@ setup(
         "dash",
         "plotly",
         "networkx",
+        "numpy",
+        "scipy",
+        "beautifulsoup4",
     ],
     entry_points={
         "console_scripts": [
