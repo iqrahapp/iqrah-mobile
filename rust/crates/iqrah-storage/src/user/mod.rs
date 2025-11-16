@@ -13,8 +13,8 @@ pub async fn init_user_db(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
 
     let pool = SqlitePool::connect_with(options).await?;
 
-    // Run migrations (from migrations/ directory at crate root)
-    sqlx::migrate!("./migrations")
+    // Run migrations (from migrations_user/ directory at crate root)
+    sqlx::migrate!("./migrations_user")
         .run(&pool)
         .await?;
 
