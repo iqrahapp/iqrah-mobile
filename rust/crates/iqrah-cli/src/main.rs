@@ -45,6 +45,16 @@ enum DebugCommands {
         /// Node ID
         node_id: String,
     },
+    /// Set user memory state for a node
+    SetState {
+        /// User ID
+        user_id: String,
+        /// Node ID
+        node_id: String,
+        /// Energy level (0.0 to 1.0)
+        #[arg(long)]
+        energy: f64,
+    },
     /// Process a single review
     ProcessReview {
         /// User ID
@@ -64,6 +74,29 @@ enum ExerciseCommands {
         exercise_type: String,
         /// Node ID (e.g., VERSE:2:255)
         node_id: String,
+    },
+    /// Start an Echo Recall session
+    Start {
+        /// Exercise type (echo-recall)
+        exercise_type: String,
+        /// Ayah node IDs (e.g., VERSE:103:2)
+        ayah_node_ids: Vec<String>,
+    },
+    /// Submit an action in an exercise session
+    Action {
+        /// Exercise type (echo-recall)
+        exercise_type: String,
+        /// Session ID
+        session_id: String,
+        /// Word node ID
+        word_node_id: String,
+        /// Recall time in milliseconds
+        recall_time_ms: u32,
+    },
+    /// End an exercise session
+    End {
+        /// Session ID
+        session_id: String,
     },
 }
 
@@ -85,6 +118,9 @@ async fn main() -> Result<()> {
             DebugCommands::GetState { user_id, node_id } => {
                 debug::get_state(&cli.server, &user_id, &node_id).await?;
             }
+            DebugCommands::SetState { user_id, node_id, energy } => {
+                debug::set_state(&cli.server, &user_id, &node_id, energy).await?;
+            }
             DebugCommands::ProcessReview {
                 user_id,
                 node_id,
@@ -93,12 +129,41 @@ async fn main() -> Result<()> {
                 debug::process_review(&cli.server, &user_id, &node_id, &grade).await?;
             }
         },
-        Commands::Exercise { command } => match command {
-            ExerciseCommands::Run {
-                exercise_type,
-                node_id,
-            } => {
-                exercise::run(&cli.server, &exercise_type, &node_id).await?;
+        Commands::Exercise { command } => {
+            // Create server configuration once for all exercise commands
+            let config = exercise::ServerConfig::new(&cli.server)?;
+
+            match command {
+                ExerciseCommands::Run {
+                    exercise_type,
+                    node_id,
+                } => {
+                    exercise::run(&config, &exercise_type, &node_id).await?;
+                }
+                ExerciseCommands::Start {
+                    exercise_type,
+                    ayah_node_ids,
+                } => {
+                    exercise::start(&config, &exercise_type, &ayah_node_ids).await?;
+                }
+                ExerciseCommands::Action {
+                    exercise_type,
+                    session_id,
+                    word_node_id,
+                    recall_time_ms,
+                } => {
+                    exercise::action(
+                        &config,
+                        &exercise_type,
+                        &session_id,
+                        &word_node_id,
+                        recall_time_ms,
+                    )
+                    .await?;
+                }
+                ExerciseCommands::End { session_id } => {
+                    exercise::end(&config, &session_id).await?;
+                }
             }
         },
     }

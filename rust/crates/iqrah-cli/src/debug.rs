@@ -35,6 +35,29 @@ pub async fn get_state(server_url: &str, user_id: &str, node_id: &str) -> Result
     Ok(())
 }
 
+/// Set user memory state for a node
+pub async fn set_state(server_url: &str, user_id: &str, node_id: &str, energy: f64) -> Result<()> {
+    let url = format!("{}/debug/user/{}/state/{}", server_url, user_id, node_id);
+    let client = reqwest::Client::new();
+
+    let payload = json!({
+        "energy": energy,
+    });
+
+    let response = client.post(&url).json(&payload).send().await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await?;
+        anyhow::bail!("Request failed with status {}: {}", status, error_text);
+    }
+
+    let json: serde_json::Value = response.json().await?;
+    println!("{}", serde_json::to_string_pretty(&json)?);
+
+    Ok(())
+}
+
 /// Process a review
 pub async fn process_review(
     server_url: &str,
