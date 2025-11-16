@@ -18,6 +18,7 @@ pub fn create_http_router() -> Router<Arc<AppState>> {
         .route("/health", get(health_check))
         .route("/debug/node/:node_id", get(get_node_debug))
         .route("/debug/user/:user_id/state/:node_id", get(get_user_state))
+        .route("/debug/user/:user_id/state/:node_id", post(set_user_state))
         .route("/debug/user/:user_id/review", post(process_review))
 }
 
@@ -97,6 +98,53 @@ async fn get_user_state(
             "state": null,
             "message": "No memory state found (never reviewed)"
         }))),
+    }
+}
+
+#[derive(Deserialize)]
+struct SetStateRequest {
+    energy: f64,
+}
+
+/// Set the memory state for a user and node
+async fn set_user_state(
+    State(state): State<Arc<AppState>>,
+    Path((user_id, node_id)): Path<(String, String)>,
+    Json(payload): Json<SetStateRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    // Validate energy is in valid range
+    if !(0.0..=1.0).contains(&payload.energy) {
+        return Err(AppError::InvalidInput(
+            "Energy must be between 0.0 and 1.0".to_string(),
+        ));
+    }
+
+    // Update the energy
+    state
+        .user_repo
+        .update_energy(&user_id, &node_id, payload.energy)
+        .await?;
+
+    // Return the updated state
+    let memory_state = state
+        .user_repo
+        .get_memory_state(&user_id, &node_id)
+        .await?;
+
+    match memory_state {
+        Some(state) => Ok(Json(json!({
+            "user_id": state.user_id,
+            "node_id": state.node_id,
+            "stability": state.stability,
+            "difficulty": state.difficulty,
+            "energy": state.energy,
+            "last_reviewed": state.last_reviewed.to_rfc3339(),
+            "due_at": state.due_at.to_rfc3339(),
+            "review_count": state.review_count,
+        }))),
+        None => Err(AppError::Internal(anyhow::anyhow!(
+            "Failed to retrieve state after update"
+        ))),
     }
 }
 
