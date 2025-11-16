@@ -13,6 +13,7 @@ pub struct MemoryStateRow {
     pub review_count: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct PropagationEventRow {
     pub id: i64,
@@ -20,6 +21,7 @@ pub struct PropagationEventRow {
     pub event_timestamp: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct PropagationDetailRow {
     pub id: i64,
@@ -33,11 +35,13 @@ pub struct PropagationDetailRow {
 #[derive(Debug, Clone, FromRow)]
 pub struct SessionStateRow {
     pub node_id: String,
+    #[allow(dead_code)]
     pub session_order: i64,
 }
 
 #[derive(Debug, Clone, FromRow)]
 pub struct UserStatRow {
+    #[allow(dead_code)]
     pub key: String,
     pub value: String,
 }
