@@ -289,12 +289,20 @@ jobs:
           echo "- Schema tests: ${{ needs.test-schema.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Builder tests: ${{ needs.test-builder.result }}" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ needs.test-schema.result }}" == "success" ] && [ "${{ needs.test-builder.result }}" == "success" ]; then
+          # Check for failures (ignore skipped)
+          schema_result="${{ needs.test-schema.result }}"
+          builder_result="${{ needs.test-builder.result }}"
+
+          if [ "$schema_result" == "failure" ] || [ "$builder_result" == "failure" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some CI checks failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          elif [ "$schema_result" == "success" ] && ([ "$builder_result" == "success" ] || [ "$builder_result" == "skipped" ]); then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "✅ All CI checks passed!" >> $GITHUB_STEP_SUMMARY
             exit 0
           else
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ Some CI checks failed" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Some CI checks were cancelled or had unknown status" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
