@@ -8,11 +8,33 @@ name = "iqrah"
 path = "src/main.rs"
 
 [dependencies]
+# Workspace crates
 iqrah-core = { path = "../iqrah-core" }
 iqrah-storage = { path = "../iqrah-storage" }
 
+# CLI framework
 clap = { version = "4", features = ["derive"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# WebSocket client
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# Async runtime
 tokio = { workspace = true }
+
+# Error handling
 anyhow = { workspace = true }
+
+# Logging
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+url = "2.5"
