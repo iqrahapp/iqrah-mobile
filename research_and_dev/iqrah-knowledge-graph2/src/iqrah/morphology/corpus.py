@@ -103,12 +103,21 @@ class QuranicArabicCorpus(QuranMorphologyCorpus):
 
     def __init__(self):
         self.corpus: list[QuranWordSegment] = []
+        self.segments = []  # Alias for compatibility with builder
+
+    @classmethod
+    def from_csv(cls, file_path: str) -> "QuranicArabicCorpus":
+        """Create corpus from CSV file."""
+        corpus = cls()
+        corpus.load_data(file_path)
+        return corpus
 
     def load_data(self, file_path: str) -> None:
         with open(file_path, "r", encoding="utf-8") as file:
             reader = csv.reader(file, delimiter="\t")
             next(reader)  # Skip header
             self.corpus = [self._create_segment(row) for row in reader]
+            self.segments = self.corpus  # Alias for compatibility
 
     def _create_segment(self, row: list[str]) -> QuranWordSegment:
         location = tuple(map(int, row[0].split(":")))
