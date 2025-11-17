@@ -31,6 +31,12 @@ pub struct ExerciseResponse {
     /// For MCQ exercises, include the options
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<String>>,
+    /// Semantic grading label (Excellent/Partial/Incorrect) - only present for semantic grading
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_grade: Option<String>,
+    /// Semantic similarity score (0.0 to 1.0) - only present for semantic grading
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub similarity_score: Option<f32>,
 }
 
 /// Enum for different exercise types (Phase 4.3)

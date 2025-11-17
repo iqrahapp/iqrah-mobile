@@ -5,6 +5,8 @@ use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
 use super::translation::TranslationExercise;
 use super::types::{Exercise, ExerciseResponse, ExerciseType};
+use crate::semantic::grader::{SemanticGrader, SEMANTIC_EMBEDDER};
+use crate::semantic::SemanticEmbedder;
 use crate::{ContentRepository, KnowledgeAxis, KnowledgeNode};
 use anyhow::Result;
 use std::sync::Arc;
@@ -17,6 +19,54 @@ pub struct ExerciseService {
 impl ExerciseService {
     pub fn new(content_repo: Arc<dyn ContentRepository>) -> Self {
         Self { content_repo }
+    }
+
+    /// Initialize the semantic grading model
+    ///
+    /// This should be called once at application startup to load the semantic model.
+    /// After initialization, all TranslationExercise instances will use semantic grading.
+    ///
+    /// # Arguments
+    /// * `model_path` - Path to the model2vec model (local path or HuggingFace model ID)
+    /// * `cache_dir` - Optional cache directory for model files (important for mobile!)
+    ///   - If provided, sets HF_HOME to this directory before loading model
+    ///   - On mobile, this should be the app's documents directory
+    ///   - If None, uses system default (~/.cache/huggingface on Linux/macOS)
+    ///
+    /// # Returns
+    /// Ok(()) if the model was loaded successfully, Err if loading failed
+    ///
+    /// # Example (Flutter FFI)
+    /// ```rust,no_run
+    /// // From Flutter, after getting app documents directory:
+    /// let cache_dir = "/data/user/0/com.example.app/files/huggingface";
+    /// ExerciseService::init_semantic_model(
+    ///     "minishlab/potion-multilingual-128M",
+    ///     Some(cache_dir)
+    /// )?;
+    /// ```
+    pub fn init_semantic_model(model_path: &str, cache_dir: Option<&str>) -> Result<()> {
+        tracing::info!("Initializing semantic grading model: {}", model_path);
+
+        // Set HF_HOME if cache directory is provided (important for mobile)
+        if let Some(dir) = cache_dir {
+            tracing::info!("Setting model cache directory (HF_HOME): {}", dir);
+            std::env::set_var("HF_HOME", dir);
+        } else {
+            tracing::warn!(
+                "No cache directory provided. Using system default. \
+                 For mobile apps, provide cache_dir parameter!"
+            );
+        }
+
+        let embedder = SemanticEmbedder::new(model_path)?;
+
+        SEMANTIC_EMBEDDER
+            .set(embedder)
+            .map_err(|_| anyhow::anyhow!("Semantic embedder already initialized"))?;
+
+        tracing::info!("✅ Semantic grading model initialized successfully");
+        Ok(())
     }
 
     /// Generate an exercise for a given node ID
@@ -91,7 +141,7 @@ impl ExerciseService {
     }
 
     /// Check an answer for an exercise
-    /// For MCQ exercises, also includes the options
+    /// Returns ExerciseResponse with semantic grading metadata for Translation/Memorization exercises
     pub fn check_answer(&self, exercise: &dyn Exercise, answer: &str) -> ExerciseResponse {
         let is_correct = exercise.check_answer(answer);
 
@@ -102,11 +152,47 @@ impl ExerciseService {
             None
         };
 
+        // Get semantic grading metadata for TranslationExercise or MemorizationExercise
+        // Only if embedder is initialized (fail gracefully if not)
+        let (semantic_grade, similarity_score) = if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
+            let grader = SemanticGrader::new(embedder);
+
+            if let Some(translation_ex) =
+                (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>()
+            {
+                match grader.grade_answer(answer, translation_ex.get_translation()) {
+                    Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                    Err(e) => {
+                        tracing::error!("Semantic grading failed for TranslationExercise: {}", e);
+                        (None, None)
+                    }
+                }
+            } else if let Some(memorization_ex) =
+                (exercise as &dyn std::any::Any).downcast_ref::<MemorizationExercise>()
+            {
+                // For memorization, grade the normalized Arabic text
+                let normalized_answer = MemorizationExercise::normalize_arabic(answer);
+                let normalized_correct = MemorizationExercise::normalize_arabic(memorization_ex.get_word_text());
+
+                match grader.grade_answer(&normalized_answer, &normalized_correct) {
+                    Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                    Err(e) => {
+                        tracing::error!("Semantic grading failed for MemorizationExercise: {}", e);
+                        (None, None)
+                    }
+                }
+            } else {
+                (None, None)
+            }
+        } else {
+            tracing::warn!("Semantic embedder not initialized, skipping semantic grading metadata");
+            (None, None)
+        };
+
         ExerciseResponse {
             is_correct,
             correct_answer: if !is_correct {
-                // In a real implementation, we might want to show the correct answer
-                // For now, we don't reveal it to encourage learning
+                // Don't reveal correct answer to encourage learning
                 None
             } else {
                 None
@@ -117,6 +203,8 @@ impl ExerciseService {
                 None
             },
             options,
+            semantic_grade,
+            similarity_score,
         }
     }
 

@@ -107,5 +107,11 @@ pub enum Event {
         /// For MCQ exercises, the answer options
         #[serde(skip_serializing_if = "Option::is_none")]
         options: Option<Vec<String>>,
+        /// Semantic grading label (Excellent/Partial/Incorrect)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        semantic_grade: Option<String>,
+        /// Semantic similarity score (0.0 to 1.0)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        similarity_score: Option<f32>,
     },
 }
