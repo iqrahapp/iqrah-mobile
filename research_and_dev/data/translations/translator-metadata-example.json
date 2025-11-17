@@ -1,0 +1,37 @@
+{
+  "translators": [
+    {
+      "slug": "sahih-intl",
+      "full_name": "Sahih International",
+      "language_code": "en",
+      "description": "Clear and modern English translation",
+      "copyright_holder": "Sahih International",
+      "license": "Public Domain",
+      "website": "https://quran.com",
+      "version": "1.0",
+      "translation_file": "en/en-sahih-international-inline-footnotes.json"
+    },
+    {
+      "slug": "ruwwad",
+      "full_name": "Ruwwad Translation Center",
+      "language_code": "en",
+      "description": "Simple and accessible English translation",
+      "copyright_holder": "Ruwwad Translation Center",
+      "license": "CC BY-SA 4.0",
+      "website": "https://ruwwad-center.org",
+      "version": "1.0",
+      "translation_file": "en/en-ruwwad-center-simple.json"
+    },
+    {
+      "slug": "hamidullah",
+      "full_name": "Muhammad Hamidullah",
+      "language_code": "fr",
+      "description": "French translation by Muhammad Hamidullah",
+      "copyright_holder": "Muhammad Hamidullah",
+      "license": "Public Domain",
+      "website": null,
+      "version": "1.0",
+      "translation_file": "fr/fr-hamidullah-inline-footnotes.json"
+    }
+  ]
+}

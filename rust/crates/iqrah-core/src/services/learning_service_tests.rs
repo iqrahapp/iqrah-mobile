@@ -118,6 +118,83 @@ mod tests {
         ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
+
+        // V2 Stub Methods
+        async fn get_chapter(&self, _chapter_number: i32) -> anyhow::Result<Option<crate::Chapter>> {
+            Ok(None)
+        }
+
+        async fn get_chapters(&self) -> anyhow::Result<Vec<crate::Chapter>> {
+            Ok(vec![])
+        }
+
+        async fn get_verse(&self, _verse_key: &str) -> anyhow::Result<Option<crate::Verse>> {
+            Ok(None)
+        }
+
+        async fn get_verses_for_chapter(&self, _chapter_number: i32) -> anyhow::Result<Vec<crate::Verse>> {
+            Ok(vec![])
+        }
+
+        async fn get_words_for_verse(&self, _verse_key: &str) -> anyhow::Result<Vec<crate::Word>> {
+            Ok(vec![])
+        }
+
+        async fn get_word(&self, _word_id: i32) -> anyhow::Result<Option<crate::Word>> {
+            Ok(None)
+        }
+
+        async fn get_languages(&self) -> anyhow::Result<Vec<crate::Language>> {
+            Ok(vec![])
+        }
+
+        async fn get_language(&self, _code: &str) -> anyhow::Result<Option<crate::Language>> {
+            Ok(None)
+        }
+
+        async fn get_translators_for_language(&self, _language_code: &str) -> anyhow::Result<Vec<crate::Translator>> {
+            Ok(vec![])
+        }
+
+        async fn get_translator(&self, _translator_id: i32) -> anyhow::Result<Option<crate::Translator>> {
+            Ok(None)
+        }
+
+        async fn get_translator_by_slug(&self, _slug: &str) -> anyhow::Result<Option<crate::Translator>> {
+            Ok(None)
+        }
+
+        async fn get_verse_translation(&self, _verse_key: &str, _translator_id: i32) -> anyhow::Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn get_word_translation(&self, _word_id: i32, _translator_id: i32) -> anyhow::Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn insert_translator(
+            &self,
+            _slug: &str,
+            _full_name: &str,
+            _language_code: &str,
+            _description: Option<&str>,
+            _copyright_holder: Option<&str>,
+            _license: Option<&str>,
+            _website: Option<&str>,
+            _version: Option<&str>,
+        ) -> anyhow::Result<i32> {
+            Ok(1)
+        }
+
+        async fn insert_verse_translation(
+            &self,
+            _verse_key: &str,
+            _translator_id: i32,
+            _translation: &str,
+            _footnotes: Option<&str>,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
     }
 
     // Mock UserRepository
@@ -197,6 +274,14 @@ mod tests {
         }
 
         async fn set_stat(&self, _key: &str, _value: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn get_setting(&self, _key: &str) -> anyhow::Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn set_setting(&self, _key: &str, _value: &str) -> anyhow::Result<()> {
             Ok(())
         }
     }

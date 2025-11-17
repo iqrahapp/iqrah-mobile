@@ -20,6 +20,13 @@ pub fn create_http_router() -> Router<Arc<AppState>> {
         .route("/debug/user/:user_id/state/:node_id", get(get_user_state))
         .route("/debug/user/:user_id/state/:node_id", post(set_user_state))
         .route("/debug/user/:user_id/review", post(process_review))
+        // Translator endpoints
+        .route("/languages", get(get_languages))
+        .route("/translators/:language_code", get(get_translators_for_language))
+        .route("/translator/:translator_id", get(get_translator))
+        .route("/users/:user_id/settings/translator", get(get_user_preferred_translator))
+        .route("/users/:user_id/settings/translator", post(set_user_preferred_translator))
+        .route("/verses/:verse_key/translations/:translator_id", get(get_verse_translation))
 }
 
 /// Health check endpoint
@@ -220,4 +227,152 @@ impl IntoResponse for AppError {
 
         (status, body).into_response()
     }
+}
+
+// ========================================================================
+// Translator Endpoints
+// ========================================================================
+
+/// Get all available languages
+async fn get_languages(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let languages = state.content_repo.get_languages().await?;
+
+    let response = languages
+        .into_iter()
+        .map(|lang| {
+            json!({
+                "code": lang.code,
+                "english_name": lang.english_name,
+                "native_name": lang.native_name,
+                "direction": lang.direction,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(response))
+}
+
+/// Get all translators for a specific language
+async fn get_translators_for_language(
+    State(state): State<Arc<AppState>>,
+    Path(language_code): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let translators = state
+        .content_repo
+        .get_translators_for_language(&language_code)
+        .await?;
+
+    let response = translators
+        .into_iter()
+        .map(|t| {
+            json!({
+                "id": t.id,
+                "slug": t.slug,
+                "full_name": t.full_name,
+                "language_code": t.language_code,
+                "description": t.description,
+                "license": t.license,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(response))
+}
+
+/// Get a specific translator by ID
+async fn get_translator(
+    State(state): State<Arc<AppState>>,
+    Path(translator_id): Path<i32>,
+) -> Result<impl IntoResponse, AppError> {
+    let translator = state
+        .content_repo
+        .get_translator(translator_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Translator not found: {}", translator_id)))?;
+
+    Ok(Json(json!({
+        "id": translator.id,
+        "slug": translator.slug,
+        "full_name": translator.full_name,
+        "language_code": translator.language_code,
+        "description": translator.description,
+        "license": translator.license,
+    })))
+}
+
+/// Get user's preferred translator ID
+async fn get_user_preferred_translator(
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let translator_id = state
+        .user_repo
+        .get_setting("preferred_translator_id")
+        .await?
+        .and_then(|v| v.parse::<i32>().ok())
+        .unwrap_or(1); // Default to translator_id 1
+
+    Ok(Json(json!({
+        "user_id": user_id,
+        "preferred_translator_id": translator_id,
+    })))
+}
+
+#[derive(Deserialize)]
+struct SetTranslatorRequest {
+    translator_id: i32,
+}
+
+/// Set user's preferred translator ID
+async fn set_user_preferred_translator(
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<String>,
+    Json(payload): Json<SetTranslatorRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    // Validate that translator exists
+    let translator = state
+        .content_repo
+        .get_translator(payload.translator_id)
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!("Translator not found: {}", payload.translator_id))
+        })?;
+
+    // Save preference
+    state
+        .user_repo
+        .set_setting("preferred_translator_id", &payload.translator_id.to_string())
+        .await?;
+
+    Ok(Json(json!({
+        "user_id": user_id,
+        "preferred_translator_id": translator.id,
+        "translator_name": translator.full_name,
+        "message": "Preference updated successfully",
+    })))
+}
+
+/// Get verse translation for a specific translator
+async fn get_verse_translation(
+    State(state): State<Arc<AppState>>,
+    Path((verse_key, translator_id)): Path<(String, i32)>,
+) -> Result<impl IntoResponse, AppError> {
+    let translation = state
+        .content_repo
+        .get_verse_translation(&verse_key, translator_id)
+        .await?
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "Translation not found for verse {} with translator {}",
+                verse_key, translator_id
+            ))
+        })?;
+
+    Ok(Json(json!({
+        "verse_key": verse_key,
+        "translator_id": translator_id,
+        "translation": translation,
+    })))
 }

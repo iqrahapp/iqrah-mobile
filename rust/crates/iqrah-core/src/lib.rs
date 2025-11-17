@@ -1,5 +1,6 @@
 pub mod cbor_import;
 pub mod domain;
+pub mod import;
 pub mod ports;
 pub mod services;
 
@@ -37,3 +38,5 @@ pub use ports::{ContentRepository, UserRepository};
 pub use services::{LearningService, ScoreWeights, ScoredItem, SessionService};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
+
+pub use import::{import_translators_from_json, TranslatorImportStats, TranslatorMetadata};
