@@ -8,6 +8,8 @@ pub mod services;
 pub use domain::{
     // V2 Domain Models
     Chapter,
+    // Package Management
+    ContentPackage,
     DistributionType,
     DomainError,
     // Echo Recall types
@@ -20,10 +22,12 @@ pub use domain::{
     ImportStats,
     ImportedEdge,
     ImportedNode,
+    InstalledPackage,
     Language,
     MemoryState,
     Node,
     NodeType,
+    PackageType,
     PropagationDetail,
     PropagationEvent,
     ReviewGrade,
