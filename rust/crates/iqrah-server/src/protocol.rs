@@ -24,9 +24,7 @@ pub enum Command {
         action: String, // "Tap", "LongPress", etc.
     },
     /// Start an Echo Recall session with one or more ayahs
-    StartEchoRecall {
-        ayah_node_ids: Vec<String>,
-    },
+    StartEchoRecall { ayah_node_ids: Vec<String> },
     /// Submit a word recall in Echo Recall mode
     SubmitEchoRecall {
         session_id: Uuid,
@@ -50,9 +48,7 @@ pub enum Event {
         initial_state: serde_json::Value,
     },
     /// State has been updated
-    StateUpdated {
-        new_state: serde_json::Value,
-    },
+    StateUpdated { new_state: serde_json::Value },
     /// Feedback on a submitted answer
     Feedback {
         is_correct: bool,
@@ -64,7 +60,5 @@ pub enum Event {
         summary: serde_json::Value,
     },
     /// An error occurred
-    Error {
-        message: String,
-    },
+    Error { message: String },
 }

@@ -12,7 +12,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::{protocol::{Command, Event}, AppState};
+use crate::{
+    protocol::{Command, Event},
+    AppState,
+};
 
 /// Session state for a running exercise
 #[derive(Debug, Clone)]
@@ -118,13 +121,8 @@ async fn handle_command(
         Command::StartExercise {
             exercise_type,
             node_id,
-        } => {
-            handle_start_exercise(user_id, exercise_type, node_id, app_state, sessions).await
-        }
-        Command::SubmitAnswer {
-            session_id,
-            answer,
-        } => {
+        } => handle_start_exercise(user_id, exercise_type, node_id, app_state, sessions).await,
+        Command::SubmitAnswer { session_id, answer } => {
             let sid = session_id.or(current_session_id);
             handle_submit_answer(sid, answer, sessions).await
         }
@@ -134,14 +132,7 @@ async fn handle_command(
             action,
         } => {
             let sid = session_id.or(current_session_id);
-            handle_update_memorization_word(
-                sid,
-                word_node_id,
-                action,
-                app_state,
-                sessions,
-            )
-            .await
+            handle_update_memorization_word(sid, word_node_id, action, app_state, sessions).await
         }
         Command::StartEchoRecall { ayah_node_ids } => {
             handle_start_echo_recall(user_id, ayah_node_ids, app_state, sessions).await
@@ -449,7 +440,11 @@ async fn handle_start_echo_recall(
     let session_id = Uuid::new_v4();
 
     // Get all words in the specified ayahs
-    let words = match app_state.content_repo.get_words_in_ayahs(&ayah_node_ids).await {
+    let words = match app_state
+        .content_repo
+        .get_words_in_ayahs(&ayah_node_ids)
+        .await
+    {
         Ok(w) => w,
         Err(e) => {
             return vec![Event::Error {
@@ -504,12 +499,8 @@ async fn handle_start_echo_recall(
         };
 
         // Calculate context-aware visibility
-        let visibility = energy_service::map_energy_to_visibility(
-            energy,
-            &word_text,
-            prev_energy,
-            next_energy,
-        );
+        let visibility =
+            energy_service::map_energy_to_visibility(energy, &word_text, prev_energy, next_energy);
 
         echo_recall_words.push(EchoRecallWord {
             node_id: word.id.clone(),
@@ -560,7 +551,10 @@ async fn handle_submit_echo_recall(
     app_state: &AppState,
     sessions: SessionMap,
 ) -> Vec<Event> {
-    use iqrah_core::{services::{energy_service, recall_model}, EchoRecallState};
+    use iqrah_core::{
+        services::{energy_service, recall_model},
+        EchoRecallState,
+    };
 
     let mut sessions_lock = sessions.write().await;
     let session = match sessions_lock.get_mut(&session_id) {
@@ -603,7 +597,8 @@ async fn handle_submit_echo_recall(
     let energy_delta = recall_model::calculate_energy_change(recall_time_ms);
 
     // Update the target word's energy
-    state.words[word_index].energy = (state.words[word_index].energy + energy_delta).clamp(0.0, 1.0);
+    state.words[word_index].energy =
+        (state.words[word_index].energy + energy_delta).clamp(0.0, 1.0);
 
     // Recalculate visibility for the target word and its neighbors
     // Use a HashSet to deduplicate indices (important for single-word sessions)
@@ -617,7 +612,6 @@ async fn handle_submit_echo_recall(
     }
 
     for &i in &indices_to_update {
-
         let prev_energy = if i > 0 {
             Some(state.words[i - 1].energy)
         } else {

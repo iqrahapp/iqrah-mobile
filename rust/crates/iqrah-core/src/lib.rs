@@ -1,21 +1,39 @@
+pub mod cbor_import;
 pub mod domain;
 pub mod ports;
 pub mod services;
-pub mod cbor_import;
 
 // Re-export commonly used types
 pub use domain::{
-    Node, NodeType, Edge, EdgeType, DistributionType,
-    MemoryState, ReviewGrade, Exercise,
-    PropagationEvent, PropagationDetail,
+    // V2 Domain Models
+    Chapter,
+    DistributionType,
     DomainError,
-    ImportedNode, ImportedEdge, ImportStats,
     // Echo Recall types
-    Hint, WordVisibility, EchoRecallWord, EchoRecallState,
+    EchoRecallState,
+    EchoRecallWord,
+    Edge,
+    EdgeType,
+    Exercise,
+    Hint,
+    ImportStats,
+    ImportedEdge,
+    ImportedNode,
+    Language,
+    MemoryState,
+    Node,
+    NodeType,
+    PropagationDetail,
+    PropagationEvent,
+    ReviewGrade,
+    Translator,
+    Verse,
+    Word,
+    WordVisibility,
 };
 
 pub use ports::{ContentRepository, UserRepository};
 
-pub use services::{LearningService, SessionService, ScoredItem, ScoreWeights};
+pub use services::{LearningService, ScoreWeights, ScoredItem, SessionService};
 
 pub use cbor_import::import_cbor_graph_from_bytes;

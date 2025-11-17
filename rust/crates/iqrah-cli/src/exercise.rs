@@ -2,7 +2,7 @@ use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio_tungstenite::{connect_async, tungstenite::Message, WebSocketStream, MaybeTlsStream};
+use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 use url::Url;
 
 /// Configuration for connecting to the Iqrah server
@@ -120,9 +120,7 @@ pub async fn run(config: &ServerConfig, exercise_type: &str, node_id: &str) -> R
         "node_id": node_id,
     });
 
-    write
-        .send(Message::Text(start_command.to_string()))
-        .await?;
+    write.send(Message::Text(start_command.to_string())).await?;
 
     // Spawn a task to read from stdin and send commands
     let write_handle = tokio::spawn(async move {
@@ -188,7 +186,11 @@ pub async fn run(config: &ServerConfig, exercise_type: &str, node_id: &str) -> R
 }
 
 /// Start an Echo Recall exercise session
-pub async fn start(config: &ServerConfig, _exercise_type: &str, ayah_node_ids: &[String]) -> Result<()> {
+pub async fn start(
+    config: &ServerConfig,
+    _exercise_type: &str,
+    ayah_node_ids: &[String],
+) -> Result<()> {
     let client = ExerciseClient::new(config.clone());
     let response = client.start_echo_recall(ayah_node_ids.to_vec()).await?;
     println!("{}", serde_json::to_string_pretty(&response)?);

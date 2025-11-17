@@ -1,7 +1,4 @@
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use iqrah_core::{
     ports::{ContentRepository, UserRepository},
     services::{LearningService, SessionService},
@@ -37,10 +34,9 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Starting Iqrah Headless Test Server...");
 
     // Get database paths from environment or use defaults
-    let content_db_path = std::env::var("CONTENT_DB_PATH")
-        .unwrap_or_else(|_| "data/content.db".to_string());
-    let user_db_path = std::env::var("USER_DB_PATH")
-        .unwrap_or_else(|_| "data/user.db".to_string());
+    let content_db_path =
+        std::env::var("CONTENT_DB_PATH").unwrap_or_else(|_| "data/content.db".to_string());
+    let user_db_path = std::env::var("USER_DB_PATH").unwrap_or_else(|_| "data/user.db".to_string());
 
     tracing::info!("Content DB: {}", content_db_path);
     tracing::info!("User DB: {}", user_db_path);
@@ -53,8 +49,7 @@ async fn main() -> anyhow::Result<()> {
     // Create repositories
     let content_repo: Arc<dyn ContentRepository> =
         Arc::new(SqliteContentRepository::new(content_pool));
-    let user_repo: Arc<dyn UserRepository> =
-        Arc::new(SqliteUserRepository::new(user_pool));
+    let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
     // Create services
     let learning_service = Arc::new(LearningService::new(
@@ -83,8 +78,7 @@ async fn main() -> anyhow::Result<()> {
         .with_state(app_state);
 
     // Start the server
-    let addr = std::env::var("BIND_ADDR")
-        .unwrap_or_else(|_| "127.0.0.1:3000".to_string());
+    let addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
 
     tracing::info!("Server listening on {}", addr);
     tracing::info!("WebSocket endpoint: ws://{}/ws", addr);

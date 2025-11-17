@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // Node types
@@ -198,6 +198,64 @@ pub struct ImportStats {
     pub nodes_imported: u32,
     pub edges_imported: u32,
     pub duration_ms: u64,
+}
+
+// ===== Echo Recall Exercise Models =====
+
+// ===== V2 Domain Models (Purist Schema) =====
+
+/// Represents a chapter (surah) of the Quran
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Chapter {
+    pub number: i32,
+    pub name_arabic: String,
+    pub name_transliteration: String,
+    pub name_translation: String,
+    pub revelation_place: Option<String>,
+    pub verse_count: i32,
+}
+
+/// Represents a verse (ayah) from the Quran
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Verse {
+    pub key: String, // "1:1", "2:255", etc.
+    pub chapter_number: i32,
+    pub verse_number: i32,
+    pub text_uthmani: String,
+    pub text_simple: Option<String>,
+    pub juz: i32,
+    pub page: i32,
+}
+
+/// Represents a word instance within a verse
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Word {
+    pub id: i32,
+    pub verse_key: String,
+    pub position: i32,
+    pub text_uthmani: String,
+    pub text_simple: Option<String>,
+    pub transliteration: Option<String>,
+}
+
+/// Represents a language
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Language {
+    pub code: String,
+    pub english_name: String,
+    pub native_name: String,
+    pub direction: String,
+}
+
+/// Represents a translator
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Translator {
+    pub id: i32,
+    pub slug: String,
+    pub full_name: String,
+    pub language_code: String,
+    pub description: Option<String>,
+    pub license: Option<String>,
 }
 
 // ===== Echo Recall Exercise Models =====
