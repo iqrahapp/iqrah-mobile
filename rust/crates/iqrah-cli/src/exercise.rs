@@ -50,7 +50,7 @@ impl ExerciseClient {
 
     /// Send a command and receive a single response
     async fn send_command(&self, command: serde_json::Value) -> Result<serde_json::Value> {
-        let mut ws_stream = self.connect().await?;
+        let ws_stream = self.connect().await?;
         let (mut write, mut read) = ws_stream.split();
 
         // Send command

@@ -8,6 +8,8 @@ pub mod services;
 pub use domain::{
     // V2 Domain Models
     Chapter,
+    // Package Management
+    ContentPackage,
     DistributionType,
     DomainError,
     // Echo Recall types
@@ -20,10 +22,12 @@ pub use domain::{
     ImportStats,
     ImportedEdge,
     ImportedNode,
+    InstalledPackage,
     Language,
     MemoryState,
     Node,
     NodeType,
+    PackageType,
     PropagationDetail,
     PropagationEvent,
     ReviewGrade,
@@ -35,7 +39,7 @@ pub use domain::{
 
 pub use ports::{ContentRepository, UserRepository};
 
-pub use services::{LearningService, ScoreWeights, ScoredItem, SessionService};
+pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
 
