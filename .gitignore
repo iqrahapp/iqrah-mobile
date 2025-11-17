@@ -19,6 +19,9 @@ assets/knowledge-graph.cbor.zst
 assets/iqrah-graph-*.cbor.zst
 assets/content.db
 
+# Local test databases
+data/
+
 # IntelliJ related
 *.iml
 *.ipr
