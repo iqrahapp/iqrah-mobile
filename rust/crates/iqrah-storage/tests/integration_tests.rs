@@ -1,6 +1,6 @@
-use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
-use iqrah_core::{ContentRepository, UserRepository, MemoryState, NodeType};
 use chrono::Utc;
+use iqrah_core::{ContentRepository, MemoryState, NodeType, UserRepository};
+use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
 use sqlx::Row;
 
 #[tokio::test]
@@ -23,7 +23,10 @@ async fn test_user_db_initialization_and_migrations() {
         .await
         .unwrap();
 
-    assert!(row.is_some(), "Migration v2 should have created app_settings table");
+    assert!(
+        row.is_some(),
+        "Migration v2 should have created app_settings table"
+    );
 
     let version: String = row.unwrap().get("value");
     assert_eq!(version, "2", "Schema version should be 2 after migrations");
@@ -115,7 +118,11 @@ async fn test_user_repository_memory_states() {
 
     repo.save_memory_state(&updated).await.unwrap();
 
-    let retrieved = repo.get_memory_state("user1", "node1").await.unwrap().unwrap();
+    let retrieved = repo
+        .get_memory_state("user1", "node1")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(retrieved.energy, 0.9);
     assert_eq!(retrieved.review_count, 4);
 }
@@ -188,7 +195,11 @@ async fn test_user_repository_session_state() {
     let pool = init_user_db(":memory:").await.unwrap();
     let repo = SqliteUserRepository::new(pool);
 
-    let nodes = vec!["node1".to_string(), "node2".to_string(), "node3".to_string()];
+    let nodes = vec![
+        "node1".to_string(),
+        "node2".to_string(),
+        "node3".to_string(),
+    ];
 
     // Save session
     repo.save_session_state(&nodes).await.unwrap();
@@ -229,7 +240,11 @@ async fn test_update_energy() {
     repo.update_energy("user1", "node1", 0.8).await.unwrap();
 
     // Verify energy was updated
-    let updated = repo.get_memory_state("user1", "node1").await.unwrap().unwrap();
+    let updated = repo
+        .get_memory_state("user1", "node1")
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(updated.energy, 0.8);
     assert_eq!(updated.stability, 1.0); // Other fields unchanged
 }

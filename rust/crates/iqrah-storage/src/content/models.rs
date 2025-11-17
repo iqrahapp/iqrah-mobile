@@ -42,7 +42,10 @@ pub struct TranslationRow {
 // ============================================================================
 // V2 Schema (Purist Relational)
 // ============================================================================
+// Note: These models are prepared for v2 implementation but not yet used.
+// They will be utilized when we add v2-specific repository methods.
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct ChapterRow {
     pub chapter_number: i32,
@@ -59,6 +62,7 @@ pub struct ChapterRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct VerseRow {
     pub verse_key: String,
@@ -80,6 +84,7 @@ pub struct VerseRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct WordRow {
     pub word_id: i32,
@@ -93,6 +98,7 @@ pub struct WordRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct LanguageRow {
     pub language_code: String,
@@ -101,6 +107,7 @@ pub struct LanguageRow {
     pub direction: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct TranslatorRow {
     pub translator_id: i32,
@@ -116,6 +123,7 @@ pub struct TranslatorRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct VerseTranslationRow {
     pub verse_key: String,
@@ -126,6 +134,7 @@ pub struct VerseTranslationRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct WordTranslationRow {
     pub word_id: i32,
@@ -135,6 +144,7 @@ pub struct WordTranslationRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct RootRow {
     pub root_id: String,
@@ -146,6 +156,7 @@ pub struct RootRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct LemmaRow {
     pub lemma_id: String,

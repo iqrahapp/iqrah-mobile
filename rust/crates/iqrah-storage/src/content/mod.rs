@@ -1,9 +1,9 @@
-pub mod repository;
 mod models;
+pub mod repository;
 
 pub use repository::SqliteContentRepository;
 
-use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, query_scalar};
+use sqlx::{query_scalar, sqlite::SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 
 const EXPECTED_SCHEMA_VERSION: i32 = 2;
@@ -17,15 +17,12 @@ pub async fn get_content_schema_version(pool: &SqlitePool) -> Result<i32, sqlx::
 
 /// Initialize content database
 pub async fn init_content_db(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
-    let options = SqliteConnectOptions::from_str(db_path)?
-        .create_if_missing(true);
+    let options = SqliteConnectOptions::from_str(db_path)?.create_if_missing(true);
 
     let pool = SqlitePool::connect_with(options).await?;
 
     // Run migrations for content database
-    sqlx::migrate!("./migrations_content")
-        .run(&pool)
-        .await?;
+    sqlx::migrate!("./migrations_content").run(&pool).await?;
 
     // Validate schema version
     let version = get_content_schema_version(&pool).await?;

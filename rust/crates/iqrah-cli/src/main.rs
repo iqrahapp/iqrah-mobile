@@ -118,7 +118,11 @@ async fn main() -> Result<()> {
             DebugCommands::GetState { user_id, node_id } => {
                 debug::get_state(&cli.server, &user_id, &node_id).await?;
             }
-            DebugCommands::SetState { user_id, node_id, energy } => {
+            DebugCommands::SetState {
+                user_id,
+                node_id,
+                energy,
+            } => {
                 debug::set_state(&cli.server, &user_id, &node_id, energy).await?;
             }
             DebugCommands::ProcessReview {
@@ -165,7 +169,7 @@ async fn main() -> Result<()> {
                     exercise::end(&config, &session_id).await?;
                 }
             }
-        },
+        }
     }
 
     Ok(())
