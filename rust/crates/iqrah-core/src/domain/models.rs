@@ -487,4 +487,5 @@ pub struct MorphologySegment {
     pub position: i32,
     pub lemma_id: Option<String>,
     pub root_id: Option<String>,
+    pub pos_tag: Option<String>, // Part of speech (noun, verb, particle, etc.)
 }

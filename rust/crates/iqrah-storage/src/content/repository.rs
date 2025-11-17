@@ -900,7 +900,7 @@ impl ContentRepository for SqliteContentRepository {
         word_id: i32,
     ) -> anyhow::Result<Vec<MorphologySegment>> {
         let rows = query_as::<_, MorphologySegmentRow>(
-            "SELECT segment_id, word_id, position, lemma_id, root_id
+            "SELECT segment_id, word_id, position, lemma_id, root_id, pos_tag
              FROM morphology_segments
              WHERE word_id = ?
              ORDER BY position",
@@ -917,6 +917,7 @@ impl ContentRepository for SqliteContentRepository {
                 position: r.position,
                 lemma_id: r.lemma_id,
                 root_id: r.root_id,
+                pos_tag: r.pos_tag,
             })
             .collect())
     }

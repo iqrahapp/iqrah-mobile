@@ -7,6 +7,7 @@ mod grammar;
 mod graph;
 mod mcq;
 mod memorization;
+mod pos_tagging;
 mod reverse_cloze;
 mod service;
 mod translate_phrase;
@@ -22,6 +23,7 @@ pub use memorization::{
     ClozeDeletionExercise, FirstLetterHintExercise, MemorizationExercise, MissingWordMcqExercise,
     NextWordDifficulty, NextWordMcqExercise,
 };
+pub use pos_tagging::PosTaggingExercise;
 pub use reverse_cloze::ReverseClozeExercise;
 pub use service::ExerciseService;
 pub use translate_phrase::TranslatePhraseExercise;

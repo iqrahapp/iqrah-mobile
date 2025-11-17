@@ -176,6 +176,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("اسم".to_string()),
                     root_id: Some("س-م-و".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -186,6 +187,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("الله".to_string()),
                     root_id: Some("ا-ل-ه".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -196,6 +198,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("رحمن".to_string()),
                     root_id: Some("ر-ح-م".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -206,6 +209,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("رحيم".to_string()),
                     root_id: Some("ر-ح-م".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -216,6 +220,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("حمد".to_string()),
                     root_id: Some("ح-م-د".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -226,6 +231,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("الله".to_string()),
                     root_id: Some("ا-ل-ه".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -236,6 +242,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("رب".to_string()),
                     root_id: Some("ر-ب-ب".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
             morphology.insert(
@@ -246,6 +253,7 @@ mod tests {
                     position: 1,
                     lemma_id: Some("عالم".to_string()),
                     root_id: Some("ع-ل-م".to_string()),
+                    pos_tag: Some("noun".to_string()),
                 }],
             );
 

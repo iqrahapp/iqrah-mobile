@@ -177,6 +177,7 @@ pub struct MorphologySegmentRow {
     pub position: i32,
     pub lemma_id: Option<String>,
     pub root_id: Option<String>,
+    pub pos_tag: Option<String>,
 }
 
 // ============================================================================
