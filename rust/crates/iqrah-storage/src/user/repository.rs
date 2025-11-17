@@ -209,4 +209,26 @@ impl UserRepository for SqliteUserRepository {
 
         Ok(())
     }
+
+    async fn get_setting(&self, key: &str) -> anyhow::Result<Option<String>> {
+        let row = query_as::<_, UserStatRow>("SELECT key, value FROM app_settings WHERE key = ?")
+            .bind(key)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|r| r.value))
+    }
+
+    async fn set_setting(&self, key: &str, value: &str) -> anyhow::Result<()> {
+        query(
+            "INSERT INTO app_settings (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(key)
+        .bind(value)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }

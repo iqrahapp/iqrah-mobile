@@ -47,4 +47,10 @@ pub trait UserRepository: Send + Sync {
 
     /// Set user stat
     async fn set_stat(&self, key: &str, value: &str) -> anyhow::Result<()>;
+
+    /// Get app setting
+    async fn get_setting(&self, key: &str) -> anyhow::Result<Option<String>>;
+
+    /// Set app setting
+    async fn set_setting(&self, key: &str, value: &str) -> anyhow::Result<()>;
 }
