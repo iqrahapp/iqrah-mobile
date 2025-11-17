@@ -2,6 +2,7 @@ use axum::{routing::get, Router};
 use iqrah_core::{
     ports::{ContentRepository, UserRepository},
     services::{LearningService, SessionService},
+    ExerciseService,
 };
 use iqrah_storage::{
     content::{init_content_db, SqliteContentRepository},
@@ -20,6 +21,7 @@ pub struct AppState {
     pub user_repo: Arc<dyn UserRepository>,
     pub learning_service: Arc<LearningService>,
     pub session_service: Arc<SessionService>,
+    pub exercise_service: Arc<ExerciseService>,
 }
 
 #[tokio::main]
@@ -61,12 +63,15 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&user_repo),
     ));
 
+    let exercise_service = Arc::new(ExerciseService::new(Arc::clone(&content_repo)));
+
     // Create app state
     let app_state = Arc::new(AppState {
         content_repo,
         user_repo,
         learning_service,
         session_service,
+        exercise_service,
     });
 
     // Build the router

@@ -121,6 +121,7 @@ async fn handle_command(
         Command::StartExercise {
             exercise_type,
             node_id,
+            axis: _, // Note: axis parameter not used here, but available for future enhancements
         } => handle_start_exercise(user_id, exercise_type, node_id, app_state, sessions).await,
         Command::SubmitAnswer { session_id, answer } => {
             let sid = session_id.or(current_session_id);
@@ -155,6 +156,17 @@ async fn handle_command(
         Command::EndSession { session_id } => {
             let sid = session_id.or(current_session_id);
             handle_end_session(sid, user_id, app_state, sessions).await
+        }
+        Command::GetDueItems {
+            limit,
+            axis,
+            is_high_yield_mode,
+        } => handle_get_due_items(user_id, limit, axis, is_high_yield_mode, app_state).await,
+        Command::GenerateExercise { node_id, axis, format } => {
+            handle_generate_exercise(&node_id, axis, format, app_state).await
+        }
+        Command::CheckAnswer { node_id, answer } => {
+            handle_check_answer(&node_id, &answer, app_state).await
         }
     }
 }
@@ -648,6 +660,146 @@ async fn handle_submit_echo_recall(
     session.state = new_state.clone();
 
     vec![Event::StateUpdated { new_state }]
+}
+
+/// Get due items for a session (Phase 4)
+async fn handle_get_due_items(
+    user_id: &str,
+    limit: u32,
+    axis: Option<String>,
+    is_high_yield_mode: bool,
+    app_state: &AppState,
+) -> Vec<Event> {
+    use iqrah_core::KnowledgeAxis;
+
+    // Parse axis if provided
+    let axis_filter = axis.and_then(|a| KnowledgeAxis::from_str(&a));
+
+    // Get due items from session service
+    let items = match app_state
+        .session_service
+        .get_due_items(user_id, limit, is_high_yield_mode, axis_filter)
+        .await
+    {
+        Ok(items) => items,
+        Err(e) => {
+            return vec![Event::Error {
+                message: format!("Failed to get due items: {}", e),
+            }];
+        }
+    };
+
+    // Serialize items to JSON
+    let serialized_items: Vec<serde_json::Value> = items
+        .into_iter()
+        .map(|item| {
+            serde_json::json!({
+                "node_id": item.node.id,
+                "node_type": item.node.node_type,
+                "knowledge_axis": item.knowledge_axis.map(|a| a.to_str()),
+                "priority_score": item.priority_score,
+                "days_overdue": item.days_overdue,
+                "mastery_gap": item.mastery_gap,
+                "energy": item.memory_state.energy,
+                "stability": item.memory_state.stability,
+                "difficulty": item.memory_state.difficulty,
+            })
+        })
+        .collect();
+
+    vec![Event::DueItems {
+        items: serialized_items,
+    }]
+}
+
+/// Generate an exercise for a node (Phase 4.3)
+async fn handle_generate_exercise(
+    node_id: &str,
+    axis: Option<String>,
+    format: Option<String>,
+    app_state: &AppState,
+) -> Vec<Event> {
+    use iqrah_core::{KnowledgeAxis, McqExercise};
+
+    // Generate exercise based on format, axis, or auto-detect
+    let exercise_result = if let Some(fmt) = format {
+        // Generate based on explicit format
+        match fmt.as_str() {
+            "mcq_ar_to_en" => app_state.exercise_service.generate_mcq_ar_to_en(node_id).await,
+            "mcq_en_to_ar" => app_state.exercise_service.generate_mcq_en_to_ar(node_id).await,
+            _ => {
+                return vec![Event::Error {
+                    message: format!("Invalid format: {}", fmt),
+                }];
+            }
+        }
+    } else if let Some(axis_str) = axis {
+        // Parse axis and generate for specific axis
+        if let Some(axis_enum) = KnowledgeAxis::from_str(&axis_str) {
+            app_state
+                .exercise_service
+                .generate_exercise_for_axis(node_id, axis_enum)
+                .await
+        } else {
+            return vec![Event::Error {
+                message: format!("Invalid axis: {}", axis_str),
+            }];
+        }
+    } else {
+        // Auto-detect axis from node ID
+        app_state.exercise_service.generate_exercise(node_id).await
+    };
+
+    match exercise_result {
+        Ok(exercise_type) => {
+            let exercise = exercise_type.as_exercise();
+
+            // Try to get MCQ options if it's an MCQ exercise
+            let options = if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
+                Some(mcq.get_options().to_vec())
+            } else {
+                None
+            };
+
+            vec![Event::ExerciseGenerated {
+                node_id: node_id.to_string(),
+                exercise_type: exercise.get_type_name().to_string(),
+                question: exercise.generate_question(),
+                hint: exercise.get_hint(),
+                options,
+            }]
+        }
+        Err(e) => vec![Event::Error {
+            message: format!("Failed to generate exercise: {}", e),
+        }],
+    }
+}
+
+/// Check answer for an exercise (Phase 4.3)
+async fn handle_check_answer(
+    node_id: &str,
+    answer: &str,
+    app_state: &AppState,
+) -> Vec<Event> {
+    // Generate exercise first (we need it to check the answer)
+    let exercise_result = app_state.exercise_service.generate_exercise(node_id).await;
+
+    match exercise_result {
+        Ok(exercise_type) => {
+            let exercise = exercise_type.as_exercise();
+            let response = app_state.exercise_service.check_answer(exercise, answer);
+
+            vec![Event::AnswerChecked {
+                is_correct: response.is_correct,
+                hint: response.hint,
+                correct_answer: response.correct_answer,
+                options: response.options,
+            }]
+        }
+        Err(e) => vec![Event::Error {
+            message: format!("Failed to check answer: {}", e),
+        }],
+    }
 }
 
 /// Helper to send an event to the client
