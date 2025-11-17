@@ -5,24 +5,30 @@ pub mod services;
 
 // Re-export commonly used types
 pub use domain::{
+    // V2 Domain Models
+    Chapter,
     DistributionType,
     DomainError,
+    // Echo Recall types
     EchoRecallState,
     EchoRecallWord,
     Edge,
     EdgeType,
     Exercise,
-    // Echo Recall types
     Hint,
     ImportStats,
     ImportedEdge,
     ImportedNode,
+    Language,
     MemoryState,
     Node,
     NodeType,
     PropagationDetail,
     PropagationEvent,
     ReviewGrade,
+    Translator,
+    Verse,
+    Word,
     WordVisibility,
 };
 
