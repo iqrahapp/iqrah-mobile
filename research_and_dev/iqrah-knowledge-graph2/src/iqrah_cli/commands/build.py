@@ -259,7 +259,7 @@ def _setup_all_parser(subparsers):
     parser.add_argument(
         "--preset",
         type=str,
-        choices=["basic", "full", "research"],
+        choices=["basic", "full", "research", "ci-test"],
         default="full",
         help="Configuration preset (default: full)"
     )
