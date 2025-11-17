@@ -84,7 +84,14 @@ class QuranMorphologyCorpus(ABC):
                     result = [
                         seg for seg in result if seg.location[dim] == slice_or_index
                     ]
+                    # If result is empty after filtering, return early
+                    if not result:
+                        return []
                 case slice():
+                    # If result is already empty, no need to process further
+                    if not result:
+                        return []
+
                     start = slice_or_index.start or 1
                     stop = slice_or_index.stop or max(
                         seg.location[dim] for seg in result
