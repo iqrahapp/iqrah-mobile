@@ -18,10 +18,10 @@ impl SqliteUserRepository {
 impl UserRepository for SqliteUserRepository {
     async fn get_memory_state(&self, user_id: &str, node_id: &str) -> anyhow::Result<Option<MemoryState>> {
         let row = query_as::<_, MemoryStateRow>(
-            "SELECT user_id, node_id, stability, difficulty, energy,
+            "SELECT user_id, content_key, stability, difficulty, energy,
                     last_reviewed, due_at, review_count
              FROM user_memory_states
-             WHERE user_id = ? AND node_id = ?"
+             WHERE user_id = ? AND content_key = ?"
         )
         .bind(user_id)
         .bind(node_id)
@@ -30,7 +30,7 @@ impl UserRepository for SqliteUserRepository {
 
         Ok(row.map(|r| MemoryState {
             user_id: r.user_id,
-            node_id: r.node_id,
+            node_id: r.content_key,  // Map content_key to node_id for domain model
             stability: r.stability,
             difficulty: r.difficulty,
             energy: r.energy,
@@ -43,9 +43,9 @@ impl UserRepository for SqliteUserRepository {
     async fn save_memory_state(&self, state: &MemoryState) -> anyhow::Result<()> {
         query(
             "INSERT INTO user_memory_states
-             (user_id, node_id, stability, difficulty, energy, last_reviewed, due_at, review_count)
+             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(user_id, node_id) DO UPDATE SET
+             ON CONFLICT(user_id, content_key) DO UPDATE SET
                 stability = excluded.stability,
                 difficulty = excluded.difficulty,
                 energy = excluded.energy,
@@ -69,7 +69,7 @@ impl UserRepository for SqliteUserRepository {
 
     async fn get_due_states(&self, user_id: &str, due_before: DateTime<Utc>, limit: u32) -> anyhow::Result<Vec<MemoryState>> {
         let rows = query_as::<_, MemoryStateRow>(
-            "SELECT user_id, node_id, stability, difficulty, energy,
+            "SELECT user_id, content_key, stability, difficulty, energy,
                     last_reviewed, due_at, review_count
              FROM user_memory_states
              WHERE user_id = ? AND due_at <= ?
@@ -84,7 +84,7 @@ impl UserRepository for SqliteUserRepository {
 
         Ok(rows.into_iter().map(|r| MemoryState {
             user_id: r.user_id,
-            node_id: r.node_id,
+            node_id: r.content_key,  // Map content_key to node_id
             stability: r.stability,
             difficulty: r.difficulty,
             energy: r.energy,
@@ -96,7 +96,7 @@ impl UserRepository for SqliteUserRepository {
 
     async fn update_energy(&self, user_id: &str, node_id: &str, new_energy: f64) -> anyhow::Result<()> {
         query(
-            "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND node_id = ?"
+            "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND content_key = ?"
         )
         .bind(new_energy)
         .bind(user_id)
@@ -110,7 +110,7 @@ impl UserRepository for SqliteUserRepository {
     async fn log_propagation(&self, event: &PropagationEvent) -> anyhow::Result<()> {
         // Insert event
         let result = query(
-            "INSERT INTO propagation_events (source_node_id, event_timestamp)
+            "INSERT INTO propagation_events (source_content_key, event_timestamp)
              VALUES (?, ?)"
         )
         .bind(&event.source_node_id)
@@ -123,7 +123,7 @@ impl UserRepository for SqliteUserRepository {
         // Insert details
         for detail in &event.details {
             query(
-                "INSERT INTO propagation_details (event_id, target_node_id, energy_change, reason)
+                "INSERT INTO propagation_details (event_id, target_content_key, energy_change, reason)
                  VALUES (?, ?, ?, ?)"
             )
             .bind(event_id)
@@ -139,12 +139,12 @@ impl UserRepository for SqliteUserRepository {
 
     async fn get_session_state(&self) -> anyhow::Result<Vec<String>> {
         let rows = query_as::<_, SessionStateRow>(
-            "SELECT node_id, session_order FROM session_state ORDER BY session_order ASC"
+            "SELECT content_key, session_order FROM session_state ORDER BY session_order ASC"
         )
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| r.node_id).collect())
+        Ok(rows.into_iter().map(|r| r.content_key).collect())
     }
 
     async fn save_session_state(&self, node_ids: &[String]) -> anyhow::Result<()> {
@@ -154,7 +154,7 @@ impl UserRepository for SqliteUserRepository {
         // Insert new
         for (idx, node_id) in node_ids.iter().enumerate() {
             query(
-                "INSERT INTO session_state (node_id, session_order) VALUES (?, ?)"
+                "INSERT INTO session_state (content_key, session_order) VALUES (?, ?)"
             )
             .bind(node_id)
             .bind(idx as i64)
