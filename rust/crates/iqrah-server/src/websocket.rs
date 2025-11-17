@@ -794,6 +794,8 @@ async fn handle_check_answer(
                 hint: response.hint,
                 correct_answer: response.correct_answer,
                 options: response.options,
+                semantic_grade: response.semantic_grade,
+                similarity_score: response.similarity_score,
             }]
         }
         Err(e) => vec![Event::Error {

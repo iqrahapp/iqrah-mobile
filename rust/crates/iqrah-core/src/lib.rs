@@ -3,6 +3,7 @@ pub mod domain;
 pub mod exercises;
 pub mod import;
 pub mod ports;
+pub mod semantic;
 pub mod services;
 
 // Re-export commonly used types
@@ -46,6 +47,8 @@ pub use ports::{ContentRepository, UserRepository};
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
 pub use exercises::{ExerciseService, ExerciseResponse, McqExercise};
+
+pub use semantic::{SemanticEmbedder, SemanticGrade, SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
 
