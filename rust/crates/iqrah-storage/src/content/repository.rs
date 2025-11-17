@@ -1,8 +1,10 @@
-use sqlx::{SqlitePool, query_as, query};
+use super::models::{EdgeRow, NodeRow, QuranTextRow, TranslationRow};
 use async_trait::async_trait;
+use iqrah_core::{
+    ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge, ImportedNode, Node, NodeType,
+};
+use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
-use iqrah_core::{ContentRepository, Node, NodeType, Edge, EdgeType, DistributionType, ImportedNode, ImportedEdge};
-use super::models::{NodeRow, EdgeRow, QuranTextRow, TranslationRow};
 
 pub struct SqliteContentRepository {
     pool: SqlitePool,
@@ -17,12 +19,11 @@ impl SqliteContentRepository {
 #[async_trait]
 impl ContentRepository for SqliteContentRepository {
     async fn get_node(&self, node_id: &str) -> anyhow::Result<Option<Node>> {
-        let row = query_as::<_, NodeRow>(
-            "SELECT id, node_type, created_at FROM nodes WHERE id = ?"
-        )
-        .bind(node_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            query_as::<_, NodeRow>("SELECT id, node_type, created_at FROM nodes WHERE id = ?")
+                .bind(node_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(row.map(|r| Node {
             id: r.id,
@@ -34,33 +35,39 @@ impl ContentRepository for SqliteContentRepository {
         let rows = query_as::<_, EdgeRow>(
             "SELECT source_id, target_id, edge_type, distribution_type, param1, param2
              FROM edges
-             WHERE source_id = ?"
+             WHERE source_id = ?",
         )
         .bind(source_id)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| Edge {
-            source_id: r.source_id,
-            target_id: r.target_id,
-            edge_type: if r.edge_type == 0 { EdgeType::Dependency } else { EdgeType::Knowledge },
-            distribution_type: match r.distribution_type {
-                0 => DistributionType::Const,
-                1 => DistributionType::Normal,
-                _ => DistributionType::Beta,
-            },
-            param1: r.param1,
-            param2: r.param2,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Edge {
+                source_id: r.source_id,
+                target_id: r.target_id,
+                edge_type: if r.edge_type == 0 {
+                    EdgeType::Dependency
+                } else {
+                    EdgeType::Knowledge
+                },
+                distribution_type: match r.distribution_type {
+                    0 => DistributionType::Const,
+                    1 => DistributionType::Normal,
+                    _ => DistributionType::Beta,
+                },
+                param1: r.param1,
+                param2: r.param2,
+            })
+            .collect())
     }
 
     async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        let row = query_as::<_, QuranTextRow>(
-            "SELECT node_id, arabic FROM quran_text WHERE node_id = ?"
-        )
-        .bind(node_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            query_as::<_, QuranTextRow>("SELECT node_id, arabic FROM quran_text WHERE node_id = ?")
+                .bind(node_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(row.map(|r| r.arabic))
     }
@@ -69,7 +76,7 @@ impl ContentRepository for SqliteContentRepository {
         let row = query_as::<_, TranslationRow>(
             "SELECT node_id, language_code, translation
              FROM translations
-             WHERE node_id = ? AND language_code = ?"
+             WHERE node_id = ? AND language_code = ?",
         )
         .bind(node_id)
         .bind(lang)
@@ -108,67 +115,65 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn node_exists(&self, node_id: &str) -> anyhow::Result<bool> {
-        let count: (i64,) = query_as(
-            "SELECT COUNT(*) FROM nodes WHERE id = ?"
-        )
-        .bind(node_id)
-        .fetch_one(&self.pool)
-        .await?;
+        let count: (i64,) = query_as("SELECT COUNT(*) FROM nodes WHERE id = ?")
+            .bind(node_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(count.0 > 0)
     }
 
     async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>> {
-        let rows = query_as::<_, NodeRow>(
-            "SELECT id, node_type, created_at FROM nodes"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let rows = query_as::<_, NodeRow>("SELECT id, node_type, created_at FROM nodes")
+            .fetch_all(&self.pool)
+            .await?;
 
-        Ok(rows.into_iter().map(|r| Node {
-            id: r.id,
-            node_type: NodeType::from(r.node_type),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Node {
+                id: r.id,
+                node_type: NodeType::from(r.node_type),
+            })
+            .collect())
     }
 
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>> {
         let type_str = node_type.to_string();
 
         let rows = query_as::<_, NodeRow>(
-            "SELECT id, node_type, created_at FROM nodes WHERE node_type = ?"
+            "SELECT id, node_type, created_at FROM nodes WHERE node_type = ?",
         )
         .bind(&type_str)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| Node {
-            id: r.id,
-            node_type: NodeType::from(r.node_type),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Node {
+                id: r.id,
+                node_type: NodeType::from(r.node_type),
+            })
+            .collect())
     }
 
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()> {
         // Batch insert nodes
         for node in nodes {
             let node_type_str = node.node_type.to_string();
-            query(
-                "INSERT OR IGNORE INTO nodes (id, node_type, created_at) VALUES (?, ?, ?)"
-            )
-            .bind(&node.id)
-            .bind(&node_type_str)
-            .bind(node.created_at)
-            .execute(&self.pool)
-            .await?;
+            query("INSERT OR IGNORE INTO nodes (id, node_type, created_at) VALUES (?, ?, ?)")
+                .bind(&node.id)
+                .bind(&node_type_str)
+                .bind(node.created_at)
+                .execute(&self.pool)
+                .await?;
 
             // Insert metadata into quran_text and translations tables
             if let Some(arabic) = node.metadata.get("arabic") {
-                query(
-                    "INSERT OR IGNORE INTO quran_text (node_id, arabic) VALUES (?, ?)"
-                )
-                .bind(&node.id)
-                .bind(arabic)
-                .execute(&self.pool)
-                .await?;
+                query("INSERT OR IGNORE INTO quran_text (node_id, arabic) VALUES (?, ?)")
+                    .bind(&node.id)
+                    .bind(arabic)
+                    .execute(&self.pool)
+                    .await?;
             }
 
             if let Some(translation) = node.metadata.get("translation") {
@@ -253,7 +258,10 @@ impl ContentRepository for SqliteContentRepository {
         Ok(word_ids)
     }
 
-    async fn get_adjacent_words(&self, word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)> {
+    async fn get_adjacent_words(
+        &self,
+        word_node_id: &str,
+    ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
         // Parse word ID: "WORD:chapter:verse:position"
         let parts: Vec<&str> = word_node_id.split(':').collect();
         if parts.len() != 4 || parts[0] != "WORD" {

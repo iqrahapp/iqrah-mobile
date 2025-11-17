@@ -1,6 +1,6 @@
+use crate::domain::{Edge, ImportedEdge, ImportedNode, Node, NodeType};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use crate::domain::{Node, Edge, NodeType, ImportedNode, ImportedEdge};
 
 #[async_trait]
 pub trait ContentRepository: Send + Sync {
@@ -42,5 +42,8 @@ pub trait ContentRepository: Send + Sync {
 
     /// Get the adjacent word nodes (previous and next) for a given word
     /// Returns (previous_word, next_word) where either can be None if at boundaries
-    async fn get_adjacent_words(&self, word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)>;
+    async fn get_adjacent_words(
+        &self,
+        word_node_id: &str,
+    ) -> anyhow::Result<(Option<Node>, Option<Node>)>;
 }

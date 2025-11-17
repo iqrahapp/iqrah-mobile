@@ -1,15 +1,11 @@
-use std::sync::Arc;
-use once_cell::sync::OnceCell;
-use iqrah_core::{
-    ContentRepository, UserRepository,
-    LearningService, SessionService, ReviewGrade,
-    import_cbor_graph_from_bytes,
-};
-use iqrah_storage::{
-    SqliteContentRepository, SqliteUserRepository,
-    init_content_db, init_user_db,
-};
 use anyhow::Result;
+use iqrah_core::{
+    import_cbor_graph_from_bytes, ContentRepository, LearningService, ReviewGrade, SessionService,
+    UserRepository,
+};
+use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
+use once_cell::sync::OnceCell;
+use std::sync::Arc;
 
 pub struct AppState {
     pub content_repo: Arc<dyn ContentRepository>,
@@ -22,7 +18,8 @@ static APP: OnceCell<AppState> = OnceCell::new();
 
 /// Get app state (helper function)
 fn app() -> &'static AppState {
-    APP.get().expect("App not initialized - call setup_database first")
+    APP.get()
+        .expect("App not initialized - call setup_database first")
 }
 
 /// One-time setup: initializes databases and imports graph
@@ -38,7 +35,8 @@ pub async fn setup_database(
     let user_pool = init_user_db(&user_db_path).await?;
 
     // Create repositories
-    let content_repo: Arc<dyn ContentRepository> = Arc::new(SqliteContentRepository::new(content_pool));
+    let content_repo: Arc<dyn ContentRepository> =
+        Arc::new(SqliteContentRepository::new(content_pool));
     let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
     // Check if data already imported
@@ -48,9 +46,16 @@ pub async fn setup_database(
         tracing::info!("Importing knowledge graph...");
         let cursor = std::io::Cursor::new(kg_bytes);
         let stats = import_cbor_graph_from_bytes(Arc::clone(&content_repo), cursor).await?;
-        tracing::info!("Import complete: {} nodes, {} edges", stats.nodes_imported, stats.edges_imported);
+        tracing::info!(
+            "Import complete: {} nodes, {} edges",
+            stats.nodes_imported,
+            stats.edges_imported
+        );
     } else {
-        tracing::info!("Database already contains {} nodes, skipping import", all_nodes.len());
+        tracing::info!(
+            "Database already contains {} nodes, skipping import",
+            all_nodes.len()
+        );
     }
 
     // Create services
@@ -90,7 +95,8 @@ pub async fn get_exercises(
 ) -> Result<Vec<ExerciseDto>> {
     let app = app();
 
-    let items = app.session_service
+    let items = app
+        .session_service
         .get_due_items(&user_id, limit, is_high_yield)
         .await?;
 
@@ -98,8 +104,16 @@ pub async fn get_exercises(
     let mut exercises = Vec::new();
     for item in items.into_iter().take(limit as usize) {
         // Get metadata
-        let arabic = app.content_repo.get_quran_text(&item.node.id).await?.unwrap_or_default();
-        let translation = app.content_repo.get_translation(&item.node.id, "en").await?.unwrap_or_default();
+        let arabic = app
+            .content_repo
+            .get_quran_text(&item.node.id)
+            .await?
+            .unwrap_or_default();
+        let translation = app
+            .content_repo
+            .get_translation(&item.node.id, "en")
+            .await?
+            .unwrap_or_default();
 
         exercises.push(ExerciseDto {
             node_id: item.node.id,
@@ -113,15 +127,13 @@ pub async fn get_exercises(
 }
 
 /// Process a review
-pub async fn process_review(
-    user_id: String,
-    node_id: String,
-    grade: u8,
-) -> Result<String> {
+pub async fn process_review(user_id: String, node_id: String, grade: u8) -> Result<String> {
     let review_grade = ReviewGrade::from(grade);
     let app = app();
 
-    app.learning_service.process_review(&user_id, &node_id, review_grade).await?;
+    app.learning_service
+        .process_review(&user_id, &node_id, review_grade)
+        .await?;
     app.session_service.increment_stat("reviews_today").await?;
 
     Ok("Review processed".to_string())
@@ -131,15 +143,24 @@ pub async fn process_review(
 pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStatsDto> {
     let app = app();
 
-    let reviews_today = app.session_service.get_stat("reviews_today").await?
+    let reviews_today = app
+        .session_service
+        .get_stat("reviews_today")
+        .await?
         .and_then(|v| v.parse::<u32>().ok())
         .unwrap_or(0);
 
-    let streak = app.session_service.get_stat("streak_days").await?
+    let streak = app
+        .session_service
+        .get_stat("streak_days")
+        .await?
         .and_then(|v| v.parse::<u32>().ok())
         .unwrap_or(0);
 
-    let due_items = app.session_service.get_due_items(&user_id, 1000, false).await?;
+    let due_items = app
+        .session_service
+        .get_due_items(&user_id, 1000, false)
+        .await?;
 
     Ok(DashboardStatsDto {
         reviews_today,
@@ -153,7 +174,10 @@ pub async fn get_debug_stats(user_id: String) -> Result<DebugStatsDto> {
     let app = app();
 
     let all_nodes = app.content_repo.get_all_nodes().await?;
-    let due_items = app.session_service.get_due_items(&user_id, 1000, false).await?;
+    let due_items = app
+        .session_service
+        .get_due_items(&user_id, 1000, false)
+        .await?;
 
     Ok(DebugStatsDto {
         total_nodes_count: all_nodes.len() as u32,
@@ -165,7 +189,10 @@ pub async fn get_debug_stats(user_id: String) -> Result<DebugStatsDto> {
 /// Reset user progress
 pub async fn reseed_database(user_id: String) -> Result<String> {
     // TODO: Implement user progress reset
-    Ok(format!("User {} progress reset (not yet implemented)", user_id))
+    Ok(format!(
+        "User {} progress reset (not yet implemented)",
+        user_id
+    ))
 }
 
 /// Get session preview
@@ -176,13 +203,18 @@ pub async fn get_session_preview(
 ) -> Result<Vec<SessionPreviewDto>> {
     let app = app();
 
-    let items = app.session_service
+    let items = app
+        .session_service
         .get_due_items(&user_id, limit, is_high_yield)
         .await?;
 
     let mut preview = Vec::new();
     for item in items {
-        let arabic = app.content_repo.get_quran_text(&item.node.id).await?.unwrap_or_default();
+        let arabic = app
+            .content_repo
+            .get_quran_text(&item.node.id)
+            .await?
+            .unwrap_or_default();
 
         preview.push(SessionPreviewDto {
             node_id: item.node.id,
@@ -210,14 +242,19 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
     let all_nodes = app.content_repo.get_all_nodes().await?;
 
     // Simple prefix search
-    let results: Vec<_> = all_nodes.into_iter()
+    let results: Vec<_> = all_nodes
+        .into_iter()
         .filter(|n| n.id.starts_with(&query))
         .take(limit as usize)
         .collect();
 
     let mut dtos = Vec::new();
     for node in results {
-        let arabic = app.content_repo.get_quran_text(&node.id).await?.unwrap_or_default();
+        let arabic = app
+            .content_repo
+            .get_quran_text(&node.id)
+            .await?
+            .unwrap_or_default();
         dtos.push(NodeSearchDto {
             node_id: node.id,
             node_type: format!("{:?}", node.node_type),

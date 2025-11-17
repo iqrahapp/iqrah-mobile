@@ -50,10 +50,13 @@ pub fn map_energy_to_visibility(
 
     // Context-aware hint selection
     let hint = match (prev_is_anchor, next_is_anchor) {
-        (true, false) => Hint::First { char: first_char },  // Previous word is anchor
-        (false, true) => Hint::Last { char: last_char },     // Next word is anchor
-        (true, true) => Hint::Both { first: first_char, last: last_char }, // Both are anchors
-        (false, false) => Hint::First { char: first_char },  // Default fallback
+        (true, false) => Hint::First { char: first_char }, // Previous word is anchor
+        (false, true) => Hint::Last { char: last_char },   // Next word is anchor
+        (true, true) => Hint::Both {
+            first: first_char,
+            last: last_char,
+        }, // Both are anchors
+        (false, false) => Hint::First { char: first_char }, // Default fallback
     };
 
     WordVisibility::Obscured { hint, coverage }
@@ -117,7 +120,13 @@ mod tests {
 
         match visibility {
             WordVisibility::Obscured { hint, coverage: _ } => {
-                assert_eq!(hint, Hint::Both { first: 't', last: 't' });
+                assert_eq!(
+                    hint,
+                    Hint::Both {
+                        first: 't',
+                        last: 't'
+                    }
+                );
             }
             _ => panic!("Expected Obscured variant"),
         }
@@ -144,7 +153,13 @@ mod tests {
         match visibility {
             WordVisibility::Obscured { hint, coverage: _ } => {
                 // With None values defaulting to 1.0, both are anchors, so we get Both
-                assert_eq!(hint, Hint::Both { first: 't', last: 't' });
+                assert_eq!(
+                    hint,
+                    Hint::Both {
+                        first: 't',
+                        last: 't'
+                    }
+                );
             }
             _ => panic!("Expected Obscured variant"),
         }
@@ -207,7 +222,10 @@ mod tests {
 
         let vis_just_below_hidden = map_energy_to_visibility(0.849, "test", Some(0.5), Some(0.5));
         match vis_just_below_hidden {
-            WordVisibility::Obscured { hint: _, coverage: _ } => {
+            WordVisibility::Obscured {
+                hint: _,
+                coverage: _,
+            } => {
                 // Should still be obscured
             }
             _ => panic!("Expected Obscured just below hidden threshold"),
@@ -221,7 +239,13 @@ mod tests {
 
         match visibility {
             WordVisibility::Obscured { hint, coverage: _ } => {
-                assert_eq!(hint, Hint::Both { first: 'ب', last: 'م' });
+                assert_eq!(
+                    hint,
+                    Hint::Both {
+                        first: 'ب',
+                        last: 'م'
+                    }
+                );
             }
             _ => panic!("Expected Obscured"),
         }
@@ -233,7 +257,13 @@ mod tests {
 
         match visibility {
             WordVisibility::Obscured { hint, coverage: _ } => {
-                assert_eq!(hint, Hint::Both { first: 'a', last: 'a' });
+                assert_eq!(
+                    hint,
+                    Hint::Both {
+                        first: 'a',
+                        last: 'a'
+                    }
+                );
             }
             _ => panic!("Expected Obscured"),
         }

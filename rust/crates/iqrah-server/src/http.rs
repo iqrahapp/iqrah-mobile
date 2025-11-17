@@ -76,10 +76,7 @@ async fn get_user_state(
     State(state): State<Arc<AppState>>,
     Path((user_id, node_id)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
-    let memory_state = state
-        .user_repo
-        .get_memory_state(&user_id, &node_id)
-        .await?;
+    let memory_state = state.user_repo.get_memory_state(&user_id, &node_id).await?;
 
     match memory_state {
         Some(state) => Ok(Json(json!({
@@ -126,10 +123,7 @@ async fn set_user_state(
         .await?;
 
     // Return the updated state
-    let memory_state = state
-        .user_repo
-        .get_memory_state(&user_id, &node_id)
-        .await?;
+    let memory_state = state.user_repo.get_memory_state(&user_id, &node_id).await?;
 
     match memory_state {
         Some(state) => Ok(Json(json!({

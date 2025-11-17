@@ -1,6 +1,6 @@
 use crate::{
+    domain::{DistributionType, EdgeType, ImportStats, ImportedEdge, ImportedNode, NodeType},
     ContentRepository,
-    domain::{ImportedNode, ImportedEdge, ImportStats, NodeType, EdgeType, DistributionType},
 };
 use anyhow::Result;
 use ciborium::{de, Value};
@@ -127,7 +127,10 @@ where
             Err(e) => {
                 tracing::warn!("CBOR read error after {} records: {}", records_processed, e);
                 if records_processed > 0 {
-                    tracing::info!("CBOR import complete: {} records processed", records_processed);
+                    tracing::info!(
+                        "CBOR import complete: {} records processed",
+                        records_processed
+                    );
                     break;
                 } else {
                     return Err(anyhow::anyhow!("CBOR parsing failed: {}", e));
