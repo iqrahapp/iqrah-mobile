@@ -22,6 +22,7 @@ mod tests {
                 Node {
                     id: "word_1".to_string(),
                     node_type: NodeType::WordInstance,
+                    knowledge_node: None,
                 },
             );
 
@@ -30,6 +31,7 @@ mod tests {
                 Node {
                     id: "word_2".to_string(),
                     node_type: NodeType::WordInstance,
+                    knowledge_node: None,
                 },
             );
 
@@ -38,6 +40,7 @@ mod tests {
                 Node {
                     id: "verse_1".to_string(),
                     node_type: NodeType::Verse,
+                    knowledge_node: None,
                 },
             );
 
@@ -46,6 +49,7 @@ mod tests {
                 Node {
                     id: "surah_1".to_string(),
                     node_type: NodeType::Chapter,
+                    knowledge_node: None,
                 },
             );
 
@@ -370,7 +374,7 @@ mod tests {
         ]);
 
         // Act
-        let result = service.get_due_items("user1", 10, false).await;
+        let result = service.get_due_items("user1", 10, false, None).await;
 
         // Assert
         assert!(result.is_ok());
@@ -400,8 +404,8 @@ mod tests {
         }]);
 
         // Act
-        let normal_result = service.get_due_items("user1", 10, false).await.unwrap();
-        let high_yield_result = service.get_due_items("user1", 10, true).await.unwrap();
+        let normal_result = service.get_due_items("user1", 10, false, None).await.unwrap();
+        let high_yield_result = service.get_due_items("user1", 10, true, None).await.unwrap();
 
         // Assert - High yield mode should produce different scores
         assert_eq!(normal_result.len(), 1);
@@ -455,7 +459,7 @@ mod tests {
         ]);
 
         // Act
-        let result = service.get_due_items("user1", 10, false).await;
+        let result = service.get_due_items("user1", 10, false, None).await;
 
         // Assert - Should only include WordInstance and Verse types
         assert!(result.is_ok());
@@ -508,7 +512,7 @@ mod tests {
         ]);
 
         // Act
-        let result = service.get_due_items("user1", 10, false).await;
+        let result = service.get_due_items("user1", 10, false, None).await;
 
         // Assert - word_2 should be higher priority (more overdue + higher need)
         assert!(result.is_ok());
@@ -553,7 +557,7 @@ mod tests {
         ]);
 
         // Act
-        let result = service.get_due_items("user1", 1, false).await;
+        let result = service.get_due_items("user1", 1, false, None).await;
 
         // Assert
         assert!(result.is_ok());
@@ -653,7 +657,7 @@ mod tests {
         }]);
 
         // Act
-        let result = service.get_due_items("user1", 10, false).await;
+        let result = service.get_due_items("user1", 10, false, None).await;
 
         // Assert
         assert!(result.is_ok());
@@ -689,7 +693,7 @@ mod tests {
         }]);
 
         // Act
-        let result = service.get_due_items("user1", 10, false).await;
+        let result = service.get_due_items("user1", 10, false, None).await;
 
         // Assert
         assert!(result.is_ok());

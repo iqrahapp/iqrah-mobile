@@ -27,6 +27,7 @@ mod tests {
                 Node {
                     id: "word_1".to_string(),
                     node_type: NodeType::WordInstance,
+                    knowledge_node: None,
                 },
             );
 
@@ -35,6 +36,7 @@ mod tests {
                 Node {
                     id: "word_2".to_string(),
                     node_type: NodeType::WordInstance,
+                    knowledge_node: None,
                 },
             );
 

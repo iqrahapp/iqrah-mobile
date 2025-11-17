@@ -7,7 +7,8 @@ use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
     Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge,
-    ImportedNode, InstalledPackage, Language, Node, NodeType, PackageType, Translator, Verse, Word,
+    ImportedNode, InstalledPackage, KnowledgeNode, Language, Node, NodeType, PackageType,
+    Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
@@ -20,6 +21,22 @@ impl SqliteContentRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
+
+    /// Helper to construct a Node from a NodeRow, parsing knowledge_node if applicable
+    fn node_from_row(row: NodeRow) -> Node {
+        let node_type = NodeType::from(row.node_type.clone());
+        let knowledge_node = if node_type == NodeType::Knowledge {
+            KnowledgeNode::parse(&row.id)
+        } else {
+            None
+        };
+
+        Node {
+            id: row.id,
+            node_type,
+            knowledge_node,
+        }
+    }
 }
 
 #[async_trait]
@@ -31,10 +48,7 @@ impl ContentRepository for SqliteContentRepository {
                 .fetch_optional(&self.pool)
                 .await?;
 
-        Ok(row.map(|r| Node {
-            id: r.id,
-            node_type: NodeType::from(r.node_type),
-        }))
+        Ok(row.map(Self::node_from_row))
     }
 
     async fn get_edges_from(&self, source_id: &str) -> anyhow::Result<Vec<Edge>> {
@@ -134,13 +148,7 @@ impl ContentRepository for SqliteContentRepository {
             .fetch_all(&self.pool)
             .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| Node {
-                id: r.id,
-                node_type: NodeType::from(r.node_type),
-            })
-            .collect())
+        Ok(rows.into_iter().map(Self::node_from_row).collect())
     }
 
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>> {
@@ -153,13 +161,7 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
-            .into_iter()
-            .map(|r| Node {
-                id: r.id,
-                node_type: NodeType::from(r.node_type),
-            })
-            .collect())
+        Ok(rows.into_iter().map(Self::node_from_row).collect())
     }
 
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()> {
@@ -253,10 +255,7 @@ impl ContentRepository for SqliteContentRepository {
                 .await?;
 
                 for row in rows {
-                    word_ids.push(Node {
-                        id: row.id,
-                        node_type: NodeType::from(row.node_type),
-                    });
+                    word_ids.push(Self::node_from_row(row));
                 }
             }
         }
@@ -293,10 +292,7 @@ impl ContentRepository for SqliteContentRepository {
             .fetch_optional(&self.pool)
             .await?;
 
-            row.map(|r| Node {
-                id: r.id,
-                node_type: NodeType::from(r.node_type),
-            })
+            row.map(Self::node_from_row)
         } else {
             prev_word
         };
@@ -316,10 +312,7 @@ impl ContentRepository for SqliteContentRepository {
             .fetch_optional(&self.pool)
             .await?;
 
-            row.map(|r| Node {
-                id: r.id,
-                node_type: NodeType::from(r.node_type),
-            })
+            row.map(Self::node_from_row)
         } else {
             next_word
         };
