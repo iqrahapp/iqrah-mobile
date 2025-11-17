@@ -38,12 +38,16 @@ jobs:
       run: |
         mkdir -p rust/data
 
+    - name: Download and extract knowledge graph release
+      run: |
+        ./scripts/download-graph-release.sh v1.1.0 assets
+
     - name: Import CBOR graph data
       run: |
         cd rust
         export CONTENT_DB_PATH="./data/content.db"
         export USER_DB_PATH="./data/user.db"
-        ./target/release/iqrah import ../assets/iqrah-graph-v1.0.0.cbor.zst
+        ./target/release/iqrah import ../assets/knowledge-graph.cbor.zst
 
     - name: Start iqrah-server in background
       run: |
