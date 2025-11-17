@@ -4,3 +4,6 @@ pub mod api;
 
 // Re-export for FRB
 pub use api::*;
+
+// Re-export types needed by generated code
+pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
