@@ -9,7 +9,6 @@ use iqrah_storage::{
 };
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
-use tracing_subscriber;
 
 mod http;
 mod protocol;
