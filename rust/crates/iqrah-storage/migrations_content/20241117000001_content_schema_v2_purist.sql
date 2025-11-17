@@ -161,11 +161,14 @@ CREATE TABLE translators (
     license TEXT,
     website TEXT,
     version TEXT DEFAULT '1.0',
+    package_id TEXT,                     -- Link to content_packages (NULL for built-in translators)
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    FOREIGN KEY (language_code) REFERENCES languages(language_code)
+    FOREIGN KEY (language_code) REFERENCES languages(language_code),
+    FOREIGN KEY (package_id) REFERENCES content_packages(package_id) ON DELETE CASCADE
 ) STRICT;
 
 CREATE INDEX idx_translators_language ON translators(language_code);
+CREATE INDEX idx_translators_package ON translators(package_id);
 CREATE INDEX idx_translators_slug ON translators(slug);
 
 -- Verse Translations

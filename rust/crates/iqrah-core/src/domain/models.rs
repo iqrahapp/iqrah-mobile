@@ -256,6 +256,7 @@ pub struct Translator {
     pub language_code: String,
     pub description: Option<String>,
     pub license: Option<String>,
+    pub package_id: Option<String>,  // Link to content package (None for built-in translators)
 }
 
 // ===== Echo Recall Exercise Models =====

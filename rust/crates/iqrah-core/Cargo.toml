@@ -20,6 +20,11 @@ ciborium = "0.2"
 zstd = "0.13"
 serde_path_to_error = "0.1"
 
+# Package management
+reqwest = "0.12"
+sha2 = "0.10"
+sqlx = { workspace = true }
+
 [dev-dependencies]
 mockall = "0.13"
 proptest = "1.0"

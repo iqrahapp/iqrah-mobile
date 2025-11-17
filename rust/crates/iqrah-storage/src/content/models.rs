@@ -119,6 +119,7 @@ pub struct TranslatorRow {
     pub license: Option<String>,
     pub website: Option<String>,
     pub version: String,
+    pub package_id: Option<String>,
     #[allow(dead_code)]
     pub created_at: i64,
 }

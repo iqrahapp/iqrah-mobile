@@ -518,7 +518,7 @@ impl ContentRepository for SqliteContentRepository {
     ) -> anyhow::Result<Vec<Translator>> {
         let rows = query_as::<_, TranslatorRow>(
             "SELECT translator_id, slug, full_name, language_code, description, copyright_holder,
-                    license, website, version, created_at
+                    license, website, version, package_id, created_at
              FROM translators
              WHERE language_code = ?
              ORDER BY full_name",
@@ -536,6 +536,7 @@ impl ContentRepository for SqliteContentRepository {
                 language_code: r.language_code,
                 description: r.description,
                 license: r.license,
+                package_id: r.package_id,
             })
             .collect())
     }
@@ -543,7 +544,7 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_translator(&self, translator_id: i32) -> anyhow::Result<Option<Translator>> {
         let row = query_as::<_, TranslatorRow>(
             "SELECT translator_id, slug, full_name, language_code, description, copyright_holder,
-                    license, website, version, created_at
+                    license, website, version, package_id, created_at
              FROM translators
              WHERE translator_id = ?",
         )
@@ -558,13 +559,14 @@ impl ContentRepository for SqliteContentRepository {
             language_code: r.language_code,
             description: r.description,
             license: r.license,
+            package_id: r.package_id,
         }))
     }
 
     async fn get_translator_by_slug(&self, slug: &str) -> anyhow::Result<Option<Translator>> {
         let row = query_as::<_, TranslatorRow>(
             "SELECT translator_id, slug, full_name, language_code, description, copyright_holder,
-                    license, website, version, created_at
+                    license, website, version, package_id, created_at
              FROM translators
              WHERE slug = ?",
         )
@@ -579,6 +581,7 @@ impl ContentRepository for SqliteContentRepository {
             language_code: r.language_code,
             description: r.description,
             license: r.license,
+            package_id: r.package_id,
         }))
     }
 
@@ -628,10 +631,11 @@ impl ContentRepository for SqliteContentRepository {
         license: Option<&str>,
         website: Option<&str>,
         version: Option<&str>,
+        package_id: Option<&str>,
     ) -> anyhow::Result<i32> {
         let result = query(
-            "INSERT INTO translators (slug, full_name, language_code, description, copyright_holder, license, website, version)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO translators (slug, full_name, language_code, description, copyright_holder, license, website, version, package_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(slug)
         .bind(full_name)
@@ -641,6 +645,7 @@ impl ContentRepository for SqliteContentRepository {
         .bind(license)
         .bind(website)
         .bind(version)
+        .bind(package_id)
         .execute(&self.pool)
         .await?;
 
