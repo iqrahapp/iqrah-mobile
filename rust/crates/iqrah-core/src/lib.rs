@@ -1,5 +1,6 @@
 pub mod cbor_import;
 pub mod domain;
+pub mod exercises;
 pub mod import;
 pub mod ports;
 pub mod services;
@@ -43,6 +44,8 @@ pub use domain::{
 pub use ports::{ContentRepository, UserRepository};
 
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
+
+pub use exercises::{ExerciseService, ExerciseResponse};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
 

@@ -162,6 +162,12 @@ async fn handle_command(
             axis,
             is_high_yield_mode,
         } => handle_get_due_items(user_id, limit, axis, is_high_yield_mode, app_state).await,
+        Command::GenerateExercise { node_id, axis } => {
+            handle_generate_exercise(&node_id, axis, app_state).await
+        }
+        Command::CheckAnswer { node_id, answer } => {
+            handle_check_answer(&node_id, &answer, app_state).await
+        }
     }
 }
 
@@ -704,6 +710,74 @@ async fn handle_get_due_items(
     vec![Event::DueItems {
         items: serialized_items,
     }]
+}
+
+/// Generate an exercise for a node (Phase 4.3)
+async fn handle_generate_exercise(
+    node_id: &str,
+    axis: Option<String>,
+    app_state: &AppState,
+) -> Vec<Event> {
+    use iqrah_core::KnowledgeAxis;
+
+    // Generate exercise (with optional axis override)
+    let exercise_result = if let Some(axis_str) = axis {
+        // Parse axis and generate for specific axis
+        if let Some(axis_enum) = KnowledgeAxis::from_str(&axis_str) {
+            app_state
+                .exercise_service
+                .generate_exercise_for_axis(node_id, axis_enum)
+                .await
+        } else {
+            return vec![Event::Error {
+                message: format!("Invalid axis: {}", axis_str),
+            }];
+        }
+    } else {
+        // Auto-detect axis from node ID
+        app_state.exercise_service.generate_exercise(node_id).await
+    };
+
+    match exercise_result {
+        Ok(exercise_type) => {
+            let exercise = exercise_type.as_exercise();
+            vec![Event::ExerciseGenerated {
+                node_id: node_id.to_string(),
+                exercise_type: exercise.get_type_name().to_string(),
+                question: exercise.generate_question(),
+                hint: exercise.get_hint(),
+            }]
+        }
+        Err(e) => vec![Event::Error {
+            message: format!("Failed to generate exercise: {}", e),
+        }],
+    }
+}
+
+/// Check answer for an exercise (Phase 4.3)
+async fn handle_check_answer(
+    node_id: &str,
+    answer: &str,
+    app_state: &AppState,
+) -> Vec<Event> {
+    // Generate exercise first (we need it to check the answer)
+    let exercise_result = app_state.exercise_service.generate_exercise(node_id).await;
+
+    match exercise_result {
+        Ok(exercise_type) => {
+            let exercise = exercise_type.as_exercise();
+            let response = app_state.exercise_service.check_answer(exercise, answer);
+
+            vec![Event::AnswerChecked {
+                is_correct: response.is_correct,
+                hint: response.hint,
+                correct_answer: response.correct_answer,
+            }]
+        }
+        Err(e) => vec![Event::Error {
+            message: format!("Failed to check answer: {}", e),
+        }],
+    }
 }
 
 /// Helper to send an event to the client
