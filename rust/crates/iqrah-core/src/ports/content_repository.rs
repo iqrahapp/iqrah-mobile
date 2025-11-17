@@ -1,9 +1,15 @@
-use crate::domain::{Edge, ImportedEdge, ImportedNode, Node, NodeType};
+use crate::domain::{
+    Chapter, Edge, ImportedEdge, ImportedNode, Language, Node, NodeType, Translator, Verse, Word,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
 #[async_trait]
 pub trait ContentRepository: Send + Sync {
+    // ========================================================================
+    // V1 Methods (Legacy - for backward compatibility with graph-based system)
+    // ========================================================================
+
     /// Get a node by ID
     async fn get_node(&self, node_id: &str) -> anyhow::Result<Option<Node>>;
 
@@ -46,4 +52,58 @@ pub trait ContentRepository: Send + Sync {
         &self,
         word_node_id: &str,
     ) -> anyhow::Result<(Option<Node>, Option<Node>)>;
+
+    // ========================================================================
+    // V2 Methods (Purist relational schema - domain-specific queries)
+    // ========================================================================
+
+    /// Get a chapter by its number (1-114)
+    async fn get_chapter(&self, chapter_number: i32) -> anyhow::Result<Option<Chapter>>;
+
+    /// Get all chapters
+    async fn get_chapters(&self) -> anyhow::Result<Vec<Chapter>>;
+
+    /// Get a verse by its key (e.g., "1:1", "2:255")
+    async fn get_verse(&self, verse_key: &str) -> anyhow::Result<Option<Verse>>;
+
+    /// Get all verses for a chapter
+    async fn get_verses_for_chapter(&self, chapter_number: i32) -> anyhow::Result<Vec<Verse>>;
+
+    /// Get all words for a verse (ordered by position)
+    async fn get_words_for_verse(&self, verse_key: &str) -> anyhow::Result<Vec<Word>>;
+
+    /// Get a specific word by ID
+    async fn get_word(&self, word_id: i32) -> anyhow::Result<Option<Word>>;
+
+    /// Get all available languages
+    async fn get_languages(&self) -> anyhow::Result<Vec<Language>>;
+
+    /// Get a specific language by code
+    async fn get_language(&self, code: &str) -> anyhow::Result<Option<Language>>;
+
+    /// Get all translators for a given language
+    async fn get_translators_for_language(
+        &self,
+        language_code: &str,
+    ) -> anyhow::Result<Vec<Translator>>;
+
+    /// Get a translator by ID
+    async fn get_translator(&self, translator_id: i32) -> anyhow::Result<Option<Translator>>;
+
+    /// Get a translator by slug
+    async fn get_translator_by_slug(&self, slug: &str) -> anyhow::Result<Option<Translator>>;
+
+    /// Get verse translation for a specific translator
+    async fn get_verse_translation(
+        &self,
+        verse_key: &str,
+        translator_id: i32,
+    ) -> anyhow::Result<Option<String>>;
+
+    /// Get word translation for a specific translator
+    async fn get_word_translation(
+        &self,
+        word_id: i32,
+        translator_id: i32,
+    ) -> anyhow::Result<Option<String>>;
 }
