@@ -150,6 +150,8 @@ class KnowledgeEdgeManager:
         """
         Add a knowledge propagation edge, ensuring knowledge axis nodes exist.
 
+        If the edge already exists, it will be silently skipped.
+
         Args:
             source: Source node ID (e.g., "VERSE:1:2:memorization")
             target: Target node ID
@@ -157,14 +159,15 @@ class KnowledgeEdgeManager:
             **attributes: Additional edge attributes
 
         Raises:
-            ValueError: If edge already exists or if node format/type is invalid
+            ValueError: If node format/type is invalid
             RuntimeError: If graph is already compiled
         """
         if self._is_compiled:
             raise RuntimeError("Cannot add edges after compilation")
 
+        # Skip if edge already exists (can happen when multiple edge builders add same edge)
         if self.G.has_edge(source, target):
-            raise ValueError(f"Edge already exists between {source} and {target}")
+            return
 
         self._ensure_knowledge_node(source)
         self._ensure_knowledge_node(target)

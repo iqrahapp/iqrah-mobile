@@ -24,6 +24,9 @@ setup(
         "numpy",
         "scipy",
         "beautifulsoup4",
+        "cbor2",
+        "zstandard",
+        "pyyaml",
     ],
     entry_points={
         "console_scripts": [

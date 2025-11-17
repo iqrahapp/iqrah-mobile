@@ -138,8 +138,8 @@ class QuranGraphBuilder:
             prev_verse_id = NodeIdentifierGenerator.for_verse(prev_verse)
             self.edges.register(verse_id, prev_verse_id, EdgeType.DEPENDENCY)
 
-        # Process all words except the last one (typically end marker)
-        for word_idx, word in enumerate(verse.words[:-1]):
+        # Process all words (filtering is handled by _should_process_word)
+        for word_idx, word in enumerate(verse.words):
             if self._should_process_word(word):
                 self._process_word(word, verse, word_idx, verse_id, chapter.id, corpus)
 
