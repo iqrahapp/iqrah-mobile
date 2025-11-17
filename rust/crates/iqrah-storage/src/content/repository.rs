@@ -809,14 +809,18 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
+        rows
             .into_iter()
-            .map(|r| InstalledPackage {
-                package_id: r.package_id,
-                installed_at: DateTime::from_timestamp(r.installed_at, 0).unwrap_or(Utc::now()),
-                enabled: r.enabled != 0,
+            .map(|r| {
+                DateTime::from_timestamp(r.installed_at, 0)
+                    .map(|dt| InstalledPackage {
+                        package_id: r.package_id,
+                        installed_at: dt,
+                        enabled: r.enabled != 0,
+                    })
+                    .ok_or_else(|| anyhow::anyhow!("Invalid installed_at timestamp: {}", r.installed_at))
             })
-            .collect())
+            .collect()
     }
 
     async fn is_package_installed(&self, package_id: &str) -> anyhow::Result<bool> {
@@ -878,13 +882,17 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
+        rows
             .into_iter()
-            .map(|r| InstalledPackage {
-                package_id: r.package_id,
-                installed_at: DateTime::from_timestamp(r.installed_at, 0).unwrap_or(Utc::now()),
-                enabled: true,
+            .map(|r| {
+                DateTime::from_timestamp(r.installed_at, 0)
+                    .map(|dt| InstalledPackage {
+                        package_id: r.package_id,
+                        installed_at: dt,
+                        enabled: true,
+                    })
+                    .ok_or_else(|| anyhow::anyhow!("Invalid installed_at timestamp: {}", r.installed_at))
             })
-            .collect())
+            .collect()
     }
 }

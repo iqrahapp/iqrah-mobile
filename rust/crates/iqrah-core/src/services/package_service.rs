@@ -159,7 +159,7 @@ impl PackageService {
             )
             .await?;
 
-        // 3. Import verse translations from package
+        // 2. Import verse translations from package
         let translations: Vec<(String, String)> = sqlx::query_as(
             "SELECT verse_key, translation FROM verse_translations ORDER BY verse_key",
         )
@@ -167,7 +167,7 @@ impl PackageService {
         .await
         .context("Failed to read translations from package")?;
 
-        // 4. Batch insert translations
+        // 3. Batch insert translations
         for (verse_key, translation) in translations {
             self.content_repo
                 .insert_verse_translation(&verse_key, translator_id, &translation, None)
@@ -179,28 +179,15 @@ impl PackageService {
 
     /// Uninstall a package (removes all associated data)
     pub async fn uninstall_package(&self, package_id: &str) -> Result<()> {
-        // Get package to determine type
-        let package = self
-            .content_repo
-            .get_package(package_id)
-            .await?
-            .context("Package not found")?;
-
-        match package.package_type {
-            PackageType::VerseTranslation => {
-                // Delete translator (CASCADE will delete verse_translations)
-                // This requires a raw SQL query since we don't have a delete_translator method
-                // For now, we'll use mark_package_uninstalled which should trigger CASCADE
-            }
-            _ => {
-                // Other types TBD
-            }
-        }
-
-        // Mark as uninstalled
+        // First mark as uninstalled
         self.content_repo
             .mark_package_uninstalled(package_id)
             .await?;
+
+        // Then delete the package from catalog
+        // This will CASCADE delete translators and all verse_translations
+        // due to the foreign key constraints in the schema
+        self.content_repo.delete_package(package_id).await?;
 
         Ok(())
     }
