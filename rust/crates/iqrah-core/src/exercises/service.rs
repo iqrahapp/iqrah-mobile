@@ -2,6 +2,7 @@
 // Exercise service for generating axis-specific exercises
 
 use super::grammar::IdentifyRootExercise;
+use super::graph::CrossVerseConnectionExercise;
 use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
 use super::translation::{ContextualTranslationExercise, TranslationExercise};
@@ -166,6 +167,18 @@ impl ExerciseService {
                 (exercise as &dyn std::any::Any)
                     .downcast_ref::<ContextualTranslationExercise>()
                     .map(|ctx_trans| ctx_trans.get_options().to_vec())
+            })
+            .or_else(|| {
+                (exercise as &dyn std::any::Any)
+                    .downcast_ref::<CrossVerseConnectionExercise>()
+                    .map(|graph_ex| {
+                        // Convert (verse_key, text) pairs to just verse_key strings
+                        graph_ex
+                            .get_options()
+                            .iter()
+                            .map(|(key, _)| key.clone())
+                            .collect()
+                    })
             });
 
         // Get semantic grading metadata for TranslationExercise or MemorizationExercise
