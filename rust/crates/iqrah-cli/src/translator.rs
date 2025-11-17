@@ -1,5 +1,9 @@
 use anyhow::Result;
+use iqrah_core::{import_translators_from_json, ContentRepository};
+use iqrah_storage::{content::init_content_db, content::SqliteContentRepository};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 struct Language {
@@ -153,6 +157,49 @@ pub async fn get_translation(
     println!("📝 Verse {} (Translator ID: {}):", verse_key, translator_id);
     println!();
     println!("  {}", response.translation);
+
+    Ok(())
+}
+
+/// Import translators from JSON file (direct database access, no server required)
+pub async fn import_translators(metadata_file: &str, translations_base: &str) -> Result<()> {
+    println!("📥 Importing translators from: {}", metadata_file);
+    println!("   Translations base path: {}", translations_base);
+    println!();
+
+    // Get database path from environment or use default
+    let content_db_path =
+        std::env::var("CONTENT_DB_PATH").unwrap_or_else(|_| "data/content.db".to_string());
+
+    println!("   Using content database: {}", content_db_path);
+    println!();
+
+    // Initialize database
+    let content_pool = init_content_db(&content_db_path).await?;
+    let content_repo: Arc<dyn ContentRepository> =
+        Arc::new(SqliteContentRepository::new(content_pool));
+
+    // Import translators
+    let stats = import_translators_from_json(
+        content_repo,
+        Path::new(metadata_file),
+        Path::new(translations_base),
+    )
+    .await?;
+
+    // Print results
+    println!("✅ Import Complete!");
+    println!();
+    println!("   Translators imported: {}", stats.translators_imported);
+    println!("   Translations imported: {}", stats.translations_imported);
+
+    if !stats.errors.is_empty() {
+        println!();
+        println!("⚠️  Errors encountered:");
+        for error in &stats.errors {
+            println!("   - {}", error);
+        }
+    }
 
     Ok(())
 }

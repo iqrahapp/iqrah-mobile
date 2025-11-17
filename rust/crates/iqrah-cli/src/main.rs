@@ -105,6 +105,13 @@ enum TranslatorCommands {
         /// Translator ID
         translator_id: i32,
     },
+    /// Import translators from JSON file
+    Import {
+        /// Path to translator metadata JSON file
+        metadata_file: String,
+        /// Base path for translation files
+        translations_base: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -235,6 +242,12 @@ async fn main() -> Result<()> {
                 translator_id,
             } => {
                 translator::get_translation(&cli.server, &verse_key, translator_id).await?;
+            }
+            TranslatorCommands::Import {
+                metadata_file,
+                translations_base,
+            } => {
+                translator::import_translators(&metadata_file, &translations_base).await?;
             }
         },
     }
