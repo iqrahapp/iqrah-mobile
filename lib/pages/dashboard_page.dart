@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/pages/excercise_page.dart';
 import 'package:iqrah/pages/sandbox_page.dart';
+import 'package:iqrah/pages/settings_page.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/widgets/debug_panel.dart';
@@ -19,6 +20,15 @@ class DashboardPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Iqrah MVP'),
         actions: [
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Sandbox',
             icon: const Icon(Icons.science_outlined),

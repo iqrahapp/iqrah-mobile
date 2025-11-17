@@ -106,4 +106,28 @@ pub trait ContentRepository: Send + Sync {
         word_id: i32,
         translator_id: i32,
     ) -> anyhow::Result<Option<String>>;
+
+    // ===== Import/Insert Methods =====
+
+    /// Insert a new translator
+    async fn insert_translator(
+        &self,
+        slug: &str,
+        full_name: &str,
+        language_code: &str,
+        description: Option<&str>,
+        copyright_holder: Option<&str>,
+        license: Option<&str>,
+        website: Option<&str>,
+        version: Option<&str>,
+    ) -> anyhow::Result<i32>;
+
+    /// Insert or update a verse translation
+    async fn insert_verse_translation(
+        &self,
+        verse_key: &str,
+        translator_id: i32,
+        translation: &str,
+        footnotes: Option<&str>,
+    ) -> anyhow::Result<()>;
 }

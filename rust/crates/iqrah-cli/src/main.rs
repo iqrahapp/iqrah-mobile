@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 
 mod debug;
 mod exercise;
+mod translator;
 
 /// Iqrah CLI - Development and testing tool for the Iqrah learning system
 #[derive(Parser)]
@@ -28,6 +29,11 @@ enum Commands {
     Exercise {
         #[command(subcommand)]
         command: ExerciseCommands,
+    },
+    /// Translator management commands
+    Translator {
+        #[command(subcommand)]
+        command: TranslatorCommands,
     },
 }
 
@@ -63,6 +69,48 @@ enum DebugCommands {
         node_id: String,
         /// Review grade (Again, Hard, Good, Easy)
         grade: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum TranslatorCommands {
+    /// List all available languages
+    ListLanguages,
+    /// List translators for a language
+    ListTranslators {
+        /// Language code (e.g., 'en', 'ar')
+        language_code: String,
+    },
+    /// Get translator details by ID
+    GetTranslator {
+        /// Translator ID
+        translator_id: i32,
+    },
+    /// Get user's preferred translator
+    GetPreferred {
+        /// User ID
+        user_id: String,
+    },
+    /// Set user's preferred translator
+    SetPreferred {
+        /// User ID
+        user_id: String,
+        /// Translator ID
+        translator_id: i32,
+    },
+    /// Get verse translation for specific translator
+    GetTranslation {
+        /// Verse key (e.g., '1:1')
+        verse_key: String,
+        /// Translator ID
+        translator_id: i32,
+    },
+    /// Import translators from JSON file
+    Import {
+        /// Path to translator metadata JSON file
+        metadata_file: String,
+        /// Base path for translation files
+        translations_base: String,
     },
 }
 
@@ -170,6 +218,38 @@ async fn main() -> Result<()> {
                 }
             }
         }
+        Commands::Translator { command } => match command {
+            TranslatorCommands::ListLanguages => {
+                translator::list_languages(&cli.server).await?;
+            }
+            TranslatorCommands::ListTranslators { language_code } => {
+                translator::list_translators(&cli.server, &language_code).await?;
+            }
+            TranslatorCommands::GetTranslator { translator_id } => {
+                translator::get_translator(&cli.server, translator_id).await?;
+            }
+            TranslatorCommands::GetPreferred { user_id } => {
+                translator::get_preferred(&cli.server, &user_id).await?;
+            }
+            TranslatorCommands::SetPreferred {
+                user_id,
+                translator_id,
+            } => {
+                translator::set_preferred(&cli.server, &user_id, translator_id).await?;
+            }
+            TranslatorCommands::GetTranslation {
+                verse_key,
+                translator_id,
+            } => {
+                translator::get_translation(&cli.server, &verse_key, translator_id).await?;
+            }
+            TranslatorCommands::Import {
+                metadata_file,
+                translations_base,
+            } => {
+                translator::import_translators(&metadata_file, &translations_base).await?;
+            }
+        },
     }
 
     Ok(())

@@ -614,4 +614,57 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(row.map(|r| r.translation))
     }
+
+    async fn insert_translator(
+        &self,
+        slug: &str,
+        full_name: &str,
+        language_code: &str,
+        description: Option<&str>,
+        copyright_holder: Option<&str>,
+        license: Option<&str>,
+        website: Option<&str>,
+        version: Option<&str>,
+    ) -> anyhow::Result<i32> {
+        let result = query(
+            "INSERT INTO translators (slug, full_name, language_code, description, copyright_holder, license, website, version)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(slug)
+        .bind(full_name)
+        .bind(language_code)
+        .bind(description)
+        .bind(copyright_holder)
+        .bind(license)
+        .bind(website)
+        .bind(version)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.last_insert_rowid() as i32)
+    }
+
+    async fn insert_verse_translation(
+        &self,
+        verse_key: &str,
+        translator_id: i32,
+        translation: &str,
+        footnotes: Option<&str>,
+    ) -> anyhow::Result<()> {
+        query(
+            "INSERT INTO verse_translations (verse_key, translator_id, translation, footnotes)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(verse_key, translator_id) DO UPDATE SET
+                translation = excluded.translation,
+                footnotes = excluded.footnotes",
+        )
+        .bind(verse_key)
+        .bind(translator_id)
+        .bind(translation)
+        .bind(footnotes)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }
