@@ -51,9 +51,9 @@ pub use ports::{ContentRepository, UserRepository};
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
 pub use exercises::{
-    ClozeDeletionExercise, CrossVerseConnectionExercise, ExerciseResponse, ExerciseService,
-    FirstLetterHintExercise, IdentifyRootExercise, McqExercise, MissingWordMcqExercise,
-    NextWordDifficulty, NextWordMcqExercise,
+    AyahSequenceExercise, ClozeDeletionExercise, CrossVerseConnectionExercise, ExerciseResponse,
+    ExerciseService, FirstLetterHintExercise, IdentifyRootExercise, McqExercise,
+    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise,
 };
 
 pub use semantic::{

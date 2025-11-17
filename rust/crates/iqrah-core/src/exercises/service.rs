@@ -1,6 +1,7 @@
 // exercises/service.rs
 // Exercise service for generating axis-specific exercises
 
+use super::ayah_sequence::AyahSequenceExercise;
 use super::grammar::IdentifyRootExercise;
 use super::graph::CrossVerseConnectionExercise;
 use super::mcq::McqExercise;
@@ -174,6 +175,18 @@ impl ExerciseService {
                     .map(|graph_ex| {
                         // Convert (verse_key, text) pairs to just verse_key strings
                         graph_ex
+                            .get_options()
+                            .iter()
+                            .map(|(key, _)| key.clone())
+                            .collect()
+                    })
+            })
+            .or_else(|| {
+                (exercise as &dyn std::any::Any)
+                    .downcast_ref::<AyahSequenceExercise>()
+                    .map(|ayah_ex| {
+                        // Convert (verse_key, text) pairs to just verse_key strings
+                        ayah_ex
                             .get_options()
                             .iter()
                             .map(|(key, _)| key.clone())

@@ -1,6 +1,7 @@
 // exercises/mod.rs
 // Phase 4.3: Axis-Specific Exercise Generation
 
+mod ayah_sequence;
 mod grammar;
 mod graph;
 mod mcq;
@@ -9,6 +10,7 @@ mod service;
 mod translation;
 mod types;
 
+pub use ayah_sequence::AyahSequenceExercise;
 pub use grammar::IdentifyRootExercise;
 pub use graph::CrossVerseConnectionExercise;
 pub use mcq::{McqExercise, McqType};
