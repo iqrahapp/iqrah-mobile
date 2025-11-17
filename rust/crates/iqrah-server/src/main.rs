@@ -65,6 +65,21 @@ async fn main() -> anyhow::Result<()> {
 
     let exercise_service = Arc::new(ExerciseService::new(Arc::clone(&content_repo)));
 
+    // Initialize semantic grading model
+    tracing::info!("Initializing semantic grading model...");
+    let model_path = std::env::var("SEMANTIC_MODEL_PATH")
+        .unwrap_or_else(|_| "minishlab/potion-base-8M".to_string());
+
+    match ExerciseService::init_semantic_model(&model_path) {
+        Ok(_) => tracing::info!("✅ Semantic grading model initialized successfully"),
+        Err(e) => {
+            tracing::error!("❌ Failed to initialize semantic model: {}", e);
+            tracing::error!("Model path: {}", model_path);
+            tracing::error!("Set SEMANTIC_MODEL_PATH environment variable to use a different model");
+            return Err(e);
+        }
+    }
+
     // Create app state
     let app_state = Arc::new(AppState {
         content_repo,

@@ -116,8 +116,7 @@ impl ExerciseService {
     }
 
     /// Check an answer for an exercise
-    /// For MCQ exercises, also includes the options
-    /// For TranslationExercise with semantic grading, includes semantic metadata
+    /// Returns ExerciseResponse with semantic grading metadata for Translation/Memorization exercises
     pub fn check_answer(&self, exercise: &dyn Exercise, answer: &str) -> ExerciseResponse {
         let is_correct = exercise.check_answer(answer);
 
@@ -128,23 +127,35 @@ impl ExerciseService {
             None
         };
 
-        // Try to get semantic grading metadata for TranslationExercise
+        // Get semantic grading metadata for TranslationExercise or MemorizationExercise
+        let embedder = SEMANTIC_EMBEDDER
+            .get()
+            .expect("Semantic embedder not initialized");
+        let grader = SemanticGrader::new(embedder);
+
         let (semantic_grade, similarity_score) = if let Some(translation_ex) =
-            (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>() {
-            // Only compute semantic grading if embedder is available
-            if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
-                let grader = SemanticGrader::new(embedder);
-                match grader.grade_answer(answer, translation_ex.get_translation()) {
-                    Ok(grade) => {
-                        (Some(grade.label.to_str().to_string()), Some(grade.similarity))
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to get semantic grading metadata: {}", e);
-                        (None, None)
-                    }
+            (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>()
+        {
+            match grader.grade_answer(answer, translation_ex.get_translation()) {
+                Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                Err(e) => {
+                    tracing::error!("Semantic grading failed for TranslationExercise: {}", e);
+                    (None, None)
                 }
-            } else {
-                (None, None)
+            }
+        } else if let Some(memorization_ex) =
+            (exercise as &dyn std::any::Any).downcast_ref::<MemorizationExercise>()
+        {
+            // For memorization, grade the normalized Arabic text
+            let normalized_answer = MemorizationExercise::normalize_arabic(answer);
+            let normalized_correct = MemorizationExercise::normalize_arabic(memorization_ex.get_word_text());
+
+            match grader.grade_answer(&normalized_answer, &normalized_correct) {
+                Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                Err(e) => {
+                    tracing::error!("Semantic grading failed for MemorizationExercise: {}", e);
+                    (None, None)
+                }
             }
         } else {
             (None, None)
@@ -153,8 +164,7 @@ impl ExerciseService {
         ExerciseResponse {
             is_correct,
             correct_answer: if !is_correct {
-                // In a real implementation, we might want to show the correct answer
-                // For now, we don't reveal it to encourage learning
+                // Don't reveal correct answer to encourage learning
                 None
             } else {
                 None

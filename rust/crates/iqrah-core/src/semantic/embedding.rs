@@ -1,5 +1,21 @@
 // semantic/embedding.rs
 // Wrapper for model2vec BGE-M3 embeddings
+//
+// ## Model Caching Behavior
+//
+// model2vec-rs automatically caches downloaded models:
+// - **Download Once**: Models are downloaded to HuggingFace cache (~/.cache/huggingface/)
+// - **Reuse Cached**: Subsequent calls use cached files (no re-download)
+// - **Load Once**: This embedder is wrapped in OnceCell (see grader.rs)
+//   - Loaded only ONCE at app startup
+//   - Shared across all exercises
+//   - Stays in RAM for the application lifetime
+// - **No Re-loading**: The model is never reloaded unless the app restarts
+//
+// Performance:
+// - First download: ~30-60 seconds (downloads model files)
+// - Subsequent startups: ~1-3 seconds (loads from cache)
+// - Per-exercise cost: ~0ms (singleton already in RAM)
 
 use anyhow::{Context, Result};
 use model2vec_rs::model::StaticModel;
@@ -7,6 +23,9 @@ use std::sync::Arc;
 
 /// Semantic embedder using model2vec with BGE-M3
 /// Provides text embedding and similarity computation
+///
+/// This embedder is designed to be loaded once and shared across all exercises.
+/// See SEMANTIC_EMBEDDER in grader.rs for the singleton instance.
 pub struct SemanticEmbedder {
     model: Arc<StaticModel>,
 }
@@ -15,19 +34,25 @@ impl SemanticEmbedder {
     /// Create a new embedder by loading a model from the specified path or Hugging Face repo
     ///
     /// # Arguments
-    /// * `model_path` - Path to local model or Hugging Face model ID (e.g., "BAAI/bge-m3")
+    /// * `model_path` - Path to local model or Hugging Face model ID (e.g., "minishlab/potion-base-8M")
+    ///
+    /// # Caching
+    /// - HuggingFace models are cached in `~/.cache/huggingface/hub/`
+    /// - Only downloaded once (first call)
+    /// - Subsequent calls load from cache (much faster)
     ///
     /// # Returns
     /// A new SemanticEmbedder instance, or an error if the model fails to load
     pub fn new(model_path: &str) -> Result<Self> {
         tracing::info!("Loading semantic model from: {}", model_path);
+        tracing::info!("Note: First download may take 30-60 seconds. Subsequent loads are fast (<3s).");
 
         // Load model from path (local or HuggingFace)
-        // No token, no normalize override, no subfolder
+        // model2vec-rs handles caching automatically
         let model = StaticModel::from_pretrained(model_path, None, None, None)
             .context("Failed to load semantic model")?;
 
-        tracing::info!("Semantic model loaded successfully");
+        tracing::info!("✅ Semantic model loaded successfully and ready for inference");
 
         Ok(Self {
             model: Arc::new(model),
