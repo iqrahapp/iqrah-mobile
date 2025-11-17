@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `app`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 
 /// One-time setup: initializes databases and imports graph
 Future<String> setupDatabase({
@@ -83,6 +83,40 @@ Future<List<NodeSearchDto>> searchNodes({
 /// Get available surahs
 Future<List<SurahInfo>> getAvailableSurahs() =>
     RustLib.instance.api.crateApiGetAvailableSurahs();
+
+/// Get all available languages
+Future<List<LanguageDto>> getLanguages() =>
+    RustLib.instance.api.crateApiGetLanguages();
+
+/// Get all translators for a given language
+Future<List<TranslatorDto>> getTranslatorsForLanguage({
+  required String languageCode,
+}) => RustLib.instance.api.crateApiGetTranslatorsForLanguage(
+  languageCode: languageCode,
+);
+
+/// Get a specific translator by ID
+Future<TranslatorDto?> getTranslator({required int translatorId}) =>
+    RustLib.instance.api.crateApiGetTranslator(translatorId: translatorId);
+
+/// Get user's preferred translator ID
+Future<int> getPreferredTranslatorId() =>
+    RustLib.instance.api.crateApiGetPreferredTranslatorId();
+
+/// Set user's preferred translator ID
+Future<String> setPreferredTranslatorId({required int translatorId}) => RustLib
+    .instance
+    .api
+    .crateApiSetPreferredTranslatorId(translatorId: translatorId);
+
+/// Get verse translation for a specific translator
+Future<String?> getVerseTranslationByTranslator({
+  required String verseKey,
+  required int translatorId,
+}) => RustLib.instance.api.crateApiGetVerseTranslationByTranslator(
+  verseKey: verseKey,
+  translatorId: translatorId,
+);
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>>
 abstract class AppState implements RustOpaqueInterface {
@@ -170,17 +204,23 @@ class ExerciseDto {
   final String question;
   final String answer;
   final String nodeType;
+  final String? translatorName;
 
   const ExerciseDto({
     required this.nodeId,
     required this.question,
     required this.answer,
     required this.nodeType,
+    this.translatorName,
   });
 
   @override
   int get hashCode =>
-      nodeId.hashCode ^ question.hashCode ^ answer.hashCode ^ nodeType.hashCode;
+      nodeId.hashCode ^
+      question.hashCode ^
+      answer.hashCode ^
+      nodeType.hashCode ^
+      translatorName.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -190,7 +230,39 @@ class ExerciseDto {
           nodeId == other.nodeId &&
           question == other.question &&
           answer == other.answer &&
-          nodeType == other.nodeType;
+          nodeType == other.nodeType &&
+          translatorName == other.translatorName;
+}
+
+class LanguageDto {
+  final String code;
+  final String englishName;
+  final String nativeName;
+  final String direction;
+
+  const LanguageDto({
+    required this.code,
+    required this.englishName,
+    required this.nativeName,
+    required this.direction,
+  });
+
+  @override
+  int get hashCode =>
+      code.hashCode ^
+      englishName.hashCode ^
+      nativeName.hashCode ^
+      direction.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LanguageDto &&
+          runtimeType == other.runtimeType &&
+          code == other.code &&
+          englishName == other.englishName &&
+          nativeName == other.nativeName &&
+          direction == other.direction;
 }
 
 class NodeSearchDto {
@@ -268,4 +340,43 @@ class SurahInfo {
           runtimeType == other.runtimeType &&
           number == other.number &&
           name == other.name;
+}
+
+class TranslatorDto {
+  final int id;
+  final String slug;
+  final String fullName;
+  final String languageCode;
+  final String? description;
+  final String? license;
+
+  const TranslatorDto({
+    required this.id,
+    required this.slug,
+    required this.fullName,
+    required this.languageCode,
+    this.description,
+    this.license,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      slug.hashCode ^
+      fullName.hashCode ^
+      languageCode.hashCode ^
+      description.hashCode ^
+      license.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TranslatorDto &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          slug == other.slug &&
+          fullName == other.fullName &&
+          languageCode == other.languageCode &&
+          description == other.description &&
+          license == other.license;
 }

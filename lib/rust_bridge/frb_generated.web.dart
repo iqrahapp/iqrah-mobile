@@ -125,6 +125,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_box_autoadd_i_32(dynamic raw);
 
   @protected
+  TranslatorDto dco_decode_box_autoadd_translator_dto(dynamic raw);
+
+  @protected
   DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw);
 
   @protected
@@ -140,7 +143,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
+  LanguageDto dco_decode_language_dto(dynamic raw);
+
+  @protected
   List<ExerciseDto> dco_decode_list_exercise_dto(dynamic raw);
+
+  @protected
+  List<LanguageDto> dco_decode_list_language_dto(dynamic raw);
 
   @protected
   List<NodeSearchDto> dco_decode_list_node_search_dto(dynamic raw);
@@ -158,16 +167,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SurahInfo> dco_decode_list_surah_info(dynamic raw);
 
   @protected
+  List<TranslatorDto> dco_decode_list_translator_dto(dynamic raw);
+
+  @protected
   NodeSearchDto dco_decode_node_search_dto(dynamic raw);
 
   @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
+
+  @protected
+  TranslatorDto? dco_decode_opt_box_autoadd_translator_dto(dynamic raw);
 
   @protected
   SessionPreviewDto dco_decode_session_preview_dto(dynamic raw);
 
   @protected
   SurahInfo dco_decode_surah_info(dynamic raw);
+
+  @protected
+  TranslatorDto dco_decode_translator_dto(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -266,6 +287,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  TranslatorDto sse_decode_box_autoadd_translator_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   DashboardStatsDto sse_decode_dashboard_stats_dto(
     SseDeserializer deserializer,
   );
@@ -283,7 +309,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
+  LanguageDto sse_decode_language_dto(SseDeserializer deserializer);
+
+  @protected
   List<ExerciseDto> sse_decode_list_exercise_dto(SseDeserializer deserializer);
+
+  @protected
+  List<LanguageDto> sse_decode_list_language_dto(SseDeserializer deserializer);
 
   @protected
   List<NodeSearchDto> sse_decode_list_node_search_dto(
@@ -305,10 +337,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SurahInfo> sse_decode_list_surah_info(SseDeserializer deserializer);
 
   @protected
+  List<TranslatorDto> sse_decode_list_translator_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NodeSearchDto sse_decode_node_search_dto(SseDeserializer deserializer);
 
   @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
+
+  @protected
+  TranslatorDto? sse_decode_opt_box_autoadd_translator_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SessionPreviewDto sse_decode_session_preview_dto(
@@ -317,6 +362,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SurahInfo sse_decode_surah_info(SseDeserializer deserializer);
+
+  @protected
+  TranslatorDto sse_decode_translator_dto(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -430,6 +478,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_translator_dto(
+    TranslatorDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_dashboard_stats_dto(
     DashboardStatsDto self,
     SseSerializer serializer,
@@ -448,8 +502,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_language_dto(LanguageDto self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_exercise_dto(
     List<ExerciseDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_language_dto(
+    List<LanguageDto> self,
     SseSerializer serializer,
   );
 
@@ -481,10 +544,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_translator_dto(
+    List<TranslatorDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_node_search_dto(NodeSearchDto self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_translator_dto(
+    TranslatorDto? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_session_preview_dto(
@@ -494,6 +572,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_surah_info(SurahInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_translator_dto(TranslatorDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
