@@ -39,3 +39,4 @@ serde_json = { workspace = true }
 # Utilities
 url = "2.5"
 zstd = "0.13"
+chrono = { workspace = true }
