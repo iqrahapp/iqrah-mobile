@@ -265,10 +265,9 @@ mod tests {
             let filtered: Vec<ContentPackage> = packages
                 .values()
                 .filter(|p| {
-                    let type_match = package_type.as_ref().map_or(true, |t| &p.package_type == t);
-                    let lang_match = language_code.map_or(true, |l| {
-                        p.language_code.as_ref().map_or(false, |code| code == l)
-                    });
+                    let type_match = package_type.as_ref().is_none_or(|t| &p.package_type == t);
+                    let lang_match = language_code
+                        .is_none_or(|l| p.language_code.as_ref().is_some_and(|code| code == l));
                     type_match && lang_match
                 })
                 .cloned()
@@ -463,6 +462,21 @@ mod tests {
                 .filter(|p| p.enabled)
                 .cloned()
                 .collect())
+        }
+
+        async fn get_morphology_for_word(
+            &self,
+            _word_id: i32,
+        ) -> Result<Vec<crate::MorphologySegment>> {
+            Ok(vec![])
+        }
+
+        async fn get_root_by_id(&self, _root_id: &str) -> Result<Option<crate::Root>> {
+            Ok(None)
+        }
+
+        async fn get_lemma_by_id(&self, _lemma_id: &str) -> Result<Option<crate::Lemma>> {
+            Ok(None)
         }
     }
 

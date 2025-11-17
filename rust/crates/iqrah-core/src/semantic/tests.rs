@@ -13,7 +13,7 @@ use super::*;
 fn test_semantic_module_structure() {
     // Just verify the module structure is correct
     // We can't test the actual model without a real model file
-    assert!(true, "Semantic module is properly structured");
+    // Semantic module is properly structured (verified by successful compilation)
 }
 
 #[test]

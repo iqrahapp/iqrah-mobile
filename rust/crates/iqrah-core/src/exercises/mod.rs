@@ -1,12 +1,14 @@
 // exercises/mod.rs
 // Phase 4.3: Axis-Specific Exercise Generation
 
+mod grammar;
 mod mcq;
 mod memorization;
 mod service;
 mod translation;
 mod types;
 
+pub use grammar::IdentifyRootExercise;
 pub use mcq::{McqExercise, McqType};
 pub use memorization::{
     ClozeDeletionExercise, FirstLetterHintExercise, MemorizationExercise, MissingWordMcqExercise,

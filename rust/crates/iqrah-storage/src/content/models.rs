@@ -169,6 +169,16 @@ pub struct LemmaRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, FromRow)]
+pub struct MorphologySegmentRow {
+    pub segment_id: i32,
+    pub word_id: i32,
+    pub position: i32,
+    pub lemma_id: Option<String>,
+    pub root_id: Option<String>,
+}
+
 // ============================================================================
 // Package Management
 // ============================================================================

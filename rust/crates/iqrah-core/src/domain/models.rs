@@ -67,6 +67,7 @@ pub enum KnowledgeAxis {
 }
 
 impl KnowledgeAxis {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "memorization" => Some(Self::Memorization),
@@ -456,4 +457,34 @@ pub struct InstalledPackage {
     pub package_id: String,
     pub installed_at: DateTime<Utc>,
     pub enabled: bool,
+}
+
+// ===== Morphology Models =====
+
+/// Represents an Arabic root (جذر)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Root {
+    pub root_id: String,                 // e.g., "ع-ل-م"
+    pub arabic: String,                  // Arabic text of the root
+    pub transliteration: Option<String>, // e.g., "ʿ-l-m"
+    pub root_type: String,               // e.g., "trilateral", "quadrilateral"
+}
+
+/// Represents a lemma (الجذع) - the dictionary form of a word
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Lemma {
+    pub lemma_id: String,        // e.g., "علم_V"
+    pub arabic: String,          // Arabic text of the lemma
+    pub root_id: Option<String>, // Reference to the root
+    pub transliteration: Option<String>,
+}
+
+/// Represents a morphological segment of a word
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MorphologySegment {
+    pub segment_id: i32,
+    pub word_id: i32,
+    pub position: i32,
+    pub lemma_id: Option<String>,
+    pub root_id: Option<String>,
 }

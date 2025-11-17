@@ -272,6 +272,21 @@ mod tests {
         async fn get_enabled_packages(&self) -> anyhow::Result<Vec<crate::InstalledPackage>> {
             Ok(vec![])
         }
+
+        async fn get_morphology_for_word(
+            &self,
+            _word_id: i32,
+        ) -> anyhow::Result<Vec<crate::MorphologySegment>> {
+            Ok(vec![])
+        }
+
+        async fn get_root_by_id(&self, _root_id: &str) -> anyhow::Result<Option<crate::Root>> {
+            Ok(None)
+        }
+
+        async fn get_lemma_by_id(&self, _lemma_id: &str) -> anyhow::Result<Option<crate::Lemma>> {
+            Ok(None)
+        }
     }
 
     // Mock UserRepository

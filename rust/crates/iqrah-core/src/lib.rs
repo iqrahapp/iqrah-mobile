@@ -29,13 +29,17 @@ pub use domain::{
     KnowledgeAxis,
     KnowledgeNode,
     Language,
+    Lemma,
     MemoryState,
+    // Morphology Models
+    MorphologySegment,
     Node,
     NodeType,
     PackageType,
     PropagationDetail,
     PropagationEvent,
     ReviewGrade,
+    Root,
     Translator,
     Verse,
     Word,
@@ -47,8 +51,9 @@ pub use ports::{ContentRepository, UserRepository};
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
 pub use exercises::{
-    ClozeDeletionExercise, ExerciseResponse, ExerciseService, FirstLetterHintExercise, McqExercise,
-    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise,
+    ClozeDeletionExercise, ExerciseResponse, ExerciseService, FirstLetterHintExercise,
+    IdentifyRootExercise, McqExercise, MissingWordMcqExercise, NextWordDifficulty,
+    NextWordMcqExercise,
 };
 
 pub use semantic::{
