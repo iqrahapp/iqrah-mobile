@@ -10,6 +10,7 @@ use anyhow::Result;
 /// Tests the user's knowledge of translation/meaning using semantic similarity
 pub struct TranslationExercise {
     node_id: String,
+    #[allow(dead_code)]
     base_node_id: String,
     word_text: String,
     translation: String,

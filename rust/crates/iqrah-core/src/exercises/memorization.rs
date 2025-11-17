@@ -10,6 +10,7 @@ use anyhow::Result;
 /// Tests the user's ability to recall the exact Arabic text using semantic similarity
 pub struct MemorizationExercise {
     node_id: String,
+    #[allow(dead_code)]
     base_node_id: String,
     word_text: String,
     verse_context: Option<String>,
