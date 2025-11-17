@@ -95,6 +95,17 @@ pub async fn get_exercises(
 ) -> Result<Vec<ExerciseDto>> {
     let app = app();
 
+    // Get user's preferred translator
+    let translator_id = app.user_repo
+        .get_setting("preferred_translator_id")
+        .await?
+        .and_then(|v| v.parse::<i32>().ok())
+        .unwrap_or(1); // Default to translator_id 1 (Sahih International)
+
+    // Get translator info for attribution
+    let translator = app.content_repo.get_translator(translator_id).await?;
+    let translator_name = translator.as_ref().map(|t| t.full_name.clone());
+
     let items = app
         .session_service
         .get_due_items(&user_id, limit, is_high_yield)
@@ -109,17 +120,39 @@ pub async fn get_exercises(
             .get_quran_text(&item.node.id)
             .await?
             .unwrap_or_default();
-        let translation = app
-            .content_repo
-            .get_translation(&item.node.id, "en")
-            .await?
-            .unwrap_or_default();
+
+        // Try to get translation using preferred translator (v2)
+        // Extract verse_key from node_id (e.g., "VERSE:1:1" -> "1:1")
+        let translation = if item.node.id.starts_with("VERSE:") {
+            let verse_key = item.node.id.strip_prefix("VERSE:").unwrap_or(&item.node.id);
+            app.content_repo
+                .get_verse_translation(verse_key, translator_id)
+                .await?
+                .or_else(|| {
+                    // Fallback to v1 method if v2 fails
+                    futures::executor::block_on(async {
+                        app.content_repo
+                            .get_translation(&item.node.id, "en")
+                            .await
+                            .ok()
+                            .flatten()
+                    })
+                })
+                .unwrap_or_default()
+        } else {
+            // Fallback to v1 method for non-verse nodes
+            app.content_repo
+                .get_translation(&item.node.id, "en")
+                .await?
+                .unwrap_or_default()
+        };
 
         exercises.push(ExerciseDto {
             node_id: item.node.id,
             question: arabic.clone(),
             answer: translation,
             node_type: format!("{:?}", item.node.node_type),
+            translator_name: translator_name.clone(),
         });
     }
 
@@ -272,6 +305,86 @@ pub async fn get_available_surahs() -> Result<Vec<SurahInfo>> {
     Ok(Vec::new())
 }
 
+// ========================================================================
+// Translator Selection API
+// ========================================================================
+
+/// Get all available languages
+pub async fn get_languages() -> Result<Vec<LanguageDto>> {
+    let app = app();
+    let languages = app.content_repo.get_languages().await?;
+
+    Ok(languages.into_iter().map(|l| LanguageDto {
+        code: l.code,
+        english_name: l.english_name,
+        native_name: l.native_name,
+        direction: l.direction,
+    }).collect())
+}
+
+/// Get all translators for a given language
+pub async fn get_translators_for_language(language_code: String) -> Result<Vec<TranslatorDto>> {
+    let app = app();
+    let translators = app.content_repo.get_translators_for_language(&language_code).await?;
+
+    Ok(translators.into_iter().map(|t| TranslatorDto {
+        id: t.id,
+        slug: t.slug,
+        full_name: t.full_name,
+        language_code: t.language_code,
+        description: t.description,
+        license: t.license,
+    }).collect())
+}
+
+/// Get a specific translator by ID
+pub async fn get_translator(translator_id: i32) -> Result<Option<TranslatorDto>> {
+    let app = app();
+    let translator = app.content_repo.get_translator(translator_id).await?;
+
+    Ok(translator.map(|t| TranslatorDto {
+        id: t.id,
+        slug: t.slug,
+        full_name: t.full_name,
+        language_code: t.language_code,
+        description: t.description,
+        license: t.license,
+    }))
+}
+
+/// Get user's preferred translator ID
+pub async fn get_preferred_translator_id() -> Result<i32> {
+    let app = app();
+    let translator_id = app.user_repo
+        .get_setting("preferred_translator_id")
+        .await?
+        .and_then(|v| v.parse::<i32>().ok())
+        .unwrap_or(1); // Default to translator_id 1 (Sahih International)
+
+    Ok(translator_id)
+}
+
+/// Set user's preferred translator ID
+pub async fn set_preferred_translator_id(translator_id: i32) -> Result<String> {
+    let app = app();
+    app.user_repo
+        .set_setting("preferred_translator_id", &translator_id.to_string())
+        .await?;
+
+    Ok(format!("Preferred translator set to ID: {}", translator_id))
+}
+
+/// Get verse translation for a specific translator
+pub async fn get_verse_translation_by_translator(
+    verse_key: String,
+    translator_id: i32,
+) -> Result<Option<String>> {
+    let app = app();
+    app.content_repo
+        .get_verse_translation(&verse_key, translator_id)
+        .await
+}
+
 /// Initialize app (for Flutter bridge)
 #[flutter_rust_bridge::frb(init)]
 pub fn init_app() {
@@ -294,6 +407,7 @@ pub struct ExerciseDto {
     pub question: String,
     pub answer: String,
     pub node_type: String,
+    pub translator_name: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -330,4 +444,22 @@ pub struct NodeSearchDto {
 pub struct SurahInfo {
     pub number: i32,
     pub name: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct LanguageDto {
+    pub code: String,
+    pub english_name: String,
+    pub native_name: String,
+    pub direction: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct TranslatorDto {
+    pub id: i32,
+    pub slug: String,
+    pub full_name: String,
+    pub language_code: String,
+    pub description: Option<String>,
+    pub license: Option<String>,
 }
