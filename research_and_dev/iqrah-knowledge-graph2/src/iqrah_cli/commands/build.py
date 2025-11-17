@@ -276,6 +276,12 @@ def _setup_all_parser(subparsers):
         help="Disable progress bars"
     )
 
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from last completed step (skip existing outputs)"
+    )
+
 
 def build_content_db(args) -> None:
     """Build content database."""
@@ -487,30 +493,45 @@ def build_all(args) -> None:
     """Build everything in one command."""
     logger.info("Building complete knowledge graph pipeline...")
 
+    resume = hasattr(args, 'resume') and args.resume
+    content_db_path = Path(args.content_db)
+    graph_path = Path(args.output)
+
     # 1. Content database
-    logger.info("Step 1/3: Building content database...")
-    content_args = type('obj', (object,), {
-        'output': args.content_db,
-        'morphology': args.morphology,
-        'no_progress': args.no_progress,
-    })
-    build_content_db(content_args)
+    if content_db_path.exists() and resume:
+        logger.info(f"Step 1/3: Content database already exists at {args.content_db} - SKIPPING")
+    else:
+        logger.info("Step 1/3: Building content database...")
+        content_args = type('obj', (object,), {
+            'output': args.content_db,
+            'morphology': args.morphology,
+            'no_progress': args.no_progress,
+        })
+        build_content_db(content_args)
 
     # 2. Build knowledge graph from scratch
-    logger.info("Step 2/3: Building knowledge graph...")
-    kg_args = type('obj', (object,), {
-        'from_scratch': True,
-        'morphology': args.morphology,
-        'output': args.output,
-        'preset': args.preset,
-        'chapters': args.chapters if hasattr(args, 'chapters') and args.chapters else None,
-        'no_progress': args.no_progress,
-    })
-    build_knowledge_graph(kg_args)
+    if graph_path.exists() and resume:
+        logger.info(f"Step 2/3: Knowledge graph already exists at {args.output} - SKIPPING")
+        logger.success("Complete knowledge graph pipeline finished!")
+        logger.info(f"Content database: {args.content_db}")
+        logger.info(f"Knowledge graph: {args.output}")
+        logger.info("(All steps were skipped - outputs already exist)")
+    else:
+        logger.info("Step 2/3: Building knowledge graph...")
+        kg_args = type('obj', (object,), {
+            'from_scratch': True,
+            'morphology': args.morphology,
+            'output': args.output,
+            'preset': args.preset,
+            'chapters': args.chapters if hasattr(args, 'chapters') and args.chapters else None,
+            'no_progress': args.no_progress,
+        })
+        build_knowledge_graph(kg_args)
 
-    logger.success("Complete knowledge graph pipeline finished!")
-    logger.info(f"Content database: {args.content_db}")
-    logger.info(f"Knowledge graph: {args.output}")
+        logger.success("Complete knowledge graph pipeline finished!")
+        logger.info(f"Content database: {args.content_db}")
+        logger.info(f"Knowledge graph: {args.output}")
+
 
 
 def run(args):
