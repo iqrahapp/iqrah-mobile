@@ -548,7 +548,7 @@ async fn handle_submit_echo_recall(
     word_node_id: String,
     recall_time_ms: u32,
     _user_id: &str,
-    app_state: &AppState,
+    _app_state: &AppState,
     sessions: SessionMap,
 ) -> Vec<Event> {
     use iqrah_core::{
