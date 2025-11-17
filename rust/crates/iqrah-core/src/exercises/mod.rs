@@ -9,6 +9,7 @@ mod mcq;
 mod memorization;
 mod reverse_cloze;
 mod service;
+mod translate_phrase;
 mod translation;
 mod types;
 
@@ -23,5 +24,6 @@ pub use memorization::{
 };
 pub use reverse_cloze::ReverseClozeExercise;
 pub use service::ExerciseService;
+pub use translate_phrase::TranslatePhraseExercise;
 pub use translation::{ContextualTranslationExercise, TranslationExercise};
 pub use types::{Exercise, ExerciseResponse, ExerciseType};

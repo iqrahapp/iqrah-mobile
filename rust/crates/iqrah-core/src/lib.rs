@@ -54,7 +54,7 @@ pub use exercises::{
     AyahSequenceExercise, ClozeDeletionExercise, CrossVerseConnectionExercise, ExerciseResponse,
     ExerciseService, FirstLetterHintExercise, FullVerseInputExercise, IdentifyRootExercise,
     McqExercise, MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise,
-    ReverseClozeExercise,
+    ReverseClozeExercise, TranslatePhraseExercise,
 };
 
 pub use semantic::{
