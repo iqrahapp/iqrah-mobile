@@ -27,6 +27,16 @@ pub fn create_http_router() -> Router<Arc<AppState>> {
         .route("/users/:user_id/settings/translator", get(get_user_preferred_translator))
         .route("/users/:user_id/settings/translator", post(set_user_preferred_translator))
         .route("/verses/:verse_key/translations/:translator_id", get(get_verse_translation))
+        // Package management endpoints
+        .route("/packages", get(list_packages))
+        .route("/packages/:package_id", get(get_package_details))
+        .route("/packages/:package_id", post(upsert_package_handler))
+        .route("/packages/:package_id", axum::routing::delete(delete_package_handler))
+        .route("/packages/installed", get(list_installed_packages))
+        .route("/packages/installed/:package_id", post(install_package_handler))
+        .route("/packages/installed/:package_id", axum::routing::delete(uninstall_package_handler))
+        .route("/packages/installed/:package_id/enable", post(enable_package_handler))
+        .route("/packages/installed/:package_id/disable", post(disable_package_handler))
 }
 
 /// Health check endpoint
@@ -374,5 +384,212 @@ async fn get_verse_translation(
         "verse_key": verse_key,
         "translator_id": translator_id,
         "translation": translation,
+    })))
+}
+
+// ========================================================================
+// Package Management Endpoints
+// ========================================================================
+
+/// List all available packages (optionally filtered)
+async fn list_packages(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let packages = state
+        .content_repo
+        .get_available_packages(None, None)
+        .await?;
+
+    let response = packages
+        .into_iter()
+        .map(|p| {
+            json!({
+                "package_id": p.package_id,
+                "package_type": p.package_type.to_string(),
+                "name": p.name,
+                "language_code": p.language_code,
+                "author": p.author,
+                "version": p.version,
+                "description": p.description,
+                "file_size": p.file_size,
+                "download_url": p.download_url,
+                "checksum": p.checksum,
+                "license": p.license,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(response))
+}
+
+/// Get package details by ID
+async fn get_package_details(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let package = state
+        .content_repo
+        .get_package(&package_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Package not found: {}", package_id)))?;
+
+    Ok(Json(json!({
+        "package_id": package.package_id,
+        "package_type": package.package_type.to_string(),
+        "name": package.name,
+        "language_code": package.language_code,
+        "author": package.author,
+        "version": package.version,
+        "description": package.description,
+        "file_size": package.file_size,
+        "download_url": package.download_url,
+        "checksum": package.checksum,
+        "license": package.license,
+    })))
+}
+
+#[derive(Deserialize)]
+struct UpsertPackageRequest {
+    package_type: String,
+    name: String,
+    language_code: Option<String>,
+    author: Option<String>,
+    version: String,
+    description: Option<String>,
+    file_size: Option<i64>,
+    download_url: Option<String>,
+    checksum: Option<String>,
+    license: Option<String>,
+}
+
+/// Insert or update a package
+async fn upsert_package_handler(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+    Json(payload): Json<UpsertPackageRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    use iqrah_core::PackageType;
+    use std::str::FromStr;
+
+    let package_type = PackageType::from_str(&payload.package_type)
+        .map_err(|e| AppError::InvalidInput(format!("Invalid package type: {}", e)))?;
+
+    let package = iqrah_core::ContentPackage {
+        package_id: package_id.clone(),
+        package_type,
+        name: payload.name,
+        language_code: payload.language_code,
+        author: payload.author,
+        version: payload.version,
+        description: payload.description,
+        file_size: payload.file_size,
+        download_url: payload.download_url,
+        checksum: payload.checksum,
+        license: payload.license,
+    };
+
+    state.content_repo.upsert_package(&package).await?;
+
+    Ok(Json(json!({
+        "message": "Package upserted successfully",
+        "package_id": package_id,
+    })))
+}
+
+/// Delete a package
+async fn delete_package_handler(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    state.content_repo.delete_package(&package_id).await?;
+
+    Ok(Json(json!({
+        "message": "Package deleted successfully",
+        "package_id": package_id,
+    })))
+}
+
+/// List installed packages
+async fn list_installed_packages(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let packages = state.content_repo.get_installed_packages().await?;
+
+    let response = packages
+        .into_iter()
+        .map(|p| {
+            json!({
+                "package_id": p.package_id,
+                "installed_at": p.installed_at.to_rfc3339(),
+                "enabled": p.enabled,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Json(response))
+}
+
+/// Mark a package as installed
+async fn install_package_handler(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    // Verify package exists
+    state
+        .content_repo
+        .get_package(&package_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Package not found: {}", package_id)))?;
+
+    state
+        .content_repo
+        .mark_package_installed(&package_id)
+        .await?;
+
+    Ok(Json(json!({
+        "message": "Package installed successfully",
+        "package_id": package_id,
+    })))
+}
+
+/// Uninstall a package
+async fn uninstall_package_handler(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    state
+        .content_repo
+        .mark_package_uninstalled(&package_id)
+        .await?;
+
+    Ok(Json(json!({
+        "message": "Package uninstalled successfully",
+        "package_id": package_id,
+    })))
+}
+
+/// Enable a package
+async fn enable_package_handler(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    state.content_repo.enable_package(&package_id).await?;
+
+    Ok(Json(json!({
+        "message": "Package enabled successfully",
+        "package_id": package_id,
+    })))
+}
+
+/// Disable a package
+async fn disable_package_handler(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    state.content_repo.disable_package(&package_id).await?;
+
+    Ok(Json(json!({
+        "message": "Package disabled successfully",
+        "package_id": package_id,
     })))
 }

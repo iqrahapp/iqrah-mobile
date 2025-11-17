@@ -193,6 +193,54 @@ mod tests {
         ) -> anyhow::Result<()> {
             Ok(())
         }
+
+        async fn get_available_packages(
+            &self,
+            _package_type: Option<crate::PackageType>,
+            _language_code: Option<&str>,
+        ) -> anyhow::Result<Vec<crate::ContentPackage>> {
+            Ok(vec![])
+        }
+
+        async fn get_package(&self, _package_id: &str) -> anyhow::Result<Option<crate::ContentPackage>> {
+            Ok(None)
+        }
+
+        async fn upsert_package(&self, _package: &crate::ContentPackage) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn delete_package(&self, _package_id: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn get_installed_packages(&self) -> anyhow::Result<Vec<crate::InstalledPackage>> {
+            Ok(vec![])
+        }
+
+        async fn is_package_installed(&self, _package_id: &str) -> anyhow::Result<bool> {
+            Ok(false)
+        }
+
+        async fn mark_package_installed(&self, _package_id: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn mark_package_uninstalled(&self, _package_id: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn enable_package(&self, _package_id: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn disable_package(&self, _package_id: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn get_enabled_packages(&self) -> anyhow::Result<Vec<crate::InstalledPackage>> {
+            Ok(vec![])
+        }
     }
 
     // Mock UserRepository

@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 
 mod debug;
 mod exercise;
+mod package;
 mod translator;
 
 /// Iqrah CLI - Development and testing tool for the Iqrah learning system
@@ -34,6 +35,11 @@ enum Commands {
     Translator {
         #[command(subcommand)]
         command: TranslatorCommands,
+    },
+    /// Package management commands
+    Package {
+        #[command(subcommand)]
+        command: PackageCommands,
     },
 }
 
@@ -111,6 +117,39 @@ enum TranslatorCommands {
         metadata_file: String,
         /// Base path for translation files
         translations_base: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum PackageCommands {
+    /// List all available packages
+    List,
+    /// Get package details by ID
+    Get {
+        /// Package ID
+        package_id: String,
+    },
+    /// List installed packages
+    ListInstalled,
+    /// Install a package
+    Install {
+        /// Package ID to install
+        package_id: String,
+    },
+    /// Uninstall a package
+    Uninstall {
+        /// Package ID to uninstall
+        package_id: String,
+    },
+    /// Enable a package
+    Enable {
+        /// Package ID to enable
+        package_id: String,
+    },
+    /// Disable a package
+    Disable {
+        /// Package ID to disable
+        package_id: String,
     },
 }
 
@@ -248,6 +287,29 @@ async fn main() -> Result<()> {
                 translations_base,
             } => {
                 translator::import_translators(&metadata_file, &translations_base).await?;
+            }
+        },
+        Commands::Package { command } => match command {
+            PackageCommands::List => {
+                package::list_packages(&cli.server).await?;
+            }
+            PackageCommands::Get { package_id } => {
+                package::get_package(&cli.server, &package_id).await?;
+            }
+            PackageCommands::ListInstalled => {
+                package::list_installed(&cli.server).await?;
+            }
+            PackageCommands::Install { package_id } => {
+                package::install_package(&cli.server, &package_id).await?;
+            }
+            PackageCommands::Uninstall { package_id } => {
+                package::uninstall_package(&cli.server, &package_id).await?;
+            }
+            PackageCommands::Enable { package_id } => {
+                package::enable_package(&cli.server, &package_id).await?;
+            }
+            PackageCommands::Disable { package_id } => {
+                package::disable_package(&cli.server, &package_id).await?;
             }
         },
     }

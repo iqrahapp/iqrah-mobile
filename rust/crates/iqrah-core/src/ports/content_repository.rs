@@ -1,5 +1,6 @@
 use crate::domain::{
-    Chapter, Edge, ImportedEdge, ImportedNode, Language, Node, NodeType, Translator, Verse, Word,
+    Chapter, ContentPackage, Edge, ImportedEdge, ImportedNode, InstalledPackage, Language, Node,
+    NodeType, PackageType, Translator, Verse, Word,
 };
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -130,4 +131,45 @@ pub trait ContentRepository: Send + Sync {
         translation: &str,
         footnotes: Option<&str>,
     ) -> anyhow::Result<()>;
+
+    // ========================================================================
+    // Package Management Methods
+    // ========================================================================
+
+    /// Get all available packages (optionally filtered by type and language)
+    async fn get_available_packages(
+        &self,
+        package_type: Option<PackageType>,
+        language_code: Option<&str>,
+    ) -> anyhow::Result<Vec<ContentPackage>>;
+
+    /// Get a specific package by ID
+    async fn get_package(&self, package_id: &str) -> anyhow::Result<Option<ContentPackage>>;
+
+    /// Insert or update a package in the catalog
+    async fn upsert_package(&self, package: &ContentPackage) -> anyhow::Result<()>;
+
+    /// Delete a package from the catalog
+    async fn delete_package(&self, package_id: &str) -> anyhow::Result<()>;
+
+    /// Get all installed packages
+    async fn get_installed_packages(&self) -> anyhow::Result<Vec<InstalledPackage>>;
+
+    /// Check if a package is installed
+    async fn is_package_installed(&self, package_id: &str) -> anyhow::Result<bool>;
+
+    /// Mark a package as installed
+    async fn mark_package_installed(&self, package_id: &str) -> anyhow::Result<()>;
+
+    /// Mark a package as uninstalled
+    async fn mark_package_uninstalled(&self, package_id: &str) -> anyhow::Result<()>;
+
+    /// Enable a package
+    async fn enable_package(&self, package_id: &str) -> anyhow::Result<()>;
+
+    /// Disable a package
+    async fn disable_package(&self, package_id: &str) -> anyhow::Result<()>;
+
+    /// Get enabled packages
+    async fn get_enabled_packages(&self) -> anyhow::Result<Vec<InstalledPackage>>;
 }

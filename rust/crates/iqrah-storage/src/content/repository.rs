@@ -1,11 +1,14 @@
 use super::models::{
-    ChapterRow, EdgeRow, LanguageRow, NodeRow, QuranTextRow, TranslationRow, TranslatorRow,
-    VerseRow, VerseTranslationRow, WordRow, WordTranslationRow,
+    ChapterRow, ContentPackageRow, EdgeRow, InstalledPackageRow, LanguageRow, NodeRow,
+    QuranTextRow, TranslationRow, TranslatorRow, VerseRow, VerseTranslationRow, WordRow,
+    WordTranslationRow,
 };
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use iqrah_core::{
-    Chapter, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge, ImportedNode,
-    Language, Node, NodeType, Translator, Verse, Word,
+    Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge,
+    ImportedNode, InstalledPackage, Language, Node, NodeType, PackageType, Translator, Verse,
+    Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
@@ -666,5 +669,217 @@ impl ContentRepository for SqliteContentRepository {
         .await?;
 
         Ok(())
+    }
+
+    // ========================================================================
+    // Package Management Implementation
+    // ========================================================================
+
+    async fn get_available_packages(
+        &self,
+        package_type: Option<PackageType>,
+        language_code: Option<&str>,
+    ) -> anyhow::Result<Vec<ContentPackage>> {
+        let mut sql = String::from(
+            "SELECT package_id, package_type, name, language_code, author, version, description, \
+             file_size, download_url, checksum, license, created_at, updated_at \
+             FROM content_packages WHERE 1=1"
+        );
+
+        if package_type.is_some() {
+            sql.push_str(" AND package_type = ?");
+        }
+        if language_code.is_some() {
+            sql.push_str(" AND language_code = ?");
+        }
+        sql.push_str(" ORDER BY name");
+
+        let mut query = query_as::<_, ContentPackageRow>(&sql);
+
+        if let Some(pt) = &package_type {
+            query = query.bind(pt.to_string());
+        }
+        if let Some(lang) = language_code {
+            query = query.bind(lang);
+        }
+
+        let rows = query.fetch_all(&self.pool).await?;
+
+        rows.into_iter()
+            .map(|r| {
+                Ok(ContentPackage {
+                    package_id: r.package_id,
+                    package_type: r.package_type.parse()?,
+                    name: r.name,
+                    language_code: r.language_code,
+                    author: r.author,
+                    version: r.version,
+                    description: r.description,
+                    file_size: r.file_size,
+                    download_url: r.download_url,
+                    checksum: r.checksum,
+                    license: r.license,
+                })
+            })
+            .collect()
+    }
+
+    async fn get_package(&self, package_id: &str) -> anyhow::Result<Option<ContentPackage>> {
+        let row = query_as::<_, ContentPackageRow>(
+            "SELECT package_id, package_type, name, language_code, author, version, description, \
+             file_size, download_url, checksum, license, created_at, updated_at \
+             FROM content_packages WHERE package_id = ?"
+        )
+        .bind(package_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        match row {
+            Some(r) => Ok(Some(ContentPackage {
+                package_id: r.package_id,
+                package_type: r.package_type.parse()?,
+                name: r.name,
+                language_code: r.language_code,
+                author: r.author,
+                version: r.version,
+                description: r.description,
+                file_size: r.file_size,
+                download_url: r.download_url,
+                checksum: r.checksum,
+                license: r.license,
+            })),
+            None => Ok(None),
+        }
+    }
+
+    async fn upsert_package(&self, package: &ContentPackage) -> anyhow::Result<()> {
+        query(
+            "INSERT INTO content_packages \
+             (package_id, package_type, name, language_code, author, version, description, \
+              file_size, download_url, checksum, license, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch()) \
+             ON CONFLICT(package_id) DO UPDATE SET \
+                package_type = excluded.package_type, \
+                name = excluded.name, \
+                language_code = excluded.language_code, \
+                author = excluded.author, \
+                version = excluded.version, \
+                description = excluded.description, \
+                file_size = excluded.file_size, \
+                download_url = excluded.download_url, \
+                checksum = excluded.checksum, \
+                license = excluded.license, \
+                updated_at = unixepoch()"
+        )
+        .bind(&package.package_id)
+        .bind(package.package_type.to_string())
+        .bind(&package.name)
+        .bind(&package.language_code)
+        .bind(&package.author)
+        .bind(&package.version)
+        .bind(&package.description)
+        .bind(package.file_size)
+        .bind(&package.download_url)
+        .bind(&package.checksum)
+        .bind(&package.license)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn delete_package(&self, package_id: &str) -> anyhow::Result<()> {
+        query("DELETE FROM content_packages WHERE package_id = ?")
+            .bind(package_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_installed_packages(&self) -> anyhow::Result<Vec<InstalledPackage>> {
+        let rows = query_as::<_, InstalledPackageRow>(
+            "SELECT package_id, installed_at, enabled FROM installed_packages ORDER BY installed_at DESC"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| InstalledPackage {
+                package_id: r.package_id,
+                installed_at: DateTime::from_timestamp(r.installed_at, 0).unwrap_or(Utc::now()),
+                enabled: r.enabled != 0,
+            })
+            .collect())
+    }
+
+    async fn is_package_installed(&self, package_id: &str) -> anyhow::Result<bool> {
+        let count: i32 = query_as("SELECT COUNT(*) as count FROM installed_packages WHERE package_id = ?")
+            .bind(package_id)
+            .fetch_one(&self.pool)
+            .await
+            .map(|(count,): (i32,)| count)?;
+
+        Ok(count > 0)
+    }
+
+    async fn mark_package_installed(&self, package_id: &str) -> anyhow::Result<()> {
+        query(
+            "INSERT INTO installed_packages (package_id, installed_at, enabled) \
+             VALUES (?, unixepoch(), 1) \
+             ON CONFLICT(package_id) DO UPDATE SET \
+                enabled = 1, \
+                installed_at = unixepoch()"
+        )
+        .bind(package_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn mark_package_uninstalled(&self, package_id: &str) -> anyhow::Result<()> {
+        query("DELETE FROM installed_packages WHERE package_id = ?")
+            .bind(package_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn enable_package(&self, package_id: &str) -> anyhow::Result<()> {
+        query("UPDATE installed_packages SET enabled = 1 WHERE package_id = ?")
+            .bind(package_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn disable_package(&self, package_id: &str) -> anyhow::Result<()> {
+        query("UPDATE installed_packages SET enabled = 0 WHERE package_id = ?")
+            .bind(package_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_enabled_packages(&self) -> anyhow::Result<Vec<InstalledPackage>> {
+        let rows = query_as::<_, InstalledPackageRow>(
+            "SELECT package_id, installed_at, enabled FROM installed_packages WHERE enabled = 1 ORDER BY installed_at DESC"
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| InstalledPackage {
+                package_id: r.package_id,
+                installed_at: DateTime::from_timestamp(r.installed_at, 0).unwrap_or(Utc::now()),
+                enabled: true,
+            })
+            .collect())
     }
 }
