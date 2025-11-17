@@ -23,6 +23,9 @@ pub use domain::{
     ImportedEdge,
     ImportedNode,
     InstalledPackage,
+    // Knowledge Axis (Phase 4)
+    KnowledgeAxis,
+    KnowledgeNode,
     Language,
     MemoryState,
     Node,

@@ -121,6 +121,7 @@ async fn handle_command(
         Command::StartExercise {
             exercise_type,
             node_id,
+            axis: _, // Note: axis parameter not used here, but available for future enhancements
         } => handle_start_exercise(user_id, exercise_type, node_id, app_state, sessions).await,
         Command::SubmitAnswer { session_id, answer } => {
             let sid = session_id.or(current_session_id);
@@ -156,6 +157,11 @@ async fn handle_command(
             let sid = session_id.or(current_session_id);
             handle_end_session(sid, user_id, app_state, sessions).await
         }
+        Command::GetDueItems {
+            limit,
+            axis,
+            is_high_yield_mode,
+        } => handle_get_due_items(user_id, limit, axis, is_high_yield_mode, app_state).await,
     }
 }
 
@@ -648,6 +654,56 @@ async fn handle_submit_echo_recall(
     session.state = new_state.clone();
 
     vec![Event::StateUpdated { new_state }]
+}
+
+/// Get due items for a session (Phase 4)
+async fn handle_get_due_items(
+    user_id: &str,
+    limit: u32,
+    axis: Option<String>,
+    is_high_yield_mode: bool,
+    app_state: &AppState,
+) -> Vec<Event> {
+    use iqrah_core::KnowledgeAxis;
+
+    // Parse axis if provided
+    let axis_filter = axis.and_then(|a| KnowledgeAxis::from_str(&a));
+
+    // Get due items from session service
+    let items = match app_state
+        .session_service
+        .get_due_items(user_id, limit, is_high_yield_mode, axis_filter)
+        .await
+    {
+        Ok(items) => items,
+        Err(e) => {
+            return vec![Event::Error {
+                message: format!("Failed to get due items: {}", e),
+            }];
+        }
+    };
+
+    // Serialize items to JSON
+    let serialized_items: Vec<serde_json::Value> = items
+        .into_iter()
+        .map(|item| {
+            serde_json::json!({
+                "node_id": item.node.id,
+                "node_type": item.node.node_type,
+                "knowledge_axis": item.knowledge_axis.map(|a| a.to_str()),
+                "priority_score": item.priority_score,
+                "days_overdue": item.days_overdue,
+                "mastery_gap": item.mastery_gap,
+                "energy": item.memory_state.energy,
+                "stability": item.memory_state.stability,
+                "difficulty": item.memory_state.difficulty,
+            })
+        })
+        .collect();
+
+    vec![Event::DueItems {
+        items: serialized_items,
+    }]
 }
 
 /// Helper to send an event to the client

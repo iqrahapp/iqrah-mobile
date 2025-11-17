@@ -6,9 +6,12 @@ use uuid::Uuid;
 #[serde(tag = "type")]
 pub enum Command {
     /// Start a new exercise session
+    /// Optional `axis` parameter for knowledge axis filtering (Phase 4)
     StartExercise {
         exercise_type: String,
         node_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        axis: Option<String>, // "memorization", "translation", etc.
     },
     /// Submit an answer for a generic exercise (MCQ, etc.)
     SubmitAnswer {
@@ -36,6 +39,14 @@ pub enum Command {
         #[serde(skip_serializing_if = "Option::is_none")]
         session_id: Option<Uuid>,
     },
+    /// Get due items for a session (Phase 4)
+    GetDueItems {
+        limit: u32,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        axis: Option<String>, // Optional axis filter
+        #[serde(default)]
+        is_high_yield_mode: bool,
+    },
 }
 
 /// Server-to-Client events for WebSocket communication
@@ -61,4 +72,8 @@ pub enum Event {
     },
     /// An error occurred
     Error { message: String },
+    /// Due items response (Phase 4)
+    DueItems {
+        items: Vec<serde_json::Value>, // ScoredItems serialized as JSON
+    },
 }
