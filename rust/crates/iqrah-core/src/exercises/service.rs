@@ -153,12 +153,9 @@ impl ExerciseService {
         let is_correct = exercise.check_answer(answer);
 
         // Try to downcast to McqExercise to get options
-        let options =
-            if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
-                Some(mcq.get_options().to_vec())
-            } else {
-                None
-            };
+        let options = (exercise as &dyn std::any::Any)
+            .downcast_ref::<McqExercise>()
+            .map(|mcq| mcq.get_options().to_vec());
 
         // Get semantic grading metadata for TranslationExercise or MemorizationExercise
         // Only if embedder is initialized (fail gracefully if not)

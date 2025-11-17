@@ -153,7 +153,7 @@ impl McqExercise {
     fn generate_arabic_distractors(correct: &str, count: usize) -> Vec<String> {
         // In production, fetch actual similar Arabic words from database
         // For now, using common Arabic words as distractors
-        let common_words = vec![
+        let common_words = [
             "ٱلْحَمْدُ",
             "رَبِّ",
             "ٱلْعَٰلَمِينَ",

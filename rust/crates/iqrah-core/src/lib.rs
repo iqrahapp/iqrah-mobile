@@ -46,7 +46,10 @@ pub use ports::{ContentRepository, UserRepository};
 
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
-pub use exercises::{ExerciseResponse, ExerciseService, McqExercise};
+pub use exercises::{
+    ClozeDeletionExercise, ExerciseResponse, ExerciseService, FirstLetterHintExercise, McqExercise,
+    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise,
+};
 
 pub use semantic::{
     SemanticEmbedder, SemanticGrade, SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER,
