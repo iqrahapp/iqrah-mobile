@@ -100,7 +100,6 @@ impl SemanticEmbedder {
         }
 
         tracing::info!("Loading semantic model: {}", model_id);
-        tracing::info!("Model info: potion-multilingual-128M (101 languages, 256-dim, fast inference)");
         tracing::info!("Note: First download may take 30-60 seconds. Subsequent loads are fast (<3s).");
 
         // Load model from HuggingFace Hub or local path

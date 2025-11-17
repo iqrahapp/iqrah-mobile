@@ -61,14 +61,25 @@ impl Exercise for TranslationExercise {
     }
 
     fn check_answer(&self, answer: &str) -> bool {
-        let embedder = SEMANTIC_EMBEDDER
-            .get()
-            .expect("Semantic embedder not initialized - call ExerciseService::init_semantic_model() first");
+        // Get embedder, return false if not initialized
+        let embedder = match SEMANTIC_EMBEDDER.get() {
+            Some(e) => e,
+            None => {
+                tracing::error!("Semantic embedder not initialized! Call ExerciseService::init_semantic_model() first");
+                return false;
+            }
+        };
 
         let grader = SemanticGrader::new(embedder);
-        let grade = grader
-            .grade_answer(answer, &self.translation)
-            .expect("Semantic grading failed");
+
+        // Grade the answer, return false on error
+        let grade = match grader.grade_answer(answer, &self.translation) {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::error!("Semantic grading failed: {}", e);
+                return false;
+            }
+        };
 
         tracing::debug!(
             "Semantic grading for '{}': {:?} (similarity: {:.3})",

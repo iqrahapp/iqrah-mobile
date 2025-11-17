@@ -101,16 +101,25 @@ impl Exercise for MemorizationExercise {
         let normalized_answer = Self::normalize_arabic(answer);
         let normalized_correct = Self::normalize_arabic(&self.word_text);
 
-        let embedder = SEMANTIC_EMBEDDER
-            .get()
-            .expect("Semantic embedder not initialized - call ExerciseService::init_semantic_model() first");
+        // Get embedder, return false if not initialized
+        let embedder = match SEMANTIC_EMBEDDER.get() {
+            Some(e) => e,
+            None => {
+                tracing::error!("Semantic embedder not initialized! Call ExerciseService::init_semantic_model() first");
+                return false;
+            }
+        };
 
         let grader = SemanticGrader::new(embedder);
 
         // Use semantic grading on normalized Arabic text
-        let grade = grader
-            .grade_answer(&normalized_answer, &normalized_correct)
-            .expect("Semantic grading failed");
+        let grade = match grader.grade_answer(&normalized_answer, &normalized_correct) {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::error!("Semantic grading failed: {}", e);
+                return false;
+            }
+        };
 
         tracing::debug!(
             "Memorization semantic grading for '{}': {:?} (similarity: {:.3})",

@@ -2,36 +2,66 @@
 //
 // Run these tests with:
 // ```
-// cargo test --test semantic_grading_integration_test
+// cargo test --test semantic_grading_integration_test -- --test-threads=1
 // ```
+//
+// NOTE: Tests must run sequentially (--test-threads=1) because they share a global OnceCell singleton
 //
 // These tests will download the model on first run (~30-60 seconds).
 // Subsequent runs will use the cached model and be much faster (<3 seconds).
 
-use iqrah_core::{ExerciseService, SemanticEmbedder, SemanticGrader, SemanticGradeLabel};
+use iqrah_core::{ExerciseService, SemanticGrader, SemanticGradeLabel};
+use std::path::PathBuf;
+
+/// Set up test cache directory and return the path
+/// This simulates how Flutter would provide a cache directory on mobile
+fn setup_test_cache() -> String {
+    let cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join("test_cache")
+        .join("huggingface");
+
+    std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
+
+    cache_dir.to_str().unwrap().to_string()
+}
+
+/// Initialize model if not already initialized (handles OnceCell singleton)
+fn ensure_model_initialized(model_path: &str, cache_dir: &str) {
+    if iqrah_core::SEMANTIC_EMBEDDER.get().is_none() {
+        ExerciseService::init_semantic_model(model_path, Some(cache_dir))
+            .expect("Failed to initialize model");
+    }
+}
 
 /// Test model initialization and basic semantic grading
 #[test]
 fn test_semantic_model_initialization() {
-    // Use a small, fast model for testing
-    let model_path = "minishlab/potion-base-8M";
+    let cache_dir = setup_test_cache();
+    let model_path = "minishlab/potion-multilingual-128M";
 
     println!("Loading model: {}", model_path);
+    println!("Cache directory: {}", cache_dir);
     println!("Note: First run may take 30-60 seconds to download model");
 
-    let result = ExerciseService::init_semantic_model(model_path);
+    let result = ExerciseService::init_semantic_model(model_path, Some(&cache_dir));
 
     match result {
         Ok(_) => {
             println!("✅ Model initialized successfully");
         }
         Err(e) => {
-            panic!(
-                "❌ Failed to initialize model: {}\n\
-                 This test requires internet connection for first run.\n\
-                 Subsequent runs will use cached model.",
-                e
-            );
+            // If already initialized, that's OK (tests running sequentially)
+            if e.to_string().contains("already initialized") {
+                println!("✅ Model already initialized (from previous test)");
+            } else {
+                panic!(
+                    "❌ Failed to initialize model: {}\n\
+                     This test requires internet connection for first run.\n\
+                     Subsequent runs will use cached model in target/test_cache/",
+                    e
+                );
+            }
         }
     }
 }
@@ -39,11 +69,10 @@ fn test_semantic_model_initialization() {
 /// Test semantic grading with English text (Translation exercises)
 #[test]
 fn test_semantic_grading_english() {
-    let model_path = "minishlab/potion-base-8M";
+    let cache_dir = setup_test_cache();
+    let model_path = "minishlab/potion-multilingual-128M";
 
-    // Initialize model (will use cache if already downloaded)
-    ExerciseService::init_semantic_model(model_path)
-        .expect("Failed to initialize model - run test_semantic_model_initialization first");
+    ensure_model_initialized(model_path, &cache_dir);
 
     let embedder = iqrah_core::SEMANTIC_EMBEDDER
         .get()
@@ -115,11 +144,10 @@ fn test_semantic_grading_english() {
 /// Test semantic grading with Arabic text (Memorization exercises)
 #[test]
 fn test_semantic_grading_arabic() {
-    let model_path = "minishlab/potion-base-8M";
+    let cache_dir = setup_test_cache();
+    let model_path = "minishlab/potion-multilingual-128M";
 
-    // Initialize model
-    ExerciseService::init_semantic_model(model_path)
-        .expect("Failed to initialize model");
+    ensure_model_initialized(model_path, &cache_dir);
 
     let embedder = iqrah_core::SEMANTIC_EMBEDDER
         .get()
@@ -168,10 +196,10 @@ fn test_semantic_grading_arabic() {
 /// Test threshold boundaries
 #[test]
 fn test_grading_thresholds() {
-    let model_path = "minishlab/potion-base-8M";
+    let cache_dir = setup_test_cache();
+    let model_path = "minishlab/potion-multilingual-128M";
 
-    ExerciseService::init_semantic_model(model_path)
-        .expect("Failed to initialize model");
+    ensure_model_initialized(model_path, &cache_dir);
 
     let embedder = iqrah_core::SEMANTIC_EMBEDDER
         .get()
@@ -217,10 +245,10 @@ fn test_grading_thresholds() {
 /// Test batch processing
 #[test]
 fn test_batch_similarity() {
-    let model_path = "minishlab/potion-base-8M";
+    let cache_dir = setup_test_cache();
+    let model_path = "minishlab/potion-multilingual-128M";
 
-    ExerciseService::init_semantic_model(model_path)
-        .expect("Failed to initialize model");
+    ensure_model_initialized(model_path, &cache_dir);
 
     let embedder = iqrah_core::SEMANTIC_EMBEDDER
         .get()
@@ -256,10 +284,10 @@ fn test_batch_similarity() {
 fn test_inference_performance() {
     use std::time::Instant;
 
-    let model_path = "minishlab/potion-base-8M";
+    let cache_dir = setup_test_cache();
+    let model_path = "minishlab/potion-multilingual-128M";
 
-    ExerciseService::init_semantic_model(model_path)
-        .expect("Failed to initialize model");
+    ensure_model_initialized(model_path, &cache_dir);
 
     let embedder = iqrah_core::SEMANTIC_EMBEDDER
         .get()
