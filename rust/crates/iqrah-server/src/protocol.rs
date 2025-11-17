@@ -52,6 +52,8 @@ pub enum Command {
         node_id: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         axis: Option<String>, // Optional axis override
+        #[serde(skip_serializing_if = "Option::is_none")]
+        format: Option<String>, // "mcq_ar_to_en", "mcq_en_to_ar", or None for default
     },
     /// Check answer for an exercise (Phase 4.3)
     CheckAnswer {
@@ -93,11 +95,17 @@ pub enum Event {
         exercise_type: String,
         question: String,
         hint: Option<String>,
+        /// For MCQ exercises, the answer options
+        #[serde(skip_serializing_if = "Option::is_none")]
+        options: Option<Vec<String>>,
     },
     /// Answer checked (Phase 4.3)
     AnswerChecked {
         is_correct: bool,
         hint: Option<String>,
         correct_answer: Option<String>,
+        /// For MCQ exercises, the answer options
+        #[serde(skip_serializing_if = "Option::is_none")]
+        options: Option<Vec<String>>,
     },
 }
