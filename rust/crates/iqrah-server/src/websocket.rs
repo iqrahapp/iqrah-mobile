@@ -162,8 +162,8 @@ async fn handle_command(
             axis,
             is_high_yield_mode,
         } => handle_get_due_items(user_id, limit, axis, is_high_yield_mode, app_state).await,
-        Command::GenerateExercise { node_id, axis } => {
-            handle_generate_exercise(&node_id, axis, app_state).await
+        Command::GenerateExercise { node_id, axis, format } => {
+            handle_generate_exercise(&node_id, axis, format, app_state).await
         }
         Command::CheckAnswer { node_id, answer } => {
             handle_check_answer(&node_id, &answer, app_state).await
@@ -716,12 +716,24 @@ async fn handle_get_due_items(
 async fn handle_generate_exercise(
     node_id: &str,
     axis: Option<String>,
+    format: Option<String>,
     app_state: &AppState,
 ) -> Vec<Event> {
-    use iqrah_core::KnowledgeAxis;
+    use iqrah_core::{KnowledgeAxis, McqExercise};
 
-    // Generate exercise (with optional axis override)
-    let exercise_result = if let Some(axis_str) = axis {
+    // Generate exercise based on format, axis, or auto-detect
+    let exercise_result = if let Some(fmt) = format {
+        // Generate based on explicit format
+        match fmt.as_str() {
+            "mcq_ar_to_en" => app_state.exercise_service.generate_mcq_ar_to_en(node_id).await,
+            "mcq_en_to_ar" => app_state.exercise_service.generate_mcq_en_to_ar(node_id).await,
+            _ => {
+                return vec![Event::Error {
+                    message: format!("Invalid format: {}", fmt),
+                }];
+            }
+        }
+    } else if let Some(axis_str) = axis {
         // Parse axis and generate for specific axis
         if let Some(axis_enum) = KnowledgeAxis::from_str(&axis_str) {
             app_state
@@ -741,11 +753,20 @@ async fn handle_generate_exercise(
     match exercise_result {
         Ok(exercise_type) => {
             let exercise = exercise_type.as_exercise();
+
+            // Try to get MCQ options if it's an MCQ exercise
+            let options = if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
+                Some(mcq.get_options().to_vec())
+            } else {
+                None
+            };
+
             vec![Event::ExerciseGenerated {
                 node_id: node_id.to_string(),
                 exercise_type: exercise.get_type_name().to_string(),
                 question: exercise.generate_question(),
                 hint: exercise.get_hint(),
+                options,
             }]
         }
         Err(e) => vec![Event::Error {
@@ -772,6 +793,7 @@ async fn handle_check_answer(
                 is_correct: response.is_correct,
                 hint: response.hint,
                 correct_answer: response.correct_answer,
+                options: response.options,
             }]
         }
         Err(e) => vec![Event::Error {

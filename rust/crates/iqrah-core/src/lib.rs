@@ -45,7 +45,7 @@ pub use ports::{ContentRepository, UserRepository};
 
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
-pub use exercises::{ExerciseService, ExerciseResponse};
+pub use exercises::{ExerciseService, ExerciseResponse, McqExercise};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
 

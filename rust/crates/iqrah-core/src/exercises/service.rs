@@ -1,6 +1,7 @@
 // exercises/service.rs
 // Exercise service for generating axis-specific exercises
 
+use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
 use super::translation::TranslationExercise;
 use super::types::{Exercise, ExerciseResponse, ExerciseType};
@@ -75,9 +76,31 @@ impl ExerciseService {
         }
     }
 
+    /// Generate an MCQ exercise (Arabic to English)
+    /// Tests translation understanding with multiple choice
+    pub async fn generate_mcq_ar_to_en(&self, node_id: &str) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_ar_to_en(node_id.to_string(), &*self.content_repo).await?;
+        Ok(ExerciseType::McqArToEn(Box::new(exercise)))
+    }
+
+    /// Generate an MCQ exercise (English to Arabic)
+    /// Tests memorization with multiple choice
+    pub async fn generate_mcq_en_to_ar(&self, node_id: &str) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_en_to_ar(node_id.to_string(), &*self.content_repo).await?;
+        Ok(ExerciseType::McqEnToAr(Box::new(exercise)))
+    }
+
     /// Check an answer for an exercise
+    /// For MCQ exercises, also includes the options
     pub fn check_answer(&self, exercise: &dyn Exercise, answer: &str) -> ExerciseResponse {
         let is_correct = exercise.check_answer(answer);
+
+        // Try to downcast to McqExercise to get options
+        let options = if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
+            Some(mcq.get_options().to_vec())
+        } else {
+            None
+        };
 
         ExerciseResponse {
             is_correct,
@@ -93,6 +116,7 @@ impl ExerciseService {
             } else {
                 None
             },
+            options,
         }
     }
 
@@ -391,5 +415,55 @@ mod tests {
 
         assert!(!response.is_correct);
         assert!(response.hint.is_some()); // Hint provided for wrong answer
+    }
+
+    #[tokio::test]
+    async fn test_generate_mcq_ar_to_en() {
+        let content_repo = Arc::new(MockContentRepo::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service
+            .generate_mcq_ar_to_en("WORD:1:1:1")
+            .await
+            .unwrap();
+
+        let ex = exercise.as_exercise();
+        assert_eq!(ex.get_type_name(), "mcq_ar_to_en");
+        assert!(ex.generate_question().contains("What does"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_mcq_en_to_ar() {
+        let content_repo = Arc::new(MockContentRepo::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service
+            .generate_mcq_en_to_ar("WORD:1:1:1")
+            .await
+            .unwrap();
+
+        let ex = exercise.as_exercise();
+        assert_eq!(ex.get_type_name(), "mcq_en_to_ar");
+        assert!(ex.generate_question().contains("Which Arabic word"));
+    }
+
+    #[tokio::test]
+    async fn test_mcq_check_answer_includes_options() {
+        let content_repo = Arc::new(MockContentRepo::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service
+            .generate_mcq_ar_to_en("WORD:1:1:1")
+            .await
+            .unwrap();
+
+        let ex = exercise.as_exercise();
+        let response = service.check_answer(ex, "In the name");
+
+        assert!(response.is_correct);
+        assert!(response.options.is_some()); // MCQ should include options
+        let options = response.options.unwrap();
+        assert_eq!(options.len(), 4); // 1 correct + 3 distractors
+        assert!(options.contains(&"In the name".to_string()));
     }
 }

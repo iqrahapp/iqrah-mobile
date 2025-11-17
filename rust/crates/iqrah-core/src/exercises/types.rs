@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// Trait for all exercise types
 /// Each exercise can generate questions, check answers, and provide hints
-pub trait Exercise: Send + Sync {
+pub trait Exercise: Send + Sync + std::any::Any {
     /// Generate the question/prompt for this exercise
     fn generate_question(&self) -> String;
 
@@ -28,12 +28,17 @@ pub struct ExerciseResponse {
     pub is_correct: bool,
     pub correct_answer: Option<String>,
     pub hint: Option<String>,
+    /// For MCQ exercises, include the options
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub options: Option<Vec<String>>,
 }
 
 /// Enum for different exercise types (Phase 4.3)
 pub enum ExerciseType {
     Memorization(Box<dyn Exercise>),
     Translation(Box<dyn Exercise>),
+    McqArToEn(Box<dyn Exercise>),
+    McqEnToAr(Box<dyn Exercise>),
 }
 
 impl ExerciseType {
@@ -42,6 +47,8 @@ impl ExerciseType {
         match self {
             ExerciseType::Memorization(ex) => ex.as_ref(),
             ExerciseType::Translation(ex) => ex.as_ref(),
+            ExerciseType::McqArToEn(ex) => ex.as_ref(),
+            ExerciseType::McqEnToAr(ex) => ex.as_ref(),
         }
     }
 
@@ -50,6 +57,8 @@ impl ExerciseType {
         match self {
             ExerciseType::Memorization(_) => "memorization",
             ExerciseType::Translation(_) => "translation",
+            ExerciseType::McqArToEn(_) => "mcq_ar_to_en",
+            ExerciseType::McqEnToAr(_) => "mcq_en_to_ar",
         }
     }
 }
