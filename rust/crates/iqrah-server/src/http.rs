@@ -27,16 +27,16 @@ pub fn create_http_router() -> Router<Arc<AppState>> {
         .route("/users/:user_id/settings/translator", get(get_user_preferred_translator))
         .route("/users/:user_id/settings/translator", post(set_user_preferred_translator))
         .route("/verses/:verse_key/translations/:translator_id", get(get_verse_translation))
-        // Package management endpoints
+        // Package management endpoints (specific routes before parameterized routes)
         .route("/packages", get(list_packages))
-        .route("/packages/:package_id", get(get_package_details))
-        .route("/packages/:package_id", post(upsert_package_handler))
-        .route("/packages/:package_id", axum::routing::delete(delete_package_handler))
         .route("/packages/installed", get(list_installed_packages))
         .route("/packages/installed/:package_id", post(install_package_handler))
         .route("/packages/installed/:package_id", axum::routing::delete(uninstall_package_handler))
         .route("/packages/installed/:package_id/enable", post(enable_package_handler))
         .route("/packages/installed/:package_id/disable", post(disable_package_handler))
+        .route("/packages/:package_id", get(get_package_details))
+        .route("/packages/:package_id", post(upsert_package_handler))
+        .route("/packages/:package_id", axum::routing::delete(delete_package_handler))
 }
 
 /// Health check endpoint
