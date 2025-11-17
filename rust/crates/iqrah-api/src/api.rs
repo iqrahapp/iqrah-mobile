@@ -125,20 +125,20 @@ pub async fn get_exercises(
         // Extract verse_key from node_id (e.g., "VERSE:1:1" -> "1:1")
         let translation = if item.node.id.starts_with("VERSE:") {
             let verse_key = item.node.id.strip_prefix("VERSE:").unwrap_or(&item.node.id);
-            app.content_repo
+            // Try v2 method first
+            let v2_translation = app.content_repo
                 .get_verse_translation(verse_key, translator_id)
-                .await?
-                .or_else(|| {
-                    // Fallback to v1 method if v2 fails
-                    futures::executor::block_on(async {
-                        app.content_repo
-                            .get_translation(&item.node.id, "en")
-                            .await
-                            .ok()
-                            .flatten()
-                    })
-                })
-                .unwrap_or_default()
+                .await?;
+
+            // Fallback to v1 method if v2 returns None
+            if v2_translation.is_none() {
+                app.content_repo
+                    .get_translation(&item.node.id, "en")
+                    .await?
+                    .unwrap_or_default()
+            } else {
+                v2_translation.unwrap_or_default()
+            }
         } else {
             // Fallback to v1 method for non-verse nodes
             app.content_repo

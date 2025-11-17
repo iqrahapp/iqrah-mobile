@@ -119,6 +119,7 @@ pub struct TranslatorRow {
     pub license: Option<String>,
     pub website: Option<String>,
     pub version: String,
+    pub package_id: Option<String>,
     #[allow(dead_code)]
     pub created_at: i64,
 }
@@ -166,4 +167,35 @@ pub struct LemmaRow {
     pub description: Option<String>,
     #[allow(dead_code)]
     pub created_at: i64,
+}
+
+// ============================================================================
+// Package Management
+// ============================================================================
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, FromRow)]
+pub struct ContentPackageRow {
+    pub package_id: String,
+    pub package_type: String,
+    pub name: String,
+    pub language_code: Option<String>,
+    pub author: Option<String>,
+    pub version: String,
+    pub description: Option<String>,
+    pub file_size: Option<i64>,
+    pub download_url: Option<String>,
+    pub checksum: Option<String>,
+    pub license: Option<String>,
+    #[allow(dead_code)]
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, FromRow)]
+pub struct InstalledPackageRow {
+    pub package_id: String,
+    pub installed_at: i64,
+    pub enabled: i32,
 }

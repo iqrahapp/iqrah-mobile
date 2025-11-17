@@ -150,6 +150,33 @@ CREATE TABLE languages (
     direction TEXT NOT NULL DEFAULT 'ltr' CHECK (direction IN ('ltr', 'rtl'))
 ) STRICT;
 
+-- Content Packages (must be defined before translators due to FK reference)
+CREATE TABLE content_packages (
+    package_id TEXT PRIMARY KEY,  -- e.g., 'sahih-intl-v1', 'mishary-rashid-audio'
+    package_type TEXT NOT NULL CHECK (package_type IN (
+        'verse_translation',
+        'word_translation',
+        'text_variant',
+        'verse_recitation',
+        'word_audio',
+        'transliteration'
+    )),
+    name TEXT NOT NULL,
+    language_code TEXT,
+    author TEXT,
+    version TEXT NOT NULL,
+    description TEXT,
+    file_size INTEGER,  -- Bytes
+    download_url TEXT,
+    checksum TEXT,      -- SHA256 for integrity verification
+    license TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER,
+    FOREIGN KEY (language_code) REFERENCES languages(language_code)
+) STRICT;
+
+CREATE INDEX idx_content_packages_type_lang ON content_packages(package_type, language_code);
+
 -- Translators
 CREATE TABLE translators (
     translator_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -161,11 +188,14 @@ CREATE TABLE translators (
     license TEXT,
     website TEXT,
     version TEXT DEFAULT '1.0',
+    package_id TEXT,                     -- Link to content_packages (NULL for built-in translators)
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    FOREIGN KEY (language_code) REFERENCES languages(language_code)
+    FOREIGN KEY (language_code) REFERENCES languages(language_code),
+    FOREIGN KEY (package_id) REFERENCES content_packages(package_id) ON DELETE CASCADE
 ) STRICT;
 
 CREATE INDEX idx_translators_language ON translators(language_code);
+CREATE INDEX idx_translators_package ON translators(package_id);
 CREATE INDEX idx_translators_slug ON translators(slug);
 
 -- Verse Translations
@@ -196,35 +226,8 @@ CREATE TABLE word_translations (
 CREATE INDEX idx_word_translations_translator ON word_translations(translator_id);
 
 -- ============================================================================
--- PACKAGE MANAGEMENT
+-- PACKAGE MANAGEMENT (continued)
 -- ============================================================================
-
--- Content Packages
-CREATE TABLE content_packages (
-    package_id TEXT PRIMARY KEY,  -- e.g., 'sahih-intl-v1', 'mishary-rashid-audio'
-    package_type TEXT NOT NULL CHECK (package_type IN (
-        'verse_translation',
-        'word_translation',
-        'text_variant',
-        'verse_recitation',
-        'word_audio',
-        'transliteration'
-    )),
-    name TEXT NOT NULL,
-    language_code TEXT,
-    author TEXT,
-    version TEXT NOT NULL,
-    description TEXT,
-    file_size INTEGER,  -- Bytes
-    download_url TEXT,
-    checksum TEXT,      -- SHA256 for integrity verification
-    license TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER,
-    FOREIGN KEY (language_code) REFERENCES languages(language_code)
-) STRICT;
-
-CREATE INDEX idx_content_packages_type_lang ON content_packages(package_type, language_code);
 
 -- Installed Packages
 CREATE TABLE installed_packages (

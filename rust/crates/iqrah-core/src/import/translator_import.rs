@@ -135,6 +135,7 @@ async fn import_single_translator(
                 metadata.license.as_deref(),
                 metadata.website.as_deref(),
                 metadata.version.as_deref(),
+                None,  // package_id - built-in translators don't belong to packages
             )
             .await?
     };

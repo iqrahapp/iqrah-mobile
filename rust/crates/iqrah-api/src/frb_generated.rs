@@ -26,6 +26,7 @@
 // Section: imports
 
 use crate::api::*;
+use crate::{ContentRepository, LearningService, SessionService, UserRepository};
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
@@ -1072,11 +1073,17 @@ impl SseDecode for crate::api::ExerciseDto {
         let mut var_question = <String>::sse_decode(deserializer);
         let mut var_answer = <String>::sse_decode(deserializer);
         let mut var_nodeType = <String>::sse_decode(deserializer);
+        let mut var_translatorName = if <bool>::sse_decode(deserializer) {
+            Some(<String>::sse_decode(deserializer))
+        } else {
+            None
+        };
         return crate::api::ExerciseDto {
             node_id: var_nodeId,
             question: var_question,
             answer: var_answer,
             node_type: var_nodeType,
+            translator_name: var_translatorName,
         };
     }
 }
@@ -1666,6 +1673,10 @@ impl SseEncode for crate::api::ExerciseDto {
         <String>::sse_encode(self.question, serializer);
         <String>::sse_encode(self.answer, serializer);
         <String>::sse_encode(self.node_type, serializer);
+        <bool>::sse_encode(self.translator_name.is_some(), serializer);
+        if let Some(value) = self.translator_name {
+            <String>::sse_encode(value, serializer);
+        }
     }
 }
 

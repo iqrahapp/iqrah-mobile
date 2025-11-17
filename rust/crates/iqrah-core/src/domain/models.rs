@@ -256,6 +256,7 @@ pub struct Translator {
     pub language_code: String,
     pub description: Option<String>,
     pub license: Option<String>,
+    pub package_id: Option<String>,  // Link to content package (None for built-in translators)
 }
 
 // ===== Echo Recall Exercise Models =====
@@ -291,4 +292,71 @@ pub struct EchoRecallWord {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EchoRecallState {
     pub words: Vec<EchoRecallWord>,
+}
+
+// ===== Package Management Models =====
+
+/// Package types for downloadable content
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PackageType {
+    VerseTranslation,
+    WordTranslation,
+    TextVariant,
+    VerseRecitation,
+    WordAudio,
+    Transliteration,
+}
+
+impl std::fmt::Display for PackageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PackageType::VerseTranslation => write!(f, "verse_translation"),
+            PackageType::WordTranslation => write!(f, "word_translation"),
+            PackageType::TextVariant => write!(f, "text_variant"),
+            PackageType::VerseRecitation => write!(f, "verse_recitation"),
+            PackageType::WordAudio => write!(f, "word_audio"),
+            PackageType::Transliteration => write!(f, "transliteration"),
+        }
+    }
+}
+
+impl std::str::FromStr for PackageType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "verse_translation" => Ok(PackageType::VerseTranslation),
+            "word_translation" => Ok(PackageType::WordTranslation),
+            "text_variant" => Ok(PackageType::TextVariant),
+            "verse_recitation" => Ok(PackageType::VerseRecitation),
+            "word_audio" => Ok(PackageType::WordAudio),
+            "transliteration" => Ok(PackageType::Transliteration),
+            _ => Err(anyhow::anyhow!("Invalid package type: {}", s)),
+        }
+    }
+}
+
+/// Represents a content package
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentPackage {
+    pub package_id: String,
+    pub package_type: PackageType,
+    pub name: String,
+    pub language_code: Option<String>,
+    pub author: Option<String>,
+    pub version: String,
+    pub description: Option<String>,
+    pub file_size: Option<i64>,
+    pub download_url: Option<String>,
+    pub checksum: Option<String>,
+    pub license: Option<String>,
+}
+
+/// Represents an installed package
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledPackage {
+    pub package_id: String,
+    pub installed_at: DateTime<Utc>,
+    pub enabled: bool,
 }

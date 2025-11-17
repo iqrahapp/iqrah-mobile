@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 2047187040;
+  int get rustContentHash => -1932781887;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -128,10 +128,25 @@ abstract class RustLibApi extends BaseApi {
     required bool isHighYield,
   });
 
+  Future<List<LanguageDto>> crateApiGetLanguages();
+
+  Future<int> crateApiGetPreferredTranslatorId();
+
   Future<List<SessionPreviewDto>> crateApiGetSessionPreview({
     required String userId,
     required int limit,
     required bool isHighYield,
+  });
+
+  Future<TranslatorDto?> crateApiGetTranslator({required int translatorId});
+
+  Future<List<TranslatorDto>> crateApiGetTranslatorsForLanguage({
+    required String languageCode,
+  });
+
+  Future<String?> crateApiGetVerseTranslationByTranslator({
+    required String verseKey,
+    required int translatorId,
   });
 
   Future<void> crateApiInitApp();
@@ -148,6 +163,8 @@ abstract class RustLibApi extends BaseApi {
     required String query,
     required int limit,
   });
+
+  Future<String> crateApiSetPreferredTranslatorId({required int translatorId});
 
   Future<String> crateApiSetupDatabase({
     required String contentDbPath,
@@ -635,6 +652,63 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<List<LanguageDto>> crateApiGetLanguages() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_language_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetLanguagesConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetLanguagesConstMeta =>
+      const TaskConstMeta(debugName: "get_languages", argNames: []);
+
+  @override
+  Future<int> crateApiGetPreferredTranslatorId() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_i_32,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetPreferredTranslatorIdConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetPreferredTranslatorIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_preferred_translator_id",
+        argNames: [],
+      );
+
+  @override
   Future<List<SessionPreviewDto>> crateApiGetSessionPreview({
     required String userId,
     required int limit,
@@ -650,7 +724,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -671,6 +745,104 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<TranslatorDto?> crateApiGetTranslator({required int translatorId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_32(translatorId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_translator_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetTranslatorConstMeta,
+        argValues: [translatorId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetTranslatorConstMeta => const TaskConstMeta(
+    debugName: "get_translator",
+    argNames: ["translatorId"],
+  );
+
+  @override
+  Future<List<TranslatorDto>> crateApiGetTranslatorsForLanguage({
+    required String languageCode,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(languageCode, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_translator_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetTranslatorsForLanguageConstMeta,
+        argValues: [languageCode],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetTranslatorsForLanguageConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_translators_for_language",
+        argNames: ["languageCode"],
+      );
+
+  @override
+  Future<String?> crateApiGetVerseTranslationByTranslator({
+    required String verseKey,
+    required int translatorId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(verseKey, serializer);
+          sse_encode_i_32(translatorId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetVerseTranslationByTranslatorConstMeta,
+        argValues: [verseKey, translatorId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetVerseTranslationByTranslatorConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_verse_translation_by_translator",
+        argNames: ["verseKey", "translatorId"],
+      );
+
+  @override
   Future<void> crateApiInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -679,7 +851,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 20,
             port: port_,
           );
         },
@@ -713,7 +885,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 21,
             port: port_,
           );
         },
@@ -743,7 +915,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 22,
             port: port_,
           );
         },
@@ -775,7 +947,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 23,
             port: port_,
           );
         },
@@ -796,6 +968,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<String> crateApiSetPreferredTranslatorId({required int translatorId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_32(translatorId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiSetPreferredTranslatorIdConstMeta,
+        argValues: [translatorId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSetPreferredTranslatorIdConstMeta =>
+      const TaskConstMeta(
+        debugName: "set_preferred_translator_id",
+        argNames: ["translatorId"],
+      );
+
+  @override
   Future<String> crateApiSetupDatabase({
     required String contentDbPath,
     required String userDbPath,
@@ -811,7 +1014,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 25,
             port: port_,
           );
         },
@@ -841,7 +1044,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1035,6 +1238,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TranslatorDto dco_decode_box_autoadd_translator_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_translator_dto(raw);
+  }
+
+  @protected
   DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1064,13 +1273,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ExerciseDto dco_decode_exercise_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return ExerciseDto(
       nodeId: dco_decode_String(arr[0]),
       question: dco_decode_String(arr[1]),
       answer: dco_decode_String(arr[2]),
       nodeType: dco_decode_String(arr[3]),
+      translatorName: dco_decode_opt_String(arr[4]),
     );
   }
 
@@ -1087,9 +1297,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  LanguageDto dco_decode_language_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return LanguageDto(
+      code: dco_decode_String(arr[0]),
+      englishName: dco_decode_String(arr[1]),
+      nativeName: dco_decode_String(arr[2]),
+      direction: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
   List<ExerciseDto> dco_decode_list_exercise_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_exercise_dto).toList();
+  }
+
+  @protected
+  List<LanguageDto> dco_decode_list_language_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_language_dto).toList();
   }
 
   @protected
@@ -1123,6 +1353,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<TranslatorDto> dco_decode_list_translator_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_translator_dto).toList();
+  }
+
+  @protected
   NodeSearchDto dco_decode_node_search_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1136,9 +1372,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_i_32(raw);
+  }
+
+  @protected
+  TranslatorDto? dco_decode_opt_box_autoadd_translator_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_translator_dto(raw);
   }
 
   @protected
@@ -1165,6 +1413,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return SurahInfo(
       number: dco_decode_i_32(arr[0]),
       name: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  TranslatorDto dco_decode_translator_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return TranslatorDto(
+      id: dco_decode_i_32(arr[0]),
+      slug: dco_decode_String(arr[1]),
+      fullName: dco_decode_String(arr[2]),
+      languageCode: dco_decode_String(arr[3]),
+      description: dco_decode_opt_String(arr[4]),
+      license: dco_decode_opt_String(arr[5]),
     );
   }
 
@@ -1363,6 +1627,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  TranslatorDto sse_decode_box_autoadd_translator_dto(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_translator_dto(deserializer));
+  }
+
+  @protected
   DashboardStatsDto sse_decode_dashboard_stats_dto(
     SseDeserializer deserializer,
   ) {
@@ -1397,11 +1669,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_question = sse_decode_String(deserializer);
     var var_answer = sse_decode_String(deserializer);
     var var_nodeType = sse_decode_String(deserializer);
+    var var_translatorName = sse_decode_opt_String(deserializer);
     return ExerciseDto(
       nodeId: var_nodeId,
       question: var_question,
       answer: var_answer,
       nodeType: var_nodeType,
+      translatorName: var_translatorName,
     );
   }
 
@@ -1418,6 +1692,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  LanguageDto sse_decode_language_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_code = sse_decode_String(deserializer);
+    var var_englishName = sse_decode_String(deserializer);
+    var var_nativeName = sse_decode_String(deserializer);
+    var var_direction = sse_decode_String(deserializer);
+    return LanguageDto(
+      code: var_code,
+      englishName: var_englishName,
+      nativeName: var_nativeName,
+      direction: var_direction,
+    );
+  }
+
+  @protected
   List<ExerciseDto> sse_decode_list_exercise_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1425,6 +1714,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <ExerciseDto>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_exercise_dto(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<LanguageDto> sse_decode_list_language_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <LanguageDto>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_language_dto(deserializer));
     }
     return ans_;
   }
@@ -1484,6 +1785,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<TranslatorDto> sse_decode_list_translator_dto(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <TranslatorDto>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_translator_dto(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   NodeSearchDto sse_decode_node_search_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_nodeId = sse_decode_String(deserializer);
@@ -1497,11 +1812,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_i_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  TranslatorDto? sse_decode_opt_box_autoadd_translator_dto(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_translator_dto(deserializer));
     } else {
       return null;
     }
@@ -1532,6 +1871,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_number = sse_decode_i_32(deserializer);
     var var_name = sse_decode_String(deserializer);
     return SurahInfo(number: var_number, name: var_name);
+  }
+
+  @protected
+  TranslatorDto sse_decode_translator_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_32(deserializer);
+    var var_slug = sse_decode_String(deserializer);
+    var var_fullName = sse_decode_String(deserializer);
+    var var_languageCode = sse_decode_String(deserializer);
+    var var_description = sse_decode_opt_String(deserializer);
+    var var_license = sse_decode_opt_String(deserializer);
+    return TranslatorDto(
+      id: var_id,
+      slug: var_slug,
+      fullName: var_fullName,
+      languageCode: var_languageCode,
+      description: var_description,
+      license: var_license,
+    );
   }
 
   @protected
@@ -1741,6 +2099,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_translator_dto(
+    TranslatorDto self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_translator_dto(self, serializer);
+  }
+
+  @protected
   void sse_encode_dashboard_stats_dto(
     DashboardStatsDto self,
     SseSerializer serializer,
@@ -1769,6 +2136,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.question, serializer);
     sse_encode_String(self.answer, serializer);
     sse_encode_String(self.nodeType, serializer);
+    sse_encode_opt_String(self.translatorName, serializer);
   }
 
   @protected
@@ -1784,6 +2152,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_language_dto(LanguageDto self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.code, serializer);
+    sse_encode_String(self.englishName, serializer);
+    sse_encode_String(self.nativeName, serializer);
+    sse_encode_String(self.direction, serializer);
+  }
+
+  @protected
   void sse_encode_list_exercise_dto(
     List<ExerciseDto> self,
     SseSerializer serializer,
@@ -1792,6 +2169,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_exercise_dto(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_language_dto(
+    List<LanguageDto> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_language_dto(item, serializer);
     }
   }
 
@@ -1854,6 +2243,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_translator_dto(
+    List<TranslatorDto> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_translator_dto(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_node_search_dto(
     NodeSearchDto self,
     SseSerializer serializer,
@@ -1865,12 +2266,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_i_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_translator_dto(
+    TranslatorDto? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_translator_dto(self, serializer);
     }
   }
 
@@ -1892,6 +2316,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.number, serializer);
     sse_encode_String(self.name, serializer);
+  }
+
+  @protected
+  void sse_encode_translator_dto(TranslatorDto self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.id, serializer);
+    sse_encode_String(self.slug, serializer);
+    sse_encode_String(self.fullName, serializer);
+    sse_encode_String(self.languageCode, serializer);
+    sse_encode_opt_String(self.description, serializer);
+    sse_encode_opt_String(self.license, serializer);
   }
 
   @protected
