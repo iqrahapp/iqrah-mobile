@@ -26,24 +26,52 @@ else
     exit 1
 fi
 
+# Clean up any old graph files in output directory
+echo "🧹 Cleaning up old graph files..."
+rm -f "${OUTPUT_DIR}"/knowledge-graph.cbor.zst
+rm -f "${OUTPUT_DIR}"/iqrah-graph-*.cbor.zst
+
 # Extract the graph file
 echo "📦 Extracting knowledge graph..."
-tar -xzf /tmp/iqrah-graph.tar.gz -C /tmp/
+# Extract to a temporary directory to avoid conflicts
+EXTRACT_DIR=$(mktemp -d)
+tar -xzf /tmp/iqrah-graph.tar.gz -C "${EXTRACT_DIR}/"
 
 # Move to output directory
-mv /tmp/knowledge-graph.cbor.zst "${OUTPUT_DIR}/"
+if [ -f "${EXTRACT_DIR}/knowledge-graph.cbor.zst" ]; then
+    mv "${EXTRACT_DIR}/knowledge-graph.cbor.zst" "${OUTPUT_DIR}/"
+    echo "✅ Extracted: knowledge-graph.cbor.zst"
+else
+    echo "❌ Error: knowledge-graph.cbor.zst not found in tarball"
+    ls -la "${EXTRACT_DIR}/"
+    exit 1
+fi
 
 # Also extract content.db if it exists in the tarball
-if tar -tzf /tmp/iqrah-graph.tar.gz | grep -q "content.db"; then
-    tar -xzf /tmp/iqrah-graph.tar.gz -C /tmp/ content.db
-    mv /tmp/content.db "${OUTPUT_DIR}/"
-    echo "✅ Downloaded: knowledge-graph.cbor.zst and content.db"
-else
-    echo "✅ Downloaded: knowledge-graph.cbor.zst"
+if [ -f "${EXTRACT_DIR}/content.db" ]; then
+    mv "${EXTRACT_DIR}/content.db" "${OUTPUT_DIR}/"
+    echo "✅ Extracted: content.db"
 fi
+
+# Clean up extraction directory
+rm -rf "${EXTRACT_DIR}"
 
 # Clean up
 rm /tmp/iqrah-graph.tar.gz
+
+# Verify the CBOR file is valid zstandard compressed
+echo ""
+echo "🔍 Verifying downloaded file..."
+if command -v zstd &> /dev/null; then
+    if zstd -t "${OUTPUT_DIR}/knowledge-graph.cbor.zst" &> /dev/null; then
+        echo "✅ CBOR file is valid zstandard compressed"
+    else
+        echo "❌ Error: CBOR file failed zstandard validation"
+        exit 1
+    fi
+else
+    echo "⚠️  zstd not installed, skipping validation"
+fi
 
 # Show file info
 echo ""

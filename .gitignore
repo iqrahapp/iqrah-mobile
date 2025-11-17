@@ -14,6 +14,11 @@
 .swiftpm/
 migrate_working_dir/
 
+# Knowledge graph assets (downloaded from releases)
+assets/knowledge-graph.cbor.zst
+assets/iqrah-graph-*.cbor.zst
+assets/content.db
+
 # IntelliJ related
 *.iml
 *.ipr
