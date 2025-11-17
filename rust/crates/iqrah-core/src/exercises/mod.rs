@@ -6,6 +6,7 @@ mod grammar;
 mod graph;
 mod mcq;
 mod memorization;
+mod reverse_cloze;
 mod service;
 mod translation;
 mod types;
@@ -18,6 +19,7 @@ pub use memorization::{
     ClozeDeletionExercise, FirstLetterHintExercise, MemorizationExercise, MissingWordMcqExercise,
     NextWordDifficulty, NextWordMcqExercise,
 };
+pub use reverse_cloze::ReverseClozeExercise;
 pub use service::ExerciseService;
 pub use translation::{ContextualTranslationExercise, TranslationExercise};
 pub use types::{Exercise, ExerciseResponse, ExerciseType};
