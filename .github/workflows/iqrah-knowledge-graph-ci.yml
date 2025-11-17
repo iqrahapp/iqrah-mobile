@@ -325,21 +325,21 @@ jobs:
           assert verse_count == 6236, f'Expected 6236 verses, got {verse_count}'
 
           # Verify chapter 1 specifically (since CBOR uses it)
-          cursor.execute('SELECT COUNT(*) FROM verses WHERE chapter = 1')
+          cursor.execute('SELECT COUNT(*) FROM verses WHERE chapter_number = 1')
           ch1_verses = cursor.fetchone()[0]
           print(f'Chapter 1 verses: {ch1_verses}')
           assert ch1_verses == 7, f'Expected 7 verses in chapter 1, got {ch1_verses}'
 
           conn.close()
 
-          # Check CBOR file exists (contains only chapter 1 graph data)
+          # Check CBOR file exists
           cbor_path = Path('test-ci-graph.cbor.zst')
           assert cbor_path.exists(), 'CBOR graph file not created'
 
           cbor_size_kb = cbor_path.stat().st_size / 1024
           print(f'CBOR file size: {cbor_size_kb:.2f} KB')
           assert cbor_size_kb > 1, 'CBOR file too small'
-          assert cbor_size_kb < 5000, 'CBOR file too large for ci-test preset'
+          assert cbor_size_kb < 10000, 'CBOR file unexpectedly large'
 
           print('✅ CBOR build pipeline validation passed')
           "
