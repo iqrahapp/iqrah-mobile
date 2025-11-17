@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::Utc;
+use colored::*;
 use iqrah_core::{
     scheduler_v2::{
         blend_profile, generate_session, BanditOptimizer, ProfileName, SessionMode, UserProfile,
@@ -24,7 +25,12 @@ pub async fn generate(
     enable_bandit: bool,
     verbose: bool,
 ) -> Result<()> {
-    println!("🎯 Generating session for goal: {}", goal_id);
+    println!(
+        "🎯 {}",
+        format!("Generating session for goal: {}", goal_id)
+            .bright_cyan()
+            .bold()
+    );
     println!();
 
     // Get database paths from environment or use defaults
@@ -32,8 +38,8 @@ pub async fn generate(
         std::env::var("CONTENT_DB_PATH").unwrap_or_else(|_| "data/content.db".to_string());
     let user_db_path = std::env::var("USER_DB_PATH").unwrap_or_else(|_| "data/user.db".to_string());
 
-    println!("   Content DB: {}", content_db_path);
-    println!("   User DB: {}", user_db_path);
+    println!("   {}: {}", "Content DB".dimmed(), content_db_path.dimmed());
+    println!("   {}: {}", "User DB".dimmed(), user_db_path.dimmed());
     println!();
 
     // Initialize databases
@@ -62,12 +68,26 @@ pub async fn generate(
 
     if candidates.is_empty() {
         println!();
-        println!("❌ No candidates found for goal '{}'", goal_id);
-        println!("   Make sure the goal exists and has nodes assigned to it.");
+        println!(
+            "❌ {}",
+            format!("No candidates found for goal '{}'", goal_id)
+                .red()
+                .bold()
+        );
+        println!(
+            "   {}",
+            "Make sure the goal exists and has nodes assigned to it.".yellow()
+        );
         return Ok(());
     }
 
-    println!("   Found {} candidate nodes", candidates.len());
+    println!(
+        "   {} {}",
+        "Found".green(),
+        format!("{} candidate nodes", candidates.len())
+            .green()
+            .bold()
+    );
 
     // Fetch memory states from user repository and merge
     println!("   Fetching user memory states...");
@@ -187,13 +207,18 @@ pub async fn generate(
 
     // Display results
     println!();
-    println!("✅ Session Generated!");
+    println!("✅ {}", "Session Generated!".green().bold());
     println!();
-    println!("   Nodes in session: {}", session_node_ids.len());
+    println!(
+        "   {}: {}",
+        "Nodes in session".bright_white().bold(),
+        session_node_ids.len().to_string().bright_cyan().bold()
+    );
     if let Some(profile_name) = chosen_profile_name {
         println!(
-            "   Bandit profile: {} (blended {:.0}%/{:.0}% with {})",
-            profile_name.as_str(),
+            "   {}: {} (blended {:.0}%/{:.0}% with {})",
+            "Bandit profile".bright_white().bold(),
+            profile_name.as_str().bright_magenta().bold(),
             BLEND_RATIO * 100.0,
             (1.0 - BLEND_RATIO) * 100.0,
             DEFAULT_SAFE_PROFILE.as_str()

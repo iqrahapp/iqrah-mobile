@@ -20,9 +20,15 @@ pub async fn get_content_schema_version(pool: &SqlitePool) -> Result<i32, sqlx::
 
 /// Initialize content database
 pub async fn init_content_db(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
+    // Note: FK constraints are disabled during migrations to avoid AUTOINCREMENT ID issues.
+    // The base schema migration uses AUTOINCREMENT for translators and words, then
+    // references those IDs in verse_translations and word_translations.
+    // We've improved this with subqueries (e.g., SELECT translator_id WHERE slug='...'),
+    // but migrations still fail due to sqlx running each migration in separate transactions.
+    // FK constraints are properly enforced after migrations complete.
     let options = SqliteConnectOptions::from_str(db_path)?
         .create_if_missing(true)
-        .foreign_keys(false); // Disable FK constraints during migrations
+        .foreign_keys(false); // Disabled during migrations only
 
     let pool = SqlitePool::connect_with(options).await?;
 

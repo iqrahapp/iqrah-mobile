@@ -634,7 +634,7 @@ checksum = "2a70d1562c0d00083939e34daad61dabebb0f8bc8c250d1ef2f5efc31eb93aaf"
 dependencies = [
  "burn-common",
  "bytemuck",
- "colored",
+ "colored 3.0.0",
  "cubecl",
  "derive-new 0.7.0",
  "half",
@@ -868,6 +868,16 @@ name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
+
+[[package]]
+name = "colored"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
+dependencies = [
+ "lazy_static",
+ "windows-sys 0.59.0",
+]
 
 [[package]]
 name = "colored"
@@ -2878,6 +2888,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "colored 2.2.0",
  "futures-util",
  "iqrah-core",
  "iqrah-storage",
