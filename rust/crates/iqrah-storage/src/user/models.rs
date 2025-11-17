@@ -45,3 +45,20 @@ pub struct UserStatRow {
     pub key: String,
     pub value: String,
 }
+
+// ============================================================================
+// Scheduler v2.0 Models
+// ============================================================================
+
+#[derive(Debug, Clone, FromRow)]
+pub struct ParentEnergyRow {
+    pub node_id: String,
+    pub energy: f32,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct BanditArmRow {
+    pub profile_name: String,
+    pub successes: f32,
+    pub failures: f32,
+}

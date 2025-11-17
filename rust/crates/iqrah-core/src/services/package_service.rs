@@ -265,10 +265,9 @@ mod tests {
             let filtered: Vec<ContentPackage> = packages
                 .values()
                 .filter(|p| {
-                    let type_match = package_type.as_ref().map_or(true, |t| &p.package_type == t);
-                    let lang_match = language_code.map_or(true, |l| {
-                        p.language_code.as_ref().map_or(false, |code| code == l)
-                    });
+                    let type_match = package_type.as_ref().is_none_or(|t| &p.package_type == t);
+                    let lang_match = language_code
+                        .is_none_or(|l| p.language_code.as_ref().is_some_and(|code| code == l));
                     type_match && lang_match
                 })
                 .cloned()
@@ -463,6 +462,33 @@ mod tests {
                 .filter(|p| p.enabled)
                 .cloned()
                 .collect())
+        }
+
+        async fn get_scheduler_candidates(
+            &self,
+            _goal_id: &str,
+            _user_id: &str,
+            _now_ts: i64,
+        ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
+            Ok(vec![])
+        }
+
+        async fn get_prerequisite_parents(
+            &self,
+            _node_ids: &[String],
+        ) -> Result<HashMap<String, Vec<String>>> {
+            Ok(HashMap::new())
+        }
+
+        async fn get_goal(
+            &self,
+            _goal_id: &str,
+        ) -> Result<Option<crate::ports::content_repository::SchedulerGoal>> {
+            Ok(None)
+        }
+
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<String>> {
+            Ok(vec![])
         }
     }
 

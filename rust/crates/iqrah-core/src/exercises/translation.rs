@@ -110,7 +110,6 @@ impl Exercise for TranslationExercise {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     // Note: Tests require semantic model to be initialized
     // Run integration tests with a real model instead

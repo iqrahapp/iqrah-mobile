@@ -153,12 +153,9 @@ impl ExerciseService {
         let is_correct = exercise.check_answer(answer);
 
         // Try to downcast to McqExercise to get options
-        let options =
-            if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
-                Some(mcq.get_options().to_vec())
-            } else {
-                None
-            };
+        let options = (exercise as &dyn std::any::Any)
+            .downcast_ref::<McqExercise>()
+            .map(|mcq| mcq.get_options().to_vec());
 
         // Get semantic grading metadata for TranslationExercise or MemorizationExercise
         // Only if embedder is initialized (fail gracefully if not)
@@ -452,6 +449,33 @@ mod tests {
         }
 
         async fn get_enabled_packages(&self) -> Result<Vec<crate::InstalledPackage>> {
+            Ok(vec![])
+        }
+
+        async fn get_scheduler_candidates(
+            &self,
+            _goal_id: &str,
+            _user_id: &str,
+            _now_ts: i64,
+        ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
+            Ok(vec![])
+        }
+
+        async fn get_prerequisite_parents(
+            &self,
+            _node_ids: &[String],
+        ) -> Result<HashMap<String, Vec<String>>> {
+            Ok(HashMap::new())
+        }
+
+        async fn get_goal(
+            &self,
+            _goal_id: &str,
+        ) -> Result<Option<crate::ports::content_repository::SchedulerGoal>> {
+            Ok(None)
+        }
+
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<String>> {
             Ok(vec![])
         }
     }

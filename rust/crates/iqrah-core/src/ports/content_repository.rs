@@ -111,6 +111,7 @@ pub trait ContentRepository: Send + Sync {
     // ===== Import/Insert Methods =====
 
     /// Insert a new translator
+    #[allow(clippy::too_many_arguments)]
     async fn insert_translator(
         &self,
         slug: &str,
