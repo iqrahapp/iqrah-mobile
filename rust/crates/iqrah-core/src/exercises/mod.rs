@@ -15,5 +15,5 @@ pub use memorization::{
     NextWordDifficulty, NextWordMcqExercise,
 };
 pub use service::ExerciseService;
-pub use translation::TranslationExercise;
+pub use translation::{ContextualTranslationExercise, TranslationExercise};
 pub use types::{Exercise, ExerciseResponse, ExerciseType};

@@ -4,7 +4,7 @@
 use super::grammar::IdentifyRootExercise;
 use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
-use super::translation::TranslationExercise;
+use super::translation::{ContextualTranslationExercise, TranslationExercise};
 use super::types::{Exercise, ExerciseResponse, ExerciseType};
 use crate::semantic::grader::{SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::semantic::SemanticEmbedder;
@@ -153,7 +153,7 @@ impl ExerciseService {
     pub fn check_answer(&self, exercise: &dyn Exercise, answer: &str) -> ExerciseResponse {
         let is_correct = exercise.check_answer(answer);
 
-        // Try to downcast to get MCQ options (McqExercise or IdentifyRootExercise)
+        // Try to downcast to get MCQ options
         let options = (exercise as &dyn std::any::Any)
             .downcast_ref::<McqExercise>()
             .map(|mcq| mcq.get_options().to_vec())
@@ -161,6 +161,11 @@ impl ExerciseService {
                 (exercise as &dyn std::any::Any)
                     .downcast_ref::<IdentifyRootExercise>()
                     .map(|root_ex| root_ex.get_options().to_vec())
+            })
+            .or_else(|| {
+                (exercise as &dyn std::any::Any)
+                    .downcast_ref::<ContextualTranslationExercise>()
+                    .map(|ctx_trans| ctx_trans.get_options().to_vec())
             });
 
         // Get semantic grading metadata for TranslationExercise or MemorizationExercise
