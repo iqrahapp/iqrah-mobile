@@ -67,15 +67,31 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize semantic grading model
     tracing::info!("Initializing semantic grading model...");
-    let model_path = std::env::var("SEMANTIC_MODEL_PATH")
-        .unwrap_or_else(|_| "minishlab/potion-base-8M".to_string());
 
-    match ExerciseService::init_semantic_model(&model_path) {
+    // Get cache directory from environment variable (optional)
+    // For server: can use system default
+    // For mobile: Flutter should set HF_HOME before calling Rust
+    let cache_dir = std::env::var("HF_HOME").ok();
+    if let Some(ref dir) = cache_dir {
+        tracing::info!("Using cache directory from HF_HOME: {}", dir);
+    } else {
+        tracing::info!("No HF_HOME set, will use system default cache location");
+    }
+
+    // Get model ID (default to multilingual model)
+    let model_id = std::env::var("SEMANTIC_MODEL_ID")
+        .unwrap_or_else(|_| "minishlab/potion-multilingual-128M".to_string());
+    tracing::info!("Model ID: {}", model_id);
+
+    match ExerciseService::init_semantic_model(&model_id, cache_dir.as_deref()) {
         Ok(_) => tracing::info!("✅ Semantic grading model initialized successfully"),
         Err(e) => {
             tracing::error!("❌ Failed to initialize semantic model: {}", e);
-            tracing::error!("Model path: {}", model_path);
-            tracing::error!("Set SEMANTIC_MODEL_PATH environment variable to use a different model");
+            tracing::error!("Model ID: {}", model_id);
+            tracing::error!("Troubleshooting:");
+            tracing::error!("  - Check internet connection (for first download)");
+            tracing::error!("  - Set HF_HOME to a writable directory");
+            tracing::error!("  - Set SEMANTIC_MODEL_ID to use a different model");
             return Err(e);
         }
     }

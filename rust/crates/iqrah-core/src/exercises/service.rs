@@ -28,11 +28,36 @@ impl ExerciseService {
     ///
     /// # Arguments
     /// * `model_path` - Path to the model2vec model (local path or HuggingFace model ID)
+    /// * `cache_dir` - Optional cache directory for model files (important for mobile!)
+    ///   - If provided, sets HF_HOME to this directory before loading model
+    ///   - On mobile, this should be the app's documents directory
+    ///   - If None, uses system default (~/.cache/huggingface on Linux/macOS)
     ///
     /// # Returns
     /// Ok(()) if the model was loaded successfully, Err if loading failed
-    pub fn init_semantic_model(model_path: &str) -> Result<()> {
+    ///
+    /// # Example (Flutter FFI)
+    /// ```rust,no_run
+    /// // From Flutter, after getting app documents directory:
+    /// let cache_dir = "/data/user/0/com.example.app/files/huggingface";
+    /// ExerciseService::init_semantic_model(
+    ///     "minishlab/potion-multilingual-128M",
+    ///     Some(cache_dir)
+    /// )?;
+    /// ```
+    pub fn init_semantic_model(model_path: &str, cache_dir: Option<&str>) -> Result<()> {
         tracing::info!("Initializing semantic grading model: {}", model_path);
+
+        // Set HF_HOME if cache directory is provided (important for mobile)
+        if let Some(dir) = cache_dir {
+            tracing::info!("Setting model cache directory (HF_HOME): {}", dir);
+            std::env::set_var("HF_HOME", dir);
+        } else {
+            tracing::warn!(
+                "No cache directory provided. Using system default. \
+                 For mobile apps, provide cache_dir parameter!"
+            );
+        }
 
         let embedder = SemanticEmbedder::new(model_path)?;
 
