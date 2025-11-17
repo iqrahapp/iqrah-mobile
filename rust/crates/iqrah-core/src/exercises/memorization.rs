@@ -2,11 +2,12 @@
 // Memorization exercise: "Recall the word"
 
 use super::types::Exercise;
+use crate::semantic::grader::{SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
 
 /// Exercise for memorizing Quranic words
-/// Tests the user's ability to recall the exact Arabic text
+/// Tests the user's ability to recall the exact Arabic text using semantic similarity
 pub struct MemorizationExercise {
     node_id: String,
     base_node_id: String,
@@ -57,7 +58,7 @@ impl MemorizationExercise {
     }
 
     /// Normalize Arabic text for comparison (remove diacritics/tashkeel)
-    fn normalize_arabic(text: &str) -> String {
+    pub fn normalize_arabic(text: &str) -> String {
         // Remove common Arabic diacritical marks
         text.chars()
             .filter(|c| {
@@ -83,6 +84,11 @@ impl MemorizationExercise {
             .trim()
             .to_string()
     }
+
+    /// Get the correct word text (used by ExerciseService for semantic grading)
+    pub fn get_word_text(&self) -> &str {
+        &self.word_text
+    }
 }
 
 impl Exercise for MemorizationExercise {
@@ -91,9 +97,31 @@ impl Exercise for MemorizationExercise {
     }
 
     fn check_answer(&self, answer: &str) -> bool {
+        // Normalize both answer and correct text (remove diacritics)
         let normalized_answer = Self::normalize_arabic(answer);
         let normalized_correct = Self::normalize_arabic(&self.word_text);
-        normalized_answer == normalized_correct
+
+        let embedder = SEMANTIC_EMBEDDER
+            .get()
+            .expect("Semantic embedder not initialized - call ExerciseService::init_semantic_model() first");
+
+        let grader = SemanticGrader::new(embedder);
+
+        // Use semantic grading on normalized Arabic text
+        let grade = grader
+            .grade_answer(&normalized_answer, &normalized_correct)
+            .expect("Semantic grading failed");
+
+        tracing::debug!(
+            "Memorization semantic grading for '{}': {:?} (similarity: {:.3})",
+            normalized_answer,
+            grade.label,
+            grade.similarity
+        );
+
+        // For Arabic memorization, we can be more strict
+        // Accept only Excellent grade (≥ 0.85 similarity)
+        grade.label == SemanticGradeLabel::Excellent
     }
 
     fn get_hint(&self) -> Option<String> {
