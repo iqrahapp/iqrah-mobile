@@ -238,6 +238,102 @@ jobs:
           path: research_and_dev/iqrah-knowledge-graph2/test-content.db
           retention-days: 7
 
+  test-cbor-build:
+    name: Test CBOR Build Pipeline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-cbor-${{ hashFiles('**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-cbor-
+
+      - name: Install dependencies
+        run: |
+          pip install -e . --no-cache-dir
+
+      - name: Create minimal test morphology data
+        run: |
+          # Extract first 500 lines from full corpus for testing (covers chapter 1)
+          mkdir -p test_data/morphology
+          if [ -f ../../data/morphology/quran-morphology-v0.5.csv ]; then
+            head -500 ../../data/morphology/quran-morphology-v0.5.csv > test_data/morphology/test-corpus.csv
+            echo "Created test corpus with $(wc -l < test_data/morphology/test-corpus.csv) lines"
+          else
+            echo "Warning: Full morphology corpus not available"
+            exit 1
+          fi
+
+      - name: Test full build pipeline with ci-test preset
+        run: |
+          PYTHONPATH=src:$PYTHONPATH python -m iqrah_cli build all \
+            --morphology test_data/morphology/test-corpus.csv \
+            --preset ci-test \
+            --content-db test-ci-content.db \
+            --output test-ci-graph.cbor.zst \
+            --no-progress
+
+      - name: Validate CBOR output
+        run: |
+          python -c "
+          from pathlib import Path
+          import sqlite3
+
+          # Check content database
+          db_path = Path('test-ci-content.db')
+          assert db_path.exists(), 'Content database not created'
+
+          conn = sqlite3.connect(str(db_path))
+          cursor = conn.cursor()
+
+          # Check chapters (should have just chapter 1)
+          cursor.execute('SELECT COUNT(*) FROM chapters')
+          chapter_count = cursor.fetchone()[0]
+          print(f'Chapters: {chapter_count}')
+          assert chapter_count == 1, f'Expected 1 chapter, got {chapter_count}'
+
+          # Check verses (chapter 1 has 7 verses)
+          cursor.execute('SELECT COUNT(*) FROM verses')
+          verse_count = cursor.fetchone()[0]
+          print(f'Verses: {verse_count}')
+          assert verse_count == 7, f'Expected 7 verses, got {verse_count}'
+
+          conn.close()
+
+          # Check CBOR file exists
+          cbor_path = Path('test-ci-graph.cbor.zst')
+          assert cbor_path.exists(), 'CBOR graph file not created'
+
+          cbor_size_kb = cbor_path.stat().st_size / 1024
+          print(f'CBOR file size: {cbor_size_kb:.2f} KB')
+          assert cbor_size_kb > 1, 'CBOR file too small'
+          assert cbor_size_kb < 5000, 'CBOR file too large'
+
+          print('✅ CBOR build pipeline validation passed')
+          "
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-outputs
+          path: |
+            research_and_dev/iqrah-knowledge-graph2/test-ci-content.db
+            research_and_dev/iqrah-knowledge-graph2/test-ci-graph.cbor.zst
+          retention-days: 7
+
   lint:
     name: Lint Python Code
     runs-on: ubuntu-latest
@@ -273,7 +369,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [test-schema, test-builder]
+    needs: [test-schema, test-builder, test-cbor-build]
     if: always()
     defaults:
       run:
@@ -286,16 +382,18 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Schema tests: ${{ needs.test-schema.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Builder tests: ${{ needs.test-builder.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- CBOR build tests: ${{ needs.test-cbor-build.result }}" >> $GITHUB_STEP_SUMMARY
 
           # Check for failures (ignore skipped)
           schema_result="${{ needs.test-schema.result }}"
           builder_result="${{ needs.test-builder.result }}"
+          cbor_result="${{ needs.test-cbor-build.result }}"
 
-          if [ "$schema_result" == "failure" ] || [ "$builder_result" == "failure" ]; then
+          if [ "$schema_result" == "failure" ] || [ "$builder_result" == "failure" ] || [ "$cbor_result" == "failure" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "❌ Some CI checks failed" >> $GITHUB_STEP_SUMMARY
             exit 1
-          elif [ "$schema_result" == "success" ] && ([ "$builder_result" == "success" ] || [ "$builder_result" == "skipped" ]); then
+          elif [ "$schema_result" == "success" ] && ([ "$builder_result" == "success" ] || [ "$builder_result" == "skipped" ]) && ([ "$cbor_result" == "success" ] || [ "$cbor_result" == "skipped" ]); then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "✅ All CI checks passed!" >> $GITHUB_STEP_SUMMARY
             exit 0

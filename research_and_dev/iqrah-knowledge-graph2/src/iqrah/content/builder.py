@@ -235,7 +235,7 @@ class ContentDatabaseBuilder:
         iterator = tqdm(chapters, desc="Chapters", disable=not show_progress)
 
         for chapter in iterator:
-            node_id = NIG.chapter(chapter.id)
+            node_id = NIG.for_chapter(chapter.id)
 
             # Get additional metadata from surah_info
             info = surah_info.get(str(chapter.id), {})
@@ -281,7 +281,7 @@ class ContentDatabaseBuilder:
             verses = chapter.verses
 
             for verse in verses:
-                node_id = NIG.verse(verse.verse_key)
+                node_id = NIG.for_verse(verse.verse_key)
 
                 # Get additional metadata
                 verse_id = str(verse.id) if hasattr(verse, "id") else None
@@ -332,7 +332,7 @@ class ContentDatabaseBuilder:
         for chapter in iterator:
             for verse in chapter.verses:
                 for position, word in enumerate(verse.words, start=1):
-                    node_id = NIG.word_instance(verse.verse_key, position)
+                    node_id = NIG.for_word_instance(word, verse)
 
                     cursor.execute(
                         """
@@ -381,7 +381,7 @@ class ContentDatabaseBuilder:
                 lemma = segment.lemma.strip()
                 if lemma and lemma not in lemmas_dict:
                     lemmas_dict[lemma] = {
-                        "node_id": NIG.lemma(lemma),
+                        "node_id": NIG.for_lemma(lemma),
                         "arabic": lemma,
                         "occurrences": 1,
                     }
@@ -396,7 +396,7 @@ class ContentDatabaseBuilder:
                     root_type = "triliteral" if len(root) == 3 else "quadriliteral" if len(root) == 4 else None
 
                     roots_dict[root] = {
-                        "node_id": NIG.root(root),
+                        "node_id": NIG.for_root(root),
                         "arabic": root,
                         "root_type": root_type,
                         "occurrences": 1,
