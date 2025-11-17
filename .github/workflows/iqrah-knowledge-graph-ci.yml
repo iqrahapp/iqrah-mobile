@@ -311,28 +311,35 @@ jobs:
           conn = sqlite3.connect(str(db_path))
           cursor = conn.cursor()
 
-          # Check chapters (should have just chapter 1)
+          # Content database contains ALL chapters (it's a reference database)
+          # Only the knowledge graph (CBOR) is filtered by preset
           cursor.execute('SELECT COUNT(*) FROM chapters')
           chapter_count = cursor.fetchone()[0]
-          print(f'Chapters: {chapter_count}')
-          assert chapter_count == 1, f'Expected 1 chapter, got {chapter_count}'
+          print(f'Chapters in content DB: {chapter_count}')
+          assert chapter_count == 114, f'Expected 114 chapters, got {chapter_count}'
 
-          # Check verses (chapter 1 has 7 verses)
+          # Content database has all verses (6236 total in Quran)
           cursor.execute('SELECT COUNT(*) FROM verses')
           verse_count = cursor.fetchone()[0]
-          print(f'Verses: {verse_count}')
-          assert verse_count == 7, f'Expected 7 verses, got {verse_count}'
+          print(f'Verses in content DB: {verse_count}')
+          assert verse_count == 6236, f'Expected 6236 verses, got {verse_count}'
+
+          # Verify chapter 1 specifically (since CBOR uses it)
+          cursor.execute('SELECT COUNT(*) FROM verses WHERE chapter = 1')
+          ch1_verses = cursor.fetchone()[0]
+          print(f'Chapter 1 verses: {ch1_verses}')
+          assert ch1_verses == 7, f'Expected 7 verses in chapter 1, got {ch1_verses}'
 
           conn.close()
 
-          # Check CBOR file exists
+          # Check CBOR file exists (contains only chapter 1 graph data)
           cbor_path = Path('test-ci-graph.cbor.zst')
           assert cbor_path.exists(), 'CBOR graph file not created'
 
           cbor_size_kb = cbor_path.stat().st_size / 1024
           print(f'CBOR file size: {cbor_size_kb:.2f} KB')
           assert cbor_size_kb > 1, 'CBOR file too small'
-          assert cbor_size_kb < 5000, 'CBOR file too large'
+          assert cbor_size_kb < 5000, 'CBOR file too large for ci-test preset'
 
           print('✅ CBOR build pipeline validation passed')
           "
