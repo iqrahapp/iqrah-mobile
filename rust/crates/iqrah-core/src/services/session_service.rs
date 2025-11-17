@@ -1,4 +1,4 @@
-use crate::{ContentRepository, MemoryState, Node, NodeType, UserRepository};
+use crate::{ContentRepository, KnowledgeAxis, MemoryState, Node, NodeType, UserRepository};
 use anyhow::Result;
 use chrono::Utc;
 use std::sync::Arc;
@@ -29,6 +29,8 @@ pub struct ScoredItem {
     pub priority_score: f64,
     pub days_overdue: f64,
     pub mastery_gap: f64,
+    /// Knowledge axis if this is a knowledge node (Phase 4)
+    pub knowledge_axis: Option<KnowledgeAxis>,
 }
 
 /// Session service handles session generation and scoring
@@ -49,11 +51,18 @@ impl SessionService {
     }
 
     /// Get due items for a session with priority scoring
+    ///
+    /// # Arguments
+    /// * `user_id` - The user ID
+    /// * `limit` - Maximum number of items to return
+    /// * `is_high_yield_mode` - Whether to emphasize high-influence nodes
+    /// * `axis_filter` - Optional knowledge axis to filter by (Phase 4)
     pub async fn get_due_items(
         &self,
         user_id: &str,
         limit: u32,
         is_high_yield_mode: bool,
+        axis_filter: Option<KnowledgeAxis>,
     ) -> Result<Vec<ScoredItem>> {
         let now = Utc::now();
 
@@ -84,9 +93,30 @@ impl SessionService {
                 None => continue, // Skip if node doesn't exist
             };
 
-            // Only include word_instance and verse types
-            if !matches!(node.node_type, NodeType::WordInstance | NodeType::Verse) {
+            // Include word_instance, verse, and knowledge types
+            let is_reviewable = matches!(
+                node.node_type,
+                NodeType::WordInstance | NodeType::Verse | NodeType::Knowledge
+            );
+
+            if !is_reviewable {
                 continue;
+            }
+
+            // Phase 4: Filter by knowledge axis if specified
+            let knowledge_axis = node.knowledge_node.as_ref().map(|kn| kn.axis);
+
+            if let Some(filter_axis) = axis_filter {
+                // If filtering by axis, only include matching knowledge nodes
+                match knowledge_axis {
+                    Some(axis) if axis == filter_axis => {
+                        // Include this node
+                    }
+                    _ => {
+                        // Skip nodes that don't match the axis filter
+                        continue;
+                    }
+                }
             }
 
             // Calculate priority score
@@ -101,6 +131,7 @@ impl SessionService {
             let importance = match node.node_type {
                 NodeType::WordInstance => 0.5,
                 NodeType::Verse => 0.3,
+                NodeType::Knowledge => 0.6, // Knowledge nodes are important
                 _ => 0.0,
             };
 
@@ -114,6 +145,7 @@ impl SessionService {
                 priority_score,
                 days_overdue,
                 mastery_gap,
+                knowledge_axis,
             });
         }
 
