@@ -153,36 +153,39 @@ impl ExerciseService {
         };
 
         // Get semantic grading metadata for TranslationExercise or MemorizationExercise
-        let embedder = SEMANTIC_EMBEDDER
-            .get()
-            .expect("Semantic embedder not initialized");
-        let grader = SemanticGrader::new(embedder);
+        // Only if embedder is initialized (fail gracefully if not)
+        let (semantic_grade, similarity_score) = if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
+            let grader = SemanticGrader::new(embedder);
 
-        let (semantic_grade, similarity_score) = if let Some(translation_ex) =
-            (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>()
-        {
-            match grader.grade_answer(answer, translation_ex.get_translation()) {
-                Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
-                Err(e) => {
-                    tracing::error!("Semantic grading failed for TranslationExercise: {}", e);
-                    (None, None)
+            if let Some(translation_ex) =
+                (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>()
+            {
+                match grader.grade_answer(answer, translation_ex.get_translation()) {
+                    Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                    Err(e) => {
+                        tracing::error!("Semantic grading failed for TranslationExercise: {}", e);
+                        (None, None)
+                    }
                 }
-            }
-        } else if let Some(memorization_ex) =
-            (exercise as &dyn std::any::Any).downcast_ref::<MemorizationExercise>()
-        {
-            // For memorization, grade the normalized Arabic text
-            let normalized_answer = MemorizationExercise::normalize_arabic(answer);
-            let normalized_correct = MemorizationExercise::normalize_arabic(memorization_ex.get_word_text());
+            } else if let Some(memorization_ex) =
+                (exercise as &dyn std::any::Any).downcast_ref::<MemorizationExercise>()
+            {
+                // For memorization, grade the normalized Arabic text
+                let normalized_answer = MemorizationExercise::normalize_arabic(answer);
+                let normalized_correct = MemorizationExercise::normalize_arabic(memorization_ex.get_word_text());
 
-            match grader.grade_answer(&normalized_answer, &normalized_correct) {
-                Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
-                Err(e) => {
-                    tracing::error!("Semantic grading failed for MemorizationExercise: {}", e);
-                    (None, None)
+                match grader.grade_answer(&normalized_answer, &normalized_correct) {
+                    Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                    Err(e) => {
+                        tracing::error!("Semantic grading failed for MemorizationExercise: {}", e);
+                        (None, None)
+                    }
                 }
+            } else {
+                (None, None)
             }
         } else {
+            tracing::warn!("Semantic embedder not initialized, skipping semantic grading metadata");
             (None, None)
         };
 

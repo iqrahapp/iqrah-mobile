@@ -60,27 +60,36 @@ The embedder is loaded once at app startup and shared across all exercises.
 **Location:** `rust/crates/iqrah-core/src/exercises/translation.rs`
 
 **Changes:**
-- `check_answer()` now tries semantic grading first
-- Falls back to fuzzy matching if:
-  - Semantic embedder not initialized
-  - Semantic grading fails with error
-- Logs debug information about grading method used
+- `check_answer()` now uses **semantic grading only**
+- Returns `false` if semantic embedder not initialized or grading fails
+- Logs error information when grading fails
 
 **Flow:**
 
 ```rust
 fn check_answer(&self, answer: &str) -> bool {
-    // 1. Try semantic grading if model available
-    if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
-        let grader = SemanticGrader::new(embedder);
-        match grader.grade_answer(answer, &self.translation) {
-            Ok(grade) => return grade.label != SemanticGradeLabel::Incorrect,
-            Err(e) => { /* log error, fall through */ }
+    // Get embedder, return false if not initialized
+    let embedder = match SEMANTIC_EMBEDDER.get() {
+        Some(e) => e,
+        None => {
+            tracing::error!("Semantic embedder not initialized!");
+            return false;
         }
-    }
+    };
 
-    // 2. Fallback to fuzzy matching
-    Self::fuzzy_match(answer, &self.translation)
+    let grader = SemanticGrader::new(embedder);
+
+    // Grade the answer, return false on error
+    let grade = match grader.grade_answer(answer, &self.translation) {
+        Ok(g) => g,
+        Err(e) => {
+            tracing::error!("Semantic grading failed: {}", e);
+            return false;
+        }
+    };
+
+    // Accept Excellent and Partial grades as correct
+    grade.label != SemanticGradeLabel::Incorrect
 }
 ```
 
@@ -92,8 +101,10 @@ fn check_answer(&self, answer: &str) -> bool {
 
 ```rust
 // Initialize semantic model at app startup
-pub fn init_semantic_model(model_path: &str) -> Result<()>
+pub fn init_semantic_model(model_path: &str, cache_dir: Option<&str>) -> Result<()>
 ```
+
+The `cache_dir` parameter allows mobile apps to specify where model files should be cached (important for Android/iOS).
 
 **Updated Methods:**
 
@@ -177,12 +188,21 @@ Thresholds should be adjusted based on:
 
 ```rust
 // At app startup (in main.rs or during initialization)
-ExerciseService::init_semantic_model("BAAI/bge-m3")?;
+// For server/desktop (uses default system cache):
+ExerciseService::init_semantic_model("minishlab/potion-multilingual-128M", None)?;
+
+// For mobile (Flutter provides cache directory):
+let cache_dir = "/data/user/0/com.app/files/huggingface";
+ExerciseService::init_semantic_model("minishlab/potion-multilingual-128M", Some(cache_dir))?;
 ```
 
 The model path can be:
-- **HuggingFace model ID:** e.g., `"BAAI/bge-m3"` (downloads automatically)
+- **HuggingFace model ID:** e.g., `"minishlab/potion-multilingual-128M"` (downloads automatically)
 - **Local path:** e.g., `"/path/to/model"` (uses local files)
+
+The cache directory should be:
+- **Desktop/Server:** `None` (uses `~/.cache/huggingface`)
+- **Mobile:** App documents directory from Flutter (e.g., via `getApplicationDocumentsDirectory()`)
 
 ### Singleton Pattern
 
@@ -214,24 +234,27 @@ The semantic embedder uses `OnceCell` for lazy initialization:
 - **Memory:** Minimal additional memory per request
 - **CPU Usage:** Brief spike during inference
 
-## Backward Compatibility
+## Error Handling
 
-### Graceful Degradation
+### Graceful Failure
 
-The implementation maintains full backward compatibility:
+**The semantic model is required for Translation and Memorization exercises.** If the model is not initialized or fails:
 
-1. **Without Model:** Falls back to fuzzy matching
-2. **Model Load Failure:** Logs error, continues with fuzzy matching
-3. **Inference Error:** Catches error, falls back to fuzzy matching
-4. **Other Exercise Types:** Unaffected (MCQ, Memorization use existing logic)
+1. **Without Model:** Returns `false` (answer marked incorrect)
+2. **Model Load Failure:** Server fails to start (returns error during initialization)
+3. **Inference Error:** Logs error, returns `false` (answer marked incorrect)
+4. **Other Exercise Types:** MCQ exercises are unaffected (don't use semantic grading)
 
-### Test Results
+### Critical Setup
 
-All 18 existing exercise tests still pass, validating backward compatibility:
-- Exact match tests
-- Fuzzy matching tests
-- MCQ tests
-- Memorization tests
+**IMPORTANT:** You must call `ExerciseService::init_semantic_model()` at server startup:
+
+```rust
+// In main.rs - this will fail server startup if model can't load
+ExerciseService::init_semantic_model("minishlab/potion-multilingual-128M", cache_dir.as_deref())?;
+```
+
+Failure to initialize will result in all Translation and Memorization exercises returning `false`.
 
 ## Adding Semantic Grading to Other Exercise Types
 
@@ -245,14 +268,27 @@ All 18 existing exercise tests still pass, validating backward compatibility:
 2. **Update `check_answer()` Method:**
    ```rust
    fn check_answer(&self, answer: &str) -> bool {
-       if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
-           let grader = SemanticGrader::new(embedder);
-           match grader.grade_answer(answer, &self.reference) {
-               Ok(grade) => return grade.label != SemanticGradeLabel::Incorrect,
-               Err(_) => { /* fallback */ }
+       // Get embedder, return false if not initialized
+       let embedder = match SEMANTIC_EMBEDDER.get() {
+           Some(e) => e,
+           None => {
+               tracing::error!("Semantic embedder not initialized!");
+               return false;
            }
-       }
-       // Existing logic
+       };
+
+       let grader = SemanticGrader::new(embedder);
+
+       // Grade the answer, return false on error
+       let grade = match grader.grade_answer(answer, &self.reference) {
+           Ok(g) => g,
+           Err(e) => {
+               tracing::error!("Semantic grading failed: {}", e);
+               return false;
+           }
+       };
+
+       grade.label != SemanticGradeLabel::Incorrect
    }
    ```
 
