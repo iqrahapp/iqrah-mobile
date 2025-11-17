@@ -1,191 +1,194 @@
-# Iqrah Database Architecture Documentation
+# Database Architecture Documentation
 
-**Last Updated:** 2025-11-16
-**Status:** Comprehensive Architecture Review
+**Last Updated:** 2025-11-17
+**Status:** Comprehensive Audit + v2 Implementation Specs
 
 ## Overview
 
-This folder contains a complete analysis of the Iqrah Quranic learning application's database architecture, covering the current design, implementation status, and gaps between the Python design and Rust implementation.
+This folder contains two complementary sets of documentation:
 
-## Quick Start
+1. **📊 Audit Documents** (this folder) - Comprehensive analysis of current state
+2. **📋 v2 Implementation Specs** ([v2-implementation-specs/](v2-implementation-specs/)) - Focused implementation tasks
 
-**New to the project?** Start with:
-1. [00-executive-summary.md](00-executive-summary.md) - High-level overview and key findings
-2. [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md) - What needs to be done
+## Quick Navigation
 
-**Looking for specific information?** See the Quick Reference Guide below.
+**New to the project?**
+→ Start with [00-executive-summary.md](00-executive-summary.md)
 
-## Document Index
+**Understanding gaps and why v2 is needed?**
+→ Read [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md)
 
-### Core Architecture
+**Ready to implement v2?**
+→ Go to [v2-implementation-specs/](v2-implementation-specs/)
 
-| Document | Description | Key Questions |
-|----------|-------------|---------------|
-| [00-executive-summary.md](00-executive-summary.md) | High-level overview, key findings, navigation guide | All questions (quick answers) |
-| [01-content-database.md](01-content-database.md) | Content DB schema, Python vs Rust comparison | Q1: Migration strategy |
-| [02-user-database.md](02-user-database.md) | User DB schema, FSRS + Energy model | Q4: User DB migrations |
-| [03-knowledge-graph.md](03-knowledge-graph.md) | Graph structure, CBOR import, node IDs | Q3: Graph migrations |
-| [04-database-interactions.md](04-database-interactions.md) | How DBs interact, lookup paths | Q2: Graph-DB connection, Q5: One or multiple DBs |
-| [05-rust-implementation.md](05-rust-implementation.md) | Module responsibilities, class structure | General implementation reference |
+**Need to understand current Rust code?**
+→ See [05-rust-implementation.md](05-rust-implementation.md)
 
-### Advanced Topics
+## Folder Structure
 
-| Document | Description | Key Questions |
-|----------|-------------|---------------|
-| [06-knowledge-axis-design.md](06-knowledge-axis-design.md) | Multi-dimensional learning model, axis concept | Q8: Axis design understanding |
-| [07-navigation-and-algorithms.md](07-navigation-and-algorithms.md) | ID inference vs edge traversal | Q7: Navigation strategy |
-| [08-flexible-content-import.md](08-flexible-content-import.md) | Package system for translations/audio | Q6: Flexible content import |
-| [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md) | Gap analysis, prioritized action plan | All gaps with recommendations |
+```
+docs/database-architecture/
+│
+├── README.md                           # This file
+│
+├── v2-implementation-specs/            # NEW: Implementation-ready specs
+│   ├── README.md                       # Roadmap and implementation guide
+│   ├── 00-overview.md                  # v2 Architecture overview
+│   ├── 01-content-schema-v2-purist.md  # Authoritative schema spec (P0)
+│   ├── 02-translations-normalization.md # Translator system spec (P1)
+│   ├── 03-packages-plan.md             # Package system (P2-P4)
+│   ├── 04-versioning-strategy.md       # Versioning & migration (P0)
+│   └── 05-axis-integration.md          # Knowledge axis (P3)
+│
+├── 00-executive-summary.md             # Audit overview and key findings
+├── 01-content-database.md              # Content DB analysis (v1)
+├── 02-user-database.md                 # User DB analysis
+├── 03-knowledge-graph.md               # Graph structure and CBOR import
+├── 04-database-interactions.md         # How DBs interact
+├── 05-rust-implementation.md           # Module responsibilities
+├── 06-knowledge-axis-design.md         # Axis design gap analysis
+├── 07-navigation-and-algorithms.md     # Navigation strategies
+├── 08-flexible-content-import.md       # Package system analysis
+└── 09-gaps-and-recommendations.md      # Gap summary with priorities
+```
 
-## Quick Reference Guide
+## Audit Documents (This Folder)
 
-### Your Original Questions Answered
+These documents provide **comprehensive analysis** of the current database architecture, identifying gaps between Python design and Rust implementation.
 
-1. **Q1: Migration strategy for flexible vs inflexible content?**
-   - **Answer:** No distinction in current Rust implementation. Python designs it but not implemented.
-   - **See:** [01-content-database.md](01-content-database.md#q1-migration-strategy)
+### Core Audit Documents
 
-2. **Q2: Knowledge graph ↔ Content DB connection?**
-   - **Answer:** String-based join using node IDs (e.g., "WORD_INSTANCE:1:1:3")
-   - **See:** [04-database-interactions.md](04-database-interactions.md#q2-knowledge-graph--content-db-connection)
+| Document | Purpose |
+|----------|---------|
+| [00-executive-summary.md](00-executive-summary.md) | Quick overview of findings, architecture, and gaps |
+| [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md) | **Start here** - Prioritized gap analysis and recommendations |
 
-3. **Q3: Graph migrations and user progression preservation?**
-   - **Answer:** User progress stored separately, but NO migration logic for node ID changes
-   - **See:** [03-knowledge-graph.md](03-knowledge-graph.md#q3-knowledge-graph-migrations--user-progression)
+### Detailed Analysis
 
-4. **Q4: User DB migration handling?**
-   - **Answer:** Standard SQLx migrations, clean and functional
-   - **See:** [02-user-database.md](02-user-database.md#q4-user-db-migration-strategy)
+| Document | Topic |
+|----------|-------|
+| [01-content-database.md](01-content-database.md) | Content DB schema (v1), Python vs Rust comparison |
+| [02-user-database.md](02-user-database.md) | User DB schema, FSRS + energy model, migrations |
+| [03-knowledge-graph.md](03-knowledge-graph.md) | Graph structure, node IDs, CBOR import flow |
+| [04-database-interactions.md](04-database-interactions.md) | How content.db and user.db interact, lookup paths |
+| [05-rust-implementation.md](05-rust-implementation.md) | **Reference for code** - Module structure, repositories, services |
+| [06-knowledge-axis-design.md](06-knowledge-axis-design.md) | Multi-dimensional learning model, implementation gaps |
+| [07-navigation-and-algorithms.md](07-navigation-and-algorithms.md) | ID inference vs edge traversal, abstraction quality |
+| [08-flexible-content-import.md](08-flexible-content-import.md) | Package management design vs implementation |
 
-5. **Q5: One database or multiple files?**
-   - **Answer:** TWO files (content.db + user.db)
-   - **See:** [04-database-interactions.md](04-database-interactions.md#q5-database-file-architecture)
+### Key Findings from Audit
 
-6. **Q6: Flexible content import (translations, scripts)?**
-   - **Answer:** Designed in Python, NOT implemented in Rust
-   - **See:** [08-flexible-content-import.md](08-flexible-content-import.md)
+**✅ Strengths:**
+- Clean separation of content.db and user.db
+- CBOR import working correctly
+- Energy propagation functional
+- FSRS integration solid
+- Repository pattern well implemented
 
-7. **Q7: ID inference vs edge traversal? Logic exposed or abstracted?**
-   - **Answer:** ID inference for structure, edges for semantics. Well abstracted.
-   - **See:** [07-navigation-and-algorithms.md](07-navigation-and-algorithms.md#q7-id-inference-vs-edge-traversal)
+**❌ Critical Gaps:**
+1. **Content DB couples to graph** - Uses generic `nodes` table with graph-specific node_id
+2. **Knowledge axis unused** - Python generates axis nodes, Rust filters them out
+3. **No graph migration strategy** - User progress at risk with node ID changes
+4. **String-based translators** - Performance issues, no normalization
+5. **Package system missing** - Designed in Python, not implemented in Rust
 
-8. **Q8: Knowledge axis design understanding?**
-   - **Answer:** Python: excellent understanding. Rust: significant gap.
-   - **See:** [06-knowledge-axis-design.md](06-knowledge-axis-design.md)
+## v2 Implementation Specs
 
-### Critical Findings
+**Location:** [v2-implementation-specs/](v2-implementation-specs/)
 
-**🔴 Critical Gaps:**
-1. **Knowledge axis NOT implemented** - Nodes generated but filtered out of sessions
-2. **No graph migration strategy** - User progress at risk with node ID changes
-3. **Flexible content system missing** - Cannot add translations without full DB replacement
+These are **small, focused, implementation-ready documents** designed to be assigned to AI agents or developers. Each spec:
+- Addresses specific gaps from the audit
+- Provides step-by-step implementation instructions
+- Includes validation checklists
+- Estimates effort required
 
-**🟡 Important Gaps:**
-4. Schema mismatch between Python and Rust
-5. No content version tracking
-6. Package management not implemented
+### Implementation Roadmap
 
-**✅ Working Well:**
-- Database separation (content + user)
-- CBOR import
-- Energy propagation
-- FSRS integration
-- Repository abstraction
-- SQLx migrations
+**Phase 1: Core Schema (P0 - Before Production)**
+- Purist content.db schema (natural keys, no node_id)
+- Normalized translators (integer PKs)
+- Version tracking and validation
+- **Effort:** 1-2 weeks
 
-### Key Architectural Decisions
+**Phase 2: Multi-Translation (P1 - MVP)**
+- Ship with 3-5 translations
+- Translator selection UI
+- **Effort:** 3-5 days
 
-**Two Databases:**
-- `content.db` - Read-only, shipped with app
-- `user.db` - Read-write, created on device
+**Phase 3: Package System (P2-P4 - Post-MVP)**
+- Downloadable packages
+- Audio recitations
+- **Effort:** 2-3 weeks
 
-**Navigation Strategy:**
-- ID inference for sequential navigation (fast, O(1))
-- Edge traversal for semantic relationships (flexible, graph-based)
+**Phase 4: Knowledge Axis (P3 - Advanced)**
+- Axis-specific exercises
+- Cross-axis synergies
+- **Effort:** 2 weeks
 
-**Learning Model:**
-- FSRS for spaced repetition (stability, difficulty)
-- Custom energy for graph-based propagation
+**Full details:** [v2-implementation-specs/README.md](v2-implementation-specs/README.md)
 
-**Graph Structure:**
-- Nodes: Chapter → Verse → Word → Morphology
-- Edges: Dependency (structural) + Knowledge (semantic)
-- Distributions: Const, Normal, Beta (probabilistic energy)
+## How to Use This Documentation
 
-## File Locations Reference
+### Understanding Current State
 
-### Rust Implementation
+1. Read [00-executive-summary.md](00-executive-summary.md) for overview
+2. Read [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md) for detailed gap analysis
+3. Read specific audit docs (01-08) for deep dives on particular areas
+4. Use [05-rust-implementation.md](05-rust-implementation.md) as reference for code locations
 
-**Storage Layer:**
-- Content DB: [rust/crates/iqrah-storage/src/content/](../../rust/crates/iqrah-storage/src/content/)
-- User DB: [rust/crates/iqrah-storage/src/user/](../../rust/crates/iqrah-storage/src/user/)
-- Migrations: [rust/crates/iqrah-storage/migrations_*/](../../rust/crates/iqrah-storage/)
+### Implementing v2 Redesign
 
-**Core Layer:**
-- Domain models: [rust/crates/iqrah-core/src/domain/](../../rust/crates/iqrah-core/src/domain/)
-- Repository traits: [rust/crates/iqrah-core/src/ports/](../../rust/crates/iqrah-core/src/ports/)
-- Services: [rust/crates/iqrah-core/src/services/](../../rust/crates/iqrah-core/src/services/)
-- CBOR import: [rust/crates/iqrah-core/src/cbor_import.rs](../../rust/crates/iqrah-core/src/cbor_import.rs)
+1. Read [v2-implementation-specs/00-overview.md](v2-implementation-specs/00-overview.md) for architecture decisions
+2. Pick a spec from [v2-implementation-specs/README.md](v2-implementation-specs/README.md) roadmap
+3. Implement according to the spec's implementation steps
+4. Check validation checklist before submitting PR
+5. Reference the spec in your PR description
 
-### Python Design
+### For AI Agents
 
-**Knowledge Graph:**
-- Graph builder: [research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/](../../research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/)
-- Schema design: [research_and_dev/iqrah-knowledge-graph2/src/iqrah/content/schema.py](../../research_and_dev/iqrah-knowledge-graph2/src/iqrah/content/schema.py)
-- Axis definitions: [research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/knowledge.py](../../research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/knowledge.py)
+**Audit docs:** Read-only reference for understanding context
+**Implementation specs:** Pick one, implement it, submit PR
 
-## Action Items
+Each implementation spec is designed as: **one agent → one spec → one PR**
 
-**Before Production Release (P0):**
-- [ ] Implement graph migration strategy (ID stability guarantee)
-- [ ] Add content version tracking
+## Design Decisions (Confirmed for v2)
 
-**Decision Required (P1):**
-- [ ] Knowledge axis support: Implement now or defer?
+These decisions are implemented in the v2 specs:
 
-**Short-term (P2-P3):**
-- [ ] Resolve schema mismatch (choose authoritative schema)
-- [ ] Add multi-translation support (optional)
+1. **✅ Purist Content DB** - No node_id, use natural keys (chapter_number, verse_key, word_id)
+2. **✅ Normalized Translators** - Integer PKs, languages + translators tables
+3. **✅ Fixed CHECK + NULL** - Correct `OR x IS NULL` pattern throughout
+4. **✅ XOR + Partial Indexes** - Enforced for text_variants
+5. **✅ Explicit CASCADE** - Documented for all FKs
+6. **✅ Graph ID Stability** - Immutable node IDs with validation
 
-**Long-term (P4):**
-- [ ] Full package system for flexible content
-- [ ] Audio recitation support
+**Full details:** [v2-implementation-specs/00-overview.md#confirmed-design-decisions](v2-implementation-specs/00-overview.md#confirmed-design-decisions)
 
-See [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md) for detailed action plan.
+## Questions?
 
-## Navigation
-
-**Linear Reading (Recommended for First Time):**
-1. Start: [00-executive-summary.md](00-executive-summary.md)
-2. Follow the "Next →" links at the bottom of each document
-3. End: [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md)
-
-**Topic-Based Reading:**
-- **"How does it work now?"** → [05-rust-implementation.md](05-rust-implementation.md)
-- **"What's missing?"** → [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md)
-- **"How should it work?"** → [06-knowledge-axis-design.md](06-knowledge-axis-design.md), [08-flexible-content-import.md](08-flexible-content-import.md)
-- **"Database design?"** → [01-content-database.md](01-content-database.md), [02-user-database.md](02-user-database.md)
+| Question | Answer |
+|----------|--------|
+| What's wrong with current schema? | See [09-gaps-and-recommendations.md](09-gaps-and-recommendations.md) |
+| How does current code work? | See [05-rust-implementation.md](05-rust-implementation.md) |
+| What should v2 look like? | See [v2-implementation-specs/01-content-schema-v2-purist.md](v2-implementation-specs/01-content-schema-v2-purist.md) |
+| How to implement v2? | See [v2-implementation-specs/README.md](v2-implementation-specs/README.md) |
+| Where is X implemented? | See [05-rust-implementation.md](05-rust-implementation.md) for file locations |
+| Why normalize translators? | See [v2-implementation-specs/02-translations-and-translators-normalization.md](v2-implementation-specs/02-translations-and-translators-normalization.md) |
 
 ## Contributing
 
-When updating this documentation:
+**To audit documents:**
+- These are reference/historical
+- Update only if current state analysis changes
+- Keep as comprehensive analysis
 
-1. **Maintain cross-references** - Use relative links to other docs
-2. **Include file locations** - Always reference source code with paths and line numbers
-3. **Update last updated date** - At top of each modified document
-4. **Keep executive summary current** - It's the entry point
-
-## Questions or Feedback
-
-If you find:
-- Outdated information
-- Missing details
-- Confusing explanations
-
-Please update the relevant document and note the change in the executive summary.
+**To implementation specs:**
+- Keep focused and atomic
+- Include validation checklists
+- Provide effort estimates
+- Cross-reference audit docs for context
 
 ---
 
-**Last Updated:** 2025-11-16
-**Documents:** 11 files (including this README)
-**Total Analysis:** Comprehensive review of 3-database architecture with 8 detailed questions answered
+**Last Updated:** 2025-11-17
+**Status:** Audit complete, v2 specs ready for implementation
