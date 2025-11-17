@@ -52,8 +52,9 @@ pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, Se
 
 pub use exercises::{
     AyahSequenceExercise, ClozeDeletionExercise, CrossVerseConnectionExercise, ExerciseResponse,
-    ExerciseService, FirstLetterHintExercise, IdentifyRootExercise, McqExercise,
-    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise, ReverseClozeExercise,
+    ExerciseService, FirstLetterHintExercise, FullVerseInputExercise, IdentifyRootExercise,
+    McqExercise, MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise,
+    ReverseClozeExercise,
 };
 
 pub use semantic::{

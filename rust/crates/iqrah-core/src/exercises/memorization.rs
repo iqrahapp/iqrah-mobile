@@ -58,7 +58,8 @@ impl MemorizationExercise {
 
     /// Normalize Arabic text for comparison (remove diacritics/tashkeel and normalize letters)
     pub fn normalize_arabic(text: &str) -> String {
-        text.chars()
+        let normalized = text
+            .chars()
             // First, remove all diacritical marks
             .filter(|c| {
                 !matches!(
@@ -91,9 +92,14 @@ impl MemorizationExercise {
                 'ۀ' => 'ه', // Hamza on Ha -> Ha
                 _ => c,
             })
-            .collect::<String>()
-            .trim()
-            .to_string()
+            .collect::<String>();
+
+        // Normalize whitespace: split by whitespace and rejoin with single spaces
+        // This handles multiple spaces, tabs, newlines, etc.
+        normalized
+            .split_whitespace()
+            .collect::<Vec<&str>>()
+            .join(" ")
     }
 
     /// Get the correct word text (used by ExerciseService for semantic grading)
