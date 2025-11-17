@@ -100,13 +100,14 @@ impl SemanticEmbedder {
         }
 
         tracing::info!("Loading semantic model: {}", model_id);
-        tracing::info!("Note: First download may take 30-60 seconds. Subsequent loads are fast (<3s).");
+        tracing::info!(
+            "Note: First download may take 30-60 seconds. Subsequent loads are fast (<3s)."
+        );
 
         // Load model from HuggingFace Hub or local path
         // Arguments: (model_id, hf_token, normalize_embeddings, subfolder)
         let model = StaticModel::from_pretrained(
-            model_id,
-            None, // No token needed for public models
+            model_id, None, // No token needed for public models
             None, // Use model's default normalization
             None, // No subfolder
         )
@@ -226,7 +227,10 @@ mod tests {
         let vec1 = vec![1.0, 2.0, 3.0];
         let vec2 = vec![1.0, 2.0, 3.0];
         let sim = cosine_similarity(&vec1, &vec2);
-        assert!((sim - 1.0).abs() < 0.0001, "Identical vectors should have similarity ~1.0");
+        assert!(
+            (sim - 1.0).abs() < 0.0001,
+            "Identical vectors should have similarity ~1.0"
+        );
     }
 
     #[test]
@@ -234,7 +238,10 @@ mod tests {
         let vec1 = vec![1.0, 0.0, 0.0];
         let vec2 = vec![0.0, 1.0, 0.0];
         let sim = cosine_similarity(&vec1, &vec2);
-        assert!(sim.abs() < 0.0001, "Orthogonal vectors should have similarity ~0.0");
+        assert!(
+            sim.abs() < 0.0001,
+            "Orthogonal vectors should have similarity ~0.0"
+        );
     }
 
     #[test]
@@ -242,7 +249,10 @@ mod tests {
         let vec1 = vec![1.0, 2.0, 3.0];
         let vec2 = vec![-1.0, -2.0, -3.0];
         let sim = cosine_similarity(&vec1, &vec2);
-        assert!((sim + 1.0).abs() < 0.0001, "Opposite vectors should have similarity ~-1.0");
+        assert!(
+            (sim + 1.0).abs() < 0.0001,
+            "Opposite vectors should have similarity ~-1.0"
+        );
     }
 
     #[test]

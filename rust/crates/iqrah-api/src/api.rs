@@ -96,7 +96,8 @@ pub async fn get_exercises(
     let app = app();
 
     // Get user's preferred translator
-    let translator_id = app.user_repo
+    let translator_id = app
+        .user_repo
         .get_setting("preferred_translator_id")
         .await?
         .and_then(|v| v.parse::<i32>().ok())
@@ -126,7 +127,8 @@ pub async fn get_exercises(
         let translation = if item.node.id.starts_with("VERSE:") {
             let verse_key = item.node.id.strip_prefix("VERSE:").unwrap_or(&item.node.id);
             // Try v2 method first
-            let v2_translation = app.content_repo
+            let v2_translation = app
+                .content_repo
                 .get_verse_translation(verse_key, translator_id)
                 .await?;
 
@@ -314,27 +316,36 @@ pub async fn get_languages() -> Result<Vec<LanguageDto>> {
     let app = app();
     let languages = app.content_repo.get_languages().await?;
 
-    Ok(languages.into_iter().map(|l| LanguageDto {
-        code: l.code,
-        english_name: l.english_name,
-        native_name: l.native_name,
-        direction: l.direction,
-    }).collect())
+    Ok(languages
+        .into_iter()
+        .map(|l| LanguageDto {
+            code: l.code,
+            english_name: l.english_name,
+            native_name: l.native_name,
+            direction: l.direction,
+        })
+        .collect())
 }
 
 /// Get all translators for a given language
 pub async fn get_translators_for_language(language_code: String) -> Result<Vec<TranslatorDto>> {
     let app = app();
-    let translators = app.content_repo.get_translators_for_language(&language_code).await?;
+    let translators = app
+        .content_repo
+        .get_translators_for_language(&language_code)
+        .await?;
 
-    Ok(translators.into_iter().map(|t| TranslatorDto {
-        id: t.id,
-        slug: t.slug,
-        full_name: t.full_name,
-        language_code: t.language_code,
-        description: t.description,
-        license: t.license,
-    }).collect())
+    Ok(translators
+        .into_iter()
+        .map(|t| TranslatorDto {
+            id: t.id,
+            slug: t.slug,
+            full_name: t.full_name,
+            language_code: t.language_code,
+            description: t.description,
+            license: t.license,
+        })
+        .collect())
 }
 
 /// Get a specific translator by ID
@@ -355,7 +366,8 @@ pub async fn get_translator(translator_id: i32) -> Result<Option<TranslatorDto>>
 /// Get user's preferred translator ID
 pub async fn get_preferred_translator_id() -> Result<i32> {
     let app = app();
-    let translator_id = app.user_repo
+    let translator_id = app
+        .user_repo
         .get_setting("preferred_translator_id")
         .await?
         .and_then(|v| v.parse::<i32>().ok())

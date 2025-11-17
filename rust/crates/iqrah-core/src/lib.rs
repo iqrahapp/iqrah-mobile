@@ -46,9 +46,11 @@ pub use ports::{ContentRepository, UserRepository};
 
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
-pub use exercises::{ExerciseService, ExerciseResponse, McqExercise};
+pub use exercises::{ExerciseResponse, ExerciseService, McqExercise};
 
-pub use semantic::{SemanticEmbedder, SemanticGrade, SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER};
+pub use semantic::{
+    SemanticEmbedder, SemanticGrade, SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER,
+};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
 

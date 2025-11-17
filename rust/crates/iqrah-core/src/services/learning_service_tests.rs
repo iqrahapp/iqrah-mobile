@@ -122,7 +122,10 @@ mod tests {
         }
 
         // V2 Stub Methods
-        async fn get_chapter(&self, _chapter_number: i32) -> anyhow::Result<Option<crate::Chapter>> {
+        async fn get_chapter(
+            &self,
+            _chapter_number: i32,
+        ) -> anyhow::Result<Option<crate::Chapter>> {
             Ok(None)
         }
 
@@ -134,7 +137,10 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_verses_for_chapter(&self, _chapter_number: i32) -> anyhow::Result<Vec<crate::Verse>> {
+        async fn get_verses_for_chapter(
+            &self,
+            _chapter_number: i32,
+        ) -> anyhow::Result<Vec<crate::Verse>> {
             Ok(vec![])
         }
 
@@ -154,23 +160,40 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_translators_for_language(&self, _language_code: &str) -> anyhow::Result<Vec<crate::Translator>> {
+        async fn get_translators_for_language(
+            &self,
+            _language_code: &str,
+        ) -> anyhow::Result<Vec<crate::Translator>> {
             Ok(vec![])
         }
 
-        async fn get_translator(&self, _translator_id: i32) -> anyhow::Result<Option<crate::Translator>> {
+        async fn get_translator(
+            &self,
+            _translator_id: i32,
+        ) -> anyhow::Result<Option<crate::Translator>> {
             Ok(None)
         }
 
-        async fn get_translator_by_slug(&self, _slug: &str) -> anyhow::Result<Option<crate::Translator>> {
+        async fn get_translator_by_slug(
+            &self,
+            _slug: &str,
+        ) -> anyhow::Result<Option<crate::Translator>> {
             Ok(None)
         }
 
-        async fn get_verse_translation(&self, _verse_key: &str, _translator_id: i32) -> anyhow::Result<Option<String>> {
+        async fn get_verse_translation(
+            &self,
+            _verse_key: &str,
+            _translator_id: i32,
+        ) -> anyhow::Result<Option<String>> {
             Ok(None)
         }
 
-        async fn get_word_translation(&self, _word_id: i32, _translator_id: i32) -> anyhow::Result<Option<String>> {
+        async fn get_word_translation(
+            &self,
+            _word_id: i32,
+            _translator_id: i32,
+        ) -> anyhow::Result<Option<String>> {
             Ok(None)
         }
 
@@ -207,7 +230,10 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn get_package(&self, _package_id: &str) -> anyhow::Result<Option<crate::ContentPackage>> {
+        async fn get_package(
+            &self,
+            _package_id: &str,
+        ) -> anyhow::Result<Option<crate::ContentPackage>> {
             Ok(None)
         }
 

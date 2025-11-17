@@ -22,21 +22,48 @@ pub fn create_http_router() -> Router<Arc<AppState>> {
         .route("/debug/user/:user_id/review", post(process_review))
         // Translator endpoints
         .route("/languages", get(get_languages))
-        .route("/translators/:language_code", get(get_translators_for_language))
+        .route(
+            "/translators/:language_code",
+            get(get_translators_for_language),
+        )
         .route("/translator/:translator_id", get(get_translator))
-        .route("/users/:user_id/settings/translator", get(get_user_preferred_translator))
-        .route("/users/:user_id/settings/translator", post(set_user_preferred_translator))
-        .route("/verses/:verse_key/translations/:translator_id", get(get_verse_translation))
+        .route(
+            "/users/:user_id/settings/translator",
+            get(get_user_preferred_translator),
+        )
+        .route(
+            "/users/:user_id/settings/translator",
+            post(set_user_preferred_translator),
+        )
+        .route(
+            "/verses/:verse_key/translations/:translator_id",
+            get(get_verse_translation),
+        )
         // Package management endpoints (specific routes before parameterized routes)
         .route("/packages", get(list_packages))
         .route("/packages/installed", get(list_installed_packages))
-        .route("/packages/installed/:package_id", post(install_package_handler))
-        .route("/packages/installed/:package_id", axum::routing::delete(uninstall_package_handler))
-        .route("/packages/installed/:package_id/enable", post(enable_package_handler))
-        .route("/packages/installed/:package_id/disable", post(disable_package_handler))
+        .route(
+            "/packages/installed/:package_id",
+            post(install_package_handler),
+        )
+        .route(
+            "/packages/installed/:package_id",
+            axum::routing::delete(uninstall_package_handler),
+        )
+        .route(
+            "/packages/installed/:package_id/enable",
+            post(enable_package_handler),
+        )
+        .route(
+            "/packages/installed/:package_id/disable",
+            post(disable_package_handler),
+        )
         .route("/packages/:package_id", get(get_package_details))
         .route("/packages/:package_id", post(upsert_package_handler))
-        .route("/packages/:package_id", axum::routing::delete(delete_package_handler))
+        .route(
+            "/packages/:package_id",
+            axum::routing::delete(delete_package_handler),
+        )
 }
 
 /// Health check endpoint
@@ -244,9 +271,7 @@ impl IntoResponse for AppError {
 // ========================================================================
 
 /// Get all available languages
-async fn get_languages(
-    State(state): State<Arc<AppState>>,
-) -> Result<impl IntoResponse, AppError> {
+async fn get_languages(State(state): State<Arc<AppState>>) -> Result<impl IntoResponse, AppError> {
     let languages = state.content_repo.get_languages().await?;
 
     let response = languages
@@ -353,7 +378,10 @@ async fn set_user_preferred_translator(
     // Save preference
     state
         .user_repo
-        .set_setting("preferred_translator_id", &payload.translator_id.to_string())
+        .set_setting(
+            "preferred_translator_id",
+            &payload.translator_id.to_string(),
+        )
         .await?;
 
     Ok(Json(json!({
@@ -392,9 +420,7 @@ async fn get_verse_translation(
 // ========================================================================
 
 /// List all available packages (optionally filtered)
-async fn list_packages(
-    State(state): State<Arc<AppState>>,
-) -> Result<impl IntoResponse, AppError> {
+async fn list_packages(State(state): State<Arc<AppState>>) -> Result<impl IntoResponse, AppError> {
     let packages = state
         .content_repo
         .get_available_packages(None, None)

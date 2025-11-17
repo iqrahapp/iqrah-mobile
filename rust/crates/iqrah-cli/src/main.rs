@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 
 mod debug;
 mod exercise;
+mod import;
 mod package;
 mod translator;
 
@@ -30,6 +31,11 @@ enum Commands {
     Exercise {
         #[command(subcommand)]
         command: ExerciseCommands,
+    },
+    /// Import CBOR graph data into database
+    Import {
+        /// Path to CBOR graph file (e.g., iqrah-graph-v1.0.0.cbor.zst)
+        cbor_file: String,
     },
     /// Translator management commands
     Translator {
@@ -220,6 +226,9 @@ async fn main() -> Result<()> {
                 debug::process_review(&cli.server, &user_id, &node_id, &grade).await?;
             }
         },
+        Commands::Import { cbor_file } => {
+            import::import_cbor(&cbor_file).await?;
+        }
         Commands::Exercise { command } => {
             // Create server configuration once for all exercise commands
             let config = exercise::ServerConfig::new(&cli.server)?;

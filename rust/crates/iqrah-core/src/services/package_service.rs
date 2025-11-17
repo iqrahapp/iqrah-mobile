@@ -57,10 +57,7 @@ impl PackageService {
             .context("Failed to download package")?;
 
         if !response.status().is_success() {
-            bail!(
-                "HTTP error {} downloading package",
-                response.status()
-            );
+            bail!("HTTP error {} downloading package", response.status());
         }
 
         let bytes = response
@@ -98,9 +95,10 @@ impl PackageService {
         std::fs::write(&temp_file, &package_data).context("Failed to write package file")?;
 
         // Open package database
-        let package_pool = SqlitePool::connect(&format!("sqlite://{}?mode=ro", temp_file.display()))
-            .await
-            .context("Failed to open package database")?;
+        let package_pool =
+            SqlitePool::connect(&format!("sqlite://{}?mode=ro", temp_file.display()))
+                .await
+                .context("Failed to open package database")?;
 
         // Install based on package type
         match package.package_type {
@@ -147,7 +145,14 @@ impl PackageService {
         let translator_id = self
             .content_repo
             .insert_translator(
-                &format!("{}-{}", package.language_code.as_ref().unwrap_or(&"unknown".to_string()), package.package_id),
+                &format!(
+                    "{}-{}",
+                    package
+                        .language_code
+                        .as_ref()
+                        .unwrap_or(&"unknown".to_string()),
+                    package.package_id
+                ),
                 &package.name,
                 package.language_code.as_ref().unwrap_or(&"en".to_string()),
                 package.description.as_deref(),
@@ -155,7 +160,7 @@ impl PackageService {
                 package.license.as_deref(),
                 None, // website
                 Some(&package.version),
-                Some(&package.package_id),  // Link translator to this package
+                Some(&package.package_id), // Link translator to this package
             )
             .await?;
 
@@ -230,7 +235,7 @@ mod tests {
     struct MockContentRepo {
         packages: Mutex<HashMap<String, ContentPackage>>,
         installed: Mutex<HashMap<String, InstalledPackage>>,
-        translators: Mutex<Vec<(String, String, i32)>>,  // (slug, package_id, translator_id)
+        translators: Mutex<Vec<(String, String, i32)>>, // (slug, package_id, translator_id)
         verse_translations: Mutex<Vec<(String, i32, String)>>, // (verse_key, translator_id, translation)
     }
 

@@ -8,6 +8,7 @@ use url::Url;
 /// Configuration for connecting to the Iqrah server
 #[derive(Clone)]
 pub struct ServerConfig {
+    #[allow(dead_code)] // May be used for future HTTP API calls
     base_url: String,
     ws_url: String,
 }
@@ -22,6 +23,7 @@ impl ServerConfig {
         Ok(Self { base_url, ws_url })
     }
 
+    #[allow(dead_code)] // May be used for future HTTP API calls
     pub fn base_url(&self) -> &str {
         &self.base_url
     }

@@ -112,7 +112,9 @@ impl<'a> SemanticGrader<'a> {
         user_answer: &str,
         reference_answers: &[String],
     ) -> Result<SemanticGrade> {
-        let similarity = self.embedder.max_similarity(user_answer, reference_answers)?;
+        let similarity = self
+            .embedder
+            .max_similarity(user_answer, reference_answers)?;
         let label = self.classify_similarity(similarity);
 
         Ok(SemanticGrade { label, similarity })
@@ -149,10 +151,8 @@ mod tests {
                 return 1.0;
             }
 
-            let words_a: std::collections::HashSet<&str> =
-                text_a.split_whitespace().collect();
-            let words_b: std::collections::HashSet<&str> =
-                text_b.split_whitespace().collect();
+            let words_a: std::collections::HashSet<&str> = text_a.split_whitespace().collect();
+            let words_b: std::collections::HashSet<&str> = text_b.split_whitespace().collect();
 
             let intersection = words_a.intersection(&words_b).count();
             let union = words_a.union(&words_b).count();

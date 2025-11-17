@@ -83,21 +83,25 @@ impl ExerciseService {
         // Generate exercise based on axis
         match axis {
             KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization => {
-                let exercise = MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning => {
-                let exercise = TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tafsir => {
                 // For now, treat tafsir like translation
-                let exercise = TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
                 // Tajweed not implemented yet, fall back to memorization
-                let exercise = MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
         }
@@ -111,16 +115,19 @@ impl ExerciseService {
     ) -> Result<ExerciseType> {
         match axis {
             KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization => {
-                let exercise = MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning | KnowledgeAxis::Tafsir => {
-                let exercise = TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
                 // Tajweed not implemented yet, fall back to memorization
-                let exercise = MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                let exercise =
+                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
         }
@@ -146,11 +153,12 @@ impl ExerciseService {
         let is_correct = exercise.check_answer(answer);
 
         // Try to downcast to McqExercise to get options
-        let options = if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
-            Some(mcq.get_options().to_vec())
-        } else {
-            None
-        };
+        let options =
+            if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
+                Some(mcq.get_options().to_vec())
+            } else {
+                None
+            };
 
         // Get semantic grading metadata for TranslationExercise or MemorizationExercise
         // Only if embedder is initialized (fail gracefully if not)
@@ -161,7 +169,10 @@ impl ExerciseService {
                 (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>()
             {
                 match grader.grade_answer(answer, translation_ex.get_translation()) {
-                    Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                    Ok(grade) => (
+                        Some(grade.label.to_str().to_string()),
+                        Some(grade.similarity),
+                    ),
                     Err(e) => {
                         tracing::error!("Semantic grading failed for TranslationExercise: {}", e);
                         (None, None)
@@ -172,10 +183,14 @@ impl ExerciseService {
             {
                 // For memorization, grade the normalized Arabic text
                 let normalized_answer = MemorizationExercise::normalize_arabic(answer);
-                let normalized_correct = MemorizationExercise::normalize_arabic(memorization_ex.get_word_text());
+                let normalized_correct =
+                    MemorizationExercise::normalize_arabic(memorization_ex.get_word_text());
 
                 match grader.grade_answer(&normalized_answer, &normalized_correct) {
-                    Ok(grade) => (Some(grade.label.to_str().to_string()), Some(grade.similarity)),
+                    Ok(grade) => (
+                        Some(grade.label.to_str().to_string()),
+                        Some(grade.similarity),
+                    ),
                     Err(e) => {
                         tracing::error!("Semantic grading failed for MemorizationExercise: {}", e);
                         (None, None)
@@ -510,10 +525,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service
-            .generate_mcq_ar_to_en("WORD:1:1:1")
-            .await
-            .unwrap();
+        let exercise = service.generate_mcq_ar_to_en("WORD:1:1:1").await.unwrap();
 
         let ex = exercise.as_exercise();
         assert_eq!(ex.get_type_name(), "mcq_ar_to_en");
@@ -525,10 +537,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service
-            .generate_mcq_en_to_ar("WORD:1:1:1")
-            .await
-            .unwrap();
+        let exercise = service.generate_mcq_en_to_ar("WORD:1:1:1").await.unwrap();
 
         let ex = exercise.as_exercise();
         assert_eq!(ex.get_type_name(), "mcq_en_to_ar");
@@ -540,10 +549,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service
-            .generate_mcq_ar_to_en("WORD:1:1:1")
-            .await
-            .unwrap();
+        let exercise = service.generate_mcq_ar_to_en("WORD:1:1:1").await.unwrap();
 
         let ex = exercise.as_exercise();
         let response = service.check_answer(ex, "In the name");

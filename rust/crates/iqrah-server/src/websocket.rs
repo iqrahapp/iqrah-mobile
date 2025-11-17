@@ -162,9 +162,11 @@ async fn handle_command(
             axis,
             is_high_yield_mode,
         } => handle_get_due_items(user_id, limit, axis, is_high_yield_mode, app_state).await,
-        Command::GenerateExercise { node_id, axis, format } => {
-            handle_generate_exercise(&node_id, axis, format, app_state).await
-        }
+        Command::GenerateExercise {
+            node_id,
+            axis,
+            format,
+        } => handle_generate_exercise(&node_id, axis, format, app_state).await,
         Command::CheckAnswer { node_id, answer } => {
             handle_check_answer(&node_id, &answer, app_state).await
         }
@@ -725,8 +727,18 @@ async fn handle_generate_exercise(
     let exercise_result = if let Some(fmt) = format {
         // Generate based on explicit format
         match fmt.as_str() {
-            "mcq_ar_to_en" => app_state.exercise_service.generate_mcq_ar_to_en(node_id).await,
-            "mcq_en_to_ar" => app_state.exercise_service.generate_mcq_en_to_ar(node_id).await,
+            "mcq_ar_to_en" => {
+                app_state
+                    .exercise_service
+                    .generate_mcq_ar_to_en(node_id)
+                    .await
+            }
+            "mcq_en_to_ar" => {
+                app_state
+                    .exercise_service
+                    .generate_mcq_en_to_ar(node_id)
+                    .await
+            }
             _ => {
                 return vec![Event::Error {
                     message: format!("Invalid format: {}", fmt),
@@ -755,11 +767,12 @@ async fn handle_generate_exercise(
             let exercise = exercise_type.as_exercise();
 
             // Try to get MCQ options if it's an MCQ exercise
-            let options = if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
-                Some(mcq.get_options().to_vec())
-            } else {
-                None
-            };
+            let options =
+                if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
+                    Some(mcq.get_options().to_vec())
+                } else {
+                    None
+                };
 
             vec![Event::ExerciseGenerated {
                 node_id: node_id.to_string(),
@@ -776,11 +789,7 @@ async fn handle_generate_exercise(
 }
 
 /// Check answer for an exercise (Phase 4.3)
-async fn handle_check_answer(
-    node_id: &str,
-    answer: &str,
-    app_state: &AppState,
-) -> Vec<Event> {
+async fn handle_check_answer(node_id: &str, answer: &str, app_state: &AppState) -> Vec<Event> {
     // Generate exercise first (we need it to check the answer)
     let exercise_result = app_state.exercise_service.generate_exercise(node_id).await;
 

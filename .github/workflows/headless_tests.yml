@@ -37,12 +37,19 @@ jobs:
     - name: Prepare test databases
       run: |
         mkdir -p rust/data
-        
+
+    - name: Import CBOR graph data
+      run: |
+        cd rust
+        export CONTENT_DB_PATH="./data/content.db"
+        export USER_DB_PATH="./data/user.db"
+        ./target/release/iqrah import ../assets/iqrah-graph-v1.0.0.cbor.zst
+
     - name: Start iqrah-server in background
       run: |
         cd rust
-        export CONTENT_DB_PATH="../data/content.db"
-        export USER_DB_PATH="../data/user.db"
+        export CONTENT_DB_PATH="./data/content.db"
+        export USER_DB_PATH="./data/user.db"
         ./target/release/iqrah-server > /tmp/server.log 2>&1 &
         SERVER_PID=$!
         echo $SERVER_PID > /tmp/server.pid
