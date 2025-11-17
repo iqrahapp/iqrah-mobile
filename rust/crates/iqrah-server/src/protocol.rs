@@ -47,6 +47,17 @@ pub enum Command {
         #[serde(default)]
         is_high_yield_mode: bool,
     },
+    /// Generate an exercise for a node (Phase 4.3)
+    GenerateExercise {
+        node_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        axis: Option<String>, // Optional axis override
+    },
+    /// Check answer for an exercise (Phase 4.3)
+    CheckAnswer {
+        node_id: String,
+        answer: String,
+    },
 }
 
 /// Server-to-Client events for WebSocket communication
@@ -75,5 +86,18 @@ pub enum Event {
     /// Due items response (Phase 4)
     DueItems {
         items: Vec<serde_json::Value>, // ScoredItems serialized as JSON
+    },
+    /// Exercise generated (Phase 4.3)
+    ExerciseGenerated {
+        node_id: String,
+        exercise_type: String,
+        question: String,
+        hint: Option<String>,
+    },
+    /// Answer checked (Phase 4.3)
+    AnswerChecked {
+        is_correct: bool,
+        hint: Option<String>,
+        correct_answer: Option<String>,
     },
 }
