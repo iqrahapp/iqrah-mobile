@@ -4,11 +4,10 @@ use super::models::{
     WordTranslationRow,
 };
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use iqrah_core::{
     Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge,
-    ImportedNode, InstalledPackage, Language, Node, NodeType, PackageType, Translator, Verse,
-    Word,
+    ImportedNode, InstalledPackage, Language, Node, NodeType, PackageType, Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
@@ -688,7 +687,7 @@ impl ContentRepository for SqliteContentRepository {
         let mut sql = String::from(
             "SELECT package_id, package_type, name, language_code, author, version, description, \
              file_size, download_url, checksum, license, created_at, updated_at \
-             FROM content_packages WHERE 1=1"
+             FROM content_packages WHERE 1=1",
         );
 
         if package_type.is_some() {
@@ -733,7 +732,7 @@ impl ContentRepository for SqliteContentRepository {
         let row = query_as::<_, ContentPackageRow>(
             "SELECT package_id, package_type, name, language_code, author, version, description, \
              file_size, download_url, checksum, license, created_at, updated_at \
-             FROM content_packages WHERE package_id = ?"
+             FROM content_packages WHERE package_id = ?",
         )
         .bind(package_id)
         .fetch_optional(&self.pool)
@@ -774,7 +773,7 @@ impl ContentRepository for SqliteContentRepository {
                 download_url = excluded.download_url, \
                 checksum = excluded.checksum, \
                 license = excluded.license, \
-                updated_at = unixepoch()"
+                updated_at = unixepoch()",
         )
         .bind(&package.package_id)
         .bind(package.package_type.to_string())
@@ -809,8 +808,7 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        rows
-            .into_iter()
+        rows.into_iter()
             .map(|r| {
                 DateTime::from_timestamp(r.installed_at, 0)
                     .map(|dt| InstalledPackage {
@@ -818,17 +816,20 @@ impl ContentRepository for SqliteContentRepository {
                         installed_at: dt,
                         enabled: r.enabled != 0,
                     })
-                    .ok_or_else(|| anyhow::anyhow!("Invalid installed_at timestamp: {}", r.installed_at))
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("Invalid installed_at timestamp: {}", r.installed_at)
+                    })
             })
             .collect()
     }
 
     async fn is_package_installed(&self, package_id: &str) -> anyhow::Result<bool> {
-        let count: i32 = query_as("SELECT COUNT(*) as count FROM installed_packages WHERE package_id = ?")
-            .bind(package_id)
-            .fetch_one(&self.pool)
-            .await
-            .map(|(count,): (i32,)| count)?;
+        let count: i32 =
+            query_as("SELECT COUNT(*) as count FROM installed_packages WHERE package_id = ?")
+                .bind(package_id)
+                .fetch_one(&self.pool)
+                .await
+                .map(|(count,): (i32,)| count)?;
 
         Ok(count > 0)
     }
@@ -839,7 +840,7 @@ impl ContentRepository for SqliteContentRepository {
              VALUES (?, unixepoch(), 1) \
              ON CONFLICT(package_id) DO UPDATE SET \
                 enabled = 1, \
-                installed_at = unixepoch()"
+                installed_at = unixepoch()",
         )
         .bind(package_id)
         .execute(&self.pool)
@@ -882,8 +883,7 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        rows
-            .into_iter()
+        rows.into_iter()
             .map(|r| {
                 DateTime::from_timestamp(r.installed_at, 0)
                     .map(|dt| InstalledPackage {
@@ -891,7 +891,9 @@ impl ContentRepository for SqliteContentRepository {
                         installed_at: dt,
                         enabled: true,
                     })
-                    .ok_or_else(|| anyhow::anyhow!("Invalid installed_at timestamp: {}", r.installed_at))
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("Invalid installed_at timestamp: {}", r.installed_at)
+                    })
             })
             .collect()
     }
