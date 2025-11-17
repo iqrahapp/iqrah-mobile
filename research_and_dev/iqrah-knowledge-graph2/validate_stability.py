@@ -15,7 +15,7 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import Set, Dict, Any
+from typing import Set
 import argparse
 
 
