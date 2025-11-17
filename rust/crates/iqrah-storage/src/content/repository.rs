@@ -907,23 +907,22 @@ impl ContentRepository for SqliteContentRepository {
         // The caller should fetch memory states from user repository and merge
         let rows = query_as::<_, CandidateNodeRow>(
             "SELECT
-                n.id AS node_id,
+                ng.node_id AS node_id,
                 COALESCE(m_found.value, 0.0) AS foundational_score,
                 COALESCE(m_infl.value, 0.0) AS influence_score,
                 COALESCE(m_diff.value, 0.0) AS difficulty_score,
                 CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS quran_order
             FROM node_goals ng
-            JOIN nodes n ON ng.node_id = n.id
             LEFT JOIN node_metadata m_found
-                ON n.id = m_found.node_id AND m_found.key = 'foundational_score'
+                ON ng.node_id = m_found.node_id AND m_found.key = 'foundational_score'
             LEFT JOIN node_metadata m_infl
-                ON n.id = m_infl.node_id AND m_infl.key = 'influence_score'
+                ON ng.node_id = m_infl.node_id AND m_infl.key = 'influence_score'
             LEFT JOIN node_metadata m_diff
-                ON n.id = m_diff.node_id AND m_diff.key = 'difficulty_score'
+                ON ng.node_id = m_diff.node_id AND m_diff.key = 'difficulty_score'
             LEFT JOIN node_metadata m_quran
-                ON n.id = m_quran.node_id AND m_quran.key = 'quran_order'
+                ON ng.node_id = m_quran.node_id AND m_quran.key = 'quran_order'
             WHERE ng.goal_id = ?
-            ORDER BY ng.priority DESC, n.id ASC",
+            ORDER BY ng.priority DESC, ng.node_id ASC",
         )
         .bind(goal_id)
         .fetch_all(&self.pool)

@@ -1,5 +1,7 @@
 -- Scheduler v2 Sample Data
 -- This migration adds sample data for testing the scheduler with Surah Al-Fatihah
+-- Note: node_id references like '1:1', '1:2' are verse_key values from the verses table
+-- The scheduler v2 works with abstract node IDs (verse keys, word IDs, root IDs, etc.)
 
 -- Sample node_metadata for Surah Al-Fatihah verses (1:1 through 1:7)
 -- Using simple values for testing
