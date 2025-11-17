@@ -1,14 +1,11 @@
 #[cfg(test)]
 mod tests {
     use super::super::SessionService;
-    use crate::{
-        ContentRepository, UserRepository,
-        Node, NodeType, MemoryState,
-    };
-    use std::sync::Arc;
-    use std::collections::HashMap;
+    use crate::{ContentRepository, MemoryState, Node, NodeType, UserRepository};
     use async_trait::async_trait;
-    use chrono::{Utc, Duration};
+    use chrono::{Duration, Utc};
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     // Mock ContentRepository
     struct MockContentRepo {
@@ -70,7 +67,11 @@ mod tests {
             Ok(Some("Test Arabic".to_string()))
         }
 
-        async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+        async fn get_translation(
+            &self,
+            _node_id: &str,
+            _lang: &str,
+        ) -> anyhow::Result<Option<String>> {
             Ok(Some("Test Translation".to_string()))
         }
 
@@ -78,7 +79,10 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+        async fn get_all_metadata(
+            &self,
+            _node_id: &str,
+        ) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
@@ -106,7 +110,10 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn get_adjacent_words(&self, _word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)> {
+        async fn get_adjacent_words(
+            &self,
+            _word_node_id: &str,
+        ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
     }
@@ -134,7 +141,11 @@ mod tests {
 
     #[async_trait]
     impl UserRepository for MockUserRepo {
-        async fn get_memory_state(&self, _user_id: &str, _node_id: &str) -> anyhow::Result<Option<MemoryState>> {
+        async fn get_memory_state(
+            &self,
+            _user_id: &str,
+            _node_id: &str,
+        ) -> anyhow::Result<Option<MemoryState>> {
             Ok(None)
         }
 
@@ -151,7 +162,12 @@ mod tests {
             Ok(self.due_states.lock().unwrap().clone())
         }
 
-        async fn update_energy(&self, _user_id: &str, _node_id: &str, _new_energy: f64) -> anyhow::Result<()> {
+        async fn update_energy(
+            &self,
+            _user_id: &str,
+            _node_id: &str,
+            _new_energy: f64,
+        ) -> anyhow::Result<()> {
             Ok(())
         }
 
@@ -178,7 +194,10 @@ mod tests {
         }
 
         async fn set_stat(&self, key: &str, value: &str) -> anyhow::Result<()> {
-            self.stats.lock().unwrap().insert(key.to_string(), value.to_string());
+            self.stats
+                .lock()
+                .unwrap()
+                .insert(key.to_string(), value.to_string());
             Ok(())
         }
     }
@@ -235,18 +254,16 @@ mod tests {
 
         let now = Utc::now();
 
-        user_repo.set_due_states(vec![
-            MemoryState {
-                user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
-                stability: 10.0,
-                difficulty: 5.0,
-                energy: 0.3,
-                last_reviewed: now,
-                due_at: now,
-                review_count: 3,
-            },
-        ]);
+        user_repo.set_due_states(vec![MemoryState {
+            user_id: "user1".to_string(),
+            node_id: "word_1".to_string(),
+            stability: 10.0,
+            difficulty: 5.0,
+            energy: 0.3,
+            last_reviewed: now,
+            due_at: now,
+            review_count: 3,
+        }]);
 
         // Act
         let normal_result = service.get_due_items("user1", 10, false).await.unwrap();
@@ -293,7 +310,7 @@ mod tests {
             },
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "surah_1".to_string(),  // Should be filtered out
+                node_id: "surah_1".to_string(), // Should be filtered out
                 stability: 3.0,
                 difficulty: 4.0,
                 energy: 0.5,
@@ -313,7 +330,10 @@ mod tests {
 
         for item in &items {
             assert!(
-                matches!(item.node.node_type, NodeType::WordInstance | NodeType::Verse),
+                matches!(
+                    item.node.node_type,
+                    NodeType::WordInstance | NodeType::Verse
+                ),
                 "Only WordInstance and Verse should be included"
             );
         }
@@ -336,7 +356,7 @@ mod tests {
                 node_id: "word_1".to_string(),
                 stability: 10.0,
                 difficulty: 5.0,
-                energy: 0.9,  // High energy, low need
+                energy: 0.9, // High energy, low need
                 last_reviewed: slightly_overdue,
                 due_at: slightly_overdue,
                 review_count: 3,
@@ -346,7 +366,7 @@ mod tests {
                 node_id: "word_2".to_string(),
                 stability: 5.0,
                 difficulty: 6.0,
-                energy: 0.1,  // Low energy, high need
+                energy: 0.1, // Low energy, high need
                 last_reviewed: very_overdue,
                 due_at: very_overdue,
                 review_count: 1,
@@ -487,18 +507,16 @@ mod tests {
 
         let now = Utc::now();
 
-        user_repo.set_due_states(vec![
-            MemoryState {
-                user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
-                stability: 10.0,
-                difficulty: 5.0,
-                energy: 0.2,  // mastery_gap should be 0.8
-                last_reviewed: now,
-                due_at: now,
-                review_count: 3,
-            },
-        ]);
+        user_repo.set_due_states(vec![MemoryState {
+            user_id: "user1".to_string(),
+            node_id: "word_1".to_string(),
+            stability: 10.0,
+            difficulty: 5.0,
+            energy: 0.2, // mastery_gap should be 0.8
+            last_reviewed: now,
+            due_at: now,
+            review_count: 3,
+        }]);
 
         // Act
         let result = service.get_due_items("user1", 10, false).await;
@@ -509,7 +527,10 @@ mod tests {
         assert_eq!(items.len(), 1);
 
         let mastery_gap = items[0].mastery_gap;
-        assert!((mastery_gap - 0.8).abs() < 0.001, "Mastery gap should be 1.0 - energy");
+        assert!(
+            (mastery_gap - 0.8).abs() < 0.001,
+            "Mastery gap should be 1.0 - energy"
+        );
     }
 
     #[tokio::test]
@@ -522,18 +543,16 @@ mod tests {
         let now = Utc::now();
         let three_days_ago = now - Duration::try_days(3).unwrap();
 
-        user_repo.set_due_states(vec![
-            MemoryState {
-                user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
-                stability: 10.0,
-                difficulty: 5.0,
-                energy: 0.5,
-                last_reviewed: three_days_ago,
-                due_at: three_days_ago,
-                review_count: 3,
-            },
-        ]);
+        user_repo.set_due_states(vec![MemoryState {
+            user_id: "user1".to_string(),
+            node_id: "word_1".to_string(),
+            stability: 10.0,
+            difficulty: 5.0,
+            energy: 0.5,
+            last_reviewed: three_days_ago,
+            due_at: three_days_ago,
+            review_count: 3,
+        }]);
 
         // Act
         let result = service.get_due_items("user1", 10, false).await;
@@ -544,7 +563,10 @@ mod tests {
         assert_eq!(items.len(), 1);
 
         let days_overdue = items[0].days_overdue;
-        assert!((2.9..=3.1).contains(&days_overdue),
-            "Days overdue should be approximately 3, got {}", days_overdue);
+        assert!(
+            (2.9..=3.1).contains(&days_overdue),
+            "Days overdue should be approximately 3, got {}",
+            days_overdue
+        );
     }
 }

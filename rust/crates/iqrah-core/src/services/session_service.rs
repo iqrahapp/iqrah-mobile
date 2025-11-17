@@ -1,17 +1,14 @@
-use std::sync::Arc;
-use chrono::Utc;
-use crate::{
-    Node, NodeType, MemoryState,
-    ContentRepository, UserRepository,
-};
+use crate::{ContentRepository, MemoryState, Node, NodeType, UserRepository};
 use anyhow::Result;
+use chrono::Utc;
+use std::sync::Arc;
 
 /// Scoring weights for session prioritization
 #[derive(Debug, Clone)]
 pub struct ScoreWeights {
-    pub w_due: f64,      // Weight for days overdue
-    pub w_need: f64,     // Weight for mastery gap (1.0 - energy)
-    pub w_yield: f64,    // Weight for importance/yield
+    pub w_due: f64,   // Weight for days overdue
+    pub w_need: f64,  // Weight for mastery gap (1.0 - energy)
+    pub w_yield: f64, // Weight for importance/yield
 }
 
 impl Default for ScoreWeights {
@@ -19,7 +16,7 @@ impl Default for ScoreWeights {
         Self {
             w_due: 1.0,
             w_need: 2.0,
-            w_yield: 1.5,  // Default for foundational mode
+            w_yield: 1.5, // Default for foundational mode
         }
     }
 }
@@ -65,15 +62,16 @@ impl SessionService {
             ScoreWeights {
                 w_due: 1.0,
                 w_need: 2.0,
-                w_yield: 10.0,  // High emphasis on influence
+                w_yield: 10.0, // High emphasis on influence
             }
         } else {
             ScoreWeights::default()
         };
 
         // Get all due memory states
-        let due_states = self.user_repo
-            .get_due_states(user_id, now, limit * 3)  // Get extra for filtering
+        let due_states = self
+            .user_repo
+            .get_due_states(user_id, now, limit * 3) // Get extra for filtering
             .await?;
 
         // Score and sort
@@ -83,7 +81,7 @@ impl SessionService {
             // Get node info
             let node = match self.content_repo.get_node(&state.node_id).await? {
                 Some(n) => n,
-                None => continue,  // Skip if node doesn't exist
+                None => continue, // Skip if node doesn't exist
             };
 
             // Only include word_instance and verse types
@@ -159,7 +157,9 @@ impl SessionService {
 
     /// Increment a stat (like reviews_today)
     pub async fn increment_stat(&self, key: &str) -> Result<u32> {
-        let current = self.get_stat(key).await?
+        let current = self
+            .get_stat(key)
+            .await?
             .and_then(|v| v.parse::<u32>().ok())
             .unwrap_or(0);
 

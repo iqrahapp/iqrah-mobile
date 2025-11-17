@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use chrono::Utc;
 use crate::{
-    MemoryState, ReviewGrade, PropagationEvent, PropagationDetail,
-    ContentRepository, UserRepository,
+    ContentRepository, MemoryState, PropagationDetail, PropagationEvent, ReviewGrade,
+    UserRepository,
 };
 use anyhow::Result;
+use chrono::Utc;
+use std::sync::Arc;
 
 /// Learning service handles review processing and FSRS scheduling
 pub struct LearningService {
@@ -51,7 +51,8 @@ impl LearningService {
 
         // 6. Propagate energy if significant change
         if energy_delta.abs() > 0.0001 {
-            self.propagate_energy(user_id, node_id, energy_delta).await?;
+            self.propagate_energy(user_id, node_id, energy_delta)
+                .await?;
         }
 
         Ok(final_state)
@@ -72,15 +73,16 @@ impl LearningService {
 
     /// Update FSRS scheduling parameters
     fn update_fsrs_state(&self, current: MemoryState, grade: ReviewGrade) -> Result<MemoryState> {
-        use fsrs::{FSRS, MemoryState as FSRSMemory};
+        use fsrs::{MemoryState as FSRSMemory, FSRS};
 
         let fsrs = FSRS::new(Some(&[]))?;
         let now = Utc::now();
         let optimal_retention = 0.8f32;
 
         // Calculate elapsed days since last review
-        let elapsed_days = ((now.timestamp_millis() - current.last_reviewed.timestamp_millis()) as f64
-            / (24.0 * 60.0 * 60.0 * 1000.0))  as u32;
+        let elapsed_days = ((now.timestamp_millis() - current.last_reviewed.timestamp_millis())
+            as f64
+            / (24.0 * 60.0 * 60.0 * 1000.0)) as u32;
 
         // Create FSRS memory state (cast to f32)
         let memory_state = FSRSMemory {
@@ -100,8 +102,9 @@ impl LearningService {
         };
 
         // Calculate due date from interval
-        let due_at = now + chrono::Duration::try_days(selected_state.interval as i64)
-            .unwrap_or(chrono::Duration::days(1));
+        let due_at = now
+            + chrono::Duration::try_days(selected_state.interval as i64)
+                .unwrap_or(chrono::Duration::days(1));
 
         // Convert back to our MemoryState (cast f32 to f64)
         Ok(MemoryState {
@@ -141,7 +144,8 @@ impl LearningService {
             }
 
             // Get current state of target node
-            if let Some(target_state) = self.user_repo
+            if let Some(target_state) = self
+                .user_repo
                 .get_memory_state(user_id, &edge.target_id)
                 .await?
             {

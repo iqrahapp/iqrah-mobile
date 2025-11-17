@@ -1,8 +1,14 @@
-use sqlx::{SqlitePool, query_as, query};
+use super::models::{
+    ChapterRow, EdgeRow, LanguageRow, NodeRow, QuranTextRow, TranslationRow, TranslatorRow,
+    VerseRow, VerseTranslationRow, WordRow, WordTranslationRow,
+};
 use async_trait::async_trait;
+use iqrah_core::{
+    Chapter, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge, ImportedNode,
+    Language, Node, NodeType, Translator, Verse, Word,
+};
+use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
-use iqrah_core::{ContentRepository, Node, NodeType, Edge, EdgeType, DistributionType, ImportedNode, ImportedEdge};
-use super::models::{NodeRow, EdgeRow, QuranTextRow, TranslationRow};
 
 pub struct SqliteContentRepository {
     pool: SqlitePool,
@@ -17,12 +23,11 @@ impl SqliteContentRepository {
 #[async_trait]
 impl ContentRepository for SqliteContentRepository {
     async fn get_node(&self, node_id: &str) -> anyhow::Result<Option<Node>> {
-        let row = query_as::<_, NodeRow>(
-            "SELECT id, node_type, created_at FROM nodes WHERE id = ?"
-        )
-        .bind(node_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            query_as::<_, NodeRow>("SELECT id, node_type, created_at FROM nodes WHERE id = ?")
+                .bind(node_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(row.map(|r| Node {
             id: r.id,
@@ -34,33 +39,39 @@ impl ContentRepository for SqliteContentRepository {
         let rows = query_as::<_, EdgeRow>(
             "SELECT source_id, target_id, edge_type, distribution_type, param1, param2
              FROM edges
-             WHERE source_id = ?"
+             WHERE source_id = ?",
         )
         .bind(source_id)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| Edge {
-            source_id: r.source_id,
-            target_id: r.target_id,
-            edge_type: if r.edge_type == 0 { EdgeType::Dependency } else { EdgeType::Knowledge },
-            distribution_type: match r.distribution_type {
-                0 => DistributionType::Const,
-                1 => DistributionType::Normal,
-                _ => DistributionType::Beta,
-            },
-            param1: r.param1,
-            param2: r.param2,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Edge {
+                source_id: r.source_id,
+                target_id: r.target_id,
+                edge_type: if r.edge_type == 0 {
+                    EdgeType::Dependency
+                } else {
+                    EdgeType::Knowledge
+                },
+                distribution_type: match r.distribution_type {
+                    0 => DistributionType::Const,
+                    1 => DistributionType::Normal,
+                    _ => DistributionType::Beta,
+                },
+                param1: r.param1,
+                param2: r.param2,
+            })
+            .collect())
     }
 
     async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        let row = query_as::<_, QuranTextRow>(
-            "SELECT node_id, arabic FROM quran_text WHERE node_id = ?"
-        )
-        .bind(node_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            query_as::<_, QuranTextRow>("SELECT node_id, arabic FROM quran_text WHERE node_id = ?")
+                .bind(node_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(row.map(|r| r.arabic))
     }
@@ -69,7 +80,7 @@ impl ContentRepository for SqliteContentRepository {
         let row = query_as::<_, TranslationRow>(
             "SELECT node_id, language_code, translation
              FROM translations
-             WHERE node_id = ? AND language_code = ?"
+             WHERE node_id = ? AND language_code = ?",
         )
         .bind(node_id)
         .bind(lang)
@@ -108,67 +119,65 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn node_exists(&self, node_id: &str) -> anyhow::Result<bool> {
-        let count: (i64,) = query_as(
-            "SELECT COUNT(*) FROM nodes WHERE id = ?"
-        )
-        .bind(node_id)
-        .fetch_one(&self.pool)
-        .await?;
+        let count: (i64,) = query_as("SELECT COUNT(*) FROM nodes WHERE id = ?")
+            .bind(node_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(count.0 > 0)
     }
 
     async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>> {
-        let rows = query_as::<_, NodeRow>(
-            "SELECT id, node_type, created_at FROM nodes"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let rows = query_as::<_, NodeRow>("SELECT id, node_type, created_at FROM nodes")
+            .fetch_all(&self.pool)
+            .await?;
 
-        Ok(rows.into_iter().map(|r| Node {
-            id: r.id,
-            node_type: NodeType::from(r.node_type),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Node {
+                id: r.id,
+                node_type: NodeType::from(r.node_type),
+            })
+            .collect())
     }
 
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>> {
         let type_str = node_type.to_string();
 
         let rows = query_as::<_, NodeRow>(
-            "SELECT id, node_type, created_at FROM nodes WHERE node_type = ?"
+            "SELECT id, node_type, created_at FROM nodes WHERE node_type = ?",
         )
         .bind(&type_str)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| Node {
-            id: r.id,
-            node_type: NodeType::from(r.node_type),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| Node {
+                id: r.id,
+                node_type: NodeType::from(r.node_type),
+            })
+            .collect())
     }
 
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()> {
         // Batch insert nodes
         for node in nodes {
             let node_type_str = node.node_type.to_string();
-            query(
-                "INSERT OR IGNORE INTO nodes (id, node_type, created_at) VALUES (?, ?, ?)"
-            )
-            .bind(&node.id)
-            .bind(&node_type_str)
-            .bind(node.created_at)
-            .execute(&self.pool)
-            .await?;
+            query("INSERT OR IGNORE INTO nodes (id, node_type, created_at) VALUES (?, ?, ?)")
+                .bind(&node.id)
+                .bind(&node_type_str)
+                .bind(node.created_at)
+                .execute(&self.pool)
+                .await?;
 
             // Insert metadata into quran_text and translations tables
             if let Some(arabic) = node.metadata.get("arabic") {
-                query(
-                    "INSERT OR IGNORE INTO quran_text (node_id, arabic) VALUES (?, ?)"
-                )
-                .bind(&node.id)
-                .bind(arabic)
-                .execute(&self.pool)
-                .await?;
+                query("INSERT OR IGNORE INTO quran_text (node_id, arabic) VALUES (?, ?)")
+                    .bind(&node.id)
+                    .bind(arabic)
+                    .execute(&self.pool)
+                    .await?;
             }
 
             if let Some(translation) = node.metadata.get("translation") {
@@ -253,7 +262,10 @@ impl ContentRepository for SqliteContentRepository {
         Ok(word_ids)
     }
 
-    async fn get_adjacent_words(&self, word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)> {
+    async fn get_adjacent_words(
+        &self,
+        word_node_id: &str,
+    ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
         // Parse word ID: "WORD:chapter:verse:position"
         let parts: Vec<&str> = word_node_id.split(':').collect();
         if parts.len() != 4 || parts[0] != "WORD" {
@@ -311,5 +323,295 @@ impl ContentRepository for SqliteContentRepository {
         };
 
         Ok((prev_word, next_word))
+    }
+
+    // ========================================================================
+    // V2 Methods (Purist relational schema)
+    // ========================================================================
+
+    async fn get_chapter(&self, chapter_number: i32) -> anyhow::Result<Option<Chapter>> {
+        let row = query_as::<_, ChapterRow>(
+            "SELECT chapter_number, name_arabic, name_transliteration, name_translation,
+                    revelation_place, revelation_order, bismillah_pre, verse_count,
+                    page_start, page_end, created_at
+             FROM chapters
+             WHERE chapter_number = ?",
+        )
+        .bind(chapter_number)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Chapter {
+            number: r.chapter_number,
+            name_arabic: r.name_arabic,
+            name_transliteration: r.name_transliteration,
+            name_translation: r.name_translation,
+            revelation_place: r.revelation_place,
+            verse_count: r.verse_count,
+        }))
+    }
+
+    async fn get_chapters(&self) -> anyhow::Result<Vec<Chapter>> {
+        let rows = query_as::<_, ChapterRow>(
+            "SELECT chapter_number, name_arabic, name_transliteration, name_translation,
+                    revelation_place, revelation_order, bismillah_pre, verse_count,
+                    page_start, page_end, created_at
+             FROM chapters
+             ORDER BY chapter_number",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| Chapter {
+                number: r.chapter_number,
+                name_arabic: r.name_arabic,
+                name_transliteration: r.name_transliteration,
+                name_translation: r.name_translation,
+                revelation_place: r.revelation_place,
+                verse_count: r.verse_count,
+            })
+            .collect())
+    }
+
+    async fn get_verse(&self, verse_key: &str) -> anyhow::Result<Option<Verse>> {
+        let row = query_as::<_, VerseRow>(
+            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple,
+                    juz, hizb, rub_el_hizb, page, manzil, ruku, sajdah_type, sajdah_number,
+                    letter_count, word_count, created_at
+             FROM verses
+             WHERE verse_key = ?",
+        )
+        .bind(verse_key)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Verse {
+            key: r.verse_key,
+            chapter_number: r.chapter_number,
+            verse_number: r.verse_number,
+            text_uthmani: r.text_uthmani,
+            text_simple: r.text_simple,
+            juz: r.juz,
+            page: r.page,
+        }))
+    }
+
+    async fn get_verses_for_chapter(&self, chapter_number: i32) -> anyhow::Result<Vec<Verse>> {
+        let rows = query_as::<_, VerseRow>(
+            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple,
+                    juz, hizb, rub_el_hizb, page, manzil, ruku, sajdah_type, sajdah_number,
+                    letter_count, word_count, created_at
+             FROM verses
+             WHERE chapter_number = ?
+             ORDER BY verse_number",
+        )
+        .bind(chapter_number)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| Verse {
+                key: r.verse_key,
+                chapter_number: r.chapter_number,
+                verse_number: r.verse_number,
+                text_uthmani: r.text_uthmani,
+                text_simple: r.text_simple,
+                juz: r.juz,
+                page: r.page,
+            })
+            .collect())
+    }
+
+    async fn get_words_for_verse(&self, verse_key: &str) -> anyhow::Result<Vec<Word>> {
+        let rows = query_as::<_, WordRow>(
+            "SELECT word_id, verse_key, position, text_uthmani, text_simple, transliteration,
+                    letter_count, created_at
+             FROM words
+             WHERE verse_key = ?
+             ORDER BY position",
+        )
+        .bind(verse_key)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| Word {
+                id: r.word_id,
+                verse_key: r.verse_key,
+                position: r.position,
+                text_uthmani: r.text_uthmani,
+                text_simple: r.text_simple,
+                transliteration: r.transliteration,
+            })
+            .collect())
+    }
+
+    async fn get_word(&self, word_id: i32) -> anyhow::Result<Option<Word>> {
+        let row = query_as::<_, WordRow>(
+            "SELECT word_id, verse_key, position, text_uthmani, text_simple, transliteration,
+                    letter_count, created_at
+             FROM words
+             WHERE word_id = ?",
+        )
+        .bind(word_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Word {
+            id: r.word_id,
+            verse_key: r.verse_key,
+            position: r.position,
+            text_uthmani: r.text_uthmani,
+            text_simple: r.text_simple,
+            transliteration: r.transliteration,
+        }))
+    }
+
+    async fn get_languages(&self) -> anyhow::Result<Vec<Language>> {
+        let rows = query_as::<_, LanguageRow>(
+            "SELECT language_code, english_name, native_name, direction
+             FROM languages
+             ORDER BY english_name",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| Language {
+                code: r.language_code,
+                english_name: r.english_name,
+                native_name: r.native_name,
+                direction: r.direction,
+            })
+            .collect())
+    }
+
+    async fn get_language(&self, code: &str) -> anyhow::Result<Option<Language>> {
+        let row = query_as::<_, LanguageRow>(
+            "SELECT language_code, english_name, native_name, direction
+             FROM languages
+             WHERE language_code = ?",
+        )
+        .bind(code)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Language {
+            code: r.language_code,
+            english_name: r.english_name,
+            native_name: r.native_name,
+            direction: r.direction,
+        }))
+    }
+
+    async fn get_translators_for_language(
+        &self,
+        language_code: &str,
+    ) -> anyhow::Result<Vec<Translator>> {
+        let rows = query_as::<_, TranslatorRow>(
+            "SELECT translator_id, slug, full_name, language_code, description, copyright_holder,
+                    license, website, version, created_at
+             FROM translators
+             WHERE language_code = ?
+             ORDER BY full_name",
+        )
+        .bind(language_code)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| Translator {
+                id: r.translator_id,
+                slug: r.slug,
+                full_name: r.full_name,
+                language_code: r.language_code,
+                description: r.description,
+                license: r.license,
+            })
+            .collect())
+    }
+
+    async fn get_translator(&self, translator_id: i32) -> anyhow::Result<Option<Translator>> {
+        let row = query_as::<_, TranslatorRow>(
+            "SELECT translator_id, slug, full_name, language_code, description, copyright_holder,
+                    license, website, version, created_at
+             FROM translators
+             WHERE translator_id = ?",
+        )
+        .bind(translator_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Translator {
+            id: r.translator_id,
+            slug: r.slug,
+            full_name: r.full_name,
+            language_code: r.language_code,
+            description: r.description,
+            license: r.license,
+        }))
+    }
+
+    async fn get_translator_by_slug(&self, slug: &str) -> anyhow::Result<Option<Translator>> {
+        let row = query_as::<_, TranslatorRow>(
+            "SELECT translator_id, slug, full_name, language_code, description, copyright_holder,
+                    license, website, version, created_at
+             FROM translators
+             WHERE slug = ?",
+        )
+        .bind(slug)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Translator {
+            id: r.translator_id,
+            slug: r.slug,
+            full_name: r.full_name,
+            language_code: r.language_code,
+            description: r.description,
+            license: r.license,
+        }))
+    }
+
+    async fn get_verse_translation(
+        &self,
+        verse_key: &str,
+        translator_id: i32,
+    ) -> anyhow::Result<Option<String>> {
+        let row = query_as::<_, VerseTranslationRow>(
+            "SELECT verse_key, translator_id, translation, footnotes, created_at
+             FROM verse_translations
+             WHERE verse_key = ? AND translator_id = ?",
+        )
+        .bind(verse_key)
+        .bind(translator_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| r.translation))
+    }
+
+    async fn get_word_translation(
+        &self,
+        word_id: i32,
+        translator_id: i32,
+    ) -> anyhow::Result<Option<String>> {
+        let row = query_as::<_, WordTranslationRow>(
+            "SELECT word_id, translator_id, translation, created_at
+             FROM word_translations
+             WHERE word_id = ? AND translator_id = ?",
+        )
+        .bind(word_id)
+        .bind(translator_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| r.translation))
     }
 }

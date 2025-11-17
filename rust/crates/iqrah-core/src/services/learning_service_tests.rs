@@ -2,14 +2,13 @@
 mod tests {
     use super::super::LearningService;
     use crate::{
-        ContentRepository, UserRepository,
-        Node, NodeType, Edge, EdgeType, DistributionType,
-        MemoryState, ReviewGrade, PropagationEvent,
+        ContentRepository, DistributionType, Edge, EdgeType, MemoryState, Node, NodeType,
+        PropagationEvent, ReviewGrade, UserRepository,
     };
-    use std::sync::Arc;
-    use std::collections::HashMap;
     use async_trait::async_trait;
     use chrono::Utc;
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     // Mock ContentRepository
     struct MockContentRepo {
@@ -70,7 +69,11 @@ mod tests {
             Ok(Some("Test Arabic".to_string()))
         }
 
-        async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+        async fn get_translation(
+            &self,
+            _node_id: &str,
+            _lang: &str,
+        ) -> anyhow::Result<Option<String>> {
             Ok(Some("Test Translation".to_string()))
         }
 
@@ -78,7 +81,10 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+        async fn get_all_metadata(
+            &self,
+            _node_id: &str,
+        ) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
@@ -106,7 +112,10 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn get_adjacent_words(&self, _word_node_id: &str) -> anyhow::Result<(Option<Node>, Option<Node>)> {
+        async fn get_adjacent_words(
+            &self,
+            _word_node_id: &str,
+        ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
     }
@@ -128,7 +137,11 @@ mod tests {
 
     #[async_trait]
     impl UserRepository for MockUserRepo {
-        async fn get_memory_state(&self, _user_id: &str, node_id: &str) -> anyhow::Result<Option<MemoryState>> {
+        async fn get_memory_state(
+            &self,
+            _user_id: &str,
+            node_id: &str,
+        ) -> anyhow::Result<Option<MemoryState>> {
             let states = self.states.lock().unwrap();
             Ok(states.get(node_id).cloned())
         }
@@ -139,11 +152,21 @@ mod tests {
             Ok(())
         }
 
-        async fn get_due_states(&self, _user_id: &str, _due_before: chrono::DateTime<Utc>, _limit: u32) -> anyhow::Result<Vec<MemoryState>> {
+        async fn get_due_states(
+            &self,
+            _user_id: &str,
+            _due_before: chrono::DateTime<Utc>,
+            _limit: u32,
+        ) -> anyhow::Result<Vec<MemoryState>> {
             Ok(vec![])
         }
 
-        async fn update_energy(&self, _user_id: &str, node_id: &str, new_energy: f64) -> anyhow::Result<()> {
+        async fn update_energy(
+            &self,
+            _user_id: &str,
+            node_id: &str,
+            new_energy: f64,
+        ) -> anyhow::Result<()> {
             let mut states = self.states.lock().unwrap();
             if let Some(state) = states.get_mut(node_id) {
                 state.energy = new_energy;
@@ -186,7 +209,9 @@ mod tests {
         let service = LearningService::new(content_repo, user_repo.clone());
 
         // Act
-        let result = service.process_review("user1", "word_1", ReviewGrade::Good).await;
+        let result = service
+            .process_review("user1", "word_1", ReviewGrade::Good)
+            .await;
 
         // Assert
         assert!(result.is_ok());
@@ -218,13 +243,19 @@ mod tests {
         user_repo.save_memory_state(&initial_state).await.unwrap();
 
         // Act
-        let result = service.process_review("user1", "word_1", ReviewGrade::Good).await;
+        let result = service
+            .process_review("user1", "word_1", ReviewGrade::Good)
+            .await;
 
         // Assert
         assert!(result.is_ok());
         let new_state = result.unwrap();
-        assert!(new_state.energy > initial_state.energy,
-            "Energy should increase: {} -> {}", initial_state.energy, new_state.energy);
+        assert!(
+            new_state.energy > initial_state.energy,
+            "Energy should increase: {} -> {}",
+            initial_state.energy,
+            new_state.energy
+        );
         assert_eq!(new_state.review_count, 2);
     }
 
@@ -249,13 +280,19 @@ mod tests {
         user_repo.save_memory_state(&initial_state).await.unwrap();
 
         // Act
-        let result = service.process_review("user1", "word_1", ReviewGrade::Again).await;
+        let result = service
+            .process_review("user1", "word_1", ReviewGrade::Again)
+            .await;
 
         // Assert
         assert!(result.is_ok());
         let new_state = result.unwrap();
-        assert!(new_state.energy < initial_state.energy,
-            "Energy should decrease: {} -> {}", initial_state.energy, new_state.energy);
+        assert!(
+            new_state.energy < initial_state.energy,
+            "Energy should decrease: {} -> {}",
+            initial_state.energy,
+            new_state.energy
+        );
         assert_eq!(new_state.review_count, 6);
     }
 
@@ -293,13 +330,19 @@ mod tests {
         user_repo.save_memory_state(&state2).await.unwrap();
 
         // Act - review word_1 with Good grade
-        let _ = service.process_review("user1", "word_1", ReviewGrade::Good).await.unwrap();
+        let _ = service
+            .process_review("user1", "word_1", ReviewGrade::Good)
+            .await
+            .unwrap();
 
         // Assert - Check that propagation event was logged
         let events = user_repo.propagation_events.lock().unwrap();
         assert!(!events.is_empty(), "Propagation event should be logged");
         assert_eq!(events[0].source_node_id, "word_1");
-        assert!(!events[0].details.is_empty(), "Should have propagation details");
+        assert!(
+            !events[0].details.is_empty(),
+            "Should have propagation details"
+        );
         assert_eq!(events[0].details[0].target_node_id, "word_2");
     }
 
@@ -321,10 +364,16 @@ mod tests {
             due_at: Utc::now(),
             review_count: 20,
         };
-        user_repo.save_memory_state(&high_energy_state).await.unwrap();
+        user_repo
+            .save_memory_state(&high_energy_state)
+            .await
+            .unwrap();
 
         // Act - review with Easy grade (should try to increase energy)
-        let result = service.process_review("user1", "word_1", ReviewGrade::Easy).await.unwrap();
+        let result = service
+            .process_review("user1", "word_1", ReviewGrade::Easy)
+            .await
+            .unwrap();
 
         // Assert - energy should be capped at 1.0
         assert!(result.energy <= 1.0, "Energy should not exceed 1.0");
