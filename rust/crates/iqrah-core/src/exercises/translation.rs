@@ -2,6 +2,7 @@
 // Translation exercise: "What does this mean?"
 
 use super::types::Exercise;
+use crate::semantic::grader::{SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
 
@@ -96,6 +97,33 @@ impl Exercise for TranslationExercise {
     }
 
     fn check_answer(&self, answer: &str) -> bool {
+        // Try semantic grading first if model is available
+        if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
+            let grader = SemanticGrader::new(embedder);
+
+            match grader.grade_answer(answer, &self.translation) {
+                Ok(grade) => {
+                    tracing::debug!(
+                        "Semantic grading: {:?} (similarity: {:.3})",
+                        grade.label,
+                        grade.similarity
+                    );
+
+                    // Accept Excellent and Partial grades as correct
+                    // Incorrect grade means similarity is too low
+                    return grade.label != SemanticGradeLabel::Incorrect;
+                }
+                Err(e) => {
+                    tracing::warn!("Semantic grading failed, falling back to fuzzy match: {}", e);
+                    // Fall through to fuzzy matching
+                }
+            }
+        }
+
+        // Fallback to fuzzy matching if:
+        // 1. Semantic embedder is not initialized
+        // 2. Semantic grading failed with an error
+        tracing::debug!("Using fuzzy matching for answer validation");
         Self::fuzzy_match(answer, &self.translation)
     }
 
@@ -113,6 +141,14 @@ impl Exercise for TranslationExercise {
 
     fn get_type_name(&self) -> &'static str {
         "translation"
+    }
+}
+
+// Additional methods for TranslationExercise
+impl TranslationExercise {
+    /// Get the correct translation (used by ExerciseService for semantic grading)
+    pub fn get_translation(&self) -> &str {
+        &self.translation
     }
 }
 

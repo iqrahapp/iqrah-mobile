@@ -5,6 +5,8 @@ use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
 use super::translation::TranslationExercise;
 use super::types::{Exercise, ExerciseResponse, ExerciseType};
+use crate::semantic::grader::{SemanticGrader, SEMANTIC_EMBEDDER};
+use crate::semantic::SemanticEmbedder;
 use crate::{ContentRepository, KnowledgeAxis, KnowledgeNode};
 use anyhow::Result;
 use std::sync::Arc;
@@ -17,6 +19,29 @@ pub struct ExerciseService {
 impl ExerciseService {
     pub fn new(content_repo: Arc<dyn ContentRepository>) -> Self {
         Self { content_repo }
+    }
+
+    /// Initialize the semantic grading model
+    ///
+    /// This should be called once at application startup to load the semantic model.
+    /// After initialization, all TranslationExercise instances will use semantic grading.
+    ///
+    /// # Arguments
+    /// * `model_path` - Path to the model2vec model (local path or HuggingFace model ID)
+    ///
+    /// # Returns
+    /// Ok(()) if the model was loaded successfully, Err if loading failed
+    pub fn init_semantic_model(model_path: &str) -> Result<()> {
+        tracing::info!("Initializing semantic grading model: {}", model_path);
+
+        let embedder = SemanticEmbedder::new(model_path)?;
+
+        SEMANTIC_EMBEDDER
+            .set(embedder)
+            .map_err(|_| anyhow::anyhow!("Semantic embedder already initialized"))?;
+
+        tracing::info!("✅ Semantic grading model initialized successfully");
+        Ok(())
     }
 
     /// Generate an exercise for a given node ID
@@ -92,6 +117,7 @@ impl ExerciseService {
 
     /// Check an answer for an exercise
     /// For MCQ exercises, also includes the options
+    /// For TranslationExercise with semantic grading, includes semantic metadata
     pub fn check_answer(&self, exercise: &dyn Exercise, answer: &str) -> ExerciseResponse {
         let is_correct = exercise.check_answer(answer);
 
@@ -100,6 +126,28 @@ impl ExerciseService {
             Some(mcq.get_options().to_vec())
         } else {
             None
+        };
+
+        // Try to get semantic grading metadata for TranslationExercise
+        let (semantic_grade, similarity_score) = if let Some(translation_ex) =
+            (exercise as &dyn std::any::Any).downcast_ref::<TranslationExercise>() {
+            // Only compute semantic grading if embedder is available
+            if let Some(embedder) = SEMANTIC_EMBEDDER.get() {
+                let grader = SemanticGrader::new(embedder);
+                match grader.grade_answer(answer, translation_ex.get_translation()) {
+                    Ok(grade) => {
+                        (Some(grade.label.to_str().to_string()), Some(grade.similarity))
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to get semantic grading metadata: {}", e);
+                        (None, None)
+                    }
+                }
+            } else {
+                (None, None)
+            }
+        } else {
+            (None, None)
         };
 
         ExerciseResponse {
@@ -117,6 +165,8 @@ impl ExerciseService {
                 None
             },
             options,
+            semantic_grade,
+            similarity_score,
         }
     }
 
