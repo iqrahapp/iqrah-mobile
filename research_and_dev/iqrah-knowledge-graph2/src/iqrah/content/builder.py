@@ -407,7 +407,7 @@ class ContentDatabaseBuilder:
             # Extract stem (from ROOT segment types)
             # A stem is the segment text when it's a root-type segment
             if hasattr(segment, "segment_type") and segment.segment_type and "ROOT" in str(segment.segment_type):
-                stem = segment.segment.strip()
+                stem = segment.text.strip()
                 if stem and stem not in stems_dict:
                     stems_dict[stem] = {
                         "node_id": f"STEM:{stem}",
@@ -533,7 +533,7 @@ class ContentDatabaseBuilder:
             # Determine stem_id
             stem_id = None
             if hasattr(segment, "segment_type") and segment.segment_type and "ROOT" in str(segment.segment_type):
-                stem_text = segment.segment.strip()
+                stem_text = segment.text.strip()
                 if stem_text in stems_dict:
                     stem_id = stems_dict[stem_text]["node_id"]
 
@@ -565,7 +565,7 @@ class ContentDatabaseBuilder:
                     verse_key,
                     word_position,
                     segment_index,
-                    segment.segment,
+                    segment.text,
                     segment_type,
                     lemma_id,
                     root_id,
