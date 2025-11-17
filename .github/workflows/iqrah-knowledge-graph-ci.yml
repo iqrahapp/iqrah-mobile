@@ -271,20 +271,20 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Checking for morphology data..."
 
-          # Check if morphology data exists (should be at ../../data/morphology/)
-          if [ -f ../../data/morphology/quran-morphology-v0.5.csv ]; then
-            echo "✅ Found morphology data at ../../data/morphology/quran-morphology-v0.5.csv"
-            ls -lh ../../data/morphology/quran-morphology-v0.5.csv
+          # Data is at ../data/morphology/ (one level up, not two)
+          if [ -f ../data/morphology/quran-morphology-v0.5.csv ]; then
+            echo "✅ Found morphology data at ../data/morphology/quran-morphology-v0.5.csv"
+            ls -lh ../data/morphology/quran-morphology-v0.5.csv
           else
-            echo "❌ Morphology data not found at ../../data/morphology/quran-morphology-v0.5.csv"
-            echo "Directory structure:"
-            ls -la ../.. | head -20
+            echo "❌ Morphology data not found at ../data/morphology/quran-morphology-v0.5.csv"
+            echo "Checking parent directory structure:"
+            ls -la .. | head -20
             exit 1
           fi
 
           # Extract first 500 lines from full corpus for testing (covers chapter 1)
           mkdir -p test_data/morphology
-          head -500 ../../data/morphology/quran-morphology-v0.5.csv > test_data/morphology/test-corpus.csv
+          head -500 ../data/morphology/quran-morphology-v0.5.csv > test_data/morphology/test-corpus.csv
           echo "✅ Created test corpus with $(wc -l < test_data/morphology/test-corpus.csv) lines"
 
       - name: Test full build pipeline with ci-test preset

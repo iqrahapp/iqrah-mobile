@@ -40,13 +40,27 @@ jobs:
 
     - name: Download and extract knowledge graph release
       run: |
+        echo "📥 Downloading iqrah-graph-v1.1.0..."
+        chmod +x ./scripts/download-graph-release.sh
         ./scripts/download-graph-release.sh v1.1.0 assets
+
+        echo "📊 Verifying downloaded files:"
+        ls -lh assets/
+
+        if [ ! -f assets/knowledge-graph.cbor.zst ]; then
+          echo "❌ Error: knowledge-graph.cbor.zst not found!"
+          exit 1
+        fi
 
     - name: Import CBOR graph data
       run: |
         cd rust
         export CONTENT_DB_PATH="./data/content.db"
         export USER_DB_PATH="./data/user.db"
+
+        echo "📥 Importing graph from: ../assets/knowledge-graph.cbor.zst"
+        ls -lh ../assets/knowledge-graph.cbor.zst
+
         ./target/release/iqrah import ../assets/knowledge-graph.cbor.zst
 
     - name: Start iqrah-server in background
