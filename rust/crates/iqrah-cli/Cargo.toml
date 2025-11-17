@@ -40,3 +40,4 @@ serde_json = { workspace = true }
 url = "2.5"
 zstd = "0.13"
 chrono = { workspace = true }
+rand = "0.8"

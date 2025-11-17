@@ -1,7 +1,12 @@
-use super::models::{BanditArmRow, MemoryStateRow, ParentEnergyRow, SessionStateRow, UserStatRow};
+use super::models::{
+    BanditArmRow, MemoryBasicsRow, MemoryStateRow, ParentEnergyRow, SessionStateRow, UserStatRow,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use iqrah_core::{scheduler_v2::BanditArmState, MemoryState, PropagationEvent, UserRepository};
+use iqrah_core::{
+    scheduler_v2::{BanditArmState, MemoryBasics},
+    MemoryState, PropagationEvent, UserRepository,
+};
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
 
@@ -272,6 +277,55 @@ impl UserRepository for SqliteUserRepository {
             // Add to result map
             for row in rows {
                 result.insert(row.node_id, row.energy);
+            }
+        }
+
+        Ok(result)
+    }
+
+    async fn get_memory_basics(
+        &self,
+        user_id: &str,
+        node_ids: &[String],
+    ) -> anyhow::Result<HashMap<String, MemoryBasics>> {
+        if node_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut result: HashMap<String, MemoryBasics> = HashMap::new();
+
+        // SQLite parameter limit is ~999, so chunk into batches of 500
+        const CHUNK_SIZE: usize = 500;
+
+        for chunk in node_ids.chunks(CHUNK_SIZE) {
+            // Build parameterized query
+            let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let sql = format!(
+                "SELECT content_key AS node_id,
+                        CAST(energy AS REAL) as energy,
+                        due_at as next_due_ts
+                 FROM user_memory_states
+                 WHERE user_id = ? AND content_key IN ({})",
+                placeholders
+            );
+
+            let mut query = query_as::<_, MemoryBasicsRow>(&sql);
+            query = query.bind(user_id);
+            for node_id in chunk {
+                query = query.bind(node_id);
+            }
+
+            let rows = query.fetch_all(&self.pool).await?;
+
+            // Add to result map
+            for row in rows {
+                result.insert(
+                    row.node_id,
+                    MemoryBasics {
+                        energy: row.energy,
+                        next_due_ts: row.next_due_ts,
+                    },
+                );
             }
         }
 

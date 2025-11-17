@@ -1,6 +1,9 @@
 mod models;
 pub mod repository;
 
+#[cfg(test)]
+mod scheduler_tests;
+
 pub use repository::SqliteContentRepository;
 
 use sqlx::{query_scalar, sqlite::SqliteConnectOptions, SqlitePool};

@@ -911,7 +911,7 @@ impl ContentRepository for SqliteContentRepository {
                 COALESCE(m_found.value, 0.0) AS foundational_score,
                 COALESCE(m_infl.value, 0.0) AS influence_score,
                 COALESCE(m_diff.value, 0.0) AS difficulty_score,
-                COALESCE(m_quran.value, 0) AS quran_order
+                CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS quran_order
             FROM node_goals ng
             JOIN nodes n ON ng.node_id = n.id
             LEFT JOIN node_metadata m_found

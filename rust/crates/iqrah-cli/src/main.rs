@@ -62,7 +62,10 @@ enum Commands {
         /// Session mode (revision or mixed-learning)
         #[arg(long, default_value = "mixed-learning")]
         mode: String,
-        /// Verbose output (show detailed node information)
+        /// Enable bandit optimization (Thompson Sampling for profile selection)
+        #[arg(long)]
+        enable_bandit: bool,
+        /// Verbose output (show detailed node information and profile weights)
         #[arg(long, short)]
         verbose: bool,
     },
@@ -345,9 +348,18 @@ async fn main() -> Result<()> {
             goal_id,
             session_size,
             mode,
+            enable_bandit,
             verbose,
         } => {
-            schedule::generate(&user_id, &goal_id, session_size, &mode, verbose).await?;
+            schedule::generate(
+                &user_id,
+                &goal_id,
+                session_size,
+                &mode,
+                enable_bandit,
+                verbose,
+            )
+            .await?;
         }
     }
 

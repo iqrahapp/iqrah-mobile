@@ -397,6 +397,14 @@ mod tests {
             Ok(HashMap::new())
         }
 
+        async fn get_memory_basics(
+            &self,
+            _user_id: &str,
+            _node_ids: &[String],
+        ) -> anyhow::Result<HashMap<String, crate::scheduler_v2::MemoryBasics>> {
+            Ok(HashMap::new())
+        }
+
         async fn get_bandit_arms(
             &self,
             _user_id: &str,

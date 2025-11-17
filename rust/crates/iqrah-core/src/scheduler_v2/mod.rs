@@ -45,4 +45,6 @@ pub use scoring::{
     count_unsatisfied_parents,
 };
 pub use session_generator::{generate_session, SessionMode};
-pub use types::{CandidateNode, InMemNode, ParentEnergyMap, UserProfile, MASTERY_THRESHOLD};
+pub use types::{
+    CandidateNode, InMemNode, MemoryBasics, ParentEnergyMap, UserProfile, MASTERY_THRESHOLD,
+};

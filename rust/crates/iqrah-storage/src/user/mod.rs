@@ -1,6 +1,9 @@
 mod models;
 pub mod repository;
 
+#[cfg(test)]
+mod scheduler_tests;
+
 pub use repository::SqliteUserRepository;
 
 use sqlx::{sqlite::SqliteConnectOptions, Row, SqlitePool};

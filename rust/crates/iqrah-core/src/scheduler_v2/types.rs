@@ -129,6 +129,22 @@ impl InMemNode {
 pub type ParentEnergyMap = HashMap<String, f32>;
 
 // ============================================================================
+// MEMORY BASICS
+// ============================================================================
+
+/// Basic memory state information for a node (energy + next_due_ts).
+/// Used to populate CandidateNode from user memory states.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MemoryBasics {
+    /// User's current mastery energy for this node (0.0-1.0)
+    pub energy: f32,
+
+    /// Next due timestamp in MILLISECONDS (epoch)
+    /// 0 if new/never scheduled
+    pub next_due_ts: i64,
+}
+
+// ============================================================================
 // TESTS
 // ============================================================================
 

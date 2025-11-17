@@ -75,6 +75,23 @@ pub trait UserRepository: Send + Sync {
         node_ids: &[String],
     ) -> anyhow::Result<std::collections::HashMap<String, f32>>;
 
+    /// Get memory basics (energy + next_due_ts) for a list of nodes
+    ///
+    /// Returns a map of node_id -> MemoryBasics for all specified nodes.
+    /// Nodes without memory states are not included in the map (treated as defaults by caller).
+    ///
+    /// # Arguments
+    /// * `user_id` - The user ID
+    /// * `node_ids` - The nodes to get memory basics for
+    ///
+    /// # Returns
+    /// HashMap mapping node_id to MemoryBasics (energy + next_due_ts)
+    async fn get_memory_basics(
+        &self,
+        user_id: &str,
+        node_ids: &[String],
+    ) -> anyhow::Result<std::collections::HashMap<String, crate::scheduler_v2::MemoryBasics>>;
+
     // ========================================================================
     // Scheduler v2.1 Bandit Methods
     // ========================================================================

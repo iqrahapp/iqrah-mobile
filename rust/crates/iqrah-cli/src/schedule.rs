@@ -1,13 +1,18 @@
 use anyhow::Result;
 use chrono::Utc;
 use iqrah_core::{
-    scheduler_v2::{generate_session, SessionMode, UserProfile},
+    scheduler_v2::{
+        blend_profile, generate_session, BanditOptimizer, ProfileName, SessionMode, UserProfile,
+        BLEND_RATIO, DEFAULT_SAFE_PROFILE,
+    },
     ContentRepository, UserRepository,
 };
 use iqrah_storage::{
     content::{init_content_db, SqliteContentRepository},
     user::{init_user_db, SqliteUserRepository},
 };
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use std::sync::Arc;
 
 /// Generate a learning session using scheduler v2
@@ -16,6 +21,7 @@ pub async fn generate(
     goal_id: &str,
     session_size: usize,
     mode: &str,
+    enable_bandit: bool,
     verbose: bool,
 ) -> Result<()> {
     println!("🎯 Generating session for goal: {}", goal_id);
@@ -66,20 +72,19 @@ pub async fn generate(
     // Fetch memory states from user repository and merge
     println!("   Fetching user memory states...");
     let node_ids: Vec<String> = candidates.iter().map(|c| c.id.clone()).collect();
-    let memory_states_map = user_repo.get_parent_energies(user_id, &node_ids).await?;
+    let memory_basics_map = user_repo.get_memory_basics(user_id, &node_ids).await?;
 
     // Merge memory states into candidates
     for candidate in &mut candidates {
-        if let Some(energy) = memory_states_map.get(&candidate.id) {
-            candidate.energy = *energy;
-            // Note: We don't have next_due_ts in get_parent_energies, so it stays at default 0
-            // This is fine for the initial implementation - we can enhance this later
+        if let Some(basics) = memory_basics_map.get(&candidate.id) {
+            candidate.energy = basics.energy;
+            candidate.next_due_ts = basics.next_due_ts;
         }
     }
 
     println!(
         "   Found memory states for {} nodes",
-        memory_states_map.len()
+        memory_basics_map.len()
     );
 
     // Fetch prerequisite parent relationships
@@ -103,8 +108,66 @@ pub async fn generate(
         .await?;
     println!("   Found energies for {} parents", parent_energies.len());
 
-    // Use balanced profile for now (later we can add bandit optimization)
-    let profile = UserProfile::balanced();
+    // Determine user profile (with optional bandit optimization)
+    let (profile, chosen_profile_name) = if enable_bandit {
+        // Fetch goal to get goal_group
+        println!("   Fetching goal metadata...");
+        let goal = content_repo.get_goal(goal_id).await?;
+
+        let goal_group = goal
+            .as_ref()
+            .map(|g| g.goal_group.as_str())
+            .unwrap_or("default");
+
+        println!("   Goal group: {}", goal_group);
+
+        // Fetch bandit arms for this user + goal_group
+        println!("   Fetching bandit state...");
+        let mut arms = user_repo.get_bandit_arms(user_id, goal_group).await?;
+
+        // Initialize arms if empty
+        if arms.is_empty() {
+            println!("   No bandit state found - initializing all profiles...");
+            arms = ProfileName::all()
+                .iter()
+                .map(|name| iqrah_core::scheduler_v2::BanditArmState {
+                    profile_name: *name,
+                    successes: 1.0,
+                    failures: 1.0,
+                })
+                .collect();
+
+            // Persist initial state
+            for arm in &arms {
+                user_repo
+                    .update_bandit_arm(
+                        user_id,
+                        goal_group,
+                        arm.profile_name.as_str(),
+                        arm.successes,
+                        arm.failures,
+                    )
+                    .await?;
+            }
+        }
+
+        println!("   Loaded {} bandit arms", arms.len());
+
+        // Use Thompson Sampling to choose profile
+        let rng = StdRng::from_entropy();
+        let mut optimizer = BanditOptimizer::new(rng);
+        let chosen = optimizer.choose_arm(&arms);
+
+        println!("   Thompson Sampling chose: {}", chosen.as_str());
+
+        // Blend chosen profile with safe profile
+        let blended = blend_profile(chosen);
+
+        (blended, Some(chosen))
+    } else {
+        println!("   Using balanced profile (bandit disabled)");
+        (UserProfile::balanced(), None)
+    };
 
     // Generate session
     println!();
@@ -127,9 +190,26 @@ pub async fn generate(
     println!("✅ Session Generated!");
     println!();
     println!("   Nodes in session: {}", session_node_ids.len());
+    if let Some(profile_name) = chosen_profile_name {
+        println!(
+            "   Bandit profile: {} (blended {:.0}%/{:.0}% with {})",
+            profile_name.as_str(),
+            BLEND_RATIO * 100.0,
+            (1.0 - BLEND_RATIO) * 100.0,
+            DEFAULT_SAFE_PROFILE.as_str()
+        );
+    }
     println!();
 
     if verbose {
+        // Display profile weights
+        println!("   Profile Weights:");
+        println!("      Urgency: {:.2}", profile.w_urgency);
+        println!("      Readiness: {:.2}", profile.w_readiness);
+        println!("      Foundation: {:.2}", profile.w_foundation);
+        println!("      Influence: {:.2}", profile.w_influence);
+        println!();
+
         // Display detailed table
         println!("   Session Details:");
         println!();
