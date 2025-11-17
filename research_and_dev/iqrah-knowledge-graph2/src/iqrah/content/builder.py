@@ -299,7 +299,7 @@ class ContentDatabaseBuilder:
                     (
                         node_id,
                         verse.verse_key,
-                        verse.chapter_number,
+                        verse.chapter,
                         verse.verse_number,
                         verse.text_uthmani,
                         verse.juz_number if hasattr(verse, "juz_number") else None,
