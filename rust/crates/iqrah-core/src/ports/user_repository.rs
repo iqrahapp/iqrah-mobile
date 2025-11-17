@@ -53,4 +53,51 @@ pub trait UserRepository: Send + Sync {
 
     /// Set app setting
     async fn set_setting(&self, key: &str, value: &str) -> anyhow::Result<()>;
+
+    // ========================================================================
+    // Scheduler v2.0 Methods
+    // ========================================================================
+
+    /// Get energies for a list of parent nodes
+    ///
+    /// Returns a map of node_id -> energy value for all specified nodes.
+    /// Nodes without memory states are not included in the map (treated as 0.0 by caller).
+    ///
+    /// # Arguments
+    /// * `user_id` - The user ID
+    /// * `node_ids` - The parent nodes to get energies for
+    ///
+    /// # Returns
+    /// HashMap mapping node_id to energy value (0.0-1.0)
+    async fn get_parent_energies(
+        &self,
+        user_id: &str,
+        node_ids: &[String],
+    ) -> anyhow::Result<std::collections::HashMap<String, f32>>;
+
+    // ========================================================================
+    // Scheduler v2.1 Bandit Methods
+    // ========================================================================
+
+    /// Get bandit arms for a user and goal group
+    ///
+    /// Returns all profile states for the given (user_id, goal_group).
+    /// If no states exist, returns empty vec (caller should initialize).
+    async fn get_bandit_arms(
+        &self,
+        user_id: &str,
+        goal_group: &str,
+    ) -> anyhow::Result<Vec<crate::scheduler_v2::BanditArmState>>;
+
+    /// Update a bandit arm state
+    ///
+    /// Upserts the (successes, failures) for the given (user_id, goal_group, profile_name).
+    async fn update_bandit_arm(
+        &self,
+        user_id: &str,
+        goal_group: &str,
+        profile_name: &str,
+        successes: f32,
+        failures: f32,
+    ) -> anyhow::Result<()>;
 }
