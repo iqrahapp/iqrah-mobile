@@ -3,6 +3,7 @@ pub mod domain;
 pub mod exercises;
 pub mod import;
 pub mod ports;
+pub mod scheduler_v2;
 pub mod semantic;
 pub mod services;
 
@@ -45,6 +46,12 @@ pub use domain::{
 pub use ports::{ContentRepository, UserRepository};
 
 pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
+
+pub use scheduler_v2::{
+    calculate_days_overdue, calculate_priority_score, calculate_readiness,
+    count_unsatisfied_parents, generate_session, CandidateNode, InMemNode, ParentEnergyMap,
+    SessionMode, UserProfile, MASTERY_THRESHOLD,
+};
 
 pub use exercises::{ExerciseResponse, ExerciseService, McqExercise};
 
