@@ -65,10 +65,15 @@ pub async fn import_translators_from_json(
     let import_file: TranslatorImportFile = serde_json::from_str(&metadata_content)
         .context("Failed to parse translator metadata JSON")?;
 
-    tracing::info!("Found {} translators to import", import_file.translators.len());
+    tracing::info!(
+        "Found {} translators to import",
+        import_file.translators.len()
+    );
 
     for translator_meta in import_file.translators {
-        match import_single_translator(&content_repo, &translator_meta, translations_base_path).await {
+        match import_single_translator(&content_repo, &translator_meta, translations_base_path)
+            .await
+        {
             Ok(translation_count) => {
                 stats.translators_imported += 1;
                 stats.translations_imported += translation_count;
@@ -107,12 +112,14 @@ async fn import_single_translator(
             metadata.language_code
         ))?;
 
-    tracing::debug!("Language '{}' found: {}", language.code, language.english_name);
+    tracing::debug!(
+        "Language '{}' found: {}",
+        language.code,
+        language.english_name
+    );
 
     // Check if translator already exists by slug
-    let existing = content_repo
-        .get_translator_by_slug(&metadata.slug)
-        .await?;
+    let existing = content_repo.get_translator_by_slug(&metadata.slug).await?;
 
     let translator_id = if let Some(existing_translator) = existing {
         tracing::info!(
@@ -135,18 +142,17 @@ async fn import_single_translator(
                 metadata.license.as_deref(),
                 metadata.website.as_deref(),
                 metadata.version.as_deref(),
-                None,  // package_id - built-in translators don't belong to packages
+                None, // package_id - built-in translators don't belong to packages
             )
             .await?
     };
 
     // Load translation file
     let translation_file_path = translations_base_path.join(&metadata.translation_file);
-    let translation_content = std::fs::read_to_string(&translation_file_path)
-        .context(format!(
-            "Failed to read translation file: {}",
-            translation_file_path.display()
-        ))?;
+    let translation_content = std::fs::read_to_string(&translation_file_path).context(format!(
+        "Failed to read translation file: {}",
+        translation_file_path.display()
+    ))?;
 
     let translations: HashMap<String, VerseTranslationEntry> =
         serde_json::from_str(&translation_content).context(format!(
@@ -168,12 +174,7 @@ async fn import_single_translator(
 
         // Insert translation
         content_repo
-            .insert_verse_translation(
-                &verse_key,
-                translator_id,
-                &main_text,
-                footnotes.as_deref(),
-            )
+            .insert_verse_translation(&verse_key, translator_id, &main_text, footnotes.as_deref())
             .await?;
 
         imported_count += 1;

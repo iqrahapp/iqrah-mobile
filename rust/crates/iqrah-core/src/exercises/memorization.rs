@@ -18,10 +18,7 @@ pub struct MemorizationExercise {
 
 impl MemorizationExercise {
     /// Create a new memorization exercise
-    pub async fn new(
-        node_id: String,
-        content_repo: &dyn ContentRepository,
-    ) -> Result<Self> {
+    pub async fn new(node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
         // Parse the knowledge node to get base content node
         let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
             kn.base_node_id
@@ -78,7 +75,7 @@ impl MemorizationExercise {
                     '\u{0655}' | // Hamza below
                     '\u{0656}' | // Subscript alef
                     '\u{0657}' | // Inverted damma
-                    '\u{0658}'   // Mark noon ghunna
+                    '\u{0658}' // Mark noon ghunna
                 )
             })
             .collect::<String>()
@@ -139,7 +136,10 @@ impl Exercise for MemorizationExercise {
             Some(format!("Verse context: {}", verse))
         } else {
             // Provide first character as hint
-            self.word_text.chars().next().map(|c| format!("First character: {}", c))
+            self.word_text
+                .chars()
+                .next()
+                .map(|c| format!("First character: {}", c))
         }
     }
 

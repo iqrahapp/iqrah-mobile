@@ -18,10 +18,7 @@ pub struct TranslationExercise {
 
 impl TranslationExercise {
     /// Create a new translation exercise
-    pub async fn new(
-        node_id: String,
-        content_repo: &dyn ContentRepository,
-    ) -> Result<Self> {
+    pub async fn new(node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
         // Parse the knowledge node to get base content node
         let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
             kn.base_node_id

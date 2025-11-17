@@ -11,8 +11,11 @@ struct PackageListItem {
     version: String,
     description: Option<String>,
     file_size: Option<i64>,
+    #[allow(dead_code)] // Part of API response, may be used for future features
     download_url: Option<String>,
+    #[allow(dead_code)] // Part of API response, may be used for future features
     checksum: Option<String>,
+    #[allow(dead_code)] // Part of API response, may be used for future features
     license: Option<String>,
 }
 
@@ -38,6 +41,7 @@ struct InstalledPackage {
     enabled: bool,
 }
 
+#[allow(dead_code)] // Reserved for future package upsert functionality
 #[derive(Debug, Serialize)]
 struct UpsertPackageRequest {
     package_type: String,
@@ -134,7 +138,11 @@ pub async fn list_installed(server_url: &str) -> Result<()> {
         println!("  No packages installed.");
     } else {
         for package in response {
-            let status = if package.enabled { "✓ enabled" } else { "✗ disabled" };
+            let status = if package.enabled {
+                "✓ enabled"
+            } else {
+                "✗ disabled"
+            };
             println!("  [{}] {}", package.package_id, status);
             println!("      Installed at: {}", package.installed_at);
             println!();

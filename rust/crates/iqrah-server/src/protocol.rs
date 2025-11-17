@@ -56,10 +56,7 @@ pub enum Command {
         format: Option<String>, // "mcq_ar_to_en", "mcq_en_to_ar", or None for default
     },
     /// Check answer for an exercise (Phase 4.3)
-    CheckAnswer {
-        node_id: String,
-        answer: String,
-    },
+    CheckAnswer { node_id: String, answer: String },
 }
 
 /// Server-to-Client events for WebSocket communication

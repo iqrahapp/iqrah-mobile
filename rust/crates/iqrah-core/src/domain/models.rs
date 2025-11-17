@@ -103,9 +103,9 @@ impl std::fmt::Display for KnowledgeAxis {
 /// - "VERSE:1:1:translation" -> base="VERSE:1:1", axis=Translation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KnowledgeNode {
-    pub base_node_id: String,  // The content node ID without axis suffix
-    pub axis: KnowledgeAxis,   // The learning dimension
-    pub full_id: String,       // The complete node ID with axis
+    pub base_node_id: String, // The content node ID without axis suffix
+    pub axis: KnowledgeAxis,  // The learning dimension
+    pub full_id: String,      // The complete node ID with axis
 }
 
 impl KnowledgeNode {
@@ -353,7 +353,7 @@ pub struct Translator {
     pub language_code: String,
     pub description: Option<String>,
     pub license: Option<String>,
-    pub package_id: Option<String>,  // Link to content package (None for built-in translators)
+    pub package_id: Option<String>, // Link to content package (None for built-in translators)
 }
 
 // ===== Echo Recall Exercise Models =====

@@ -25,6 +25,7 @@ struct Translator {
 
 #[derive(Debug, Deserialize)]
 struct PreferredTranslatorResponse {
+    #[allow(dead_code)] // Part of API response
     user_id: String,
     preferred_translator_id: i32,
 }
@@ -44,7 +45,9 @@ struct SetTranslatorResponse {
 
 #[derive(Debug, Deserialize)]
 struct TranslationResponse {
+    #[allow(dead_code)] // Part of API response
     verse_key: String,
+    #[allow(dead_code)] // Part of API response
     translator_id: i32,
     translation: String,
 }
@@ -74,7 +77,10 @@ pub async fn list_translators(server_url: &str, language_code: &str) -> Result<(
     println!("📖 Translators for language '{}':", language_code);
     println!();
     for translator in response {
-        println!("  [{}] {} ({})", translator.id, translator.full_name, translator.slug);
+        println!(
+            "  [{}] {} ({})",
+            translator.id, translator.full_name, translator.slug
+        );
         if let Some(desc) = translator.description {
             println!("      {}", desc);
         }
@@ -137,17 +143,16 @@ pub async fn set_preferred(server_url: &str, user_id: &str, translator_id: i32) 
     println!("✅ {}", response.message);
     println!();
     println!("  User:       {}", response.user_id);
-    println!("  Translator: {} (ID: {})", response.translator_name, response.preferred_translator_id);
+    println!(
+        "  Translator: {} (ID: {})",
+        response.translator_name, response.preferred_translator_id
+    );
 
     Ok(())
 }
 
 /// Get verse translation for a specific translator
-pub async fn get_translation(
-    server_url: &str,
-    verse_key: &str,
-    translator_id: i32,
-) -> Result<()> {
+pub async fn get_translation(server_url: &str, verse_key: &str, translator_id: i32) -> Result<()> {
     let url = format!(
         "{}/verses/{}/translations/{}",
         server_url, verse_key, translator_id

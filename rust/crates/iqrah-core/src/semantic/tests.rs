@@ -64,14 +64,10 @@ fn test_embedder_with_real_model() {
             assert!(!emb.is_empty(), "Embedding should not be empty");
 
             // Test similarity
-            let sim = embedder
-                .similarity("Hello world", "Hello world")
-                .unwrap();
+            let sim = embedder.similarity("Hello world", "Hello world").unwrap();
             assert!(sim > 0.9, "Identical text should have high similarity");
 
-            let sim = embedder
-                .similarity("Hello world", "Goodbye world")
-                .unwrap();
+            let sim = embedder.similarity("Hello world", "Goodbye world").unwrap();
             assert!(sim < 0.9, "Different text should have lower similarity");
         }
         Err(_) => {

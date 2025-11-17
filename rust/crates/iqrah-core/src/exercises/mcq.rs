@@ -13,7 +13,7 @@ pub struct McqExercise {
     node_id: String,
     question: String,
     correct_answer: String,
-    options: Vec<String>,  // All options including correct answer, shuffled
+    options: Vec<String>, // All options including correct answer, shuffled
     mcq_type: McqType,
 }
 
@@ -189,7 +189,8 @@ impl Exercise for McqExercise {
 
     fn get_hint(&self) -> Option<String> {
         // For MCQ, hint could be eliminating one wrong option
-        let wrong_options: Vec<_> = self.options
+        let wrong_options: Vec<_> = self
+            .options
             .iter()
             .filter(|opt| Self::normalize(opt) != Self::normalize(&self.correct_answer))
             .collect();
