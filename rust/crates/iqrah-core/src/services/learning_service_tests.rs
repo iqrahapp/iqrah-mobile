@@ -182,6 +182,7 @@ mod tests {
             _license: Option<&str>,
             _website: Option<&str>,
             _version: Option<&str>,
+            _package_id: Option<&str>,
         ) -> anyhow::Result<i32> {
             Ok(1)
         }
