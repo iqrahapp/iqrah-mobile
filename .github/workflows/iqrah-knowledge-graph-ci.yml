@@ -241,18 +241,10 @@ jobs:
   test-cbor-build:
     name: Test CBOR Build Pipeline
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./research_and_dev/iqrah-knowledge-graph2
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Checkout LFS objects
-        run: git lfs pull
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -268,27 +260,35 @@ jobs:
             ${{ runner.os }}-pip-cbor-
 
       - name: Install dependencies
+        working-directory: ./research_and_dev/iqrah-knowledge-graph2
         run: |
           pip install -e . --no-cache-dir
 
       - name: Verify morphology data and create test subset
+        working-directory: ./research_and_dev/iqrah-knowledge-graph2
         run: |
-          # Check if morphology data exists
-          ls -lh ../../data/morphology/ || echo "Data directory not found"
+          # Verify we're in the right directory
+          echo "Current directory: $(pwd)"
+          echo "Checking for morphology data..."
 
-          # Extract first 500 lines from full corpus for testing (covers chapter 1)
-          mkdir -p test_data/morphology
+          # Check if morphology data exists (should be at ../../data/morphology/)
           if [ -f ../../data/morphology/quran-morphology-v0.5.csv ]; then
-            head -500 ../../data/morphology/quran-morphology-v0.5.csv > test_data/morphology/test-corpus.csv
-            echo "✅ Created test corpus with $(wc -l < test_data/morphology/test-corpus.csv) lines"
+            echo "✅ Found morphology data at ../../data/morphology/quran-morphology-v0.5.csv"
+            ls -lh ../../data/morphology/quran-morphology-v0.5.csv
           else
-            echo "❌ Warning: Full morphology corpus not available"
-            echo "Available files in data directory:"
-            find ../../data -name "*.csv" -o -name "*.json" | head -20
+            echo "❌ Morphology data not found at ../../data/morphology/quran-morphology-v0.5.csv"
+            echo "Directory structure:"
+            ls -la ../.. | head -20
             exit 1
           fi
 
+          # Extract first 500 lines from full corpus for testing (covers chapter 1)
+          mkdir -p test_data/morphology
+          head -500 ../../data/morphology/quran-morphology-v0.5.csv > test_data/morphology/test-corpus.csv
+          echo "✅ Created test corpus with $(wc -l < test_data/morphology/test-corpus.csv) lines"
+
       - name: Test full build pipeline with ci-test preset
+        working-directory: ./research_and_dev/iqrah-knowledge-graph2
         run: |
           PYTHONPATH=src:$PYTHONPATH python -m iqrah_cli build all \
             --morphology test_data/morphology/test-corpus.csv \
@@ -298,6 +298,7 @@ jobs:
             --no-progress
 
       - name: Validate CBOR output
+        working-directory: ./research_and_dev/iqrah-knowledge-graph2
         run: |
           python -c "
           from pathlib import Path
