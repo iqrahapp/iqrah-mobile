@@ -39,7 +39,7 @@ pub use domain::{
 
 pub use ports::{ContentRepository, UserRepository};
 
-pub use services::{LearningService, ScoreWeights, ScoredItem, SessionService};
+pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
 
 pub use cbor_import::import_cbor_graph_from_bytes;
 

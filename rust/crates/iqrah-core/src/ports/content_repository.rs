@@ -121,6 +121,7 @@ pub trait ContentRepository: Send + Sync {
         license: Option<&str>,
         website: Option<&str>,
         version: Option<&str>,
+        package_id: Option<&str>,  // Link to content package (None for built-in translators)
     ) -> anyhow::Result<i32>;
 
     /// Insert or update a verse translation
