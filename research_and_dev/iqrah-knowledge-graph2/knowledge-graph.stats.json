@@ -1,0 +1,843 @@
+{
+  "metadata": {
+    "timestamp": "2025-11-17T19:10:53.515721",
+    "directed": true,
+    "multigraph": false,
+    "graph_attributes": {
+      "knowledge_edges": 882508,
+      "knowledge_compiled": true
+    }
+  },
+  "basic_stats": {
+    "total_nodes": 326068,
+    "total_edges": 1352658,
+    "density": 1.2722515188215471e-05,
+    "is_connected": true
+  },
+  "node_stats": {
+    "by_type": {
+      "chapter": 114,
+      "verse": 6236,
+      "word_instance": 83668,
+      "word": 21580,
+      "lemma": 4776,
+      "root": 1651,
+      "knowledge": 208043
+    },
+    "attribute_coverage": {
+      "chapter_type": 114,
+      "chapter_name": 114,
+      "chapter_foundational_score": 114,
+      "chapter_influence_score": 114,
+      "verse_type": 6236,
+      "verse_foundational_score": 6236,
+      "verse_influence_score": 6236,
+      "word_instance_type": 83668,
+      "word_instance_foundational_score": 83668,
+      "word_instance_influence_score": 83668,
+      "word_type": 21580,
+      "word_foundational_score": 21580,
+      "word_influence_score": 21580,
+      "lemma_type": 4776,
+      "lemma_foundational_score": 4776,
+      "lemma_influence_score": 4776,
+      "root_type": 1651,
+      "root_foundational_score": 1651,
+      "root_influence_score": 1651,
+      "knowledge_type": 208043,
+      "knowledge_axis": 208043,
+      "knowledge_parent_node": 208043,
+      "knowledge_foundational_score": 208043,
+      "knowledge_influence_score": 208043
+    }
+  },
+  "edge_stats": {
+    "by_type": {
+      "dependency": 500766,
+      "knowledge": 851892
+    },
+    "attribute_coverage": {
+      "type": 1352658,
+      "dist": 1059935,
+      "m": 1050665,
+      "s": 1050665,
+      "a": 9270,
+      "b": 9270
+    }
+  },
+  "knowledge_edge_stats": {
+    "by_axis": {
+      "memorization": 697058,
+      "translation": 451130,
+      "meaning": 10921
+    },
+    "by_distribution": {
+      "normal": 1050665,
+      "beta": 9270
+    },
+    "total_knowledge_edges": 1159109
+  },
+  "score_stats": {
+    "foundational": {
+      "count": 326068,
+      "mean": 0.042138217664055164,
+      "std": 0.043648880144581154,
+      "min": 0.0,
+      "max": 1.0,
+      "median": 0.04638520762079958,
+      "q25": 0.0,
+      "q75": 0.05738528353400207
+    },
+    "influence": {
+      "count": 326068,
+      "mean": 0.06384382652176734,
+      "std": 0.04619297432421698,
+      "min": 0.0,
+      "max": 1.0,
+      "median": 0.051558828265852175,
+      "q25": 0.035611584383335046,
+      "q75": 0.09828017045105555
+    },
+    "scored_nodes": 326068,
+    "scored_percentage": 100.0
+  },
+  "top_nodes": {
+    "by_foundational_score": [
+      {
+        "node_id": "LEMMA:\u0648",
+        "score": 1.0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "score": 0.9673982098452958,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0644",
+        "score": 0.9256939268709167,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0645\u0650\u0646",
+        "score": 0.9114379480233034,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0644\u0651\u064e\u0647",
+        "score": 0.8799043128137465,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0641",
+        "score": 0.8652273289330898,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0642\u0627\u0644\u064e",
+        "score": 0.8613192128585222,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0641\u0650\u064a",
+        "score": 0.8505360383990487,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0628",
+        "score": 0.8428993232763091,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0644\u0627",
+        "score": 0.8258404798730972,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0645\u0627",
+        "score": 0.8244698722431553,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0639\u064e\u0644\u064e\u0649",
+        "score": 0.8199909990591651,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0643\u0627\u0646\u064e",
+        "score": 0.8154480479514561,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0625\u0650\u0646\u0651",
+        "score": 0.8121620654827338,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0623\u0644\u0647",
+        "score": 0.8081618195132071,
+        "type": "root"
+      },
+      {
+        "node_id": "ROOT:\u0642\u0648\u0644",
+        "score": 0.8014829086461951,
+        "type": "root"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0651\u064e\u0630\u0650\u064a",
+        "score": 0.7976179906412749,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u0628\u0651",
+        "score": 0.7888404336408369,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0625\u0650\u0646",
+        "score": 0.753993348807714,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0643\u0648\u0646",
+        "score": 0.7448008180295856,
+        "type": "root"
+      }
+    ],
+    "by_influence_score": [
+      {
+        "node_id": "CHAPTER:2",
+        "score": 1.0,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:4",
+        "score": 0.9224151410902043,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:3",
+        "score": 0.915275849596693,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:7",
+        "score": 0.9100297986250591,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:6",
+        "score": 0.892841005438581,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:5",
+        "score": 0.8735178632002607,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:9",
+        "score": 0.8598120471543373,
+        "type": "chapter"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644:translation",
+        "score": 0.8470453654613739,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "CHAPTER:11",
+        "score": 0.8240999545859297,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:16",
+        "score": 0.8202050160733382,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:10",
+        "score": 0.8145536329187373,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:12",
+        "score": 0.8115392623854382,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:26",
+        "score": 0.8100762599201797,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:18",
+        "score": 0.7963969480430969,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:17",
+        "score": 0.7947551355763949,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:20",
+        "score": 0.7836284314079551,
+        "type": "chapter"
+      },
+      {
+        "node_id": "LEMMA:\u0648:translation",
+        "score": 0.782724938796575,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "CHAPTER:28",
+        "score": 0.7766788332070782,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:21",
+        "score": 0.7603046606188728,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:22",
+        "score": 0.7595935580440153,
+        "type": "chapter"
+      }
+    ],
+    "by_degree": [
+      {
+        "node_id": "LEMMA:\u0648:translation",
+        "degree": 6265,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644:translation",
+        "degree": 5409,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0648",
+        "degree": 3133,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "degree": 2705,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0644:translation",
+        "degree": 2639,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0641:translation",
+        "degree": 2377,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0628:translation",
+        "degree": 1539,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0644",
+        "degree": 1320,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0641",
+        "degree": 1189,
+        "type": "lemma"
+      },
+      {
+        "node_id": "WORD:\u0641\u0650\u0649:translation",
+        "degree": 1101,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0641\u0650\u0649",
+        "degree": 1100,
+        "type": "word"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0651\u064e\u0630\u0650\u064a\u0646\u064e:translation",
+        "degree": 815,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0651\u064e\u0630\u0650\u064a\u0646\u064e",
+        "degree": 813,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0628",
+        "degree": 770,
+        "type": "lemma"
+      },
+      {
+        "node_id": "WORD:\u0645\u0650\u0646:translation",
+        "degree": 733,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0645\u0650\u0646",
+        "degree": 731,
+        "type": "word"
+      },
+      {
+        "node_id": "WORD:\u0645\u064e\u0627:translation",
+        "degree": 724,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0645\u064e\u0627",
+        "degree": 719,
+        "type": "word"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u0650:translation",
+        "degree": 670,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u0650",
+        "degree": 668,
+        "type": "word"
+      }
+    ],
+    "top_chapters": [
+      {
+        "node_id": "CHAPTER:26",
+        "score": 0.15080964561833202
+      },
+      {
+        "node_id": "CHAPTER:37",
+        "score": 0.15078963247188112
+      },
+      {
+        "node_id": "CHAPTER:2",
+        "score": 0.15029781575806325
+      },
+      {
+        "node_id": "CHAPTER:7",
+        "score": 0.15021199248927658
+      },
+      {
+        "node_id": "CHAPTER:3",
+        "score": 0.15012795159015294
+      },
+      {
+        "node_id": "CHAPTER:56",
+        "score": 0.15012737414135713
+      },
+      {
+        "node_id": "CHAPTER:6",
+        "score": 0.1499620151496171
+      },
+      {
+        "node_id": "CHAPTER:4",
+        "score": 0.14993550721147866
+      },
+      {
+        "node_id": "CHAPTER:16",
+        "score": 0.1498611301212026
+      },
+      {
+        "node_id": "CHAPTER:20",
+        "score": 0.14984443725684213
+      },
+      {
+        "node_id": "CHAPTER:11",
+        "score": 0.14979212914434537
+      },
+      {
+        "node_id": "CHAPTER:21",
+        "score": 0.1497875679910252
+      },
+      {
+        "node_id": "CHAPTER:23",
+        "score": 0.14976582552899748
+      },
+      {
+        "node_id": "CHAPTER:9",
+        "score": 0.1497657481683148
+      },
+      {
+        "node_id": "CHAPTER:15",
+        "score": 0.14975184951556425
+      },
+      {
+        "node_id": "CHAPTER:17",
+        "score": 0.1496126819148358
+      },
+      {
+        "node_id": "CHAPTER:55",
+        "score": 0.14961248366964486
+      },
+      {
+        "node_id": "CHAPTER:12",
+        "score": 0.1495973934220342
+      },
+      {
+        "node_id": "CHAPTER:19",
+        "score": 0.1495836671019563
+      },
+      {
+        "node_id": "CHAPTER:5",
+        "score": 0.14950578804785433
+      }
+    ],
+    "top_verses": [
+      {
+        "node_id": "VERSE:103:1",
+        "score": 0.11279100897843868
+      },
+      {
+        "node_id": "VERSE:112:1",
+        "score": 0.1123472481238363
+      },
+      {
+        "node_id": "VERSE:108:1",
+        "score": 0.11098919756588367
+      },
+      {
+        "node_id": "VERSE:114:2",
+        "score": 0.11032244394305532
+      },
+      {
+        "node_id": "VERSE:114:1",
+        "score": 0.10895357688102124
+      },
+      {
+        "node_id": "VERSE:106:1",
+        "score": 0.1087748713701539
+      },
+      {
+        "node_id": "VERSE:95:1",
+        "score": 0.10863163173601774
+      },
+      {
+        "node_id": "VERSE:108:2",
+        "score": 0.10825347028345346
+      },
+      {
+        "node_id": "VERSE:1:2",
+        "score": 0.10787413931686086
+      },
+      {
+        "node_id": "VERSE:55:63",
+        "score": 0.10761959632368734
+      },
+      {
+        "node_id": "VERSE:110:1",
+        "score": 0.10751590147021688
+      },
+      {
+        "node_id": "VERSE:112:2",
+        "score": 0.10703106738486295
+      },
+      {
+        "node_id": "VERSE:98:2",
+        "score": 0.10600330836442959
+      },
+      {
+        "node_id": "VERSE:111:3",
+        "score": 0.10582064779448186
+      },
+      {
+        "node_id": "VERSE:100:1",
+        "score": 0.10527336380242706
+      },
+      {
+        "node_id": "VERSE:107:6",
+        "score": 0.10523146467365749
+      },
+      {
+        "node_id": "VERSE:1:3",
+        "score": 0.10507036011017608
+      },
+      {
+        "node_id": "VERSE:107:3",
+        "score": 0.10485262601727653
+      },
+      {
+        "node_id": "VERSE:100:2",
+        "score": 0.10473355976185078
+      },
+      {
+        "node_id": "VERSE:95:2",
+        "score": 0.10471284868499608
+      }
+    ],
+    "top_words": [
+      {
+        "node_id": "WORD:\u0641\u0650\u0649",
+        "score": 0.7443614203153077
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0651\u064e\u0630\u0650\u064a\u0646\u064e",
+        "score": 0.7137814018798669
+      },
+      {
+        "node_id": "WORD:\u0625\u0650\u0646\u0651\u064e",
+        "score": 0.7013393874369521
+      },
+      {
+        "node_id": "WORD:\u0645\u064e\u0627",
+        "score": 0.6935119716721534
+      },
+      {
+        "node_id": "WORD:\u0645\u0650\u0646",
+        "score": 0.6924218318714105
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u064f",
+        "score": 0.6827068885401826
+      },
+      {
+        "node_id": "WORD:\u0644\u064e\u0627",
+        "score": 0.6790211236972383
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u0650",
+        "score": 0.6790168691214751
+      },
+      {
+        "node_id": "WORD:\u0648\u064e\u0644\u064e\u0627",
+        "score": 0.6789847347957589
+      },
+      {
+        "node_id": "WORD:\u0648\u064e\u0645\u064e\u0627",
+        "score": 0.6730537900931812
+      },
+      {
+        "node_id": "WORD:\u0642\u064e\u0627\u0644\u064e",
+        "score": 0.6693989101733313
+      },
+      {
+        "node_id": "WORD:\u0625\u0650\u0644\u0651\u064e\u0627",
+        "score": 0.665228384487587
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u064e",
+        "score": 0.6589946430944817
+      },
+      {
+        "node_id": "WORD:\u0623\u064e\u0646",
+        "score": 0.6366870255583844
+      },
+      {
+        "node_id": "WORD:\u062b\u064f\u0645\u0651\u064e",
+        "score": 0.6292431395704455
+      },
+      {
+        "node_id": "WORD:\u0645\u0650\u0646\u064e",
+        "score": 0.6241944990904755
+      },
+      {
+        "node_id": "WORD:\u0645\u0651\u0650\u0646",
+        "score": 0.6115827611416242
+      },
+      {
+        "node_id": "WORD:\u0639\u064e\u0644\u064e\u0649\u0670",
+        "score": 0.6037974334480452
+      },
+      {
+        "node_id": "WORD:\u0642\u064f\u0644\u0652",
+        "score": 0.5957839587156256
+      },
+      {
+        "node_id": "WORD:\u0643\u064e\u0627\u0646\u064e",
+        "score": 0.5953212427132845
+      }
+    ],
+    "top_lemmas": [
+      {
+        "node_id": "LEMMA:\u0648",
+        "score": 1.0
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "score": 0.9673982098452958
+      },
+      {
+        "node_id": "LEMMA:\u0644",
+        "score": 0.9256939268709167
+      },
+      {
+        "node_id": "LEMMA:\u0645\u0650\u0646",
+        "score": 0.9114379480233034
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0644\u0651\u064e\u0647",
+        "score": 0.8799043128137465
+      },
+      {
+        "node_id": "LEMMA:\u0641",
+        "score": 0.8652273289330898
+      },
+      {
+        "node_id": "LEMMA:\u0642\u0627\u0644\u064e",
+        "score": 0.8613192128585222
+      },
+      {
+        "node_id": "LEMMA:\u0641\u0650\u064a",
+        "score": 0.8505360383990487
+      },
+      {
+        "node_id": "LEMMA:\u0628",
+        "score": 0.8428993232763091
+      },
+      {
+        "node_id": "LEMMA:\u0644\u0627",
+        "score": 0.8258404798730972
+      },
+      {
+        "node_id": "LEMMA:\u0645\u0627",
+        "score": 0.8244698722431553
+      },
+      {
+        "node_id": "LEMMA:\u0639\u064e\u0644\u064e\u0649",
+        "score": 0.8199909990591651
+      },
+      {
+        "node_id": "LEMMA:\u0643\u0627\u0646\u064e",
+        "score": 0.8154480479514561
+      },
+      {
+        "node_id": "LEMMA:\u0625\u0650\u0646\u0651",
+        "score": 0.8121620654827338
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0651\u064e\u0630\u0650\u064a",
+        "score": 0.7976179906412749
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u0628\u0651",
+        "score": 0.7888404336408369
+      },
+      {
+        "node_id": "LEMMA:\u0625\u0650\u0646",
+        "score": 0.753993348807714
+      },
+      {
+        "node_id": "LEMMA:\u0645\u064e\u0646",
+        "score": 0.7418812818839955
+      },
+      {
+        "node_id": "LEMMA:\u0625\u0650\u0644\u064e\u0649",
+        "score": 0.7330695829185684
+      },
+      {
+        "node_id": "LEMMA:\u0630\u0627",
+        "score": 0.7327191231020165
+      }
+    ],
+    "top_roots": [
+      {
+        "node_id": "ROOT:\u0623\u0644\u0647",
+        "score": 0.8081618195132071
+      },
+      {
+        "node_id": "ROOT:\u0642\u0648\u0644",
+        "score": 0.8014829086461951
+      },
+      {
+        "node_id": "ROOT:\u0643\u0648\u0646",
+        "score": 0.7448008180295856
+      },
+      {
+        "node_id": "ROOT:\u0631\u0628\u0628",
+        "score": 0.7312564695433421
+      },
+      {
+        "node_id": "ROOT:\u0639\u0644\u0645",
+        "score": 0.7198019406095936
+      },
+      {
+        "node_id": "ROOT:\u0623\u0645\u0646",
+        "score": 0.7067096543998335
+      },
+      {
+        "node_id": "ROOT:\u0623\u062a\u064a",
+        "score": 0.6969064269614779
+      },
+      {
+        "node_id": "ROOT:\u0642\u0648\u0645",
+        "score": 0.6779224191535151
+      },
+      {
+        "node_id": "ROOT:\u0628\u064a\u0646",
+        "score": 0.6755330247931832
+      },
+      {
+        "node_id": "ROOT:\u0648\u0644\u064a",
+        "score": 0.6686078657654048
+      },
+      {
+        "node_id": "ROOT:\u0633\u0645\u0639",
+        "score": 0.6595110132258201
+      },
+      {
+        "node_id": "ROOT:\u0631\u0633\u0644",
+        "score": 0.6537600598153728
+      },
+      {
+        "node_id": "ROOT:\u0643\u0641\u0631",
+        "score": 0.6463467196579726
+      },
+      {
+        "node_id": "ROOT:\u0634\u064a\u0623",
+        "score": 0.6433918373017729
+      },
+      {
+        "node_id": "ROOT:\u0623\u064a\u064a",
+        "score": 0.6333845254505567
+      },
+      {
+        "node_id": "ROOT:\u0631\u0623\u064a",
+        "score": 0.629625922473602
+      },
+      {
+        "node_id": "ROOT:\u0628\u062f\u0644",
+        "score": 0.6277232858780909
+      },
+      {
+        "node_id": "ROOT:\u062c\u064a\u0623",
+        "score": 0.6252999098903175
+      },
+      {
+        "node_id": "ROOT:\u0648\u0642\u064a",
+        "score": 0.6213771018017731
+      },
+      {
+        "node_id": "ROOT:\u064a\u0648\u0645",
+        "score": 0.6187873895663162
+      }
+    ]
+  },
+  "connectivity": {
+    "avg_in_degree": 4.148392359875854,
+    "avg_out_degree": 4.148392359875854,
+    "max_in_degree": 3133,
+    "max_out_degree": 3133,
+    "weakly_connected_components": 1
+  },
+  "validation": {
+    "errors": [],
+    "warnings": [],
+    "checks": {
+      "all_nodes_have_type": true,
+      "all_knowledge_edges_have_dist": true,
+      "all_scores_in_range": true,
+      "graph_is_connected": true
+    },
+    "total_errors": 0,
+    "total_warnings": 0,
+    "passed_checks": 4,
+    "total_checks": 4
+  }
+}
