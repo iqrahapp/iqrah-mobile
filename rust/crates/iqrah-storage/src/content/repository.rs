@@ -1,15 +1,16 @@
 use super::models::{
     CandidateNodeRow, ChapterRow, ContentPackageRow, EdgeRow, GoalRow, InstalledPackageRow,
-    LanguageRow, NodeGoalRow, NodeRow, PrerequisiteRow, QuranTextRow, TranslationRow,
-    TranslatorRow, VerseRow, VerseTranslationRow, WordRow, WordTranslationRow,
+    LanguageRow, LemmaRow, MorphologySegmentRow, NodeGoalRow, NodeRow, PrerequisiteRow,
+    QuranTextRow, RootRow, TranslationRow, TranslatorRow, VerseRow, VerseTranslationRow, WordRow,
+    WordTranslationRow,
 };
 use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
     ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode, Chapter, ContentPackage,
     ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge, ImportedNode,
-    InstalledPackage, KnowledgeNode, Language, Node, NodeType, PackageType, Translator, Verse,
-    Word,
+    InstalledPackage, KnowledgeNode, Language, Lemma, MorphologySegment, Node, NodeType,
+    PackageType, Root, Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
@@ -890,6 +891,73 @@ impl ContentRepository for SqliteContentRepository {
                     })
             })
             .collect()
+    }
+
+    // ========================================================================
+    // Morphology Methods (for grammar exercises)
+    // ========================================================================
+
+    async fn get_morphology_for_word(
+        &self,
+        word_id: i32,
+    ) -> anyhow::Result<Vec<MorphologySegment>> {
+        let rows = query_as::<_, MorphologySegmentRow>(
+            "SELECT segment_id, word_id, position, lemma_id, root_id, pos_tag
+             FROM morphology_segments
+             WHERE word_id = ?
+             ORDER BY position",
+        )
+        .bind(word_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| MorphologySegment {
+                segment_id: r.segment_id,
+                word_id: r.word_id,
+                position: r.position,
+                lemma_id: r.lemma_id,
+                root_id: r.root_id,
+                pos_tag: r.pos_tag,
+            })
+            .collect())
+    }
+
+    async fn get_root_by_id(&self, root_id: &str) -> anyhow::Result<Option<Root>> {
+        let row = query_as::<_, RootRow>(
+            "SELECT root_id, arabic, transliteration, root_type, meaning, created_at
+             FROM roots
+             WHERE root_id = ?",
+        )
+        .bind(root_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Root {
+            root_id: r.root_id,
+            arabic: r.arabic,
+            transliteration: r.transliteration,
+            root_type: r.root_type.unwrap_or_else(|| "trilateral".to_string()),
+        }))
+    }
+
+    async fn get_lemma_by_id(&self, lemma_id: &str) -> anyhow::Result<Option<Lemma>> {
+        let row = query_as::<_, LemmaRow>(
+            "SELECT lemma_id, arabic, transliteration, root_id, description, created_at
+             FROM lemmas
+             WHERE lemma_id = ?",
+        )
+        .bind(lemma_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Lemma {
+            lemma_id: r.lemma_id,
+            arabic: r.arabic,
+            root_id: r.root_id,
+            transliteration: r.transliteration,
+        }))
     }
 
     // ========================================================================

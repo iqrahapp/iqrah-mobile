@@ -1,0 +1,312 @@
+// exercises/ayah_chain.rs
+// Exercise 10: Ayah Chain - Continuous verse typing until mistake or completion
+
+use super::memorization::MemorizationExercise;
+use super::types::Exercise;
+use crate::{ContentRepository, Verse};
+use anyhow::Result;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
+// ============================================================================
+// Exercise 10: Ayah Chain
+// ============================================================================
+
+/// Stateful exercise for continuous verse typing
+/// User types verses in sequence until making a mistake or completing the chain
+/// Tracks current position and progress through a chapter or range
+#[derive(Debug)]
+pub struct AyahChainExercise {
+    node_id: String,
+    verses: Vec<Verse>,
+    current_index: usize,
+    completed_count: usize,
+    is_complete: bool,
+    mistake_made: bool,
+    started_at: DateTime<Utc>,
+    last_mistake: Option<MistakeDetails>,
+}
+
+/// Details about the most recent mistake
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MistakeDetails {
+    pub verse_key: String,
+    pub user_input: String,
+    pub expected: String,
+    pub occurred_at: DateTime<Utc>,
+}
+
+impl AyahChainExercise {
+    /// Create a new Ayah Chain exercise
+    ///
+    /// Queries the database for all verses in the specified chapter
+    /// User will type verses in sequence starting from the first verse
+    pub async fn new(
+        chapter_node_id: String,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
+        // Parse chapter number from node_id (format: "CHAPTER:n")
+        let chapter_num: i32 = chapter_node_id
+            .strip_prefix("CHAPTER:")
+            .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID: {}", chapter_node_id))?
+            .parse()?;
+
+        // Get all verses for the chapter
+        let verses = content_repo.get_verses_for_chapter(chapter_num).await?;
+
+        if verses.is_empty() {
+            return Err(anyhow::anyhow!(
+                "No verses found for chapter {}",
+                chapter_num
+            ));
+        }
+
+        Ok(Self {
+            node_id: chapter_node_id,
+            verses,
+            current_index: 0,
+            completed_count: 0,
+            is_complete: false,
+            mistake_made: false,
+            started_at: Utc::now(),
+            last_mistake: None,
+        })
+    }
+
+    /// Create an Ayah Chain for a specific verse range within a chapter
+    pub async fn new_range(
+        chapter_num: i32,
+        start_verse: i32,
+        end_verse: i32,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
+        // Get all verses for the chapter
+        let all_verses = content_repo.get_verses_for_chapter(chapter_num).await?;
+
+        // Filter to requested range
+        let verses: Vec<Verse> = all_verses
+            .into_iter()
+            .filter(|v| v.verse_number >= start_verse && v.verse_number <= end_verse)
+            .collect();
+
+        if verses.is_empty() {
+            return Err(anyhow::anyhow!(
+                "No verses found for chapter {} range {}:{}",
+                chapter_num,
+                start_verse,
+                end_verse
+            ));
+        }
+
+        let node_id = format!("CHAPTER:{}:{}:{}", chapter_num, start_verse, end_verse);
+
+        Ok(Self {
+            node_id,
+            verses,
+            current_index: 0,
+            completed_count: 0,
+            is_complete: false,
+            mistake_made: false,
+            started_at: Utc::now(),
+            last_mistake: None,
+        })
+    }
+
+    /// Get the current verse being tested
+    pub fn current_verse(&self) -> Option<&Verse> {
+        if self.is_complete || self.mistake_made {
+            return None;
+        }
+        self.verses.get(self.current_index)
+    }
+
+    /// Get the current verse reference (e.g., "1:1")
+    pub fn current_verse_ref(&self) -> Option<String> {
+        self.current_verse().map(|v| v.key.clone())
+    }
+
+    /// Submit an answer for the current verse and advance
+    ///
+    /// Returns Ok(true) if answer was correct and chain continues
+    /// Returns Ok(false) if answer was wrong (chain ends)
+    /// Returns Err if exercise is already complete or invalid state
+    pub fn submit_answer(&mut self, user_input: &str) -> Result<bool> {
+        if self.is_complete {
+            return Err(anyhow::anyhow!("Exercise already complete"));
+        }
+
+        if self.mistake_made {
+            return Err(anyhow::anyhow!("Chain already broken by mistake"));
+        }
+
+        let current_verse = self
+            .current_verse()
+            .ok_or_else(|| anyhow::anyhow!("No current verse"))?;
+
+        // Clone necessary data before mutation
+        let verse_key = current_verse.key.clone();
+        let verse_text = current_verse.text_uthmani.clone();
+
+        // Check answer using Arabic normalization
+        let normalized_input = MemorizationExercise::normalize_arabic(user_input);
+        let normalized_correct = MemorizationExercise::normalize_arabic(&verse_text);
+
+        if normalized_input == normalized_correct {
+            // Correct! Advance to next verse
+            self.completed_count += 1;
+            self.current_index += 1;
+
+            // Check if we've completed all verses
+            if self.current_index >= self.verses.len() {
+                self.is_complete = true;
+            }
+
+            Ok(true)
+        } else {
+            // Mistake! Chain broken
+            self.mistake_made = true;
+
+            // Capture mistake details for feedback
+            self.last_mistake = Some(MistakeDetails {
+                verse_key,
+                user_input: user_input.to_string(),
+                expected: verse_text,
+                occurred_at: Utc::now(),
+            });
+
+            Ok(false)
+        }
+    }
+
+    /// Get completion stats
+    pub fn get_stats(&self) -> AyahChainStats {
+        let progress_percentage = if self.verses.is_empty() {
+            0.0
+        } else {
+            (self.completed_count as f64 / self.verses.len() as f64) * 100.0
+        };
+
+        let elapsed_seconds = (Utc::now() - self.started_at).num_seconds() as u64;
+
+        let current_verse_key = self.current_verse().map(|v| v.key.clone());
+
+        AyahChainStats {
+            total_verses: self.verses.len(),
+            completed_count: self.completed_count,
+            is_complete: self.is_complete,
+            mistake_made: self.mistake_made,
+            progress_percentage,
+            elapsed_seconds,
+            current_verse_key,
+            last_mistake: self.last_mistake.clone(),
+        }
+    }
+
+    /// Get the most recent mistake details (if any)
+    pub fn get_last_mistake(&self) -> Option<&MistakeDetails> {
+        self.last_mistake.as_ref()
+    }
+
+    /// Reset the chain to start over
+    pub fn reset(&mut self) {
+        self.current_index = 0;
+        self.completed_count = 0;
+        self.is_complete = false;
+        self.mistake_made = false;
+        self.started_at = Utc::now();
+        self.last_mistake = None;
+    }
+}
+
+/// Statistics for Ayah Chain performance
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AyahChainStats {
+    /// Total number of verses in the chain
+    pub total_verses: usize,
+    /// Number of verses successfully completed
+    pub completed_count: usize,
+    /// Whether the entire chain has been completed
+    pub is_complete: bool,
+    /// Whether a mistake was made (chain broken)
+    pub mistake_made: bool,
+    /// Progress as a percentage (0.0 to 100.0)
+    pub progress_percentage: f64,
+    /// Time elapsed since start in seconds
+    pub elapsed_seconds: u64,
+    /// Current verse key being tested (if any)
+    pub current_verse_key: Option<String>,
+    /// Details about the last mistake (if any)
+    pub last_mistake: Option<MistakeDetails>,
+}
+
+impl Exercise for AyahChainExercise {
+    fn generate_question(&self) -> String {
+        if let Some(verse) = self.current_verse() {
+            format!(
+                "Ayah Chain: {}/{}\n\nType verse {}:",
+                self.completed_count + 1,
+                self.verses.len(),
+                verse.key
+            )
+        } else if self.is_complete {
+            format!(
+                "🎉 Chain Complete! You successfully typed all {} verses!",
+                self.verses.len()
+            )
+        } else if self.mistake_made {
+            format!(
+                "Chain broken. You completed {}/{} verses.",
+                self.completed_count,
+                self.verses.len()
+            )
+        } else {
+            "No current verse".to_string()
+        }
+    }
+
+    fn check_answer(&self, answer: &str) -> bool {
+        if let Some(verse) = self.current_verse() {
+            let normalized_input = MemorizationExercise::normalize_arabic(answer);
+            let normalized_correct = MemorizationExercise::normalize_arabic(&verse.text_uthmani);
+            normalized_input == normalized_correct
+        } else {
+            false
+        }
+    }
+
+    fn get_hint(&self) -> Option<String> {
+        self.current_verse().map(|verse| {
+            // Show first word and provide context
+            let words: Vec<&str> = verse.text_uthmani.split_whitespace().collect();
+            let first_word = words.first().copied().unwrap_or("");
+            let word_count = words.len();
+
+            format!(
+                "Hint: First word is '{}' ({} words total)",
+                first_word, word_count
+            )
+        })
+    }
+
+    fn get_node_id(&self) -> &str {
+        &self.node_id
+    }
+
+    fn get_type_name(&self) -> &'static str {
+        "ayah_chain"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_placeholder() {
+        // Ayah chain tests require full database setup
+        // See ayah_chain_tests.rs for comprehensive tests
+    }
+}
+
+// Include comprehensive integration tests
+#[cfg(test)]
+#[path = "ayah_chain_tests.rs"]
+mod ayah_chain_tests;

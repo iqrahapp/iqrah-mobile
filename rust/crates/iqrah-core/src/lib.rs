@@ -17,6 +17,7 @@ pub use domain::{
     DomainError,
     // Echo Recall types
     EchoRecallState,
+    EchoRecallStats,
     EchoRecallWord,
     Edge,
     EdgeType,
@@ -30,13 +31,17 @@ pub use domain::{
     KnowledgeAxis,
     KnowledgeNode,
     Language,
+    Lemma,
     MemoryState,
+    // Morphology Models
+    MorphologySegment,
     Node,
     NodeType,
     PackageType,
     PropagationDetail,
     PropagationEvent,
     ReviewGrade,
+    Root,
     Translator,
     Verse,
     Word,
@@ -53,7 +58,13 @@ pub use scheduler_v2::{
     SessionMode, UserProfile, MASTERY_THRESHOLD,
 };
 
-pub use exercises::{ExerciseResponse, ExerciseService, McqExercise};
+pub use exercises::{
+    AyahChainExercise, AyahChainStats, AyahSequenceExercise, ClozeDeletionExercise,
+    CrossVerseConnectionExercise, ExerciseResponse, ExerciseService, FindMistakeExercise,
+    FirstLetterHintExercise, FullVerseInputExercise, IdentifyRootExercise, McqExercise,
+    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise, PosTaggingExercise,
+    ReverseClozeExercise, TranslatePhraseExercise,
+};
 
 pub use semantic::{
     SemanticEmbedder, SemanticGrade, SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER,

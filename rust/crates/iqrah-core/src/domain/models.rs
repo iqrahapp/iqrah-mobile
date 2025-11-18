@@ -392,6 +392,75 @@ pub struct EchoRecallState {
     pub words: Vec<EchoRecallWord>,
 }
 
+impl EchoRecallState {
+    /// Get session statistics for UI display
+    pub fn get_stats(&self) -> EchoRecallStats {
+        let mut visible_count = 0;
+        let mut obscured_count = 0;
+        let mut hidden_count = 0;
+        let mut total_energy = 0.0;
+
+        for word in &self.words {
+            total_energy += word.energy;
+            match &word.visibility {
+                WordVisibility::Visible => visible_count += 1,
+                WordVisibility::Obscured { .. } => obscured_count += 1,
+                WordVisibility::Hidden => hidden_count += 1,
+            }
+        }
+
+        let average_energy = if self.words.is_empty() {
+            0.0
+        } else {
+            total_energy / self.words.len() as f64
+        };
+
+        let mastery_percentage = average_energy * 100.0;
+
+        EchoRecallStats {
+            total_words: self.words.len(),
+            visible_count,
+            obscured_count,
+            hidden_count,
+            average_energy,
+            mastery_percentage,
+        }
+    }
+
+    /// Get the count of words that are fully mastered (hidden)
+    pub fn mastered_count(&self) -> usize {
+        self.words
+            .iter()
+            .filter(|w| matches!(w.visibility, WordVisibility::Hidden))
+            .count()
+    }
+
+    /// Get the count of words still being learned (visible)
+    pub fn learning_count(&self) -> usize {
+        self.words
+            .iter()
+            .filter(|w| matches!(w.visibility, WordVisibility::Visible))
+            .count()
+    }
+}
+
+/// Statistics for Echo Recall session
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EchoRecallStats {
+    /// Total number of words in the session
+    pub total_words: usize,
+    /// Number of fully visible words (still learning)
+    pub visible_count: usize,
+    /// Number of obscured words (in progress)
+    pub obscured_count: usize,
+    /// Number of hidden words (nearly mastered)
+    pub hidden_count: usize,
+    /// Average energy across all words (0.0 to 1.0)
+    pub average_energy: f64,
+    /// Overall mastery as a percentage (0.0 to 100.0)
+    pub mastery_percentage: f64,
+}
+
 // ===== Package Management Models =====
 
 /// Package types for downloadable content
@@ -457,4 +526,35 @@ pub struct InstalledPackage {
     pub package_id: String,
     pub installed_at: DateTime<Utc>,
     pub enabled: bool,
+}
+
+// ===== Morphology Models =====
+
+/// Represents an Arabic root (جذر)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Root {
+    pub root_id: String,                 // e.g., "ع-ل-م"
+    pub arabic: String,                  // Arabic text of the root
+    pub transliteration: Option<String>, // e.g., "ʿ-l-m"
+    pub root_type: String,               // e.g., "trilateral", "quadrilateral"
+}
+
+/// Represents a lemma (الجذع) - the dictionary form of a word
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Lemma {
+    pub lemma_id: String,        // e.g., "علم_V"
+    pub arabic: String,          // Arabic text of the lemma
+    pub root_id: Option<String>, // Reference to the root
+    pub transliteration: Option<String>,
+}
+
+/// Represents a morphological segment of a word
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MorphologySegment {
+    pub segment_id: i32,
+    pub word_id: i32,
+    pub position: i32,
+    pub lemma_id: Option<String>,
+    pub root_id: Option<String>,
+    pub pos_tag: Option<String>, // Part of speech (noun, verb, particle, etc.)
 }

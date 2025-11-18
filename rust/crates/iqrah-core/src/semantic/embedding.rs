@@ -75,6 +75,7 @@ impl SemanticEmbedder {
     ///
     /// # Example
     /// ```rust,no_run
+    /// # fn main() -> anyhow::Result<()> {
     /// // Recommended: Use ExerciseService::init_semantic_model() instead
     /// use iqrah_core::ExerciseService;
     ///
@@ -87,6 +88,8 @@ impl SemanticEmbedder {
     /// use iqrah_core::SemanticEmbedder;
     ///
     /// let embedder = SemanticEmbedder::new("minishlab/potion-multilingual-128M")?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn new(model_id: &str) -> Result<Self> {
         // Check if HF_HOME is set (important for mobile)

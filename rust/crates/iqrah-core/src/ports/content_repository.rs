@@ -1,6 +1,6 @@
 use crate::domain::{
-    Chapter, ContentPackage, Edge, ImportedEdge, ImportedNode, InstalledPackage, Language, Node,
-    NodeType, PackageType, Translator, Verse, Word,
+    Chapter, ContentPackage, Edge, ImportedEdge, ImportedNode, InstalledPackage, Language, Lemma,
+    MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
 };
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -174,6 +174,20 @@ pub trait ContentRepository: Send + Sync {
 
     /// Get enabled packages
     async fn get_enabled_packages(&self) -> anyhow::Result<Vec<InstalledPackage>>;
+
+    // ========================================================================
+    // Morphology Methods (for grammar exercises)
+    // ========================================================================
+
+    /// Get morphology segments for a word
+    async fn get_morphology_for_word(&self, word_id: i32)
+        -> anyhow::Result<Vec<MorphologySegment>>;
+
+    /// Get a root by its ID
+    async fn get_root_by_id(&self, root_id: &str) -> anyhow::Result<Option<Root>>;
+
+    /// Get a lemma by its ID
+    async fn get_lemma_by_id(&self, lemma_id: &str) -> anyhow::Result<Option<Lemma>>;
 
     // ========================================================================
     // Scheduler v2.0 Methods

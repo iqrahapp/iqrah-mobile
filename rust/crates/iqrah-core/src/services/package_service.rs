@@ -464,6 +464,21 @@ mod tests {
                 .collect())
         }
 
+        async fn get_morphology_for_word(
+            &self,
+            _word_id: i32,
+        ) -> Result<Vec<crate::MorphologySegment>> {
+            Ok(vec![])
+        }
+
+        async fn get_root_by_id(&self, _root_id: &str) -> Result<Option<crate::Root>> {
+            Ok(None)
+        }
+
+        async fn get_lemma_by_id(&self, _lemma_id: &str) -> Result<Option<crate::Lemma>> {
+            Ok(None)
+        }
+
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
