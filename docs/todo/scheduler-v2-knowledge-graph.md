@@ -61,23 +61,40 @@ cargo build --release --package iqrah-cli
 
 ---
 
-## 📝 Optional Improvements
+## ✅ Optional Improvements - COMPLETED
 
-### 1. Full Dataset Goal
-Current: Goal covers first 30 verses (1:1-1:7, 2:1-2:23)
-Generated: 493 verses available in migration
+### 1. ✅ Full Dataset Goal - DONE
+Previously: Goal covered first 30 verses (1:1-1:7, 2:1-2:23)
+Now: Goal covers all 493 verses (chapters 1-3 complete)
 
-**Consider:** Add goal for all 493 verses if useful for testing
+**Changes Made:**
+- Updated migration to include all 493 verses in `node_goals` table
+- Scheduler now processes 493 candidates instead of 30
+- Session generation remains fast (9ms) even with expanded dataset
 
-### 2. CLI Tests
-Manual testing done, but no automated CLI tests exist
+### 2. ✅ CLI Tests - DONE
+Added comprehensive integration tests for CLI scheduler functionality
 
-**Add:** CLI integration tests in `rust/crates/iqrah-cli/tests/`
+**Tests Created:** `rust/crates/iqrah-cli/tests/scheduler_integration.rs`
+- `test_scheduler_with_new_user` - Verifies 493 candidates loaded
+- `test_scheduler_goal_data` - Validates goal metadata
+- `test_scheduler_node_metadata` - Checks PageRank scores
+- `test_scheduler_prerequisite_edges` - Verifies 490 prerequisite edges
+- `test_scheduler_database_initialization` - Tests DB setup
+- `test_scheduler_chunking_behavior` - Validates 493-node handling
 
-### 3. Documentation
-**Update:** `research_and_dev/iqrah-knowledge-graph2/PRODUCTIONIZATION.md` with:
-- Example of extraction pipeline used
-- Reference to `score_and_extract.py` script
+**Results:** 6/6 tests passing
+
+### 3. ✅ Documentation - DONE
+Updated `research_and_dev/iqrah-knowledge-graph2/PRODUCTIONIZATION.md`
+
+**Sections Added:**
+- Scheduler v2 Integration - Extraction Pipeline
+- Usage example for `score_and_extract.py`
+- Output format documentation
+- Score computation formulas
+- Integration results and statistics
+- Future expansion guidance
 
 ---
 
@@ -107,10 +124,27 @@ Manual testing done, but no automated CLI tests exist
 
 ## 🚀 Next Steps
 
-1. ✅ **Merge Ready:** All required tasks complete, branch ready for production merge
-2. **Optional: Expand Goal:** Add all 493 verses to goal (currently only 30 verses)
-3. **Optional: CLI Tests:** Add automated CLI integration tests
-4. **Optional: Documentation:** Update PRODUCTIONIZATION.md with extraction pipeline details
+**All improvements complete!** The branch is fully ready for production merge.
+
+### Completed Work
+
+1. ✅ **Core Requirements**
+   - All integration tests passing (50/50)
+   - Performance validated (9ms session generation)
+   - Manual CLI testing verified
+   - Builds clean with -D warnings
+
+2. ✅ **Optional Improvements**
+   - Expanded goal to all 493 verses
+   - Added 6 CLI integration tests
+   - Updated documentation with extraction pipeline details
+
+### Final Statistics
+
+- **Total Tests:** 56 passing (6 CLI + 33 storage unit + 17 storage integration)
+- **Goal Coverage:** 493 verses (chapters 1-3 complete)
+- **Prerequisite Edges:** 490 sequential dependencies
+- **Performance:** 9ms session generation with full dataset
 
 ---
 
@@ -129,4 +163,9 @@ Manual testing done, but no automated CLI tests exist
 - Chunked queries for 500+ nodes
 - Mixed-learning and revision modes
 
-**Ready for Production:** Yes - all blockers resolved, all tests passing
+**Ready for Production:** Yes - all required and optional improvements complete
+
+**Final Commit:** feat(scheduler): Implement optional improvements
+- Expanded goal: 30→493 verses
+- Added CLI tests: 6 comprehensive integration tests
+- Updated docs: Extraction pipeline documented
