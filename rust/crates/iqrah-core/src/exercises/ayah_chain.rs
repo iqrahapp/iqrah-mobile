@@ -6,6 +6,7 @@ use super::types::Exercise;
 use crate::{ContentRepository, Verse};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // Exercise 10: Ayah Chain
@@ -27,7 +28,7 @@ pub struct AyahChainExercise {
 }
 
 /// Details about the most recent mistake
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MistakeDetails {
     pub verse_key: String,
     pub user_input: String,
@@ -218,7 +219,7 @@ impl AyahChainExercise {
 }
 
 /// Statistics for Ayah Chain performance
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AyahChainStats {
     /// Total number of verses in the chain
     pub total_verses: usize,

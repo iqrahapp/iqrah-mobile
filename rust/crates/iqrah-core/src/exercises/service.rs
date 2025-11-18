@@ -14,6 +14,10 @@ use crate::{ContentRepository, KnowledgeAxis, KnowledgeNode};
 use anyhow::Result;
 use std::sync::Arc;
 
+// Modern enum-based architecture
+use super::exercise_data::ExerciseData;
+use super::generators;
+
 /// Service for generating and managing exercises
 pub struct ExerciseService {
     content_repo: Arc<dyn ContentRepository>,
@@ -41,12 +45,17 @@ impl ExerciseService {
     ///
     /// # Example (Flutter FFI)
     /// ```rust,no_run
+    /// # fn main() -> anyhow::Result<()> {
+    /// use iqrah_core::ExerciseService;
+    ///
     /// // From Flutter, after getting app documents directory:
     /// let cache_dir = "/data/user/0/com.example.app/files/huggingface";
     /// ExerciseService::init_semantic_model(
     ///     "minishlab/potion-multilingual-128M",
     ///     Some(cache_dir)
     /// )?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn init_semantic_model(model_path: &str, cache_dir: Option<&str>) -> Result<()> {
         tracing::info!("Initializing semantic grading model: {}", model_path);
@@ -133,6 +142,47 @@ impl ExerciseService {
                     MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
+        }
+    }
+
+    /// Generate an exercise using the modern enum-based architecture (V2)
+    ///
+    /// This is the next-generation exercise generator that returns lightweight
+    /// ExerciseData enums containing only keys/IDs instead of full text.
+    /// Flutter can then fetch content based on user preferences (Tajweed, Indopak, etc.)
+    ///
+    /// # Routing Logic
+    /// - WORD nodes: Memorization exercises
+    /// - VERSE nodes: Full verse input exercises
+    /// - CHAPTER nodes: Ayah Chain exercises
+    ///
+    /// TODO: Add more sophisticated routing based on:
+    /// - Learning state (FSRS energy levels)
+    /// - User preferences
+    /// - Exercise variety (randomization)
+    pub async fn generate_exercise_v2(&self, node_id: &str) -> Result<ExerciseData> {
+        // Strip knowledge axis suffix if present
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(node_id) {
+            kn.base_node_id
+        } else {
+            node_id.to_string()
+        };
+
+        // Route based on node type prefix
+        if base_node_id.starts_with("WORD:") || base_node_id.starts_with("WORD_INSTANCE:") {
+            // Word-level exercises
+            generators::generate_memorization(base_node_id, &*self.content_repo).await
+        } else if base_node_id.starts_with("VERSE:") {
+            // Verse-level exercises
+            generators::generate_full_verse_input(base_node_id, &*self.content_repo).await
+        } else if base_node_id.starts_with("CHAPTER:") {
+            // Chapter-level exercises
+            generators::generate_ayah_chain(base_node_id, &*self.content_repo).await
+        } else {
+            Err(anyhow::anyhow!(
+                "Cannot determine exercise type for node: {}",
+                node_id
+            ))
         }
     }
 
@@ -607,5 +657,366 @@ mod tests {
         let options = response.options.unwrap();
         assert_eq!(options.len(), 4); // 1 correct + 3 distractors
         assert!(options.contains(&"In the name".to_string()));
+    }
+
+    // ========================================================================
+    // V2 Enum-Based Architecture Tests
+    // ========================================================================
+
+    /// Enhanced mock repository with more test data for V2 tests
+    struct MockContentRepoV2 {
+        words: HashMap<i32, crate::Word>,
+        verses: HashMap<String, crate::Verse>,
+        chapters: HashMap<i32, crate::Chapter>,
+    }
+
+    impl MockContentRepoV2 {
+        fn new() -> Self {
+            let mut words = HashMap::new();
+            let mut verses = HashMap::new();
+            let mut chapters = HashMap::new();
+
+            // Add test word
+            words.insert(
+                1,
+                crate::Word {
+                    id: 1,
+                    verse_key: "1:1".to_string(),
+                    position: 1,
+                    text_uthmani: "بِسْمِ".to_string(),
+                    text_simple: None,
+                    transliteration: None,
+                },
+            );
+
+            // Add test verse
+            verses.insert(
+                "1:1".to_string(),
+                crate::Verse {
+                    key: "1:1".to_string(),
+                    chapter_number: 1,
+                    verse_number: 1,
+                    text_uthmani: "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
+                    text_simple: None,
+                    juz: 1,
+                    page: 1,
+                },
+            );
+
+            // Add test chapter
+            chapters.insert(
+                1,
+                crate::Chapter {
+                    number: 1,
+                    name_arabic: "الفاتحة".to_string(),
+                    name_transliteration: "Al-Fatihah".to_string(),
+                    name_translation: "The Opening".to_string(),
+                    revelation_place: Some("makkah".to_string()),
+                    verse_count: 7,
+                },
+            );
+
+            Self {
+                words,
+                verses,
+                chapters,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl ContentRepository for MockContentRepoV2 {
+        async fn get_node(&self, _node_id: &str) -> Result<Option<Node>> {
+            Ok(None)
+        }
+
+        async fn get_edges_from(&self, _source_id: &str) -> Result<Vec<crate::Edge>> {
+            Ok(vec![])
+        }
+
+        async fn get_quran_text(&self, _node_id: &str) -> Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn get_translation(&self, _node_id: &str, _lang: &str) -> Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn get_metadata(&self, _node_id: &str, _key: &str) -> Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn get_all_metadata(&self, _node_id: &str) -> Result<HashMap<String, String>> {
+            Ok(HashMap::new())
+        }
+
+        async fn node_exists(&self, _node_id: &str) -> Result<bool> {
+            Ok(false)
+        }
+
+        async fn get_all_nodes(&self) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
+        async fn get_nodes_by_type(&self, _node_type: NodeType) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
+        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> Result<()> {
+            Ok(())
+        }
+
+        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> Result<()> {
+            Ok(())
+        }
+
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
+        async fn get_adjacent_words(
+            &self,
+            _word_node_id: &str,
+        ) -> Result<(Option<Node>, Option<Node>)> {
+            Ok((None, None))
+        }
+
+        async fn get_chapter(&self, chapter_number: i32) -> Result<Option<crate::Chapter>> {
+            Ok(self.chapters.get(&chapter_number).cloned())
+        }
+
+        async fn get_chapters(&self) -> Result<Vec<crate::Chapter>> {
+            Ok(self.chapters.values().cloned().collect())
+        }
+
+        async fn get_verse(&self, verse_key: &str) -> Result<Option<crate::Verse>> {
+            Ok(self.verses.get(verse_key).cloned())
+        }
+
+        async fn get_verses_for_chapter(&self, chapter_number: i32) -> Result<Vec<crate::Verse>> {
+            Ok(self
+                .verses
+                .values()
+                .filter(|v| v.chapter_number == chapter_number)
+                .cloned()
+                .collect())
+        }
+
+        async fn get_words_for_verse(&self, _verse_key: &str) -> Result<Vec<crate::Word>> {
+            Ok(vec![])
+        }
+
+        async fn get_word(&self, word_id: i32) -> Result<Option<crate::Word>> {
+            Ok(self.words.get(&word_id).cloned())
+        }
+
+        async fn get_languages(&self) -> Result<Vec<crate::Language>> {
+            Ok(vec![])
+        }
+
+        async fn get_language(&self, _code: &str) -> Result<Option<crate::Language>> {
+            Ok(None)
+        }
+
+        async fn get_translators_for_language(
+            &self,
+            _language_code: &str,
+        ) -> Result<Vec<crate::Translator>> {
+            Ok(vec![])
+        }
+
+        async fn get_translator(&self, _translator_id: i32) -> Result<Option<crate::Translator>> {
+            Ok(None)
+        }
+
+        async fn get_translator_by_slug(&self, _slug: &str) -> Result<Option<crate::Translator>> {
+            Ok(None)
+        }
+
+        async fn get_verse_translation(
+            &self,
+            _verse_key: &str,
+            _translator_id: i32,
+        ) -> Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn get_word_translation(
+            &self,
+            _word_id: i32,
+            _translator_id: i32,
+        ) -> Result<Option<String>> {
+            Ok(None)
+        }
+
+        async fn insert_translator(
+            &self,
+            _slug: &str,
+            _full_name: &str,
+            _language_code: &str,
+            _description: Option<&str>,
+            _copyright_holder: Option<&str>,
+            _license: Option<&str>,
+            _website: Option<&str>,
+            _version: Option<&str>,
+            _package_id: Option<&str>,
+        ) -> Result<i32> {
+            Ok(1)
+        }
+
+        async fn insert_verse_translation(
+            &self,
+            _verse_key: &str,
+            _translator_id: i32,
+            _translation: &str,
+            _footnotes: Option<&str>,
+        ) -> Result<()> {
+            Ok(())
+        }
+
+        async fn get_available_packages(
+            &self,
+            _package_type: Option<crate::PackageType>,
+            _language_code: Option<&str>,
+        ) -> Result<Vec<crate::ContentPackage>> {
+            Ok(vec![])
+        }
+
+        async fn get_package(&self, _package_id: &str) -> Result<Option<crate::ContentPackage>> {
+            Ok(None)
+        }
+
+        async fn upsert_package(&self, _package: &crate::ContentPackage) -> Result<()> {
+            Ok(())
+        }
+
+        async fn delete_package(&self, _package_id: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn get_installed_packages(&self) -> Result<Vec<crate::InstalledPackage>> {
+            Ok(vec![])
+        }
+
+        async fn is_package_installed(&self, _package_id: &str) -> Result<bool> {
+            Ok(false)
+        }
+
+        async fn mark_package_installed(&self, _package_id: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn mark_package_uninstalled(&self, _package_id: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn enable_package(&self, _package_id: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn disable_package(&self, _package_id: &str) -> Result<()> {
+            Ok(())
+        }
+
+        async fn get_enabled_packages(&self) -> Result<Vec<crate::InstalledPackage>> {
+            Ok(vec![])
+        }
+
+        async fn get_morphology_for_word(
+            &self,
+            _word_id: i32,
+        ) -> Result<Vec<crate::MorphologySegment>> {
+            Ok(vec![])
+        }
+
+        async fn get_root_by_id(&self, _root_id: &str) -> Result<Option<crate::Root>> {
+            Ok(None)
+        }
+
+        async fn get_lemma_by_id(&self, _lemma_id: &str) -> Result<Option<crate::Lemma>> {
+            Ok(None)
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_word_node() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service.generate_exercise_v2("WORD:1").await.unwrap();
+
+        // Should generate Memorization exercise
+        assert_eq!(exercise.type_name(), "memorization");
+        assert_eq!(exercise.node_id(), "WORD:1");
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_verse_node() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service.generate_exercise_v2("VERSE:1:1").await.unwrap();
+
+        // Should generate FullVerseInput exercise
+        assert_eq!(exercise.type_name(), "full_verse_input");
+        assert_eq!(exercise.node_id(), "VERSE:1:1");
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_chapter_node() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service.generate_exercise_v2("CHAPTER:1").await.unwrap();
+
+        // Should generate AyahChain exercise
+        assert_eq!(exercise.type_name(), "ayah_chain");
+        assert_eq!(exercise.node_id(), "CHAPTER:1");
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_with_knowledge_axis() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        // Test with knowledge axis suffix (should strip it)
+        let exercise = service
+            .generate_exercise_v2("WORD:1:memorization")
+            .await
+            .unwrap();
+
+        assert_eq!(exercise.type_name(), "memorization");
+        // node_id should be the base without axis
+        assert_eq!(exercise.node_id(), "WORD:1");
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_invalid_node() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        // Should return error for unknown node type
+        let result = service.generate_exercise_v2("INVALID:123").await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot determine exercise type"));
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_serialization() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service.generate_exercise_v2("WORD:1").await.unwrap();
+
+        // Should be serializable to JSON
+        let json = serde_json::to_string(&exercise).unwrap();
+        assert!(json.contains(r#""type":"memorization"#));
+
+        // Should be deserializable
+        let deserialized: ExerciseData = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.type_name(), "memorization");
     }
 }
