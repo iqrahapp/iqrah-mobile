@@ -1,5 +1,5 @@
 use chrono::Utc;
-use iqrah_core::{ContentRepository, MemoryState, NodeType, UserRepository};
+use iqrah_core::{ContentRepository, MemoryState, UserRepository};
 use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
 use sqlx::Row;
 
@@ -8,9 +8,16 @@ async fn test_content_db_initialization() {
     let pool = init_content_db(":memory:").await.unwrap();
     let repo = SqliteContentRepository::new(pool);
 
-    // Verify schema was created
-    let node = repo.get_node("test").await.unwrap();
-    assert!(node.is_none(), "Should return None for non-existent node");
+    // Verify v2 schema was created - test with verse queries instead of nodes
+    let verse = repo.get_verse("test").await.unwrap();
+    assert!(verse.is_none(), "Should return None for non-existent verse");
+
+    // Verify sample data exists
+    let chapter = repo.get_chapter(1).await.unwrap();
+    assert!(
+        chapter.is_some(),
+        "Al-Fatihah should exist from sample data"
+    );
 }
 
 #[tokio::test]
@@ -34,49 +41,26 @@ async fn test_user_db_initialization_and_migrations() {
 
 #[tokio::test]
 async fn test_content_repository_crud() {
+    // Test v2 schema CRUD operations using sample data
     let pool = init_content_db(":memory:").await.unwrap();
-
-    // Insert test data manually using new schema
-    sqlx::query("INSERT INTO nodes VALUES ('node1', 'word_instance', 0)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    // Use quran_text table instead of node_metadata
-    sqlx::query("INSERT INTO quran_text VALUES ('node1', 'بِسْمِ')")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    // Use translations table instead of node_metadata
-    sqlx::query("INSERT INTO translations (node_id, language_code, translation) VALUES ('node1', 'en', 'In the name')")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    // Test repository
     let repo = SqliteContentRepository::new(pool);
 
-    // Test get_node
-    let node = repo.get_node("node1").await.unwrap();
-    assert!(node.is_some());
-    let node = node.unwrap();
-    assert_eq!(node.id, "node1");
-    assert_eq!(node.node_type, NodeType::WordInstance);
+    // Test verse queries (v2 schema)
+    let verse = repo.get_verse("1:1").await.unwrap();
+    assert!(verse.is_some(), "Verse 1:1 should exist from sample data");
+    let verse = verse.unwrap();
+    assert_eq!(verse.key, "1:1");
+    assert_eq!(verse.chapter_number, 1);
+    assert_eq!(verse.verse_number, 1);
 
-    // Test get_metadata
-    let arabic = repo.get_metadata("node1", "arabic").await.unwrap();
-    assert_eq!(arabic, Some("بِسْمِ".to_string()));
+    // Test word queries (v2 schema)
+    let words = repo.get_words_for_verse("1:1").await.unwrap();
+    assert_eq!(words.len(), 4, "Bismillah has 4 words");
+    assert_eq!(words[0].text_uthmani, "بِسْمِ");
 
-    // Test get_all_metadata
-    let all = repo.get_all_metadata("node1").await.unwrap();
-    assert_eq!(all.len(), 2);
-    assert_eq!(all.get("arabic").unwrap(), "بِسْمِ");
-    assert_eq!(all.get("translation").unwrap(), "In the name");
-
-    // Test node_exists
-    assert!(repo.node_exists("node1").await.unwrap());
-    assert!(!repo.node_exists("nonexistent").await.unwrap());
+    // Test non-existent verse
+    let verse = repo.get_verse("nonexistent").await.unwrap();
+    assert!(verse.is_none());
 }
 
 #[tokio::test]
@@ -251,38 +235,26 @@ async fn test_update_energy() {
 
 #[tokio::test]
 async fn test_two_database_integration() {
-    // This test demonstrates the two-database architecture working together
+    // This test demonstrates the two-database architecture working together with v2 schema
 
     // Initialize both databases
     let content_pool = init_content_db(":memory:").await.unwrap();
     let user_pool = init_user_db(":memory:").await.unwrap();
 
-    // Insert test content using new schema
-    sqlx::query("INSERT INTO nodes VALUES ('word1', 'word_instance', 0)")
-        .execute(&content_pool)
-        .await
-        .unwrap();
-
-    // Use quran_text table instead of node_metadata
-    sqlx::query("INSERT INTO quran_text VALUES ('word1', 'كتاب')")
-        .execute(&content_pool)
-        .await
-        .unwrap();
-
     // Create repositories
     let content_repo = SqliteContentRepository::new(content_pool);
     let user_repo = SqliteUserRepository::new(user_pool);
 
-    // Verify content.db has the node
-    let node = content_repo.get_node("word1").await.unwrap();
-    assert!(node.is_some());
+    // Verify content.db has v2 sample data (verse from Al-Fatihah)
+    let verse = content_repo.get_verse("1:1").await.unwrap();
+    assert!(verse.is_some(), "Sample verse 1:1 should exist");
 
-    // Create user progress for that node
-    let state = MemoryState::new_for_node("user1".to_string(), "word1".to_string());
+    // Create user progress for that verse
+    let state = MemoryState::new_for_node("user1".to_string(), "1:1".to_string());
     user_repo.save_memory_state(&state).await.unwrap();
 
     // Verify user.db has the state
-    let user_state = user_repo.get_memory_state("user1", "word1").await.unwrap();
+    let user_state = user_repo.get_memory_state("user1", "1:1").await.unwrap();
     assert!(user_state.is_some());
 
     // Verify app_settings table exists (migration v2 proof)
@@ -321,8 +293,28 @@ async fn test_v2_chapter_queries() {
 
     // Test get_chapters
     let chapters = repo.get_chapters().await.unwrap();
-    assert_eq!(chapters.len(), 1, "Should have 1 chapter from sample data");
+    assert_eq!(
+        chapters.len(),
+        19,
+        "Should have 19 chapters from sample data (Surah 1-4, 100-114)"
+    );
     assert_eq!(chapters[0].number, 1);
+    assert_eq!(chapters[1].number, 2);
+    assert_eq!(chapters[2].number, 3);
+    assert_eq!(chapters[3].number, 4);
+    // Verify some Juz 30 surahs are present
+    assert!(
+        chapters.iter().any(|c| c.number == 112),
+        "Al-Ikhlas should be present"
+    );
+    assert!(
+        chapters.iter().any(|c| c.number == 113),
+        "Al-Falaq should be present"
+    );
+    assert!(
+        chapters.iter().any(|c| c.number == 114),
+        "An-Nas should be present"
+    );
 
     // Test non-existent chapter
     let chapter = repo.get_chapter(999).await.unwrap();

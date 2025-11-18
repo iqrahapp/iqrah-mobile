@@ -11,12 +11,10 @@ use std::str::FromStr;
 
 /// Initialize user database with migrations
 pub async fn init_user_db(db_path: &str) -> Result<SqlitePool, sqlx::Error> {
-    // Note: FK constraints disabled during migrations for consistency with content DB.
-    // User migrations have FK constraints (e.g., bandit_state references propagation_events),
-    // but these are properly enforced after migrations complete.
+    // FK constraints enabled - all migrations properly handle foreign key references
     let options = SqliteConnectOptions::from_str(db_path)?
         .create_if_missing(true)
-        .foreign_keys(false); // Disabled during migrations only
+        .foreign_keys(true);
 
     let pool = SqlitePool::connect_with(options).await?;
 

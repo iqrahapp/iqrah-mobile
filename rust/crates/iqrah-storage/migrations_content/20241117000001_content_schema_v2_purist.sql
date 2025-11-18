@@ -401,17 +401,19 @@ INSERT INTO words (verse_key, position, text_uthmani, text_simple, transliterati
     ('1:1', 3, 'ٱلرَّحْمَٰنِ', 'الرحمن', 'al-Raḥmāni'),
     ('1:1', 4, 'ٱلرَّحِيمِ', 'الرحيم', 'al-Raḥīmi');
 
--- Sample translations for first verse (using translator slug to lookup translator_id)
-INSERT INTO verse_translations (verse_key, translator_id, translation)
-SELECT '1:1', translator_id,  'In the name of Allah, the Entirely Merciful, the Especially Merciful.' FROM translators WHERE slug = 'sahih-intl'
-UNION ALL SELECT '1:1', translator_id, 'In the name of God, Most Gracious, Most Merciful.' FROM translators WHERE slug = 'yusuf-ali'
-UNION ALL SELECT '1:1', translator_id, 'In the name of Allah, the Beneficent, the Merciful.' FROM translators WHERE slug = 'pickthall'
-UNION ALL SELECT '1:1', translator_id, 'In the Name of Allah—the Most Compassionate, Most Merciful.' FROM translators WHERE slug = 'khattab'
-UNION ALL SELECT '1:1', translator_id, 'In the Name of Allah, the Most Gracious, the Most Merciful.' FROM translators WHERE slug = 'hilali-khan';
+-- Sample translations for first verse
+-- Translators have AUTOINCREMENT IDs 1-5 based on insertion order above
+INSERT INTO verse_translations (verse_key, translator_id, translation) VALUES
+    ('1:1', 1, 'In the name of Allah, the Entirely Merciful, the Especially Merciful.'),
+    ('1:1', 2, 'In the name of God, Most Gracious, Most Merciful.'),
+    ('1:1', 3, 'In the name of Allah, the Beneficent, the Merciful.'),
+    ('1:1', 4, 'In the Name of Allah—the Most Compassionate, Most Merciful.'),
+    ('1:1', 5, 'In the Name of Allah, the Most Gracious, the Most Merciful.');
 
--- Sample word translations for first verse, first translator (using verse_key+position to lookup word_id)
-INSERT INTO word_translations (word_id, translator_id, translation)
-SELECT w.word_id, t.translator_id, 'In the name' FROM words w, translators t WHERE w.verse_key = '1:1' AND w.position = 1 AND t.slug = 'sahih-intl'
-UNION ALL SELECT w.word_id, t.translator_id, 'of Allah' FROM words w, translators t WHERE w.verse_key = '1:1' AND w.position = 2 AND t.slug = 'sahih-intl'
-UNION ALL SELECT w.word_id, t.translator_id, 'the Entirely Merciful' FROM words w, translators t WHERE w.verse_key = '1:1' AND w.position = 3 AND t.slug = 'sahih-intl'
-UNION ALL SELECT w.word_id, t.translator_id, 'the Especially Merciful' FROM words w, translators t WHERE w.verse_key = '1:1' AND w.position = 4 AND t.slug = 'sahih-intl';
+-- Sample word translations for first verse, first translator
+-- Words have AUTOINCREMENT IDs 1-4 based on insertion order above
+INSERT INTO word_translations (word_id, translator_id, translation) VALUES
+    (1, 1, 'In the name'),
+    (2, 1, 'of Allah'),
+    (3, 1, 'the Entirely Merciful'),
+    (4, 1, 'the Especially Merciful');
