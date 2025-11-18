@@ -16,6 +16,16 @@ mod translate_phrase;
 mod translation;
 mod types;
 
+// Modern enum-based exercise architecture
+mod exercise_data;
+mod generators;
+mod validator;
+
+// Comprehensive tests for enum-based architecture
+#[cfg(test)]
+#[path = "enum_tests.rs"]
+mod enum_tests;
+
 pub use ayah_chain::{AyahChainExercise, AyahChainStats};
 pub use ayah_sequence::AyahSequenceExercise;
 pub use find_mistake::FindMistakeExercise;
@@ -33,3 +43,10 @@ pub use service::ExerciseService;
 pub use translate_phrase::TranslatePhraseExercise;
 pub use translation::{ContextualTranslationExercise, TranslationExercise};
 pub use types::{Exercise, ExerciseResponse, ExerciseType};
+
+// Export modern enum-based architecture
+pub use exercise_data::ExerciseData;
+pub use generators::*;
+pub use validator::{
+    AnswerInput, AnswerKeys, DefaultValidator, ExerciseValidator, ValidationResult,
+};

@@ -500,7 +500,9 @@ async fn test_ayah_chain_hint() {
         .unwrap();
 
     let hint = exercise.get_hint().unwrap();
-    assert!(hint.contains("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ")); // First 3 words
+    // Updated: Now shows first word + word count for cleaner UX
+    assert!(hint.contains("بِسْمِ")); // First word
+    assert!(hint.contains("4 words total")); // Word count (verse 1:1 has 4 words)
 }
 
 #[tokio::test]

@@ -16,6 +16,7 @@ pub use domain::{
     DomainError,
     // Echo Recall types
     EchoRecallState,
+    EchoRecallStats,
     EchoRecallWord,
     Edge,
     EdgeType,

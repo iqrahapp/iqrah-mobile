@@ -5,6 +5,7 @@ use super::memorization::MemorizationExercise;
 use super::types::Exercise;
 use crate::{ContentRepository, Verse};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 
 // ============================================================================
 // Exercise 10: Ayah Chain
@@ -21,6 +22,17 @@ pub struct AyahChainExercise {
     completed_count: usize,
     is_complete: bool,
     mistake_made: bool,
+    started_at: DateTime<Utc>,
+    last_mistake: Option<MistakeDetails>,
+}
+
+/// Details about the most recent mistake
+#[derive(Debug, Clone)]
+pub struct MistakeDetails {
+    pub verse_key: String,
+    pub user_input: String,
+    pub expected: String,
+    pub occurred_at: DateTime<Utc>,
 }
 
 impl AyahChainExercise {
@@ -55,6 +67,8 @@ impl AyahChainExercise {
             completed_count: 0,
             is_complete: false,
             mistake_made: false,
+            started_at: Utc::now(),
+            last_mistake: None,
         })
     }
 
@@ -92,6 +106,8 @@ impl AyahChainExercise {
             completed_count: 0,
             is_complete: false,
             mistake_made: false,
+            started_at: Utc::now(),
+            last_mistake: None,
         })
     }
 
@@ -126,10 +142,13 @@ impl AyahChainExercise {
             .current_verse()
             .ok_or_else(|| anyhow::anyhow!("No current verse"))?;
 
+        // Clone necessary data before mutation
+        let verse_key = current_verse.key.clone();
+        let verse_text = current_verse.text_uthmani.clone();
+
         // Check answer using Arabic normalization
         let normalized_input = MemorizationExercise::normalize_arabic(user_input);
-        let normalized_correct =
-            MemorizationExercise::normalize_arabic(&current_verse.text_uthmani);
+        let normalized_correct = MemorizationExercise::normalize_arabic(&verse_text);
 
         if normalized_input == normalized_correct {
             // Correct! Advance to next verse
@@ -145,18 +164,46 @@ impl AyahChainExercise {
         } else {
             // Mistake! Chain broken
             self.mistake_made = true;
+
+            // Capture mistake details for feedback
+            self.last_mistake = Some(MistakeDetails {
+                verse_key,
+                user_input: user_input.to_string(),
+                expected: verse_text,
+                occurred_at: Utc::now(),
+            });
+
             Ok(false)
         }
     }
 
     /// Get completion stats
     pub fn get_stats(&self) -> AyahChainStats {
+        let progress_percentage = if self.verses.is_empty() {
+            0.0
+        } else {
+            (self.completed_count as f64 / self.verses.len() as f64) * 100.0
+        };
+
+        let elapsed_seconds = (Utc::now() - self.started_at).num_seconds() as u64;
+
+        let current_verse_key = self.current_verse().map(|v| v.key.clone());
+
         AyahChainStats {
             total_verses: self.verses.len(),
             completed_count: self.completed_count,
             is_complete: self.is_complete,
             mistake_made: self.mistake_made,
+            progress_percentage,
+            elapsed_seconds,
+            current_verse_key,
+            last_mistake: self.last_mistake.clone(),
         }
+    }
+
+    /// Get the most recent mistake details (if any)
+    pub fn get_last_mistake(&self) -> Option<&MistakeDetails> {
+        self.last_mistake.as_ref()
     }
 
     /// Reset the chain to start over
@@ -165,16 +212,30 @@ impl AyahChainExercise {
         self.completed_count = 0;
         self.is_complete = false;
         self.mistake_made = false;
+        self.started_at = Utc::now();
+        self.last_mistake = None;
     }
 }
 
 /// Statistics for Ayah Chain performance
 #[derive(Debug, Clone)]
 pub struct AyahChainStats {
+    /// Total number of verses in the chain
     pub total_verses: usize,
+    /// Number of verses successfully completed
     pub completed_count: usize,
+    /// Whether the entire chain has been completed
     pub is_complete: bool,
+    /// Whether a mistake was made (chain broken)
     pub mistake_made: bool,
+    /// Progress as a percentage (0.0 to 100.0)
+    pub progress_percentage: f64,
+    /// Time elapsed since start in seconds
+    pub elapsed_seconds: u64,
+    /// Current verse key being tested (if any)
+    pub current_verse_key: Option<String>,
+    /// Details about the last mistake (if any)
+    pub last_mistake: Option<MistakeDetails>,
 }
 
 impl Exercise for AyahChainExercise {
@@ -214,10 +275,15 @@ impl Exercise for AyahChainExercise {
 
     fn get_hint(&self) -> Option<String> {
         self.current_verse().map(|verse| {
-            // Show first 3 words of the verse
+            // Show first word and provide context
             let words: Vec<&str> = verse.text_uthmani.split_whitespace().collect();
-            let hint_words: Vec<&str> = words.iter().take(3).copied().collect();
-            format!("Starts with: {}", hint_words.join(" "))
+            let first_word = words.first().copied().unwrap_or("");
+            let word_count = words.len();
+
+            format!(
+                "Hint: First word is '{}' ({} words total)",
+                first_word, word_count
+            )
         })
     }
 
