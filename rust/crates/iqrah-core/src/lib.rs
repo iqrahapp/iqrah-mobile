@@ -52,10 +52,10 @@ pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, Se
 
 pub use exercises::{
     AyahChainExercise, AyahChainStats, AyahSequenceExercise, ClozeDeletionExercise,
-    CrossVerseConnectionExercise, ExerciseResponse, ExerciseService, FirstLetterHintExercise,
-    FullVerseInputExercise, IdentifyRootExercise, McqExercise, MissingWordMcqExercise,
-    NextWordDifficulty, NextWordMcqExercise, PosTaggingExercise, ReverseClozeExercise,
-    TranslatePhraseExercise,
+    CrossVerseConnectionExercise, ExerciseResponse, ExerciseService, FindMistakeExercise,
+    FirstLetterHintExercise, FullVerseInputExercise, IdentifyRootExercise, McqExercise,
+    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise, PosTaggingExercise,
+    ReverseClozeExercise, TranslatePhraseExercise,
 };
 
 pub use semantic::{

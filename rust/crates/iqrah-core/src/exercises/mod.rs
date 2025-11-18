@@ -3,6 +3,7 @@
 
 mod ayah_chain;
 mod ayah_sequence;
+mod find_mistake;
 mod full_verse_input;
 mod grammar;
 mod graph;
@@ -17,6 +18,7 @@ mod types;
 
 pub use ayah_chain::{AyahChainExercise, AyahChainStats};
 pub use ayah_sequence::AyahSequenceExercise;
+pub use find_mistake::FindMistakeExercise;
 pub use full_verse_input::FullVerseInputExercise;
 pub use grammar::IdentifyRootExercise;
 pub use graph::CrossVerseConnectionExercise;
