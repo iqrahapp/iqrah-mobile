@@ -45,3 +45,28 @@ pub struct UserStatRow {
     pub key: String,
     pub value: String,
 }
+
+// ============================================================================
+// Scheduler v2.0 Models
+// ============================================================================
+
+#[derive(Debug, Clone, FromRow)]
+pub struct ParentEnergyRow {
+    pub node_id: String,
+    pub energy: f32,
+}
+
+/// Memory basics for scheduler (energy + next_due_ts)
+#[derive(Debug, Clone, FromRow)]
+pub struct MemoryBasicsRow {
+    pub node_id: String,
+    pub energy: f32,
+    pub next_due_ts: i64,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct BanditArmRow {
+    pub profile_name: String,
+    pub successes: f32,
+    pub failures: f32,
+}

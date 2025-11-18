@@ -60,7 +60,7 @@ impl SemanticEmbedder {
     ///
     /// # Arguments
     /// * `model_id` - HuggingFace model ID (e.g., "minishlab/potion-multilingual-128M")
-    ///                or local path to model directory
+    ///   or local path to model directory
     ///
     /// # Cache Directory
     /// The cache location is controlled by `HF_HOME` environment variable:

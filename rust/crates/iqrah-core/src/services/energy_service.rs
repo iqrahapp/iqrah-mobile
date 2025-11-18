@@ -189,8 +189,8 @@ mod tests {
 
         assert!(coverage_low < coverage_mid);
         assert!(coverage_mid < coverage_high);
-        assert!(coverage_low >= 0.0 && coverage_low <= 1.0);
-        assert!(coverage_high >= 0.0 && coverage_high <= 1.0);
+        assert!((0.0..=1.0).contains(&coverage_low));
+        assert!((0.0..=1.0).contains(&coverage_high));
     }
 
     #[test]

@@ -111,6 +111,7 @@ pub trait ContentRepository: Send + Sync {
     // ===== Import/Insert Methods =====
 
     /// Insert a new translator
+    #[allow(clippy::too_many_arguments)]
     async fn insert_translator(
         &self,
         slug: &str,
@@ -173,4 +174,58 @@ pub trait ContentRepository: Send + Sync {
 
     /// Get enabled packages
     async fn get_enabled_packages(&self) -> anyhow::Result<Vec<InstalledPackage>>;
+
+    // ========================================================================
+    // Scheduler v2.0 Methods
+    // ========================================================================
+
+    /// Get candidate nodes for scheduling with metadata
+    ///
+    /// Returns nodes that belong to the specified goal and are due or new for the user.
+    /// Includes node metadata (foundational_score, influence_score, difficulty_score, quran_order).
+    ///
+    /// # Arguments
+    /// * `goal_id` - The goal to fetch candidates for
+    /// * `user_id` - The user ID (for filtering)
+    /// * `now_ts` - Current timestamp in milliseconds
+    ///
+    /// # Returns
+    /// Vector of CandidateNode with all metadata populated
+    async fn get_scheduler_candidates(
+        &self,
+        goal_id: &str,
+        user_id: &str,
+        now_ts: i64,
+    ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>>;
+
+    /// Get prerequisite parent IDs for a set of nodes
+    ///
+    /// Returns a map of node_id -> Vec<parent_id> for all prerequisite edges.
+    /// Only includes edges where edge_type = 0 (Dependency/prereq).
+    ///
+    /// # Arguments
+    /// * `node_ids` - The nodes to get parents for
+    ///
+    /// # Returns
+    /// HashMap mapping each node_id to its list of prerequisite parent node_ids
+    async fn get_prerequisite_parents(
+        &self,
+        node_ids: &[String],
+    ) -> anyhow::Result<HashMap<String, Vec<String>>>;
+
+    /// Get a goal by ID
+    async fn get_goal(&self, goal_id: &str) -> anyhow::Result<Option<SchedulerGoal>>;
+
+    /// Get all nodes associated with a goal
+    async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<String>>;
+}
+
+/// Represents a learning goal for the scheduler
+#[derive(Debug, Clone)]
+pub struct SchedulerGoal {
+    pub goal_id: String,
+    pub goal_type: String,
+    pub goal_group: String,
+    pub label: String,
+    pub description: Option<String>,
 }

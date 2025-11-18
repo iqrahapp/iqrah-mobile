@@ -1,8 +1,14 @@
-use super::models::{MemoryStateRow, SessionStateRow, UserStatRow};
+use super::models::{
+    BanditArmRow, MemoryBasicsRow, MemoryStateRow, ParentEnergyRow, SessionStateRow, UserStatRow,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use iqrah_core::{MemoryState, PropagationEvent, UserRepository};
+use iqrah_core::{
+    scheduler_v2::{BanditArmState, MemoryBasics},
+    MemoryState, PropagationEvent, UserRepository,
+};
 use sqlx::{query, query_as, SqlitePool};
+use std::collections::HashMap;
 
 pub struct SqliteUserRepository {
     pool: SqlitePool,
@@ -226,6 +232,169 @@ impl UserRepository for SqliteUserRepository {
         )
         .bind(key)
         .bind(value)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Scheduler v2.0 Methods
+    // ========================================================================
+
+    async fn get_parent_energies(
+        &self,
+        user_id: &str,
+        node_ids: &[String],
+    ) -> anyhow::Result<HashMap<String, f32>> {
+        if node_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut result: HashMap<String, f32> = HashMap::new();
+
+        // SQLite parameter limit is ~999, so chunk into batches of 500
+        const CHUNK_SIZE: usize = 500;
+
+        for chunk in node_ids.chunks(CHUNK_SIZE) {
+            // Build parameterized query
+            let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let sql = format!(
+                "SELECT content_key AS node_id, CAST(energy AS REAL) as energy
+                 FROM user_memory_states
+                 WHERE user_id = ? AND content_key IN ({})",
+                placeholders
+            );
+
+            let mut query = query_as::<_, ParentEnergyRow>(&sql);
+            query = query.bind(user_id);
+            for node_id in chunk {
+                query = query.bind(node_id);
+            }
+
+            let rows = query.fetch_all(&self.pool).await?;
+
+            // Add to result map
+            for row in rows {
+                result.insert(row.node_id, row.energy);
+            }
+        }
+
+        Ok(result)
+    }
+
+    async fn get_memory_basics(
+        &self,
+        user_id: &str,
+        node_ids: &[String],
+    ) -> anyhow::Result<HashMap<String, MemoryBasics>> {
+        if node_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut result: HashMap<String, MemoryBasics> = HashMap::new();
+
+        // SQLite parameter limit is ~999, so chunk into batches of 500
+        const CHUNK_SIZE: usize = 500;
+
+        for chunk in node_ids.chunks(CHUNK_SIZE) {
+            // Build parameterized query
+            let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let sql = format!(
+                "SELECT content_key AS node_id,
+                        CAST(energy AS REAL) as energy,
+                        due_at as next_due_ts
+                 FROM user_memory_states
+                 WHERE user_id = ? AND content_key IN ({})",
+                placeholders
+            );
+
+            let mut query = query_as::<_, MemoryBasicsRow>(&sql);
+            query = query.bind(user_id);
+            for node_id in chunk {
+                query = query.bind(node_id);
+            }
+
+            let rows = query.fetch_all(&self.pool).await?;
+
+            // Add to result map
+            for row in rows {
+                result.insert(
+                    row.node_id,
+                    MemoryBasics {
+                        energy: row.energy,
+                        next_due_ts: row.next_due_ts,
+                    },
+                );
+            }
+        }
+
+        Ok(result)
+    }
+
+    // ========================================================================
+    // Scheduler v2.1 Bandit Methods
+    // ========================================================================
+
+    async fn get_bandit_arms(
+        &self,
+        user_id: &str,
+        goal_group: &str,
+    ) -> anyhow::Result<Vec<BanditArmState>> {
+        let rows = query_as::<_, BanditArmRow>(
+            "SELECT profile_name, successes, failures
+             FROM user_bandit_state
+             WHERE user_id = ? AND goal_group = ?",
+        )
+        .bind(user_id)
+        .bind(goal_group)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Convert rows to BanditArmState
+        // Note: We need to parse profile_name string to ProfileName enum
+        use iqrah_core::scheduler_v2::ProfileName;
+
+        let mut arms = Vec::new();
+        for row in rows {
+            if let Some(profile_name) = ProfileName::parse_str(&row.profile_name) {
+                arms.push(BanditArmState {
+                    profile_name,
+                    successes: row.successes,
+                    failures: row.failures,
+                });
+            }
+        }
+
+        Ok(arms)
+    }
+
+    async fn update_bandit_arm(
+        &self,
+        user_id: &str,
+        goal_group: &str,
+        profile_name: &str,
+        successes: f32,
+        failures: f32,
+    ) -> anyhow::Result<()> {
+        // Get current timestamp in milliseconds
+        let now_ms = Utc::now().timestamp_millis();
+
+        query(
+            "INSERT INTO user_bandit_state (user_id, goal_group, profile_name, successes, failures, last_updated)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON CONFLICT (user_id, goal_group, profile_name)
+             DO UPDATE SET
+                successes = excluded.successes,
+                failures = excluded.failures,
+                last_updated = excluded.last_updated",
+        )
+        .bind(user_id)
+        .bind(goal_group)
+        .bind(profile_name)
+        .bind(successes)
+        .bind(failures)
+        .bind(now_ms)
         .execute(&self.pool)
         .await?;
 

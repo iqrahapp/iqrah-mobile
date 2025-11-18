@@ -401,7 +401,8 @@ INSERT INTO words (verse_key, position, text_uthmani, text_simple, transliterati
     ('1:1', 3, 'ٱلرَّحْمَٰنِ', 'الرحمن', 'al-Raḥmāni'),
     ('1:1', 4, 'ٱلرَّحِيمِ', 'الرحيم', 'al-Raḥīmi');
 
--- Sample translations for first verse (using translator_id from above)
+-- Sample translations for first verse
+-- Translators have AUTOINCREMENT IDs 1-5 based on insertion order above
 INSERT INTO verse_translations (verse_key, translator_id, translation) VALUES
     ('1:1', 1, 'In the name of Allah, the Entirely Merciful, the Especially Merciful.'),
     ('1:1', 2, 'In the name of God, Most Gracious, Most Merciful.'),
@@ -410,6 +411,7 @@ INSERT INTO verse_translations (verse_key, translator_id, translation) VALUES
     ('1:1', 5, 'In the Name of Allah, the Most Gracious, the Most Merciful.');
 
 -- Sample word translations for first verse, first translator
+-- Words have AUTOINCREMENT IDs 1-4 based on insertion order above
 INSERT INTO word_translations (word_id, translator_id, translation) VALUES
     (1, 1, 'In the name'),
     (2, 1, 'of Allah'),
