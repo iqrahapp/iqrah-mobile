@@ -1081,4 +1081,87 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(rows.into_iter().map(|r| r.node_id).collect())
     }
+
+    async fn get_verses_batch(
+        &self,
+        verse_keys: &[String],
+    ) -> anyhow::Result<HashMap<String, Verse>> {
+        if verse_keys.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        // Build placeholders for IN clause
+        let placeholders = vec!["?"; verse_keys.len()].join(", ");
+        let query_str = format!(
+            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple, 
+                    juz, page
+             FROM verses
+             WHERE verse_key IN ({})",
+            placeholders
+        );
+
+        let mut query = sqlx::query_as::<_, VerseRow>(&query_str);
+        for key in verse_keys {
+            query = query.bind(key);
+        }
+
+        let rows = query.fetch_all(&self.pool).await?;
+
+        let mut result = HashMap::new();
+        for row in rows {
+            result.insert(
+                row.verse_key.clone(),
+                Verse {
+                    key: row.verse_key,
+                    chapter_number: row.chapter_number,
+                    verse_number: row.verse_number,
+                    text_uthmani: row.text_uthmani,
+                    text_simple: row.text_simple,
+                    juz: row.juz,
+                    page: row.page,
+                },
+            );
+        }
+
+        Ok(result)
+    }
+
+    async fn get_words_batch(&self, word_ids: &[i32]) -> anyhow::Result<HashMap<i32, Word>> {
+        if word_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        // Build placeholders for IN clause
+        let placeholders = vec!["?"; word_ids.len()].join(", ");
+        let query_str = format!(
+            "SELECT word_id, verse_key, position, text_uthmani, text_simple, transliteration
+             FROM words
+             WHERE word_id IN ({})",
+            placeholders
+        );
+
+        let mut query = sqlx::query_as::<_, WordRow>(&query_str);
+        for id in word_ids {
+            query = query.bind(id);
+        }
+
+        let rows = query.fetch_all(&self.pool).await?;
+
+        let mut result = HashMap::new();
+        for row in rows {
+            result.insert(
+                row.word_id,
+                Word {
+                    id: row.word_id,
+                    verse_key: row.verse_key,
+                    position: row.position,
+                    text_uthmani: row.text_uthmani,
+                    text_simple: row.text_simple,
+                    transliteration: row.transliteration,
+                },
+            );
+        }
+
+        Ok(result)
+    }
 }

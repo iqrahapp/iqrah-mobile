@@ -58,7 +58,6 @@ class DashboardPage extends ConsumerWidget {
             // Stats widget
             statsAsync.when(
               data: (stats) {
-                if (stats == null) return const SizedBox.shrink();
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
                   child: Padding(

@@ -526,6 +526,32 @@ mod tests {
         async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
             Ok(vec![])
         }
+
+        async fn get_verses_batch(
+            &self,
+            verse_keys: &[String],
+        ) -> anyhow::Result<std::collections::HashMap<String, crate::Verse>> {
+            let mut result = std::collections::HashMap::new();
+            for key in verse_keys {
+                if let Some(verse) = self.get_verse(key).await? {
+                    result.insert(key.clone(), verse);
+                }
+            }
+            Ok(result)
+        }
+
+        async fn get_words_batch(
+            &self,
+            word_ids: &[i32],
+        ) -> anyhow::Result<std::collections::HashMap<i32, crate::Word>> {
+            let mut result = std::collections::HashMap::new();
+            for &id in word_ids {
+                if let Some(word) = self.get_word(id).await? {
+                    result.insert(id, word);
+                }
+            }
+            Ok(result)
+        }
     }
 
     // ==========================================================================

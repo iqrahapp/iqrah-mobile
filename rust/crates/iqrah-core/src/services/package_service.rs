@@ -405,6 +405,24 @@ mod tests {
         async fn get_word(&self, _word_id: i32) -> Result<Option<crate::Word>> {
             Ok(None)
         }
+        async fn get_verses_batch(&self, verse_keys: &[String]) -> Result<HashMap<String, crate::Verse>> {
+            let mut result = HashMap::new();
+            for key in verse_keys {
+                if let Some(verse) = self.get_verse(key).await? {
+                    result.insert(key.clone(), verse);
+                }
+            }
+            Ok(result)
+        }
+        async fn get_words_batch(&self, word_ids: &[i32]) -> Result<HashMap<i32, crate::Word>> {
+            let mut result = HashMap::new();
+            for &id in word_ids {
+                if let Some(word) = self.get_word(id).await? {
+                    result.insert(id, word);
+                }
+            }
+            Ok(result)
+        }
         async fn get_languages(&self) -> Result<Vec<crate::Language>> {
             Ok(vec![])
         }

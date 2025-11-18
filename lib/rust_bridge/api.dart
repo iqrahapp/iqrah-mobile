@@ -37,6 +37,13 @@ Future<List<ExerciseDto>> getExercises({
   isHighYield: isHighYield,
 );
 
+/// Generate exercise using modern enum-based architecture (V2)
+///
+/// This returns lightweight ExerciseData containing only keys/IDs.
+/// Flutter can then fetch content based on user preferences (Tajweed, Indopak, etc.)
+Future<ExerciseData> generateExerciseV2({required String nodeId}) =>
+    RustLib.instance.api.crateApiGenerateExerciseV2(nodeId: nodeId);
+
 /// Process a review
 Future<String> processReview({
   required String userId,
@@ -122,6 +129,8 @@ Future<String?> getVerseTranslationByTranslator({
 abstract class AppState implements RustOpaqueInterface {
   ArcContentRepository get contentRepo;
 
+  ArcExerciseService get exerciseService;
+
   ArcLearningService get learningService;
 
   ArcSessionService get sessionService;
@@ -130,12 +139,17 @@ abstract class AppState implements RustOpaqueInterface {
 
   set contentRepo(ArcContentRepository contentRepo);
 
+  set exerciseService(ArcExerciseService exerciseService);
+
   set learningService(ArcLearningService learningService);
 
   set sessionService(ArcSessionService sessionService);
 
   set userRepo(ArcUserRepository userRepo);
 }
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < ExerciseService >>>
+abstract class ArcExerciseService implements RustOpaqueInterface {}
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < LearningService >>>
 abstract class ArcLearningService implements RustOpaqueInterface {}
@@ -148,6 +162,9 @@ abstract class ArcContentRepository implements RustOpaqueInterface {}
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>
 abstract class ArcUserRepository implements RustOpaqueInterface {}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>
+abstract class ExerciseData implements RustOpaqueInterface {}
 
 class DashboardStatsDto {
   final int reviewsToday;

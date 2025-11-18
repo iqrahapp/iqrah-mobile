@@ -232,6 +232,31 @@ pub trait ContentRepository: Send + Sync {
 
     /// Get all nodes associated with a goal
     async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<String>>;
+
+    // ========================================================================
+    // Batch Query Methods (for exercise content fetching optimization)
+    // ========================================================================
+
+    /// Get multiple verses by their keys in a single query
+    ///
+    /// # Arguments
+    /// * `verse_keys` - Array of verse keys (e.g., ["1:1", "2:255"])
+    ///
+    /// # Returns
+    /// HashMap mapping verse_key -> Verse
+    async fn get_verses_batch(
+        &self,
+        verse_keys: &[String],
+    ) -> anyhow::Result<HashMap<String, Verse>>;
+
+    /// Get multiple words by their IDs in a single query
+    ///
+    /// # Arguments
+    /// * `word_ids` - Array of word IDs
+    ///
+    /// # Returns
+    /// HashMap mapping word_id -> Word
+    async fn get_words_batch(&self, word_ids: &[i32]) -> anyhow::Result<HashMap<i32, Word>>;
 }
 
 /// Represents a learning goal for the scheduler

@@ -1,8 +1,8 @@
 use anyhow::Result;
-use iqrah_core::{
-    import_cbor_graph_from_bytes, ContentRepository, LearningService, ReviewGrade, SessionService,
-    UserRepository,
-};
+// Re-exported for frb_generated access
+pub use iqrah_core::exercises::ExerciseData;
+pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
+use iqrah_core::{exercises::ExerciseService, import_cbor_graph_from_bytes, ReviewGrade};
 use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
@@ -12,6 +12,7 @@ pub struct AppState {
     pub user_repo: Arc<dyn UserRepository>,
     pub learning_service: Arc<LearningService>,
     pub session_service: Arc<SessionService>,
+    pub exercise_service: Arc<ExerciseService>,
 }
 
 static APP: OnceCell<AppState> = OnceCell::new();
@@ -69,12 +70,15 @@ pub async fn setup_database(
         Arc::clone(&user_repo),
     ));
 
+    let exercise_service = Arc::new(ExerciseService::new(Arc::clone(&content_repo)));
+
     // Store in global state
     APP.set(AppState {
         content_repo,
         user_repo,
         learning_service,
         session_service,
+        exercise_service,
     })
     .map_err(|_| anyhow::anyhow!("App already initialized"))?;
 
@@ -98,67 +102,54 @@ pub async fn get_exercises(
     // Get user's preferred translator
     let translator_id = app
         .user_repo
-        .get_setting("preferred_translator_id")
+        .get_preferred_translator(&user_id)
         .await?
-        .and_then(|v| v.parse::<i32>().ok())
-        .unwrap_or(1); // Default to translator_id 1 (Sahih International)
+        .unwrap_or(101); // Default to Sahih International (id=101)
 
-    // Get translator info for attribution
     let translator = app.content_repo.get_translator(translator_id).await?;
-    let translator_name = translator.as_ref().map(|t| t.full_name.clone());
 
-    let items = app
+    // Get due items from learning service
+    let due_items = app
         .session_service
         .get_due_items(&user_id, limit, is_high_yield)
         .await?;
 
-    // Convert to DTOs (simplified for now - actual exercise generation would go here)
     let mut exercises = Vec::new();
-    for item in items.into_iter().take(limit as usize) {
-        // Get metadata
-        let arabic = app
+    for item in due_items {
+        let node_id = &item.node.id;
+
+        // Get question/answer from content repo
+        let question = app
             .content_repo
-            .get_quran_text(&item.node.id)
+            .get_quran_text(node_id)
             .await?
             .unwrap_or_default();
 
-        // Try to get translation using preferred translator (v2)
-        // Extract verse_key from node_id (e.g., "VERSE:1:1" -> "1:1")
-        let translation = if item.node.id.starts_with("VERSE:") {
-            let verse_key = item.node.id.strip_prefix("VERSE:").unwrap_or(&item.node.id);
-            // Try v2 method first
-            let v2_translation = app
-                .content_repo
-                .get_verse_translation(verse_key, translator_id)
-                .await?;
-
-            // Fallback to v1 method if v2 returns None
-            if v2_translation.is_none() {
-                app.content_repo
-                    .get_translation(&item.node.id, "en")
-                    .await?
-                    .unwrap_or_default()
-            } else {
-                v2_translation.unwrap_or_default()
-            }
-        } else {
-            // Fallback to v1 method for non-verse nodes
-            app.content_repo
-                .get_translation(&item.node.id, "en")
-                .await?
-                .unwrap_or_default()
-        };
+        let answer = app
+            .content_repo
+            .get_translation(node_id, "en")
+            .await?
+            .unwrap_or_default();
 
         exercises.push(ExerciseDto {
-            node_id: item.node.id,
-            question: arabic.clone(),
-            answer: translation,
+            node_id: node_id.clone(),
+            question,
+            answer,
             node_type: format!("{:?}", item.node.node_type),
-            translator_name: translator_name.clone(),
+            translator_name: translator.as_ref().map(|t| t.full_name.clone()),
         });
     }
 
     Ok(exercises)
+}
+
+/// Generate exercise using modern enum-based architecture (V2)
+///
+/// This returns lightweight ExerciseData containing only keys/IDs.
+/// Flutter can then fetch content based on user preferences (Tajweed, Indopak, etc.)
+pub async fn generate_exercise_v2(node_id: String) -> Result<ExerciseData> {
+    let app = app();
+    app.exercise_service.generate_exercise_v2(&node_id).await
 }
 
 /// Process a review

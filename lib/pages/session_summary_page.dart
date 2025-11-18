@@ -65,9 +65,6 @@ class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
               const SizedBox(height: 32),
               statsAsync.when(
                 data: (stats) {
-                  if (stats == null) {
-                    return const Text('No stats available');
-                  }
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
