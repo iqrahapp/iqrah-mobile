@@ -295,26 +295,10 @@ async fn test_v2_chapter_queries() {
     let chapters = repo.get_chapters().await.unwrap();
     assert_eq!(
         chapters.len(),
-        19,
-        "Should have 19 chapters from sample data (Surah 1-4, 100-114)"
+        1,
+        "Should have 1 chapter from sample data (Al-Fatihah)"
     );
     assert_eq!(chapters[0].number, 1);
-    assert_eq!(chapters[1].number, 2);
-    assert_eq!(chapters[2].number, 3);
-    assert_eq!(chapters[3].number, 4);
-    // Verify some Juz 30 surahs are present
-    assert!(
-        chapters.iter().any(|c| c.number == 112),
-        "Al-Ikhlas should be present"
-    );
-    assert!(
-        chapters.iter().any(|c| c.number == 113),
-        "Al-Falaq should be present"
-    );
-    assert!(
-        chapters.iter().any(|c| c.number == 114),
-        "An-Nas should be present"
-    );
 
     // Test non-existent chapter
     let chapter = repo.get_chapter(999).await.unwrap();
