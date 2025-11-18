@@ -1,6 +1,7 @@
 // exercises/mod.rs
 // Phase 4.3: Axis-Specific Exercise Generation
 
+mod ayah_chain;
 mod ayah_sequence;
 mod full_verse_input;
 mod grammar;
@@ -14,6 +15,7 @@ mod translate_phrase;
 mod translation;
 mod types;
 
+pub use ayah_chain::{AyahChainExercise, AyahChainStats};
 pub use ayah_sequence::AyahSequenceExercise;
 pub use full_verse_input::FullVerseInputExercise;
 pub use grammar::IdentifyRootExercise;
