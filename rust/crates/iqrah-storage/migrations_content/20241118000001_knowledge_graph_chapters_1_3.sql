@@ -1,3 +1,13 @@
+-- Generated knowledge graph data for scheduler v2 testing
+-- Chapters 1-3: 493 verses with PageRank scoring
+
+-- Node metadata (foundational, influence, difficulty scores + quran_order)
+INSERT OR IGNORE INTO node_metadata (node_id, key, value) VALUES
+    ('1:1', 'foundational_score', 0.0649),
+    ('1:1', 'influence_score', 0.0674),
+    ('1:1', 'difficulty_score', 0.3010),
+    ('1:1', 'quran_order', 1001000),
+    ('1:2', 'foundational_score', 0.0649),
     ('1:2', 'influence_score', 0.0712),
     ('1:2', 'difficulty_score', 0.3020),
     ('1:2', 'quran_order', 1002000),
@@ -2460,3 +2470,40 @@ INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type,
     ('3:199', '3:200', 0, 0, 0.0, 0.0);
 
 -- Summary: 493 verses, 490 prerequisite edges
+
+-- Goals for chapters 1-3
+INSERT OR IGNORE INTO goals (goal_id, goal_type, goal_group, label, description) VALUES
+    ('memorization:chapters-1-3', 'custom', 'memorization', 'Memorize Chapters 1-3', 'Master all 493 verses from Al-Fatihah, Al-Baqarah, and Al-Imran');
+
+-- Node-goal mappings for first 30 verses (1:1-1:7, 2:1-2:23)
+INSERT OR IGNORE INTO node_goals (goal_id, node_id, priority) VALUES
+    ('memorization:chapters-1-3', '1:1', 1001000),
+    ('memorization:chapters-1-3', '1:2', 1002000),
+    ('memorization:chapters-1-3', '1:3', 1003000),
+    ('memorization:chapters-1-3', '1:4', 1004000),
+    ('memorization:chapters-1-3', '1:5', 1005000),
+    ('memorization:chapters-1-3', '1:6', 1006000),
+    ('memorization:chapters-1-3', '1:7', 1007000),
+    ('memorization:chapters-1-3', '2:1', 2001000),
+    ('memorization:chapters-1-3', '2:2', 2002000),
+    ('memorization:chapters-1-3', '2:3', 2003000),
+    ('memorization:chapters-1-3', '2:4', 2004000),
+    ('memorization:chapters-1-3', '2:5', 2005000),
+    ('memorization:chapters-1-3', '2:6', 2006000),
+    ('memorization:chapters-1-3', '2:7', 2007000),
+    ('memorization:chapters-1-3', '2:8', 2008000),
+    ('memorization:chapters-1-3', '2:9', 2009000),
+    ('memorization:chapters-1-3', '2:10', 2010000),
+    ('memorization:chapters-1-3', '2:11', 2011000),
+    ('memorization:chapters-1-3', '2:12', 2012000),
+    ('memorization:chapters-1-3', '2:13', 2013000),
+    ('memorization:chapters-1-3', '2:14', 2014000),
+    ('memorization:chapters-1-3', '2:15', 2015000),
+    ('memorization:chapters-1-3', '2:16', 2016000),
+    ('memorization:chapters-1-3', '2:17', 2017000),
+    ('memorization:chapters-1-3', '2:18', 2018000),
+    ('memorization:chapters-1-3', '2:19', 2019000),
+    ('memorization:chapters-1-3', '2:20', 2020000),
+    ('memorization:chapters-1-3', '2:21', 2021000),
+    ('memorization:chapters-1-3', '2:22', 2022000),
+    ('memorization:chapters-1-3', '2:23', 2023000);
