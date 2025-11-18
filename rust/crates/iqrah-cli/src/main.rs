@@ -5,6 +5,7 @@ mod debug;
 mod exercise;
 mod import;
 mod package;
+mod schedule;
 mod translator;
 
 /// Iqrah CLI - Development and testing tool for the Iqrah learning system
@@ -46,6 +47,27 @@ enum Commands {
     Package {
         #[command(subcommand)]
         command: PackageCommands,
+    },
+    /// Generate a learning session using scheduler v2
+    Schedule {
+        /// User ID
+        #[arg(long)]
+        user_id: String,
+        /// Goal ID (e.g., "memorization:surah-1")
+        #[arg(long)]
+        goal_id: String,
+        /// Session size (number of items)
+        #[arg(long, default_value = "20")]
+        session_size: usize,
+        /// Session mode (revision or mixed-learning)
+        #[arg(long, default_value = "mixed-learning")]
+        mode: String,
+        /// Enable bandit optimization (Thompson Sampling for profile selection)
+        #[arg(long)]
+        enable_bandit: bool,
+        /// Verbose output (show detailed node information and profile weights)
+        #[arg(long, short)]
+        verbose: bool,
     },
 }
 
@@ -321,6 +343,24 @@ async fn main() -> Result<()> {
                 package::disable_package(&cli.server, &package_id).await?;
             }
         },
+        Commands::Schedule {
+            user_id,
+            goal_id,
+            session_size,
+            mode,
+            enable_bandit,
+            verbose,
+        } => {
+            schedule::generate(
+                &user_id,
+                &goal_id,
+                session_size,
+                &mode,
+                enable_bandit,
+                verbose,
+            )
+            .await?;
+        }
     }
 
     Ok(())

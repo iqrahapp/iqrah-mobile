@@ -210,3 +210,36 @@ pub struct InstalledPackageRow {
     pub installed_at: i64,
     pub enabled: i32,
 }
+
+// ============================================================================
+// Scheduler v2.0 Models
+// ============================================================================
+
+#[derive(Debug, Clone, FromRow)]
+pub struct CandidateNodeRow {
+    pub node_id: String,
+    pub foundational_score: f32,
+    pub influence_score: f32,
+    pub difficulty_score: f32,
+    pub quran_order: i64,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct PrerequisiteRow {
+    pub node_id: String,
+    pub parent_id: String,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct GoalRow {
+    pub goal_id: String,
+    pub goal_type: String,
+    pub goal_group: String,
+    pub label: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct NodeGoalRow {
+    pub node_id: String,
+}

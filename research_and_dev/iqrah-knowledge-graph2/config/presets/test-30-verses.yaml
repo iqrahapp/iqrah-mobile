@@ -1,0 +1,60 @@
+# Test Configuration for 30 Verses
+# For scheduler v2 testing with proper knowledge graph
+
+name: test-30-verses
+description: Knowledge graph for first 30 verses (Al-Fatihah + partial Al-Baqarah)
+
+# Chapter 1 (7 verses) + partial Chapter 2 (23 verses) = 30 verses total
+# Using verse ranges for Chapter 2
+chapters: "1,2:1-23"
+
+# Memorization edges (word -> verse -> chapter hierarchy)
+memorization:
+  enabled: true
+  params:
+    window_size: 3  # Context window for words
+    base_weight: 0.5
+    std_scale: 0.15
+
+# Tajweed edges (disabled for testing)
+tajweed:
+  enabled: false
+  params: {}
+
+# Translation edges (word-to-verse understanding)
+translation:
+  enabled: true
+  params:
+    connect_duplicates: true  # Connect duplicate verses
+
+# Grammar edges (word-lemma-root connections)
+grammar:
+  enabled: true
+  params:
+    connect_lemmas: true
+    connect_roots: true
+
+# Deep understanding (disabled for testing)
+deep_understanding:
+  enabled: false
+  params: {}
+
+# Scoring configuration
+scoring:
+  enabled: true  # Enable scoring for realistic testing
+  alpha: 0.85
+  max_iter: 100000
+  personalize_foundational: true
+  personalize_influence: true
+
+# Export configuration
+export:
+  format: cbor  # cbor format for Rust integration
+  compression_level: 9
+  include_scores: true
+
+# Additional metadata
+metadata:
+  use_case: scheduler_v2_testing
+  target_audience: development
+  estimated_size_mb: 1

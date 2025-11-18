@@ -300,6 +300,33 @@ impl ContentRepository for MockContentRepo {
     async fn get_lemma_by_id(&self, _lemma_id: &str) -> anyhow::Result<Option<crate::Lemma>> {
         Ok(None)
     }
+
+    async fn get_scheduler_candidates(
+        &self,
+        _goal_id: &str,
+        _user_id: &str,
+        _now_ts: i64,
+    ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
+        Ok(vec![])
+    }
+
+    async fn get_prerequisite_parents(
+        &self,
+        _node_ids: &[String],
+    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        Ok(std::collections::HashMap::new())
+    }
+
+    async fn get_goal(
+        &self,
+        _goal_id: &str,
+    ) -> anyhow::Result<Option<crate::ports::content_repository::SchedulerGoal>> {
+        Ok(None)
+    }
+
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+        Ok(vec![])
+    }
 }
 
 // ============================================================================

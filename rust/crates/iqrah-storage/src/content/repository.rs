@@ -1,14 +1,16 @@
 use super::models::{
-    ChapterRow, ContentPackageRow, EdgeRow, InstalledPackageRow, LanguageRow, LemmaRow,
-    MorphologySegmentRow, NodeRow, QuranTextRow, RootRow, TranslationRow, TranslatorRow, VerseRow,
-    VerseTranslationRow, WordRow, WordTranslationRow,
+    CandidateNodeRow, ChapterRow, ContentPackageRow, EdgeRow, GoalRow, InstalledPackageRow,
+    LanguageRow, LemmaRow, MorphologySegmentRow, NodeGoalRow, NodeRow, PrerequisiteRow,
+    QuranTextRow, RootRow, TranslationRow, TranslatorRow, VerseRow, VerseTranslationRow, WordRow,
+    WordTranslationRow,
 };
 use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
-    Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge,
-    ImportedNode, InstalledPackage, KnowledgeNode, Language, Lemma, MorphologySegment, Node,
-    NodeType, PackageType, Root, Translator, Verse, Word,
+    ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode, Chapter, ContentPackage,
+    ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge, ImportedNode,
+    InstalledPackage, KnowledgeNode, Language, Lemma, MorphologySegment, Node, NodeType,
+    PackageType, Root, Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
@@ -956,5 +958,127 @@ impl ContentRepository for SqliteContentRepository {
             root_id: r.root_id,
             transliteration: r.transliteration,
         }))
+    }
+
+    // ========================================================================
+    // Scheduler v2.0 Methods
+    // ========================================================================
+
+    async fn get_scheduler_candidates(
+        &self,
+        goal_id: &str,
+        _user_id: &str,
+        _now_ts: i64,
+    ) -> anyhow::Result<Vec<CandidateNode>> {
+        // Fetch node metadata from content.db
+        // Note: energy and next_due_ts are set to defaults here
+        // The caller should fetch memory states from user repository and merge
+        let rows = query_as::<_, CandidateNodeRow>(
+            "SELECT
+                ng.node_id AS node_id,
+                COALESCE(m_found.value, 0.0) AS foundational_score,
+                COALESCE(m_infl.value, 0.0) AS influence_score,
+                COALESCE(m_diff.value, 0.0) AS difficulty_score,
+                CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS quran_order
+            FROM node_goals ng
+            LEFT JOIN node_metadata m_found
+                ON ng.node_id = m_found.node_id AND m_found.key = 'foundational_score'
+            LEFT JOIN node_metadata m_infl
+                ON ng.node_id = m_infl.node_id AND m_infl.key = 'influence_score'
+            LEFT JOIN node_metadata m_diff
+                ON ng.node_id = m_diff.node_id AND m_diff.key = 'difficulty_score'
+            LEFT JOIN node_metadata m_quran
+                ON ng.node_id = m_quran.node_id AND m_quran.key = 'quran_order'
+            WHERE ng.goal_id = ?
+            ORDER BY ng.priority DESC, ng.node_id ASC",
+        )
+        .bind(goal_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| CandidateNode {
+                id: r.node_id,
+                foundational_score: r.foundational_score,
+                influence_score: r.influence_score,
+                difficulty_score: r.difficulty_score,
+                energy: 0.0,    // Default - caller should merge from user repo
+                next_due_ts: 0, // Default - caller should merge from user repo
+                quran_order: r.quran_order,
+            })
+            .collect())
+    }
+
+    async fn get_prerequisite_parents(
+        &self,
+        node_ids: &[String],
+    ) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        if node_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut result: HashMap<String, Vec<String>> = HashMap::new();
+
+        // SQLite parameter limit is ~999, so chunk into batches of 500
+        const CHUNK_SIZE: usize = 500;
+
+        for chunk in node_ids.chunks(CHUNK_SIZE) {
+            // Build parameterized query
+            let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+            let sql = format!(
+                "SELECT target_id AS node_id, source_id AS parent_id
+                 FROM edges
+                 WHERE edge_type = 0 AND target_id IN ({})",
+                placeholders
+            );
+
+            let mut query = query_as::<_, PrerequisiteRow>(&sql);
+            for node_id in chunk {
+                query = query.bind(node_id);
+            }
+
+            let rows = query.fetch_all(&self.pool).await?;
+
+            // Group by node_id
+            for row in rows {
+                result.entry(row.node_id).or_default().push(row.parent_id);
+            }
+        }
+
+        Ok(result)
+    }
+
+    async fn get_goal(&self, goal_id: &str) -> anyhow::Result<Option<SchedulerGoal>> {
+        let row = query_as::<_, GoalRow>(
+            "SELECT goal_id, goal_type, goal_group, label, description
+             FROM goals
+             WHERE goal_id = ?",
+        )
+        .bind(goal_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| SchedulerGoal {
+            goal_id: r.goal_id,
+            goal_type: r.goal_type,
+            goal_group: r.goal_group,
+            label: r.label,
+            description: r.description,
+        }))
+    }
+
+    async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<String>> {
+        let rows = query_as::<_, NodeGoalRow>(
+            "SELECT node_id
+             FROM node_goals
+             WHERE goal_id = ?
+             ORDER BY priority DESC, node_id ASC",
+        )
+        .bind(goal_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|r| r.node_id).collect())
     }
 }

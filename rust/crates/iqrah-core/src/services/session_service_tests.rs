@@ -287,6 +287,33 @@ mod tests {
         async fn get_lemma_by_id(&self, _lemma_id: &str) -> anyhow::Result<Option<crate::Lemma>> {
             Ok(None)
         }
+
+        async fn get_scheduler_candidates(
+            &self,
+            _goal_id: &str,
+            _user_id: &str,
+            _now_ts: i64,
+        ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
+            Ok(vec![])
+        }
+
+        async fn get_prerequisite_parents(
+            &self,
+            _node_ids: &[String],
+        ) -> anyhow::Result<HashMap<String, Vec<String>>> {
+            Ok(HashMap::new())
+        }
+
+        async fn get_goal(
+            &self,
+            _goal_id: &str,
+        ) -> anyhow::Result<Option<crate::ports::content_repository::SchedulerGoal>> {
+            Ok(None)
+        }
+
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+            Ok(vec![])
+        }
     }
 
     // Mock UserRepository
@@ -377,6 +404,41 @@ mod tests {
         }
 
         async fn set_setting(&self, _key: &str, _value: &str) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn get_parent_energies(
+            &self,
+            _user_id: &str,
+            _node_ids: &[String],
+        ) -> anyhow::Result<HashMap<String, f32>> {
+            Ok(HashMap::new())
+        }
+
+        async fn get_memory_basics(
+            &self,
+            _user_id: &str,
+            _node_ids: &[String],
+        ) -> anyhow::Result<HashMap<String, crate::scheduler_v2::MemoryBasics>> {
+            Ok(HashMap::new())
+        }
+
+        async fn get_bandit_arms(
+            &self,
+            _user_id: &str,
+            _goal_group: &str,
+        ) -> anyhow::Result<Vec<crate::scheduler_v2::BanditArmState>> {
+            Ok(vec![])
+        }
+
+        async fn update_bandit_arm(
+            &self,
+            _user_id: &str,
+            _goal_group: &str,
+            _profile_name: &str,
+            _successes: f32,
+            _failures: f32,
+        ) -> anyhow::Result<()> {
             Ok(())
         }
     }
