@@ -547,6 +547,65 @@ augment_graph_with_content(G, "content.db")
 
 ## Future Enhancements
 
+### Scheduler v2 Integration - Extraction Pipeline
+
+**Added:** 2025-11-18 (Scheduler v2 upgrade)
+
+#### Overview
+
+The scheduler v2 integration uses a streamlined extraction pipeline to generate SQL migrations from the knowledge graph. This enables the scheduler to work with PageRank-scored verse data for intelligent content prioritization.
+
+#### Extraction Script: `score_and_extract.py`
+
+Located at `research_and_dev/iqrah-knowledge-graph2/score_and_extract.py`, this script:
+
+1. **Loads the knowledge graph** from GraphML format
+2. **Applies PageRank scoring** to compute foundational and influence scores
+3. **Extracts verse metadata** with scores for all verses in the graph
+4. **Generates SQL migration** with `node_metadata` and `node_goals` inserts
+
+#### Usage Example
+
+```bash
+cd research_and_dev/iqrah-knowledge-graph2
+
+# Generate migration for chapters 1-3 (493 verses)
+python3 score_and_extract.py \
+    --input knowledge-graph.graphml \
+    --chapters 1,2,3 \
+    --goal-id "memorization:chapters-1-3" \
+    --output generated_migration.sql
+```
+
+#### Output Format
+
+The generated SQL migration includes:
+
+1. **Node Metadata** - Verse-level scores
+2. **Prerequisite Edges** - Sequential learning dependencies
+3. **Goal Definition** - Learning objective with 493 verses
+4. **Goal-Node Mappings** - All verses linked to the goal
+
+#### Score Computation
+
+- **Foundational Score:** PageRank on forward graph (0.0-1.0, how fundamental)
+- **Influence Score:** PageRank on reverse graph (0.0-1.0, how influenced by prerequisites)
+- **Difficulty Score:** Heuristic based on position (0.3-0.95)
+- **Quran Order:** `chapter * 1000000 + verse * 1000` for sorting
+
+#### Integration Results (Chapters 1-3)
+
+- **Verses:** 493 (Al-Fatihah, Al-Baqarah, Al-Imran)
+- **Edges:** 490 sequential prerequisites
+- **Migration:** `rust/crates/iqrah-storage/migrations_content/20241118000001_knowledge_graph_chapters_1_3.sql`
+- **Scheduler Performance:** 9ms session generation, intelligent prerequisite gating
+
+#### Future Expansion
+
+To expand to more chapters, run `score_and_extract.py` with desired chapter range and update the migration file.
+
+---
+
 ### Planned Features
 
 1. **Tajweed Integration**
