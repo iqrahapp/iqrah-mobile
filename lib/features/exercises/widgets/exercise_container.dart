@@ -55,21 +55,33 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
       await widget.exercise.map(
         memorization: (e) async {
           // Fetch word/verse text
-          final content = await service.fetchWordContent(int.parse(e.nodeId.split(':').last), prefs);
+          final content = await service.fetchWordContent(
+            int.parse(e.nodeId.split(':').last),
+            prefs,
+          );
           _questionText = content.text;
 
           // Fetch translation
-          final translation = await service.fetchTranslation(e.nodeId, prefs.preferredTranslatorId ?? 1);
+          final translation = await service.fetchTranslation(
+            e.nodeId,
+            prefs.preferredTranslatorId ?? 1,
+          );
           _answerText = translation.text;
         },
         mcqArToEn: (e) async {
           // Fetch correct answer (English translation)
-          final correctTrans = await service.fetchTranslation(e.nodeId, prefs.preferredTranslatorId ?? 1);
+          final correctTrans = await service.fetchTranslation(
+            e.nodeId,
+            prefs.preferredTranslatorId ?? 1,
+          );
 
           // Fetch distractors
           final distractors = <String>[];
           for (final id in e.distractorNodeIds) {
-            final d = await service.fetchTranslation(id, prefs.preferredTranslatorId ?? 1);
+            final d = await service.fetchTranslation(
+              id,
+              prefs.preferredTranslatorId ?? 1,
+            );
             distractors.add(d.text);
           }
 
@@ -79,78 +91,81 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
           _correctIndex = allChoices.indexOf(correctTrans.text);
 
           // Fetch question (Arabic text)
-           // Assuming nodeId is like "WORD:1:1:1"
-           final wordId = int.tryParse(e.nodeId.split(':').last);
-           if (wordId != null) {
-             final content = await service.fetchWordContent(wordId, prefs);
-             _questionText = content.text;
-           } else {
-             _questionText = "Error parsing ID";
-           }
+          // Assuming nodeId is like "WORD:1:1:1"
+          final wordId = int.tryParse(e.nodeId.split(':').last);
+          if (wordId != null) {
+            final content = await service.fetchWordContent(wordId, prefs);
+            _questionText = content.text;
+          } else {
+            _questionText = "Error parsing ID";
+          }
         },
         mcqEnToAr: (e) async {
-           // Fetch correct answer (Arabic text)
-           final wordId = int.tryParse(e.nodeId.split(':').last);
-           if (wordId == null) throw Exception("Invalid node ID");
+          // Fetch correct answer (Arabic text)
+          final wordId = int.tryParse(e.nodeId.split(':').last);
+          if (wordId == null) throw Exception("Invalid node ID");
 
-           final content = await service.fetchWordContent(wordId, prefs);
-           final correctAnswer = content.text;
+          final content = await service.fetchWordContent(wordId, prefs);
+          final correctAnswer = content.text;
 
-           // Fetch distractors (Arabic text)
-           final distractors = <String>[];
-           for (final id in e.distractorNodeIds) {
-             final dId = int.tryParse(id.split(':').last);
-             if (dId != null) {
-                final d = await service.fetchWordContent(dId, prefs);
-                distractors.add(d.text);
-             }
-           }
+          // Fetch distractors (Arabic text)
+          final distractors = <String>[];
+          for (final id in e.distractorNodeIds) {
+            final dId = int.tryParse(id.split(':').last);
+            if (dId != null) {
+              final d = await service.fetchWordContent(dId, prefs);
+              distractors.add(d.text);
+            }
+          }
 
-           // Shuffle
-           final allChoices = [correctAnswer, ...distractors]..shuffle();
-           _choices = allChoices;
-           _correctIndex = allChoices.indexOf(correctAnswer);
+          // Shuffle
+          final allChoices = [correctAnswer, ...distractors]..shuffle();
+          _choices = allChoices;
+          _correctIndex = allChoices.indexOf(correctAnswer);
 
-           // Fetch question (English translation)
-           final translation = await service.fetchTranslation(e.nodeId, prefs.preferredTranslatorId ?? 1);
-           _questionText = translation.text;
+          // Fetch question (English translation)
+          final translation = await service.fetchTranslation(
+            e.nodeId,
+            prefs.preferredTranslatorId ?? 1,
+          );
+          _questionText = translation.text;
         },
         // Implement other variants as needed...
         translation: (e) async {},
         contextualTranslation: (e) async {},
         clozeDeletion: (e) async {
-           // Parse verseKey from "VERSE:chapter:verse"
-           // e.nodeId might be "VERSE:1:1"
-           final parts = e.nodeId.split(':');
-           if (parts.length < 3) throw Exception("Invalid verse ID");
-           final verseKey = "${parts[1]}:${parts[2]}";
+          // Parse verseKey from "VERSE:chapter:verse"
+          // e.nodeId might be "VERSE:1:1"
+          final parts = e.nodeId.split(':');
+          if (parts.length < 3) throw Exception("Invalid verse ID");
+          final verseKey = "${parts[1]}:${parts[2]}";
 
-           // Fetch all words
-           final words = await service.fetchWordsForVerse(verseKey);
+          // Fetch all words
+          final words = await service.fetchWordsForVerse(verseKey);
 
-           if (words.isEmpty) {
-             _questionText = "Error loading verse";
-             return;
-           }
+          if (words.isEmpty) {
+            _questionText = "Error loading verse";
+            return;
+          }
 
-           // Construct question with blank
-           final buffer = StringBuffer();
-           String? answer;
+          // Construct question with blank
+          final buffer = StringBuffer();
+          String? answer;
 
-           // Sort words by position just in case
-           words.sort((a, b) => a.position.compareTo(b.position));
+          // Sort words by position just in case
+          words.sort((a, b) => a.position.compareTo(b.position));
 
-           for (final word in words) {
-             if (word.position == e.blankPosition) {
-               buffer.write("_____ ");
-               answer = word.textUthmani;
-             } else {
-               buffer.write("${word.textUthmani} ");
-             }
-           }
+          for (final word in words) {
+            if (word.position == e.blankPosition) {
+              buffer.write("_____ ");
+              answer = word.textUthmani;
+            } else {
+              buffer.write("${word.textUthmani} ");
+            }
+          }
 
-           _questionText = buffer.toString().trim();
-           _answerText = answer ?? "Error";
+          _questionText = buffer.toString().trim();
+          _answerText = answer ?? "Error";
         },
         firstLetterHint: (e) async {},
         missingWordMcq: (e) async {},
@@ -200,7 +215,8 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
       mcqEnToAr: (_) => _buildMcq(isArabicToEnglish: false),
       // Fallback for unimplemented types
       translation: (_) => const Text('Translation exercise not implemented'),
-      contextualTranslation: (_) => const Text('Contextual Translation not implemented'),
+      contextualTranslation: (_) =>
+          const Text('Contextual Translation not implemented'),
       clozeDeletion: (_) => _buildMemorization(),
       firstLetterHint: (_) => const Text('First Letter Hint not implemented'),
       missingWordMcq: (_) => const Text('Missing Word MCQ not implemented'),
@@ -213,7 +229,8 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
       reverseCloze: (_) => const Text('Reverse Cloze not implemented'),
       translatePhrase: (_) => const Text('Translate Phrase not implemented'),
       posTagging: (_) => const Text('POS Tagging not implemented'),
-      crossVerseConnection: (_) => const Text('Cross Verse Connection not implemented'),
+      crossVerseConnection: (_) =>
+          const Text('Cross Verse Connection not implemented'),
     );
   }
 
@@ -221,7 +238,10 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(_questionText ?? '', style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          _questionText ?? '',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: 20),
         // TODO: Add reveal answer logic
         Text(_answerText ?? '', style: Theme.of(context).textTheme.bodyLarge),
@@ -232,7 +252,10 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
   Widget _buildMcq({required bool isArabicToEnglish}) {
     return Column(
       children: [
-        Text(_questionText ?? '', style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          _questionText ?? '',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
         const SizedBox(height: 20),
         if (_choices != null)
           ..._choices!.asMap().entries.map((entry) {

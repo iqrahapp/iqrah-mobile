@@ -9,7 +9,10 @@ class SessionState {
 
   SessionState({this.exercises = const [], this.currentIndex = 0});
 
-  SessionState copyWith({List<api.ExerciseDataDto>? exercises, int? currentIndex}) {
+  SessionState copyWith({
+    List<api.ExerciseDataDto>? exercises,
+    int? currentIndex,
+  }) {
     return SessionState(
       exercises: exercises ?? this.exercises,
       currentIndex: currentIndex ?? this.currentIndex,

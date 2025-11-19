@@ -145,13 +145,13 @@ async fn get_words_batch(
 
 ## Performance Metrics 🎯
 
-| Operation | Target | Current Implementation |
-|-----------|--------|----------------------|
-| Exercise Generation | < 100ms | ✅ (Rust generators are lightweight) |
-| Content Fetch (cached) | < 10ms | ✅ (In-memory HashMap lookup) |
-| Content Fetch (DB) | < 50ms | ✅ (Single SELECT query) |
-| Batch Fetch (10 items) | < 100ms | ✅ (Single query with IN clause) |
-| Total End-to-End | < 200ms | 🚧 (Pending widget integration) |
+| Operation              | Target  | Current Implementation              |
+| ---------------------- | ------- | ----------------------------------- |
+| Exercise Generation    | < 100ms | ✅ (Rust generators are lightweight) |
+| Content Fetch (cached) | < 10ms  | ✅ (In-memory HashMap lookup)        |
+| Content Fetch (DB)     | < 50ms  | ✅ (Single SELECT query)             |
+| Batch Fetch (10 items) | < 100ms | ✅ (Single query with IN clause)     |
+| Total End-to-End       | < 200ms | 🚧 (Pending widget integration)      |
 
 ---
 

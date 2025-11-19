@@ -29,11 +29,11 @@ Future<void> main() async {
   final dbPath = await getDatabasePath();
   print('db path: $dbPath');
   final bytes = assetData.buffer.asUint8List();
-  
+
   // setupDatabase now requires contentDbPath and userDbPath separately
   final contentDbPath = "$dbPath/content.db";
   final userDbPath = "$dbPath/user.db";
-  
+
   final initMsg = await setupDatabase(
     contentDbPath: contentDbPath,
     userDbPath: userDbPath,

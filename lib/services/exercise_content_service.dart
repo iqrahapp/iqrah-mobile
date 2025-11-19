@@ -323,8 +323,7 @@ class ExerciseContentService {
 
   // ===== Private helper methods (FFI calls) =====
 
-  Future<String> _fetchVerseText(
-      String verseKey, TextVariant variant) async {
+  Future<String> _fetchVerseText(String verseKey, TextVariant variant) async {
     try {
       final verse = await api.getVerse(verseKey: verseKey);
       if (verse == null) return 'Verse not found: $verseKey';
@@ -349,7 +348,9 @@ class ExerciseContentService {
   }
 
   Future<String> _fetchTranslationText(
-      String contentKey, int translatorId) async {
+    String contentKey,
+    int translatorId,
+  ) async {
     try {
       // Check if contentKey is a verse key (contains ':') or word ID (integer)
       if (contentKey.contains(':')) {

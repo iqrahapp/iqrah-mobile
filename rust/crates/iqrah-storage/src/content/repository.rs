@@ -1093,7 +1093,7 @@ impl ContentRepository for SqliteContentRepository {
         // Build placeholders for IN clause
         let placeholders = vec!["?"; verse_keys.len()].join(", ");
         let query_str = format!(
-            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple, 
+            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple,
                     juz, page
              FROM verses
              WHERE verse_key IN ({})",

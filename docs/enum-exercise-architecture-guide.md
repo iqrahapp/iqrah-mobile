@@ -31,12 +31,12 @@ This guide describes the integration of the modern enum-based exercise architect
 
 ### Supported Variants
 
-| Variant  | Description                          | Use Case                    |
-|----------|--------------------------------------|-----------------------------|
-| Uthmani  | Standard Uthmani script              | Default, most accurate      |
-| Simple   | No diacritics, simplified text       | Beginners, search           |
-| Indopak  | Indo-Pak script style                | Regional preference         |
-| Tajweed  | Color-coded tajweed rules (future)   | Advanced learners           |
+| Variant | Description                        | Use Case               |
+| ------- | ---------------------------------- | ---------------------- |
+| Uthmani | Standard Uthmani script            | Default, most accurate |
+| Simple  | No diacritics, simplified text     | Beginners, search      |
+| Indopak | Indo-Pak script style              | Regional preference    |
+| Tajweed | Color-coded tajweed rules (future) | Advanced learners      |
 
 ### Usage in Flutter
 
@@ -195,13 +195,13 @@ After all widgets are migrated:
 
 ## Performance Targets
 
-| Operation                  | Target      | Notes                        |
-|----------------------------|-------------|------------------------------|
-| Exercise Generation        | < 100ms     | Rust-side generation         |
-| Content Fetching (cached)  | < 10ms      | In-memory cache hit          |
-| Content Fetching (DB)      | < 50ms      | Single verse/word fetch      |
-| Batch Fetch (10 items)     | < 100ms     | Using batch query methods    |
-| Total End-to-End          | < 200ms     | Generation → Fetch → Display |
+| Operation                 | Target  | Notes                        |
+| ------------------------- | ------- | ---------------------------- |
+| Exercise Generation       | < 100ms | Rust-side generation         |
+| Content Fetching (cached) | < 10ms  | In-memory cache hit          |
+| Content Fetching (DB)     | < 50ms  | Single verse/word fetch      |
+| Batch Fetch (10 items)    | < 100ms | Using batch query methods    |
+| Total End-to-End          | < 200ms | Generation → Fetch → Display |
 
 ## Caching Strategy
 
@@ -284,7 +284,7 @@ class MockExerciseContentService extends ExerciseContentService {
 **Solution**:
 ```rust
 // Check node_id format
-assert!(node_id.starts_with("WORD:") || 
+assert!(node_id.starts_with("WORD:") ||
         node_id.starts_with("VERSE:") ||
         node_id.starts_with("CHAPTER:"));
 ```

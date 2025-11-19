@@ -19,7 +19,7 @@ mkdir -p "${OUTPUT_DIR}"
 # Download the release
 if command -v wget &> /dev/null; then
     wget -q --show-progress "${RELEASE_URL}" -O /tmp/iqrah-graph.tar.gz
-elif command -v curl &> /dev/null; then
+    elif command -v curl &> /dev/null; then
     curl -L "${RELEASE_URL}" -o /tmp/iqrah-graph.tar.gz
 else
     echo "❌ Error: Neither wget nor curl found. Please install one of them."

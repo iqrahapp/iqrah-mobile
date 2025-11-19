@@ -1,12 +1,12 @@
 use anyhow::Result;
 // Re-exported for frb_generated access
 pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
-pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
 use iqrah_core::{import_cbor_graph_from_bytes, ReviewGrade};
+pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
 use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct AppState {
     pub content_repo: Arc<dyn ContentRepository>,
@@ -132,13 +132,13 @@ pub async fn get_exercises_for_node(node_id: String) -> Result<Vec<ExerciseDataD
 pub async fn fetch_node_with_metadata(node_id: String) -> Result<Option<NodeData>> {
     let app = app();
     let node = app.content_repo.get_node(&node_id).await?;
-    
+
     if let Some(node) = node {
         let mut metadata = HashMap::new();
         if let Some(text) = app.content_repo.get_quran_text(&node_id).await? {
             metadata.insert("text".to_string(), text);
         }
-        
+
         Ok(Some(NodeData {
             id: node.id,
             node_type: node.node_type.into(),
