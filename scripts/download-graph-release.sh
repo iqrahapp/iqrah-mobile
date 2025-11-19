@@ -26,35 +26,17 @@ else
     exit 1
 fi
 
-# Clean up any old graph files in output directory
-echo "🧹 Cleaning up old graph files..."
-rm -f "${OUTPUT_DIR}"/knowledge-graph.cbor.zst
-rm -f "${OUTPUT_DIR}"/iqrah-graph-*.cbor.zst
-
 # Extract the graph file
 echo "📦 Extracting knowledge graph..."
-# Extract to a temporary directory to avoid conflicts
-EXTRACT_DIR=$(mktemp -d)
-tar -xzf /tmp/iqrah-graph.tar.gz -C "${EXTRACT_DIR}/"
+tar -xzf /tmp/iqrah-graph.tar.gz -C "${OUTPUT_DIR}/"
 
-# Move to output directory
-if [ -f "${EXTRACT_DIR}/knowledge-graph.cbor.zst" ]; then
-    mv "${EXTRACT_DIR}/knowledge-graph.cbor.zst" "${OUTPUT_DIR}/"
+if [ -f "${OUTPUT_DIR}/knowledge-graph.cbor.zst" ]; then
     echo "✅ Extracted: knowledge-graph.cbor.zst"
 else
     echo "❌ Error: knowledge-graph.cbor.zst not found in tarball"
-    ls -la "${EXTRACT_DIR}/"
+    ls -la "${OUTPUT_DIR}/"
     exit 1
 fi
-
-# Also extract content.db if it exists in the tarball
-if [ -f "${EXTRACT_DIR}/content.db" ]; then
-    mv "${EXTRACT_DIR}/content.db" "${OUTPUT_DIR}/"
-    echo "✅ Extracted: content.db"
-fi
-
-# Clean up extraction directory
-rm -rf "${EXTRACT_DIR}"
 
 # Clean up
 rm /tmp/iqrah-graph.tar.gz
@@ -75,11 +57,8 @@ fi
 
 # Show file info
 echo ""
-echo "📊 Downloaded files:"
-ls -lh "${OUTPUT_DIR}"/knowledge-graph.cbor.zst
-if [ -f "${OUTPUT_DIR}/content.db" ]; then
-    ls -lh "${OUTPUT_DIR}"/content.db
-fi
+echo "📊 Downloaded file:"
+ls -lh "${OUTPUT_DIR}/knowledge-graph.cbor.zst"
 
 echo ""
 echo "✅ iqrah-graph ${VERSION} ready in ${OUTPUT_DIR}/"

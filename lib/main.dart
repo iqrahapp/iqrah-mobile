@@ -8,7 +8,7 @@ import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/rust_bridge/frb_generated.dart';
 import 'package:iqrah/utils/database_path.dart';
 
-const graphAssetPath = "assets/iqrah-graph-v1.0.1.cbor.zst";
+const graphAssetPath = "assets/knowledge-graph.cbor.zst";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
