@@ -2865,23 +2865,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 
 [[package]]
-name = "iqrah-api"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "flutter_rust_bridge",
- "iqrah-core",
- "iqrah-storage",
- "once_cell",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "iqrah-cli"
 version = "0.1.0"
 dependencies = [
@@ -2973,6 +2956,23 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tracing",
+]
+
+[[package]]
+name = "iqrah_api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "flutter_rust_bridge",
+ "iqrah-core",
+ "iqrah-storage",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

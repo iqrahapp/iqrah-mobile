@@ -1,10 +1,9 @@
 [package]
-name = "iqrah-api"
+name = "iqrah_api"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "rust_lib_iqrah"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
