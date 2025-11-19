@@ -7,5 +7,6 @@ pub use api::*;
 
 // Re-export types needed by generated code
 pub use iqrah_core::{
-    exercises::ExerciseData, ContentRepository, LearningService, SessionService, UserRepository,
+    exercises::{ExerciseData, ExerciseService},
+    ContentRepository, LearningService, SessionService, UserRepository,
 };

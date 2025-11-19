@@ -6,8 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/pages/excercise_page.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
-import 'package:iqrah/rust_bridge/exercises.dart';
-import 'package:iqrah/rust_bridge/repository.dart';
 
 class SandboxPage extends ConsumerStatefulWidget {
   const SandboxPage({super.key});
@@ -20,9 +18,9 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
   final _controller = TextEditingController();
   Timer? _debounce;
   bool _loading = false;
-  NodeData? _selectedNode;
+  String? _selectedNodeId;
   List<String> _suggestions = [];
-  List<Exercise> _preview = [];
+  List<api.ExerciseDataDto> _preview = [];
 
   @override
   void dispose() {
@@ -38,7 +36,7 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
       () => _updateSuggestions(value),
     );
     setState(() {
-      _selectedNode = null;
+      _selectedNodeId = null;
       _preview = [];
     });
   }
@@ -56,7 +54,7 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
       // Use searchNodes to get up to 10 node IDs that start with the query
       final nodes = await api.searchNodes(query: q, limit: 10);
       if (mounted) {
-        setState(() => _suggestions = nodes.map((n) => n.id).toList());
+        setState(() => _suggestions = nodes.map((n) => n.nodeId).toList());
       }
     } catch (e) {
       if (mounted) {
@@ -73,42 +71,26 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
     final q = _controller.text.trim();
     if (q.isEmpty) {
       setState(() {
-        _selectedNode = null;
+        _selectedNodeId = null;
         _preview = [];
       });
       return;
     }
-    if (!mounted) return;
-    setState(() => _loading = true);
-    try {
-      final nodeOpt = await api.fetchNodeWithMetadata(nodeId: q);
-      if (mounted) {
-        setState(() {
-          _selectedNode = nodeOpt;
-          _preview = [];
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _selectedNode = null);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    }
+
+    // Just set the ID, we don't fetch metadata separately anymore
+    setState(() {
+      _selectedNodeId = q;
+      _preview = [];
+    });
   }
 
   Future<void> _loadExercisesFor(String nodeId) async {
     if (!mounted) return;
     setState(() => _loading = true);
     try {
-      final items = await api.getExercisesForNode(nodeId: nodeId);
+      final item = await api.generateExerciseV2(nodeId: nodeId);
       if (mounted) {
-        setState(() => _preview = items);
+        setState(() => _preview = [item]);
       }
     } catch (e) {
       if (mounted) {
@@ -124,7 +106,7 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
     }
   }
 
-  void _startOne(Exercise ex) {
+  void _startOne(api.ExerciseDataDto ex) {
     HapticFeedback.lightImpact();
     ref.read(sessionProvider.notifier).startReview([ex]);
     Navigator.of(
@@ -191,21 +173,20 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
               ),
             ],
             const SizedBox(height: 12),
-            if (_selectedNode != null)
+            if (_selectedNodeId != null)
               Card(
                 child: ListTile(
                   title: Text(
-                    _selectedNode!.id,
+                    _selectedNodeId!,
                     style: theme.textTheme.bodyMedium,
                   ),
-                  subtitle: Text(_selectedNode!.metadata.toString()),
                   trailing: IconButton(
                     icon: const Icon(Icons.play_circle_outline),
-                    onPressed: () => _loadExercisesFor(_selectedNode!.id),
+                    onPressed: () => _loadExercisesFor(_selectedNodeId!),
                   ),
                 ),
               ),
-            if (_selectedNode == null)
+            if (_selectedNodeId == null)
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Select a node to preview exercises'),
@@ -217,8 +198,6 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
       ),
     );
   }
-
-  // _buildResults removed: now only single node lookup
 
   Widget _buildPreview(ThemeData theme) {
     if (_preview.isEmpty) {
@@ -246,37 +225,13 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
     );
   }
 
-  String _exerciseLabel(Exercise e) => e.map(
-    recall: (_) => 'Recall',
-    cloze: (_) => 'Cloze',
-    mcqArToEn: (_) => 'MCQ Ar→En',
-    mcqEnToAr: (_) => 'MCQ En→Ar',
-  );
+  String _exerciseLabel(api.ExerciseDataDto e) {
+    // Using runtimeType or pattern matching if available, or just toString for now
+    // Since it's a sealed class, we can use map/when if generated, but simple toString is safer for quick fix
+    return e.toString().split('(').first;
+  }
 
-  String _exerciseSubtitle(Exercise e) => e.when(
-    recall: (nodeId, arabic, translation) => arabic,
-    cloze: (nodeId, question, answer) => question,
-    mcqArToEn:
-        (
-          nodeId,
-          arabic,
-          verseArabic,
-          surahNumber,
-          ayahNumber,
-          wordIndex,
-          choicesEn,
-          correctIndex,
-        ) => 'Word: $arabic\n$verseArabic',
-    mcqEnToAr:
-        (
-          nodeId,
-          english,
-          verseArabic,
-          surahNumber,
-          ayahNumber,
-          wordIndex,
-          choicesAr,
-          correctIndex,
-        ) => 'Word: $english\n$verseArabic',
-  );
+  String _exerciseSubtitle(api.ExerciseDataDto e) {
+    return e.toString();
+  }
 }

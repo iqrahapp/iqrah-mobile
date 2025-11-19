@@ -4,7 +4,9 @@
 // Implements caching for performance optimization
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iqrah/rust_bridge/api.dart' as api;
 
 /// User preferences for content fetching
 class UserPreferences {
@@ -87,6 +89,15 @@ class ExerciseContentService {
 
   ExerciseContentService() {
     _lastCacheClear = DateTime.now();
+  }
+
+  Future<List<api.WordDto>> fetchWordsForVerse(String verseKey) async {
+    try {
+      return await api.getWordsForVerse(verseKey: verseKey);
+    } catch (e) {
+      debugPrint('Error fetching words for verse $verseKey: $e');
+      return [];
+    }
   }
 
   /// Fetch verse content based on user preferences
@@ -310,27 +321,57 @@ class ExerciseContentService {
     }
   }
 
-  // ===== Private helper methods (placeholders for Rust FFI) =====
+  // ===== Private helper methods (FFI calls) =====
 
   Future<String> _fetchVerseText(
       String verseKey, TextVariant variant) async {
-    // TODO: Replace with actual Rust FFI call
-    // Example: await api.getVerse(verseKey)
-    await Future.delayed(const Duration(milliseconds: 10));
-    return 'Verse $verseKey (${variant.name})';
+    try {
+      final verse = await api.getVerse(verseKey: verseKey);
+      if (verse == null) return 'Verse not found: $verseKey';
+
+      // Currently only Uthmani is supported by backend
+      // In future, we can request specific variants or process on client
+      return verse.textUthmani;
+    } catch (e) {
+      return 'Error fetching verse: $e';
+    }
   }
 
   Future<String> _fetchWordText(int wordId, TextVariant variant) async {
-    // TODO: Replace with actual Rust FFI call
-    await Future.delayed(const Duration(milliseconds: 10));
-    return 'Word $wordId (${variant.name})';
+    try {
+      final word = await api.getWord(wordId: wordId);
+      if (word == null) return 'Word not found: $wordId';
+
+      return word.textUthmani;
+    } catch (e) {
+      return 'Error fetching word: $e';
+    }
   }
 
   Future<String> _fetchTranslationText(
       String contentKey, int translatorId) async {
-    // TODO: Replace with actual Rust FFI call
-    await Future.delayed(const Duration(milliseconds: 10));
-    return 'Translation of $contentKey by translator $translatorId';
+    try {
+      // Check if contentKey is a verse key (contains ':') or word ID (integer)
+      if (contentKey.contains(':')) {
+        final translation = await api.getVerseTranslationByTranslator(
+          verseKey: contentKey,
+          translatorId: translatorId,
+        );
+        return translation ?? 'Translation not found';
+      } else {
+        final wordId = int.tryParse(contentKey);
+        if (wordId != null) {
+          final translation = await api.getWordTranslation(
+            wordId: wordId,
+            translatorId: translatorId,
+          );
+          return translation ?? 'Translation not found';
+        }
+        return 'Invalid content key: $contentKey';
+      }
+    } catch (e) {
+      return 'Error fetching translation: $e';
+    }
   }
 }
 

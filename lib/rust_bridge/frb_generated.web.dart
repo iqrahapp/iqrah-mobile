@@ -44,10 +44,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   get rust_arc_decrement_strong_count_ArcUserRepositoryPtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository;
 
-  CrossPlatformFinalizerArg
-  get rust_arc_decrement_strong_count_ExerciseDataPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData;
-
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
 
@@ -88,12 +84,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  ExerciseData
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    dynamic raw,
-  );
-
-  @protected
   AppState
   dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     dynamic raw,
@@ -104,6 +94,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     dynamic raw,
   );
+
+  @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw);
 
   @protected
   AppState
@@ -142,12 +135,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  ExerciseData
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    dynamic raw,
-  );
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -157,7 +144,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_box_autoadd_i_32(dynamic raw);
 
   @protected
+  NodeData dco_decode_box_autoadd_node_data(dynamic raw);
+
+  @protected
   TranslatorDto dco_decode_box_autoadd_translator_dto(dynamic raw);
+
+  @protected
+  VerseDto dco_decode_box_autoadd_verse_dto(dynamic raw);
+
+  @protected
+  WordDto dco_decode_box_autoadd_word_dto(dynamic raw);
 
   @protected
   DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw);
@@ -166,7 +162,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DebugStatsDto dco_decode_debug_stats_dto(dynamic raw);
 
   @protected
-  ExerciseDto dco_decode_exercise_dto(dynamic raw);
+  ExerciseDataDto dco_decode_exercise_data_dto(dynamic raw);
 
   @protected
   double dco_decode_f_64(dynamic raw);
@@ -178,7 +174,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   LanguageDto dco_decode_language_dto(dynamic raw);
 
   @protected
-  List<ExerciseDto> dco_decode_list_exercise_dto(dynamic raw);
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<ExerciseDataDto> dco_decode_list_exercise_data_dto(dynamic raw);
 
   @protected
   List<LanguageDto> dco_decode_list_language_dto(dynamic raw);
@@ -193,6 +192,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw);
+
+  @protected
   List<SessionPreviewDto> dco_decode_list_session_preview_dto(dynamic raw);
 
   @protected
@@ -200,6 +202,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<TranslatorDto> dco_decode_list_translator_dto(dynamic raw);
+
+  @protected
+  List<WordDto> dco_decode_list_word_dto(dynamic raw);
+
+  @protected
+  NodeData dco_decode_node_data(dynamic raw);
 
   @protected
   NodeSearchDto dco_decode_node_search_dto(dynamic raw);
@@ -211,7 +219,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
   @protected
+  NodeData? dco_decode_opt_box_autoadd_node_data(dynamic raw);
+
+  @protected
   TranslatorDto? dco_decode_opt_box_autoadd_translator_dto(dynamic raw);
+
+  @protected
+  VerseDto? dco_decode_opt_box_autoadd_verse_dto(dynamic raw);
+
+  @protected
+  WordDto? dco_decode_opt_box_autoadd_word_dto(dynamic raw);
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
   SessionPreviewDto dco_decode_session_preview_dto(dynamic raw);
@@ -233,6 +253,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  VerseDto dco_decode_verse_dto(dynamic raw);
+
+  @protected
+  WordDto dco_decode_word_dto(dynamic raw);
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
@@ -274,12 +300,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  ExerciseData
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   AppState
   sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     SseDeserializer deserializer,
@@ -288,6 +308,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   AppState
   sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(
     SseDeserializer deserializer,
   );
 
@@ -328,12 +353,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  ExerciseData
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -343,9 +362,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  NodeData sse_decode_box_autoadd_node_data(SseDeserializer deserializer);
+
+  @protected
   TranslatorDto sse_decode_box_autoadd_translator_dto(
     SseDeserializer deserializer,
   );
+
+  @protected
+  VerseDto sse_decode_box_autoadd_verse_dto(SseDeserializer deserializer);
+
+  @protected
+  WordDto sse_decode_box_autoadd_word_dto(SseDeserializer deserializer);
 
   @protected
   DashboardStatsDto sse_decode_dashboard_stats_dto(
@@ -356,7 +384,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DebugStatsDto sse_decode_debug_stats_dto(SseDeserializer deserializer);
 
   @protected
-  ExerciseDto sse_decode_exercise_dto(SseDeserializer deserializer);
+  ExerciseDataDto sse_decode_exercise_data_dto(SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
@@ -368,7 +396,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   LanguageDto sse_decode_language_dto(SseDeserializer deserializer);
 
   @protected
-  List<ExerciseDto> sse_decode_list_exercise_dto(SseDeserializer deserializer);
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<ExerciseDataDto> sse_decode_list_exercise_data_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<LanguageDto> sse_decode_list_language_dto(SseDeserializer deserializer);
@@ -385,6 +418,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<SessionPreviewDto> sse_decode_list_session_preview_dto(
     SseDeserializer deserializer,
   );
@@ -398,6 +436,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<WordDto> sse_decode_list_word_dto(SseDeserializer deserializer);
+
+  @protected
+  NodeData sse_decode_node_data(SseDeserializer deserializer);
+
+  @protected
   NodeSearchDto sse_decode_node_search_dto(SseDeserializer deserializer);
 
   @protected
@@ -407,7 +451,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  NodeData? sse_decode_opt_box_autoadd_node_data(SseDeserializer deserializer);
+
+  @protected
   TranslatorDto? sse_decode_opt_box_autoadd_translator_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  VerseDto? sse_decode_opt_box_autoadd_verse_dto(SseDeserializer deserializer);
+
+  @protected
+  WordDto? sse_decode_opt_box_autoadd_word_dto(SseDeserializer deserializer);
+
+  @protected
+  (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
 
@@ -433,6 +491,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  VerseDto sse_decode_verse_dto(SseDeserializer deserializer);
+
+  @protected
+  WordDto sse_decode_word_dto(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
@@ -484,13 +548,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    ExerciseData self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void
   sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     AppState self,
     SseSerializer serializer,
@@ -500,6 +557,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     AppState self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_Map_String_String_None(
+    Map<String, String> self,
     SseSerializer serializer,
   );
 
@@ -546,13 +609,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    ExerciseData self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -562,10 +618,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_node_data(
+    NodeData self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_translator_dto(
     TranslatorDto self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_box_autoadd_verse_dto(
+    VerseDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_word_dto(WordDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_dashboard_stats_dto(
@@ -577,7 +648,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_debug_stats_dto(DebugStatsDto self, SseSerializer serializer);
 
   @protected
-  void sse_encode_exercise_dto(ExerciseDto self, SseSerializer serializer);
+  void sse_encode_exercise_data_dto(
+    ExerciseDataDto self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
@@ -589,8 +663,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_language_dto(LanguageDto self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_exercise_dto(
-    List<ExerciseDto> self,
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_exercise_data_dto(
+    List<ExerciseDataDto> self,
     SseSerializer serializer,
   );
 
@@ -616,6 +693,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_session_preview_dto(
     List<SessionPreviewDto> self,
     SseSerializer serializer,
@@ -634,6 +717,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_word_dto(List<WordDto> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_node_data(NodeData self, SseSerializer serializer);
+
+  @protected
   void sse_encode_node_search_dto(NodeSearchDto self, SseSerializer serializer);
 
   @protected
@@ -643,8 +732,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_node_data(
+    NodeData? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_translator_dto(
     TranslatorDto? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_verse_dto(
+    VerseDto? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_word_dto(
+    WordDto? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
     SseSerializer serializer,
   );
 
@@ -671,6 +784,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_verse_dto(VerseDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_word_dto(WordDto self, SseSerializer serializer);
 }
 
 // Section: wire_class
@@ -773,22 +892,6 @@ class RustLibWire implements BaseWire {
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
         ptr,
       );
-
-  void
-  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    int ptr,
-  ) => wasmModule
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-        ptr,
-      );
-
-  void
-  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    int ptr,
-  ) => wasmModule
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-        ptr,
-      );
 }
 
 @JS('wasm_bindgen')
@@ -854,16 +957,6 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
 
   external void
   rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository(
-    int ptr,
-  );
-
-  external void
-  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    int ptr,
-  );
-
-  external void
-  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
     int ptr,
   );
 }

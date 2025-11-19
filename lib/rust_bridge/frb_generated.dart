@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 1167316810;
+  int get rustContentHash => -1230076897;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -124,7 +124,9 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiClearSession();
 
-  Future<ExerciseData> crateApiGenerateExerciseV2({required String nodeId});
+  Future<NodeData?> crateApiFetchNodeWithMetadata({required String nodeId});
+
+  Future<ExerciseDataDto> crateApiGenerateExerciseV2({required String nodeId});
 
   Future<List<SurahInfo>> crateApiGetAvailableSurahs();
 
@@ -132,11 +134,15 @@ abstract class RustLibApi extends BaseApi {
 
   Future<DebugStatsDto> crateApiGetDebugStats({required String userId});
 
-  Future<List<ExerciseDto>> crateApiGetExercises({
+  Future<List<ExerciseDataDto>> crateApiGetExercises({
     required String userId,
     required int limit,
     int? surahFilter,
     required bool isHighYield,
+  });
+
+  Future<List<ExerciseDataDto>> crateApiGetExercisesForNode({
+    required String nodeId,
   });
 
   Future<List<LanguageDto>> crateApiGetLanguages();
@@ -155,10 +161,21 @@ abstract class RustLibApi extends BaseApi {
     required String languageCode,
   });
 
+  Future<VerseDto?> crateApiGetVerse({required String verseKey});
+
   Future<String?> crateApiGetVerseTranslationByTranslator({
     required String verseKey,
     required int translatorId,
   });
+
+  Future<WordDto?> crateApiGetWord({required int wordId});
+
+  Future<String?> crateApiGetWordTranslation({
+    required int wordId,
+    required int translatorId,
+  });
+
+  Future<List<WordDto>> crateApiGetWordsForVerse({required String verseKey});
 
   Future<void> crateApiInitApp();
 
@@ -237,14 +254,6 @@ abstract class RustLibApi extends BaseApi {
 
   CrossPlatformFinalizerArg
   get rust_arc_decrement_strong_count_ArcUserRepositoryPtr;
-
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_ExerciseData;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_ExerciseData;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ExerciseDataPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -623,7 +632,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "clear_session", argNames: []);
 
   @override
-  Future<ExerciseData> crateApiGenerateExerciseV2({required String nodeId}) {
+  Future<NodeData?> crateApiFetchNodeWithMetadata({required String nodeId}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -637,8 +646,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData,
+          decodeSuccessData: sse_decode_opt_box_autoadd_node_data,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiFetchNodeWithMetadataConstMeta,
+        argValues: [nodeId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiFetchNodeWithMetadataConstMeta =>
+      const TaskConstMeta(
+        debugName: "fetch_node_with_metadata",
+        argNames: ["nodeId"],
+      );
+
+  @override
+  Future<ExerciseDataDto> crateApiGenerateExerciseV2({required String nodeId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(nodeId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_exercise_data_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGenerateExerciseV2ConstMeta,
@@ -662,7 +701,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 14,
             port: port_,
           );
         },
@@ -692,7 +731,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 15,
             port: port_,
           );
         },
@@ -722,7 +761,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -741,7 +780,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_debug_stats", argNames: ["userId"]);
 
   @override
-  Future<List<ExerciseDto>> crateApiGetExercises({
+  Future<List<ExerciseDataDto>> crateApiGetExercises({
     required String userId,
     required int limit,
     int? surahFilter,
@@ -758,12 +797,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 17,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_exercise_dto,
+          decodeSuccessData: sse_decode_list_exercise_data_dto,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiGetExercisesConstMeta,
@@ -779,6 +818,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<List<ExerciseDataDto>> crateApiGetExercisesForNode({
+    required String nodeId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(nodeId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_exercise_data_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetExercisesForNodeConstMeta,
+        argValues: [nodeId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetExercisesForNodeConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_exercises_for_node",
+        argNames: ["nodeId"],
+      );
+
+  @override
   Future<List<LanguageDto>> crateApiGetLanguages() {
     return handler.executeNormal(
       NormalTask(
@@ -787,7 +859,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 19,
             port: port_,
           );
         },
@@ -814,7 +886,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 20,
             port: port_,
           );
         },
@@ -851,7 +923,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 21,
             port: port_,
           );
         },
@@ -881,7 +953,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 22,
             port: port_,
           );
         },
@@ -913,7 +985,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 23,
             port: port_,
           );
         },
@@ -935,6 +1007,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<VerseDto?> crateApiGetVerse({required String verseKey}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(verseKey, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 24,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_verse_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetVerseConstMeta,
+        argValues: [verseKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetVerseConstMeta =>
+      const TaskConstMeta(debugName: "get_verse", argNames: ["verseKey"]);
+
+  @override
   Future<String?> crateApiGetVerseTranslationByTranslator({
     required String verseKey,
     required int translatorId,
@@ -948,7 +1048,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 25,
             port: port_,
           );
         },
@@ -970,6 +1070,98 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<WordDto?> crateApiGetWord({required int wordId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_32(wordId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 26,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_word_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetWordConstMeta,
+        argValues: [wordId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetWordConstMeta =>
+      const TaskConstMeta(debugName: "get_word", argNames: ["wordId"]);
+
+  @override
+  Future<String?> crateApiGetWordTranslation({
+    required int wordId,
+    required int translatorId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_32(wordId, serializer);
+          sse_encode_i_32(translatorId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 27,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetWordTranslationConstMeta,
+        argValues: [wordId, translatorId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetWordTranslationConstMeta => const TaskConstMeta(
+    debugName: "get_word_translation",
+    argNames: ["wordId", "translatorId"],
+  );
+
+  @override
+  Future<List<WordDto>> crateApiGetWordsForVerse({required String verseKey}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(verseKey, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 28,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_word_dto,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiGetWordsForVerseConstMeta,
+        argValues: [verseKey],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetWordsForVerseConstMeta => const TaskConstMeta(
+    debugName: "get_words_for_verse",
+    argNames: ["verseKey"],
+  );
+
+  @override
   Future<void> crateApiInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -978,7 +1170,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1012,7 +1204,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1042,7 +1234,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1074,7 +1266,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 32,
             port: port_,
           );
         },
@@ -1104,7 +1296,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1141,7 +1333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 34,
             port: port_,
           );
         },
@@ -1171,7 +1363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1240,14 +1432,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   get rust_arc_decrement_strong_count_ArcUserRepository => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerArcdynUserRepository;
 
-  RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_ExerciseData => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData;
-
-  RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_ExerciseData => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData;
-
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -1309,15 +1493,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ExerciseData
-  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ExerciseDataImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
   AppState
   dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     dynamic raw,
@@ -1333,6 +1508,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return AppStateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Map<String, String> dco_decode_Map_String_String_None(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(
+      dco_decode_list_record_string_string(
+        raw,
+      ).map((e) => MapEntry(e.$1, e.$2)),
+    );
   }
 
   @protected
@@ -1390,15 +1575,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ExerciseData
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ExerciseDataImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
@@ -1417,9 +1593,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NodeData dco_decode_box_autoadd_node_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_node_data(raw);
+  }
+
+  @protected
   TranslatorDto dco_decode_box_autoadd_translator_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_translator_dto(raw);
+  }
+
+  @protected
+  VerseDto dco_decode_box_autoadd_verse_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_verse_dto(raw);
+  }
+
+  @protected
+  WordDto dco_decode_box_autoadd_word_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_word_dto(raw);
   }
 
   @protected
@@ -1449,18 +1643,103 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ExerciseDto dco_decode_exercise_dto(dynamic raw) {
+  ExerciseDataDto dco_decode_exercise_data_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
-    return ExerciseDto(
-      nodeId: dco_decode_String(arr[0]),
-      question: dco_decode_String(arr[1]),
-      answer: dco_decode_String(arr[2]),
-      nodeType: dco_decode_String(arr[3]),
-      translatorName: dco_decode_opt_String(arr[4]),
-    );
+    switch (raw[0]) {
+      case 0:
+        return ExerciseDataDto_Memorization(nodeId: dco_decode_String(raw[1]));
+      case 1:
+        return ExerciseDataDto_McqArToEn(
+          nodeId: dco_decode_String(raw[1]),
+          distractorNodeIds: dco_decode_list_String(raw[2]),
+        );
+      case 2:
+        return ExerciseDataDto_McqEnToAr(
+          nodeId: dco_decode_String(raw[1]),
+          distractorNodeIds: dco_decode_list_String(raw[2]),
+        );
+      case 3:
+        return ExerciseDataDto_Translation(nodeId: dco_decode_String(raw[1]));
+      case 4:
+        return ExerciseDataDto_ContextualTranslation(
+          nodeId: dco_decode_String(raw[1]),
+          verseKey: dco_decode_String(raw[2]),
+        );
+      case 5:
+        return ExerciseDataDto_ClozeDeletion(
+          nodeId: dco_decode_String(raw[1]),
+          blankPosition: dco_decode_i_32(raw[2]),
+        );
+      case 6:
+        return ExerciseDataDto_FirstLetterHint(
+          nodeId: dco_decode_String(raw[1]),
+          wordPosition: dco_decode_i_32(raw[2]),
+        );
+      case 7:
+        return ExerciseDataDto_MissingWordMcq(
+          nodeId: dco_decode_String(raw[1]),
+          blankPosition: dco_decode_i_32(raw[2]),
+          distractorNodeIds: dco_decode_list_String(raw[3]),
+        );
+      case 8:
+        return ExerciseDataDto_NextWordMcq(
+          nodeId: dco_decode_String(raw[1]),
+          contextPosition: dco_decode_i_32(raw[2]),
+          distractorNodeIds: dco_decode_list_String(raw[3]),
+        );
+      case 9:
+        return ExerciseDataDto_FullVerseInput(
+          nodeId: dco_decode_String(raw[1]),
+        );
+      case 10:
+        return ExerciseDataDto_AyahChain(
+          nodeId: dco_decode_String(raw[1]),
+          verseKeys: dco_decode_list_String(raw[2]),
+          currentIndex: dco_decode_usize(raw[3]),
+          completedCount: dco_decode_usize(raw[4]),
+        );
+      case 11:
+        return ExerciseDataDto_FindMistake(
+          nodeId: dco_decode_String(raw[1]),
+          mistakePosition: dco_decode_i_32(raw[2]),
+          correctWordNodeId: dco_decode_String(raw[3]),
+          incorrectWordNodeId: dco_decode_String(raw[4]),
+        );
+      case 12:
+        return ExerciseDataDto_AyahSequence(
+          nodeId: dco_decode_String(raw[1]),
+          correctSequence: dco_decode_list_String(raw[2]),
+        );
+      case 13:
+        return ExerciseDataDto_IdentifyRoot(
+          nodeId: dco_decode_String(raw[1]),
+          root: dco_decode_String(raw[2]),
+        );
+      case 14:
+        return ExerciseDataDto_ReverseCloze(
+          nodeId: dco_decode_String(raw[1]),
+          blankPosition: dco_decode_i_32(raw[2]),
+        );
+      case 15:
+        return ExerciseDataDto_TranslatePhrase(
+          nodeId: dco_decode_String(raw[1]),
+          translatorId: dco_decode_i_32(raw[2]),
+        );
+      case 16:
+        return ExerciseDataDto_PosTagging(
+          nodeId: dco_decode_String(raw[1]),
+          correctPos: dco_decode_String(raw[2]),
+          options: dco_decode_list_String(raw[3]),
+        );
+      case 17:
+        return ExerciseDataDto_CrossVerseConnection(
+          nodeId: dco_decode_String(raw[1]),
+          relatedVerseIds: dco_decode_list_String(raw[2]),
+          connectionTheme: dco_decode_String(raw[3]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -1490,9 +1769,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<ExerciseDto> dco_decode_list_exercise_dto(dynamic raw) {
+  List<String> dco_decode_list_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_exercise_dto).toList();
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<ExerciseDataDto> dco_decode_list_exercise_data_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_exercise_data_dto).toList();
   }
 
   @protected
@@ -1520,6 +1805,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> dco_decode_list_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_record_string_string).toList();
+  }
+
+  @protected
   List<SessionPreviewDto> dco_decode_list_session_preview_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_session_preview_dto).toList();
@@ -1535,6 +1826,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<TranslatorDto> dco_decode_list_translator_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_translator_dto).toList();
+  }
+
+  @protected
+  List<WordDto> dco_decode_list_word_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_word_dto).toList();
+  }
+
+  @protected
+  NodeData dco_decode_node_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return NodeData(
+      id: dco_decode_String(arr[0]),
+      nodeType: dco_decode_String(arr[1]),
+      metadata: dco_decode_Map_String_String_None(arr[2]),
+    );
   }
 
   @protected
@@ -1563,9 +1873,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NodeData? dco_decode_opt_box_autoadd_node_data(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_node_data(raw);
+  }
+
+  @protected
   TranslatorDto? dco_decode_opt_box_autoadd_translator_dto(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_translator_dto(raw);
+  }
+
+  @protected
+  VerseDto? dco_decode_opt_box_autoadd_verse_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_verse_dto(raw);
+  }
+
+  @protected
+  WordDto? dco_decode_opt_box_autoadd_word_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_word_dto(raw);
+  }
+
+  @protected
+  (String, String) dco_decode_record_string_string(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
   }
 
   @protected
@@ -1633,6 +1971,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt dco_decode_usize(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeU64(raw);
+  }
+
+  @protected
+  VerseDto dco_decode_verse_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return VerseDto(
+      key: dco_decode_String(arr[0]),
+      textUthmani: dco_decode_String(arr[1]),
+      chapterNumber: dco_decode_i_32(arr[2]),
+      verseNumber: dco_decode_i_32(arr[3]),
+    );
+  }
+
+  @protected
+  WordDto dco_decode_word_dto(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return WordDto(
+      id: dco_decode_i_32(arr[0]),
+      textUthmani: dco_decode_String(arr[1]),
+      verseKey: dco_decode_String(arr[2]),
+      position: dco_decode_i_32(arr[3]),
+    );
   }
 
   @protected
@@ -1715,18 +2081,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ExerciseData
-  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ExerciseDataImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
   AppState
   sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     SseDeserializer deserializer,
@@ -1748,6 +2102,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
+  }
+
+  @protected
+  Map<String, String> sse_decode_Map_String_String_None(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_string_string(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
@@ -1823,18 +2186,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ExerciseData
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ExerciseDataImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
-  }
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -1854,11 +2205,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NodeData sse_decode_box_autoadd_node_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_node_data(deserializer));
+  }
+
+  @protected
   TranslatorDto sse_decode_box_autoadd_translator_dto(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_translator_dto(deserializer));
+  }
+
+  @protected
+  VerseDto sse_decode_box_autoadd_verse_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_verse_dto(deserializer));
+  }
+
+  @protected
+  WordDto sse_decode_box_autoadd_word_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_word_dto(deserializer));
   }
 
   @protected
@@ -1890,20 +2259,141 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  ExerciseDto sse_decode_exercise_dto(SseDeserializer deserializer) {
+  ExerciseDataDto sse_decode_exercise_data_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_nodeId = sse_decode_String(deserializer);
-    var var_question = sse_decode_String(deserializer);
-    var var_answer = sse_decode_String(deserializer);
-    var var_nodeType = sse_decode_String(deserializer);
-    var var_translatorName = sse_decode_opt_String(deserializer);
-    return ExerciseDto(
-      nodeId: var_nodeId,
-      question: var_question,
-      answer: var_answer,
-      nodeType: var_nodeType,
-      translatorName: var_translatorName,
-    );
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_nodeId = sse_decode_String(deserializer);
+        return ExerciseDataDto_Memorization(nodeId: var_nodeId);
+      case 1:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_distractorNodeIds = sse_decode_list_String(deserializer);
+        return ExerciseDataDto_McqArToEn(
+          nodeId: var_nodeId,
+          distractorNodeIds: var_distractorNodeIds,
+        );
+      case 2:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_distractorNodeIds = sse_decode_list_String(deserializer);
+        return ExerciseDataDto_McqEnToAr(
+          nodeId: var_nodeId,
+          distractorNodeIds: var_distractorNodeIds,
+        );
+      case 3:
+        var var_nodeId = sse_decode_String(deserializer);
+        return ExerciseDataDto_Translation(nodeId: var_nodeId);
+      case 4:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_verseKey = sse_decode_String(deserializer);
+        return ExerciseDataDto_ContextualTranslation(
+          nodeId: var_nodeId,
+          verseKey: var_verseKey,
+        );
+      case 5:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_blankPosition = sse_decode_i_32(deserializer);
+        return ExerciseDataDto_ClozeDeletion(
+          nodeId: var_nodeId,
+          blankPosition: var_blankPosition,
+        );
+      case 6:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_wordPosition = sse_decode_i_32(deserializer);
+        return ExerciseDataDto_FirstLetterHint(
+          nodeId: var_nodeId,
+          wordPosition: var_wordPosition,
+        );
+      case 7:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_blankPosition = sse_decode_i_32(deserializer);
+        var var_distractorNodeIds = sse_decode_list_String(deserializer);
+        return ExerciseDataDto_MissingWordMcq(
+          nodeId: var_nodeId,
+          blankPosition: var_blankPosition,
+          distractorNodeIds: var_distractorNodeIds,
+        );
+      case 8:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_contextPosition = sse_decode_i_32(deserializer);
+        var var_distractorNodeIds = sse_decode_list_String(deserializer);
+        return ExerciseDataDto_NextWordMcq(
+          nodeId: var_nodeId,
+          contextPosition: var_contextPosition,
+          distractorNodeIds: var_distractorNodeIds,
+        );
+      case 9:
+        var var_nodeId = sse_decode_String(deserializer);
+        return ExerciseDataDto_FullVerseInput(nodeId: var_nodeId);
+      case 10:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_verseKeys = sse_decode_list_String(deserializer);
+        var var_currentIndex = sse_decode_usize(deserializer);
+        var var_completedCount = sse_decode_usize(deserializer);
+        return ExerciseDataDto_AyahChain(
+          nodeId: var_nodeId,
+          verseKeys: var_verseKeys,
+          currentIndex: var_currentIndex,
+          completedCount: var_completedCount,
+        );
+      case 11:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_mistakePosition = sse_decode_i_32(deserializer);
+        var var_correctWordNodeId = sse_decode_String(deserializer);
+        var var_incorrectWordNodeId = sse_decode_String(deserializer);
+        return ExerciseDataDto_FindMistake(
+          nodeId: var_nodeId,
+          mistakePosition: var_mistakePosition,
+          correctWordNodeId: var_correctWordNodeId,
+          incorrectWordNodeId: var_incorrectWordNodeId,
+        );
+      case 12:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_correctSequence = sse_decode_list_String(deserializer);
+        return ExerciseDataDto_AyahSequence(
+          nodeId: var_nodeId,
+          correctSequence: var_correctSequence,
+        );
+      case 13:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_root = sse_decode_String(deserializer);
+        return ExerciseDataDto_IdentifyRoot(nodeId: var_nodeId, root: var_root);
+      case 14:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_blankPosition = sse_decode_i_32(deserializer);
+        return ExerciseDataDto_ReverseCloze(
+          nodeId: var_nodeId,
+          blankPosition: var_blankPosition,
+        );
+      case 15:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_translatorId = sse_decode_i_32(deserializer);
+        return ExerciseDataDto_TranslatePhrase(
+          nodeId: var_nodeId,
+          translatorId: var_translatorId,
+        );
+      case 16:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_correctPos = sse_decode_String(deserializer);
+        var var_options = sse_decode_list_String(deserializer);
+        return ExerciseDataDto_PosTagging(
+          nodeId: var_nodeId,
+          correctPos: var_correctPos,
+          options: var_options,
+        );
+      case 17:
+        var var_nodeId = sse_decode_String(deserializer);
+        var var_relatedVerseIds = sse_decode_list_String(deserializer);
+        var var_connectionTheme = sse_decode_String(deserializer);
+        return ExerciseDataDto_CrossVerseConnection(
+          nodeId: var_nodeId,
+          relatedVerseIds: var_relatedVerseIds,
+          connectionTheme: var_connectionTheme,
+        );
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1934,13 +2424,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<ExerciseDto> sse_decode_list_exercise_dto(SseDeserializer deserializer) {
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <ExerciseDto>[];
+    var ans_ = <String>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_exercise_dto(deserializer));
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ExerciseDataDto> sse_decode_list_exercise_data_dto(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ExerciseDataDto>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_exercise_data_dto(deserializer));
     }
     return ans_;
   }
@@ -1986,6 +2490,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<(String, String)> sse_decode_list_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, String)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_string(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<SessionPreviewDto> sse_decode_list_session_preview_dto(
     SseDeserializer deserializer,
   ) {
@@ -2026,6 +2544,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<WordDto> sse_decode_list_word_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <WordDto>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_word_dto(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  NodeData sse_decode_node_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_nodeType = sse_decode_String(deserializer);
+    var var_metadata = sse_decode_Map_String_String_None(deserializer);
+    return NodeData(id: var_id, nodeType: var_nodeType, metadata: var_metadata);
+  }
+
+  @protected
   NodeSearchDto sse_decode_node_search_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_nodeId = sse_decode_String(deserializer);
@@ -2061,6 +2600,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  NodeData? sse_decode_opt_box_autoadd_node_data(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_node_data(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   TranslatorDto? sse_decode_opt_box_autoadd_translator_dto(
     SseDeserializer deserializer,
   ) {
@@ -2071,6 +2621,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
+  }
+
+  @protected
+  VerseDto? sse_decode_opt_box_autoadd_verse_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_verse_dto(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  WordDto? sse_decode_opt_box_autoadd_word_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_word_dto(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  (String, String) sse_decode_record_string_string(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_String(deserializer);
+    return (var_field0, var_field1);
   }
 
   @protected
@@ -2140,6 +2722,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  VerseDto sse_decode_verse_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_key = sse_decode_String(deserializer);
+    var var_textUthmani = sse_decode_String(deserializer);
+    var var_chapterNumber = sse_decode_i_32(deserializer);
+    var var_verseNumber = sse_decode_i_32(deserializer);
+    return VerseDto(
+      key: var_key,
+      textUthmani: var_textUthmani,
+      chapterNumber: var_chapterNumber,
+      verseNumber: var_verseNumber,
+    );
+  }
+
+  @protected
+  WordDto sse_decode_word_dto(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_32(deserializer);
+    var var_textUthmani = sse_decode_String(deserializer);
+    var var_verseKey = sse_decode_String(deserializer);
+    var var_position = sse_decode_i_32(deserializer);
+    return WordDto(
+      id: var_id,
+      textUthmani: var_textUthmani,
+      verseKey: var_verseKey,
+      position: var_position,
+    );
   }
 
   @protected
@@ -2231,19 +2843,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    ExerciseData self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as ExerciseDataImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
-  }
-
-  @protected
-  void
   sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
     AppState self,
     SseSerializer serializer,
@@ -2264,6 +2863,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as AppStateImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_Map_String_String_None(
+    Map<String, String> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_string(
+      self.entries.map((e) => (e.key, e.value)).toList(),
       serializer,
     );
   }
@@ -2347,19 +2958,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-    ExerciseData self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-      (self as ExerciseDataImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
-  }
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
@@ -2378,12 +2976,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_node_data(
+    NodeData self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_node_data(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_translator_dto(
     TranslatorDto self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_translator_dto(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_verse_dto(
+    VerseDto self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_verse_dto(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_word_dto(WordDto self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_word_dto(self, serializer);
   }
 
   @protected
@@ -2409,13 +3031,140 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_exercise_dto(ExerciseDto self, SseSerializer serializer) {
+  void sse_encode_exercise_data_dto(
+    ExerciseDataDto self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.nodeId, serializer);
-    sse_encode_String(self.question, serializer);
-    sse_encode_String(self.answer, serializer);
-    sse_encode_String(self.nodeType, serializer);
-    sse_encode_opt_String(self.translatorName, serializer);
+    switch (self) {
+      case ExerciseDataDto_Memorization(nodeId: final nodeId):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(nodeId, serializer);
+      case ExerciseDataDto_McqArToEn(
+        nodeId: final nodeId,
+        distractorNodeIds: final distractorNodeIds,
+      ):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_list_String(distractorNodeIds, serializer);
+      case ExerciseDataDto_McqEnToAr(
+        nodeId: final nodeId,
+        distractorNodeIds: final distractorNodeIds,
+      ):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_list_String(distractorNodeIds, serializer);
+      case ExerciseDataDto_Translation(nodeId: final nodeId):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(nodeId, serializer);
+      case ExerciseDataDto_ContextualTranslation(
+        nodeId: final nodeId,
+        verseKey: final verseKey,
+      ):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_String(verseKey, serializer);
+      case ExerciseDataDto_ClozeDeletion(
+        nodeId: final nodeId,
+        blankPosition: final blankPosition,
+      ):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(blankPosition, serializer);
+      case ExerciseDataDto_FirstLetterHint(
+        nodeId: final nodeId,
+        wordPosition: final wordPosition,
+      ):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(wordPosition, serializer);
+      case ExerciseDataDto_MissingWordMcq(
+        nodeId: final nodeId,
+        blankPosition: final blankPosition,
+        distractorNodeIds: final distractorNodeIds,
+      ):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(blankPosition, serializer);
+        sse_encode_list_String(distractorNodeIds, serializer);
+      case ExerciseDataDto_NextWordMcq(
+        nodeId: final nodeId,
+        contextPosition: final contextPosition,
+        distractorNodeIds: final distractorNodeIds,
+      ):
+        sse_encode_i_32(8, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(contextPosition, serializer);
+        sse_encode_list_String(distractorNodeIds, serializer);
+      case ExerciseDataDto_FullVerseInput(nodeId: final nodeId):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(nodeId, serializer);
+      case ExerciseDataDto_AyahChain(
+        nodeId: final nodeId,
+        verseKeys: final verseKeys,
+        currentIndex: final currentIndex,
+        completedCount: final completedCount,
+      ):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_list_String(verseKeys, serializer);
+        sse_encode_usize(currentIndex, serializer);
+        sse_encode_usize(completedCount, serializer);
+      case ExerciseDataDto_FindMistake(
+        nodeId: final nodeId,
+        mistakePosition: final mistakePosition,
+        correctWordNodeId: final correctWordNodeId,
+        incorrectWordNodeId: final incorrectWordNodeId,
+      ):
+        sse_encode_i_32(11, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(mistakePosition, serializer);
+        sse_encode_String(correctWordNodeId, serializer);
+        sse_encode_String(incorrectWordNodeId, serializer);
+      case ExerciseDataDto_AyahSequence(
+        nodeId: final nodeId,
+        correctSequence: final correctSequence,
+      ):
+        sse_encode_i_32(12, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_list_String(correctSequence, serializer);
+      case ExerciseDataDto_IdentifyRoot(nodeId: final nodeId, root: final root):
+        sse_encode_i_32(13, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_String(root, serializer);
+      case ExerciseDataDto_ReverseCloze(
+        nodeId: final nodeId,
+        blankPosition: final blankPosition,
+      ):
+        sse_encode_i_32(14, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(blankPosition, serializer);
+      case ExerciseDataDto_TranslatePhrase(
+        nodeId: final nodeId,
+        translatorId: final translatorId,
+      ):
+        sse_encode_i_32(15, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_i_32(translatorId, serializer);
+      case ExerciseDataDto_PosTagging(
+        nodeId: final nodeId,
+        correctPos: final correctPos,
+        options: final options,
+      ):
+        sse_encode_i_32(16, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_String(correctPos, serializer);
+        sse_encode_list_String(options, serializer);
+      case ExerciseDataDto_CrossVerseConnection(
+        nodeId: final nodeId,
+        relatedVerseIds: final relatedVerseIds,
+        connectionTheme: final connectionTheme,
+      ):
+        sse_encode_i_32(17, serializer);
+        sse_encode_String(nodeId, serializer);
+        sse_encode_list_String(relatedVerseIds, serializer);
+        sse_encode_String(connectionTheme, serializer);
+    }
   }
 
   @protected
@@ -2440,14 +3189,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_exercise_dto(
-    List<ExerciseDto> self,
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_exercise_data_dto(
+    List<ExerciseDataDto> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_exercise_dto(item, serializer);
+      sse_encode_exercise_data_dto(item, serializer);
     }
   }
 
@@ -2498,6 +3256,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_record_string_string(
+    List<(String, String)> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_string(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_session_preview_dto(
     List<SessionPreviewDto> self,
     SseSerializer serializer,
@@ -2534,6 +3304,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_word_dto(List<WordDto> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_word_dto(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_node_data(NodeData self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.nodeType, serializer);
+    sse_encode_Map_String_String_None(self.metadata, serializer);
+  }
+
+  @protected
   void sse_encode_node_search_dto(
     NodeSearchDto self,
     SseSerializer serializer,
@@ -2565,6 +3352,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_node_data(
+    NodeData? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_node_data(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_translator_dto(
     TranslatorDto? self,
     SseSerializer serializer,
@@ -2575,6 +3375,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_box_autoadd_translator_dto(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_verse_dto(
+    VerseDto? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_verse_dto(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_word_dto(
+    WordDto? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_word_dto(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_record_string_string(
+    (String, String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_String(self.$2, serializer);
   }
 
   @protected
@@ -2629,6 +3465,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
+  void sse_encode_verse_dto(VerseDto self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.key, serializer);
+    sse_encode_String(self.textUthmani, serializer);
+    sse_encode_i_32(self.chapterNumber, serializer);
+    sse_encode_i_32(self.verseNumber, serializer);
+  }
+
+  @protected
+  void sse_encode_word_dto(WordDto self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.id, serializer);
+    sse_encode_String(self.textUthmani, serializer);
+    sse_encode_String(self.verseKey, serializer);
+    sse_encode_i_32(self.position, serializer);
   }
 }
 
@@ -2816,25 +3670,5 @@ class ArcUserRepositoryImpl extends RustOpaque implements ArcUserRepository {
         .instance
         .api
         .rust_arc_decrement_strong_count_ArcUserRepositoryPtr,
-  );
-}
-
-@sealed
-class ExerciseDataImpl extends RustOpaque implements ExerciseData {
-  // Not to be used by end users
-  ExerciseDataImpl.frbInternalDcoDecode(List<dynamic> wire)
-    : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  ExerciseDataImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_ExerciseData,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_ExerciseData,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_ExerciseDataPtr,
   );
 }

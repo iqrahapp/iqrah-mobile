@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iqrah/features/exercises/widgets/exercise_container.dart';
 import 'package:iqrah/pages/session_summary_page.dart';
 import 'package:iqrah/providers/session_provider.dart';
-import 'package:iqrah/rust_bridge/exercises.dart';
+import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/rust_bridge/repository.dart';
 
 class ExcercisePage extends ConsumerStatefulWidget {
@@ -18,7 +19,6 @@ class ExcercisePage extends ConsumerStatefulWidget {
 class _ExcercisePageState extends ConsumerState<ExcercisePage>
     with WidgetsBindingObserver {
   bool _isAnswerVisible = false;
-  int? _selectedIndex; // for MCQ
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
   Duration _elapsed = Duration.zero;
@@ -27,35 +27,6 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
   Color? _feedbackColor;
   bool _showOverrideOptions = false;
   bool _isSubmittingAutoGrade = false;
-
-  String? _exerciseNodeId(Exercise? exercise) {
-    return exercise?.when(
-      recall: (nodeId, arabic, translation) => nodeId,
-      cloze: (nodeId, question, answer) => nodeId,
-      mcqArToEn:
-          (
-            nodeId,
-            arabic,
-            verseArabic,
-            surahNumber,
-            ayahNumber,
-            wordIndex,
-            choicesEn,
-            correctIndex,
-          ) => nodeId,
-      mcqEnToAr:
-          (
-            nodeId,
-            english,
-            verseArabic,
-            surahNumber,
-            ayahNumber,
-            wordIndex,
-            choicesAr,
-            correctIndex,
-          ) => nodeId,
-    );
-  }
 
   @override
   void initState() {
@@ -83,9 +54,7 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
             ),
           ),
         );
-      } else if (prev.currentIndex != next.currentIndex ||
-          _exerciseNodeId(prev.currentExercise) !=
-              _exerciseNodeId(next.currentExercise)) {
+      } else if (prev.currentIndex != next.currentIndex) {
         _handleExerciseChange(next);
       }
     });
@@ -124,7 +93,6 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     if (!mounted) return;
     setState(() {
       _isAnswerVisible = false;
-      _selectedIndex = null;
       _autoGrade = null;
       _feedbackLabel = null;
       _feedbackColor = null;
@@ -177,9 +145,6 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
   }
 
   void _resumeTimerForLifecycle() {
-    if (_isAnswerVisible || _autoGrade != null) {
-      return;
-    }
     final currentExercise = ref.read(sessionProvider).currentExercise;
     if (currentExercise == null) {
       return;
@@ -190,9 +155,8 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     _startTimer(reset: false);
   }
 
-  void _handleMcqSelection(int selectedIndex, int correctIndex) {
+  void _handleCompletion(bool isCorrect) {
     final elapsedNow = _stopwatch.elapsed;
-    final isCorrect = selectedIndex == correctIndex;
     final grade = _computeAutoGrade(isCorrect, elapsedNow);
     final feedback = _feedbackTextFor(grade, isCorrect: isCorrect);
     final feedbackColor = _colorForGrade(grade);
@@ -200,7 +164,6 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     _stopTimer();
     setState(() {
       _elapsed = elapsedNow;
-      _selectedIndex = selectedIndex;
       _isAnswerVisible = true;
       _autoGrade = grade;
       _feedbackLabel = feedback;
@@ -220,7 +183,25 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     });
 
     try {
-      await ref.read(sessionProvider.notifier).submitReview(grade);
+      // Map ReviewGrade to int for API
+      // Assuming 1=Again, 2=Hard, 3=Good, 4=Easy
+      int gradeInt = 3;
+      switch (grade) {
+        case ReviewGrade.again:
+          gradeInt = 1;
+          break;
+        case ReviewGrade.hard:
+          gradeInt = 2;
+          break;
+        case ReviewGrade.good:
+          gradeInt = 3;
+          break;
+        case ReviewGrade.easy:
+          gradeInt = 4;
+          break;
+      }
+
+      await ref.read(sessionProvider.notifier).submitReview(gradeInt);
     } finally {
       if (mounted) {
         setState(() {
@@ -253,7 +234,6 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
   }
 
   Widget _buildLoadingState() {
-    // ... (This widget is unchanged)
     return const Center(
       key: ValueKey('loading'),
       child: Column(
@@ -267,59 +247,30 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     );
   }
 
-  Widget _buildExerciseContent(Exercise currentItem, ThemeData theme) {
-    // ... (This widget is unchanged)
+  Widget _buildExerciseContent(api.ExerciseDataDto currentItem, ThemeData theme) {
     return Column(
       key: const ValueKey('content'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildTimerIndicator(theme),
         const SizedBox(height: 16),
-        Expanded(child: _buildExerciseCard(currentItem, theme)),
+        Expanded(
+          child: Card(
+            elevation: 4.0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ExerciseContainer(
+                exercise: currentItem,
+                onComplete: _handleCompletion,
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: 24),
         _buildActionButtons(),
       ],
-    );
-  }
-
-  Widget _buildTimerIndicator(ThemeData theme) {
-    final projectedGrade = _autoGrade ?? _gradeForElapsed(_elapsed);
-    final color = _colorForGrade(projectedGrade);
-    final background = color.withValues(alpha: 0.12);
-    final timeLabel = _formatElapsed(_elapsed);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.timer_rounded, color: color),
-          const SizedBox(width: 8),
-          Text(
-            '$timeLabel s',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            _autoGrade != null
-                ? 'Auto: ${_labelForGrade(projectedGrade)}'
-                : 'Target: ${_labelForGrade(projectedGrade)}',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -384,296 +335,42 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     }
   }
 
-  // MODIFIED to build different content for question and answer
-  Widget _buildExerciseCard(Exercise currentItem, ThemeData theme) {
-    return Card(
-      elevation: 4.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        transitionBuilder: (child, animation) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        child: _isAnswerVisible
-            ? _buildCardFace(
-                "Answer",
-                theme,
-                key: const ValueKey('answer'),
-                content: currentItem.when(
-                  recall: (nodeId, arabic, translation) => _buildPlainText(
-                    translation,
-                    theme,
-                    style: theme.textTheme.headlineSmall,
-                  ),
-                  cloze: (nodeId, question, answer) =>
-                      _buildPlainText(answer, theme, isArabic: true),
-                  mcqArToEn:
-                      (
-                        nodeId,
-                        arabic,
-                        verseArabic,
-                        surahNumber,
-                        ayahNumber,
-                        wordIndex,
-                        choicesEn,
-                        correctIndex,
-                      ) => _buildMcqAnswer(
-                        theme,
-                        selectedIndex: _selectedIndex,
-                        correctIndex: correctIndex,
-                        correctLabel: choicesEn[correctIndex],
-                        verseArabic: verseArabic,
-                        wordIndex: wordIndex,
-                      ),
-                  mcqEnToAr:
-                      (
-                        nodeId,
-                        english,
-                        verseArabic,
-                        surahNumber,
-                        ayahNumber,
-                        wordIndex,
-                        choicesAr,
-                        correctIndex,
-                      ) => _buildMcqAnswer(
-                        theme,
-                        selectedIndex: _selectedIndex,
-                        correctIndex: correctIndex,
-                        correctLabel: choicesAr[correctIndex],
-                        verseArabic: verseArabic,
-                        wordIndex: wordIndex,
-                        isArabic: true,
-                      ),
-                ),
-              )
-            : _buildCardFace(
-                "Question",
-                theme,
-                key: const ValueKey('question'),
-                content: currentItem.when(
-                  recall: (nodeId, arabic, translation) => _buildPlainText(
-                    arabic,
-                    theme,
-                    isArabic: true,
-                    style: theme.textTheme.displaySmall?.copyWith(
-                      fontFamily: 'Amiri',
-                      height: 1.5,
-                    ),
-                  ),
-                  cloze: (nodeId, question, answer) =>
-                      _buildPlainText(question, theme, isArabic: true),
-                  mcqArToEn:
-                      (
-                        nodeId,
-                        arabic,
-                        verseArabic,
-                        surahNumber,
-                        ayahNumber,
-                        wordIndex,
-                        choicesEn,
-                        correctIndex,
-                      ) => _buildMcqQuestion(
-                        theme,
-                        verseArabic: verseArabic,
-                        wordIndex: wordIndex,
-                        prompt: arabic,
-                        choices: choicesEn,
-                        isArabicChoices: false,
-                        onSelect: (index) =>
-                            _handleMcqSelection(index, correctIndex),
-                      ),
-                  mcqEnToAr:
-                      (
-                        nodeId,
-                        english,
-                        verseArabic,
-                        surahNumber,
-                        ayahNumber,
-                        wordIndex,
-                        choicesAr,
-                        correctIndex,
-                      ) => _buildMcqQuestion(
-                        theme,
-                        verseArabic: verseArabic,
-                        wordIndex: wordIndex,
-                        prompt: english,
-                        choices: choicesAr,
-                        isArabicChoices: true,
-                        onSelect: (index) =>
-                            _handleMcqSelection(index, correctIndex),
-                      ),
-                ),
-              ),
+  Widget _buildTimerIndicator(ThemeData theme) {
+    final projectedGrade = _autoGrade ?? _gradeForElapsed(_elapsed);
+    final color = _colorForGrade(projectedGrade);
+    final background = color.withValues(alpha: 0.12);
+    final timeLabel = _formatElapsed(_elapsed);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
       ),
-    );
-  }
-
-  Widget _buildPlainText(
-    String text,
-    ThemeData theme, {
-    bool isArabic = false,
-    TextStyle? style,
-  }) {
-    return Text(
-      text,
-      textAlign: TextAlign.center,
-      textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
-      style:
-          style ??
-          (isArabic
-              ? theme.textTheme.headlineMedium?.copyWith(fontFamily: 'Amiri')
-              : theme.textTheme.headlineSmall),
-    );
-  }
-
-  Widget _buildMcqQuestion(
-    ThemeData theme, {
-    required String verseArabic,
-    required int wordIndex,
-    required String prompt,
-    required List<String> choices,
-    required bool isArabicChoices,
-    required void Function(int index) onSelect,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildHighlightedVerse(verseArabic, wordIndex, theme),
-        const SizedBox(height: 16),
-        Text(
-          isArabicChoices ? prompt : 'What is the meaning of: $prompt',
-          style: theme.textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        ...List.generate(choices.length, (i) {
-          final choice = choices[i];
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: OutlinedButton(
-              onPressed: () => onSelect(i),
-              style: OutlinedButton.styleFrom(
-                alignment: isArabicChoices
-                    ? Alignment.centerRight
-                    : Alignment.center,
-              ),
-              child: Text(
-                choice,
-                style:
-                    (isArabicChoices
-                            ? theme.textTheme.titleLarge?.copyWith(
-                                fontFamily: 'Amiri',
-                              )
-                            : theme.textTheme.titleMedium)
-                        ?.copyWith(height: 1.4),
-                textAlign: isArabicChoices ? TextAlign.right : TextAlign.center,
-                textDirection: isArabicChoices
-                    ? TextDirection.rtl
-                    : TextDirection.ltr,
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildMcqAnswer(
-    ThemeData theme, {
-    required int? selectedIndex,
-    required int correctIndex,
-    required String correctLabel,
-    required String verseArabic,
-    required int wordIndex,
-    bool isArabic = false,
-  }) {
-    final isCorrect =
-        (selectedIndex != null) && (selectedIndex == correctIndex);
-    final color = isCorrect ? Colors.green : Colors.red;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildHighlightedVerse(verseArabic, wordIndex, theme),
-        const SizedBox(height: 16),
-        if (selectedIndex != null)
-          Text(
-            isCorrect ? 'Correct' : 'Incorrect',
-            style: theme.textTheme.titleMedium?.copyWith(color: color),
-          ),
-        const SizedBox(height: 8),
-        Text(
-          'Answer: $correctLabel',
-          style:
-              (isArabic
-                      ? theme.textTheme.titleLarge?.copyWith(
-                          fontFamily: 'Amiri',
-                        )
-                      : theme.textTheme.titleMedium)
-                  ?.copyWith(height: 1.4),
-          textAlign: isArabic ? TextAlign.right : TextAlign.center,
-          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHighlightedVerse(
-    String verseArabic,
-    int wordIndex,
-    ThemeData theme,
-  ) {
-    final words = verseArabic.split(RegExp(r"\s+"));
-    final idx = (wordIndex - 1).clamp(0, words.length - 1);
-    return Wrap(
-      alignment: WrapAlignment.center,
-      textDirection: TextDirection.rtl,
-      runSpacing: 4,
-      spacing: 6,
-      children: [
-        for (var i = 0; i < words.length; i++)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: i == idx
-                ? BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            child: Text(
-              words[i],
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontFamily: 'Amiri',
-                height: 1.6,
-              ),
-              textDirection: TextDirection.rtl,
-            ),
-          ),
-      ],
-    );
-  }
-
-  // MODIFIED to accept a generic `content` widget
-  Widget _buildCardFace(
-    String label,
-    ThemeData theme, {
-    required Widget content,
-    Key? key,
-  }) {
-    return Container(
-      key: key,
-      width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(Icons.timer_rounded, color: color),
+          const SizedBox(width: 8),
           Text(
-            label,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.secondary,
+            '$timeLabel s',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 16),
-          content, // Display the passed-in content widget
+          const SizedBox(width: 12),
+          Text(
+            _autoGrade != null
+                ? 'Auto: ${_labelForGrade(projectedGrade)}'
+                : 'Target: ${_labelForGrade(projectedGrade)}',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -701,8 +398,8 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
       child: showAutoControls
           ? _buildAutoContinueControls()
           : _isAnswerVisible
-          ? _buildGradeButtonsRow()
-          : _buildShowAnswerButton(),
+              ? _buildGradeButtonsRow()
+              : _buildShowAnswerButton(),
     );
   }
 
@@ -746,9 +443,9 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
           child: Text(
             label,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ),
         const SizedBox(height: 8),
@@ -803,8 +500,24 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          onPressed: () {
-            ref.read(sessionProvider.notifier).submitReview(grade);
+          onPressed: () async {
+            // Map ReviewGrade to int
+            int gradeInt = 3;
+            switch (grade) {
+              case ReviewGrade.again:
+                gradeInt = 1;
+                break;
+              case ReviewGrade.hard:
+                gradeInt = 2;
+                break;
+              case ReviewGrade.good:
+                gradeInt = 3;
+                break;
+              case ReviewGrade.easy:
+                gradeInt = 4;
+                break;
+            }
+            await ref.read(sessionProvider.notifier).submitReview(gradeInt);
           },
           child: Text(title),
         ),

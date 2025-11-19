@@ -28,10 +28,17 @@ Future<void> main() async {
 
   final dbPath = await getDatabasePath();
   print('db path: $dbPath');
-  // final initMsg = await initDatabase(dbPath: dbPath);
   final bytes = assetData.buffer.asUint8List();
-  // final initMsg = await setupDatabaseInMemory(kgBytes: bytes);
-  final initMsg = await setupDatabase(dbPath: dbPath, kgBytes: bytes);
+  
+  // setupDatabase now requires contentDbPath and userDbPath separately
+  final contentDbPath = "$dbPath/content.db";
+  final userDbPath = "$dbPath/user.db";
+  
+  final initMsg = await setupDatabase(
+    contentDbPath: contentDbPath,
+    userDbPath: userDbPath,
+    kgBytes: bytes,
+  );
   print(initMsg);
 
   runApp(const ProviderScope(child: MyApp()));

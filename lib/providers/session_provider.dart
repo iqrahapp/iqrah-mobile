@@ -2,23 +2,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
-import 'package:iqrah/rust_bridge/exercises.dart';
-import 'package:iqrah/rust_bridge/repository.dart';
 
 class SessionState {
-  final List<Exercise> exercises;
+  final List<api.ExerciseDataDto> exercises;
   final int currentIndex;
 
   SessionState({this.exercises = const [], this.currentIndex = 0});
 
-  SessionState copyWith({List<Exercise>? exercises, int? currentIndex}) {
+  SessionState copyWith({List<api.ExerciseDataDto>? exercises, int? currentIndex}) {
     return SessionState(
       exercises: exercises ?? this.exercises,
       currentIndex: currentIndex ?? this.currentIndex,
     );
   }
 
-  Exercise? get currentExercise {
+  api.ExerciseDataDto? get currentExercise {
     if (exercises.isEmpty || currentIndex >= exercises.length) return null;
     return exercises[currentIndex];
   }
@@ -34,49 +32,46 @@ class SessionNotifier extends Notifier<SessionState> {
     return SessionState();
   }
 
-  void startReview(List<Exercise> exercises) {
+  void startReview(List<api.ExerciseDataDto> exercises) {
     state = state.copyWith(exercises: exercises, currentIndex: 0);
   }
 
-  Future<void> submitReview(ReviewGrade grade) async {
+  Future<void> submitReview(int grade) async {
     final exercise = state.currentExercise;
     if (exercise == null) return;
 
     try {
-      final nodeId = exercise.when(
-        recall: (nodeId, arabic, translation) => nodeId,
-        cloze: (nodeId, question, answer) => nodeId,
-        mcqArToEn:
-            (
-              nodeId,
-              arabic,
-              verseArabic,
-              surahNumber,
-              ayahNumber,
-              wordIndex,
-              choicesEn,
-              correctIndex,
-            ) => nodeId,
-        mcqEnToAr:
-            (
-              nodeId,
-              english,
-              verseArabic,
-              surahNumber,
-              ayahNumber,
-              wordIndex,
-              choicesAr,
-              correctIndex,
-            ) => nodeId,
+      // Extract nodeId from any variant
+      final nodeId = exercise.map(
+        memorization: (e) => e.nodeId,
+        mcqArToEn: (e) => e.nodeId,
+        mcqEnToAr: (e) => e.nodeId,
+        translation: (e) => e.nodeId,
+        contextualTranslation: (e) => e.nodeId,
+        clozeDeletion: (e) => e.nodeId,
+        firstLetterHint: (e) => e.nodeId,
+        missingWordMcq: (e) => e.nodeId,
+        nextWordMcq: (e) => e.nodeId,
+        fullVerseInput: (e) => e.nodeId,
+        ayahChain: (e) => e.nodeId,
+        findMistake: (e) => e.nodeId,
+        ayahSequence: (e) => e.nodeId,
+        identifyRoot: (e) => e.nodeId,
+        reverseCloze: (e) => e.nodeId,
+        translatePhrase: (e) => e.nodeId,
+        posTagging: (e) => e.nodeId,
+        crossVerseConnection: (e) => e.nodeId,
       );
+
       await api.processReview(
         userId: "default_user",
-        nodeId: nodeId, // Note: nodeId instead of id
+        nodeId: nodeId,
         grade: grade,
       );
 
-      // Invalidate stats to refresh the dashboard
+      // Invalidate stats and due items to refresh the dashboard/session
       ref.invalidate(dashboardStatsProvider);
+      ref.invalidate(exercisesProvider);
 
       state = state.copyWith(currentIndex: state.currentIndex + 1);
     } catch (e) {

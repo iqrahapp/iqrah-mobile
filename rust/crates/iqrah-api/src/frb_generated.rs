@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1167316810;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1230076897;
 
 // Section: executor
 
@@ -566,6 +566,42 @@ fn wire__crate__api__clear_session_impl(
         },
     )
 }
+fn wire__crate__api__fetch_node_with_metadata_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "fetch_node_with_metadata",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_node_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::fetch_node_with_metadata(api_node_id).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__generate_exercise_v2_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -746,6 +782,42 @@ fn wire__crate__api__get_exercises_impl(
                             api_is_high_yield,
                         )
                         .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__get_exercises_for_node_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_exercises_for_node",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_node_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::get_exercises_for_node(api_node_id).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -940,6 +1012,42 @@ fn wire__crate__api__get_translators_for_language_impl(
         },
     )
 }
+fn wire__crate__api__get_verse_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_verse",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_verse_key = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::get_verse(api_verse_key).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__get_verse_translation_by_translator_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -973,6 +1081,117 @@ fn wire__crate__api__get_verse_translation_by_translator_impl(
                             api_translator_id,
                         )
                         .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__get_word_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_word",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_word_id = <i32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::get_word(api_word_id).await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__get_word_translation_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_word_translation",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_word_id = <i32>::sse_decode(&mut deserializer);
+            let api_translator_id = <i32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::get_word_translation(api_word_id, api_translator_id)
+                                .await?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__get_words_for_verse_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "get_words_for_verse",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_verse_key = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::get_words_for_verse(api_verse_key).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -1264,9 +1483,6 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc<dyn UserRepository>>
 );
-flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
-    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>
-);
 
 // Section: dart2rust
 
@@ -1338,13 +1554,11 @@ impl SseDecode for Arc<dyn UserRepository> {
     }
 }
 
-impl SseDecode for ExerciseData {
+impl SseDecode for std::collections::HashMap<String, String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>,
-        >>::sse_decode(deserializer);
-        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+        let mut inner = <Vec<(String, String)>>::sse_decode(deserializer);
+        return inner.into_iter().collect();
     }
 }
 
@@ -1412,16 +1626,6 @@ impl SseDecode
     }
 }
 
-impl SseDecode
-    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>
-{
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <usize>::sse_decode(deserializer);
-        return decode_rust_opaque_moi(inner);
-    }
-}
-
 impl SseDecode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1465,21 +1669,169 @@ impl SseDecode for crate::api::DebugStatsDto {
     }
 }
 
-impl SseDecode for crate::api::ExerciseDto {
+impl SseDecode for crate::api::ExerciseDataDto {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_nodeId = <String>::sse_decode(deserializer);
-        let mut var_question = <String>::sse_decode(deserializer);
-        let mut var_answer = <String>::sse_decode(deserializer);
-        let mut var_nodeType = <String>::sse_decode(deserializer);
-        let mut var_translatorName = <Option<String>>::sse_decode(deserializer);
-        return crate::api::ExerciseDto {
-            node_id: var_nodeId,
-            question: var_question,
-            answer: var_answer,
-            node_type: var_nodeType,
-            translator_name: var_translatorName,
-        };
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::Memorization {
+                    node_id: var_nodeId,
+                };
+            }
+            1 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_distractorNodeIds = <Vec<String>>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::McqArToEn {
+                    node_id: var_nodeId,
+                    distractor_node_ids: var_distractorNodeIds,
+                };
+            }
+            2 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_distractorNodeIds = <Vec<String>>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::McqEnToAr {
+                    node_id: var_nodeId,
+                    distractor_node_ids: var_distractorNodeIds,
+                };
+            }
+            3 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::Translation {
+                    node_id: var_nodeId,
+                };
+            }
+            4 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_verseKey = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::ContextualTranslation {
+                    node_id: var_nodeId,
+                    verse_key: var_verseKey,
+                };
+            }
+            5 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_blankPosition = <i32>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::ClozeDeletion {
+                    node_id: var_nodeId,
+                    blank_position: var_blankPosition,
+                };
+            }
+            6 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_wordPosition = <i32>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::FirstLetterHint {
+                    node_id: var_nodeId,
+                    word_position: var_wordPosition,
+                };
+            }
+            7 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_blankPosition = <i32>::sse_decode(deserializer);
+                let mut var_distractorNodeIds = <Vec<String>>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::MissingWordMcq {
+                    node_id: var_nodeId,
+                    blank_position: var_blankPosition,
+                    distractor_node_ids: var_distractorNodeIds,
+                };
+            }
+            8 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_contextPosition = <i32>::sse_decode(deserializer);
+                let mut var_distractorNodeIds = <Vec<String>>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::NextWordMcq {
+                    node_id: var_nodeId,
+                    context_position: var_contextPosition,
+                    distractor_node_ids: var_distractorNodeIds,
+                };
+            }
+            9 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::FullVerseInput {
+                    node_id: var_nodeId,
+                };
+            }
+            10 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_verseKeys = <Vec<String>>::sse_decode(deserializer);
+                let mut var_currentIndex = <usize>::sse_decode(deserializer);
+                let mut var_completedCount = <usize>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::AyahChain {
+                    node_id: var_nodeId,
+                    verse_keys: var_verseKeys,
+                    current_index: var_currentIndex,
+                    completed_count: var_completedCount,
+                };
+            }
+            11 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_mistakePosition = <i32>::sse_decode(deserializer);
+                let mut var_correctWordNodeId = <String>::sse_decode(deserializer);
+                let mut var_incorrectWordNodeId = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::FindMistake {
+                    node_id: var_nodeId,
+                    mistake_position: var_mistakePosition,
+                    correct_word_node_id: var_correctWordNodeId,
+                    incorrect_word_node_id: var_incorrectWordNodeId,
+                };
+            }
+            12 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_correctSequence = <Vec<String>>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::AyahSequence {
+                    node_id: var_nodeId,
+                    correct_sequence: var_correctSequence,
+                };
+            }
+            13 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_root = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::IdentifyRoot {
+                    node_id: var_nodeId,
+                    root: var_root,
+                };
+            }
+            14 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_blankPosition = <i32>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::ReverseCloze {
+                    node_id: var_nodeId,
+                    blank_position: var_blankPosition,
+                };
+            }
+            15 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_translatorId = <i32>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::TranslatePhrase {
+                    node_id: var_nodeId,
+                    translator_id: var_translatorId,
+                };
+            }
+            16 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_correctPos = <String>::sse_decode(deserializer);
+                let mut var_options = <Vec<String>>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::PosTagging {
+                    node_id: var_nodeId,
+                    correct_pos: var_correctPos,
+                    options: var_options,
+                };
+            }
+            17 => {
+                let mut var_nodeId = <String>::sse_decode(deserializer);
+                let mut var_relatedVerseIds = <Vec<String>>::sse_decode(deserializer);
+                let mut var_connectionTheme = <String>::sse_decode(deserializer);
+                return crate::api::ExerciseDataDto::CrossVerseConnection {
+                    node_id: var_nodeId,
+                    related_verse_ids: var_relatedVerseIds,
+                    connection_theme: var_connectionTheme,
+                };
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -1513,13 +1865,25 @@ impl SseDecode for crate::api::LanguageDto {
     }
 }
 
-impl SseDecode for Vec<crate::api::ExerciseDto> {
+impl SseDecode for Vec<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::ExerciseDto>::sse_decode(deserializer));
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::ExerciseDataDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::ExerciseDataDto>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1561,6 +1925,18 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<(String, String)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<(String, String)>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::SessionPreviewDto> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1594,6 +1970,33 @@ impl SseDecode for Vec<crate::api::TranslatorDto> {
             ans_.push(<crate::api::TranslatorDto>::sse_decode(deserializer));
         }
         return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::WordDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = vec![];
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::WordDto>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for crate::api::NodeData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_nodeType = <String>::sse_decode(deserializer);
+        let mut var_metadata =
+            <std::collections::HashMap<String, String>>::sse_decode(deserializer);
+        return crate::api::NodeData {
+            id: var_id,
+            node_type: var_nodeType,
+            metadata: var_metadata,
+        };
     }
 }
 
@@ -1633,6 +2036,17 @@ impl SseDecode for Option<i32> {
     }
 }
 
+impl SseDecode for Option<crate::api::NodeData> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::NodeData>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::TranslatorDto> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1641,6 +2055,37 @@ impl SseDecode for Option<crate::api::TranslatorDto> {
         } else {
             return None;
         }
+    }
+}
+
+impl SseDecode for Option<crate::api::VerseDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::VerseDto>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::WordDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::WordDto>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for (String, String) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_field0 = <String>::sse_decode(deserializer);
+        let mut var_field1 = <String>::sse_decode(deserializer);
+        return (var_field0, var_field1);
     }
 }
 
@@ -1720,6 +2165,38 @@ impl SseDecode for usize {
     }
 }
 
+impl SseDecode for crate::api::VerseDto {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_key = <String>::sse_decode(deserializer);
+        let mut var_textUthmani = <String>::sse_decode(deserializer);
+        let mut var_chapterNumber = <i32>::sse_decode(deserializer);
+        let mut var_verseNumber = <i32>::sse_decode(deserializer);
+        return crate::api::VerseDto {
+            key: var_key,
+            text_uthmani: var_textUthmani,
+            chapter_number: var_chapterNumber,
+            verse_number: var_verseNumber,
+        };
+    }
+}
+
+impl SseDecode for crate::api::WordDto {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <i32>::sse_decode(deserializer);
+        let mut var_textUthmani = <String>::sse_decode(deserializer);
+        let mut var_verseKey = <String>::sse_decode(deserializer);
+        let mut var_position = <i32>::sse_decode(deserializer);
+        return crate::api::WordDto {
+            id: var_id,
+            text_uthmani: var_textUthmani,
+            verse_key: var_verseKey,
+            position: var_position,
+        };
+    }
+}
+
 fn pde_ffi_dispatcher_primary_impl(
     func_id: i32,
     port: flutter_rust_bridge::for_generated::MessagePort,
@@ -1730,31 +2207,37 @@ fn pde_ffi_dispatcher_primary_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         11 => wire__crate__api__clear_session_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__generate_exercise_v2_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__get_available_surahs_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__get_dashboard_stats_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__get_debug_stats_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__get_exercises_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__get_languages_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__get_preferred_translator_id_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__get_session_preview_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__get_translator_impl(port, ptr, rust_vec_len, data_len),
-        21 => {
+        12 => wire__crate__api__fetch_node_with_metadata_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__generate_exercise_v2_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__get_available_surahs_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__get_dashboard_stats_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__get_debug_stats_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__get_exercises_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__get_exercises_for_node_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__get_languages_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__get_preferred_translator_id_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__get_session_preview_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__get_translator_impl(port, ptr, rust_vec_len, data_len),
+        23 => {
             wire__crate__api__get_translators_for_language_impl(port, ptr, rust_vec_len, data_len)
         }
-        22 => wire__crate__api__get_verse_translation_by_translator_impl(
+        24 => wire__crate__api__get_verse_impl(port, ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__get_verse_translation_by_translator_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        23 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__search_nodes_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__set_preferred_translator_id_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__get_word_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__get_word_translation_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__get_words_for_verse_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__init_app_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__process_review_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__reseed_database_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__search_nodes_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__set_preferred_translator_id_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__setup_database_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__setup_database_in_memory_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1929,21 +2412,6 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Arc<dyn UserRepository>>>
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for FrbWrapper<ExerciseData> {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
-            .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<ExerciseData> {}
-
-impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<ExerciseData>> for ExerciseData {
-    fn into_into_dart(self) -> FrbWrapper<ExerciseData> {
-        self.into()
-    }
-}
-
-// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::DashboardStatsDto {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1980,21 +2448,174 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::DebugStatsDto> for crate::api
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::ExerciseDto {
+impl flutter_rust_bridge::IntoDart for crate::api::ExerciseDataDto {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.node_id.into_into_dart().into_dart(),
-            self.question.into_into_dart().into_dart(),
-            self.answer.into_into_dart().into_dart(),
-            self.node_type.into_into_dart().into_dart(),
-            self.translator_name.into_into_dart().into_dart(),
-        ]
-        .into_dart()
+        match self {
+            crate::api::ExerciseDataDto::Memorization { node_id } => {
+                [0.into_dart(), node_id.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::ExerciseDataDto::McqArToEn {
+                node_id,
+                distractor_node_ids,
+            } => [
+                1.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                distractor_node_ids.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::McqEnToAr {
+                node_id,
+                distractor_node_ids,
+            } => [
+                2.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                distractor_node_ids.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::Translation { node_id } => {
+                [3.into_dart(), node_id.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::ExerciseDataDto::ContextualTranslation { node_id, verse_key } => [
+                4.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                verse_key.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::ClozeDeletion {
+                node_id,
+                blank_position,
+            } => [
+                5.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                blank_position.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::FirstLetterHint {
+                node_id,
+                word_position,
+            } => [
+                6.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                word_position.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::MissingWordMcq {
+                node_id,
+                blank_position,
+                distractor_node_ids,
+            } => [
+                7.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                blank_position.into_into_dart().into_dart(),
+                distractor_node_ids.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::NextWordMcq {
+                node_id,
+                context_position,
+                distractor_node_ids,
+            } => [
+                8.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                context_position.into_into_dart().into_dart(),
+                distractor_node_ids.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::FullVerseInput { node_id } => {
+                [9.into_dart(), node_id.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::ExerciseDataDto::AyahChain {
+                node_id,
+                verse_keys,
+                current_index,
+                completed_count,
+            } => [
+                10.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                verse_keys.into_into_dart().into_dart(),
+                current_index.into_into_dart().into_dart(),
+                completed_count.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::FindMistake {
+                node_id,
+                mistake_position,
+                correct_word_node_id,
+                incorrect_word_node_id,
+            } => [
+                11.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                mistake_position.into_into_dart().into_dart(),
+                correct_word_node_id.into_into_dart().into_dart(),
+                incorrect_word_node_id.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::AyahSequence {
+                node_id,
+                correct_sequence,
+            } => [
+                12.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                correct_sequence.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::IdentifyRoot { node_id, root } => [
+                13.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                root.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::ReverseCloze {
+                node_id,
+                blank_position,
+            } => [
+                14.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                blank_position.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::TranslatePhrase {
+                node_id,
+                translator_id,
+            } => [
+                15.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                translator_id.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::PosTagging {
+                node_id,
+                correct_pos,
+                options,
+            } => [
+                16.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                correct_pos.into_into_dart().into_dart(),
+                options.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::ExerciseDataDto::CrossVerseConnection {
+                node_id,
+                related_verse_ids,
+                connection_theme,
+            } => [
+                17.into_dart(),
+                node_id.into_into_dart().into_dart(),
+                related_verse_ids.into_into_dart().into_dart(),
+                connection_theme.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::ExerciseDto {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::ExerciseDto> for crate::api::ExerciseDto {
-    fn into_into_dart(self) -> crate::api::ExerciseDto {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::ExerciseDataDto {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::ExerciseDataDto>
+    for crate::api::ExerciseDataDto
+{
+    fn into_into_dart(self) -> crate::api::ExerciseDataDto {
         self
     }
 }
@@ -2013,6 +2634,23 @@ impl flutter_rust_bridge::IntoDart for crate::api::LanguageDto {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::LanguageDto {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::LanguageDto> for crate::api::LanguageDto {
     fn into_into_dart(self) -> crate::api::LanguageDto {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::NodeData {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.node_type.into_into_dart().into_dart(),
+            self.metadata.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::NodeData {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::NodeData> for crate::api::NodeData {
+    fn into_into_dart(self) -> crate::api::NodeData {
         self
     }
 }
@@ -2090,6 +2728,42 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::TranslatorDto> for crate::api
         self
     }
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::VerseDto {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.key.into_into_dart().into_dart(),
+            self.text_uthmani.into_into_dart().into_dart(),
+            self.chapter_number.into_into_dart().into_dart(),
+            self.verse_number.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::VerseDto {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::VerseDto> for crate::api::VerseDto {
+    fn into_into_dart(self) -> crate::api::VerseDto {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::WordDto {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.text_uthmani.into_into_dart().into_dart(),
+            self.verse_key.into_into_dart().into_dart(),
+            self.position.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::WordDto {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::WordDto> for crate::api::WordDto {
+    fn into_into_dart(self) -> crate::api::WordDto {
+        self
+    }
+}
 
 impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -2160,10 +2834,10 @@ impl SseEncode for Arc<dyn UserRepository> {
     }
 }
 
-impl SseEncode for ExerciseData {
+impl SseEncode for std::collections::HashMap<String, String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+        <Vec<(String, String)>>::sse_encode(self.into_iter().collect(), serializer);
     }
 }
 
@@ -2237,17 +2911,6 @@ impl SseEncode
     }
 }
 
-impl SseEncode
-    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>
-{
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        let (ptr, size) = self.sse_encode_raw();
-        <usize>::sse_encode(ptr, serializer);
-        <i32>::sse_encode(size, serializer);
-    }
-}
-
 impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2280,14 +2943,156 @@ impl SseEncode for crate::api::DebugStatsDto {
     }
 }
 
-impl SseEncode for crate::api::ExerciseDto {
+impl SseEncode for crate::api::ExerciseDataDto {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.node_id, serializer);
-        <String>::sse_encode(self.question, serializer);
-        <String>::sse_encode(self.answer, serializer);
-        <String>::sse_encode(self.node_type, serializer);
-        <Option<String>>::sse_encode(self.translator_name, serializer);
+        match self {
+            crate::api::ExerciseDataDto::Memorization { node_id } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(node_id, serializer);
+            }
+            crate::api::ExerciseDataDto::McqArToEn {
+                node_id,
+                distractor_node_ids,
+            } => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <Vec<String>>::sse_encode(distractor_node_ids, serializer);
+            }
+            crate::api::ExerciseDataDto::McqEnToAr {
+                node_id,
+                distractor_node_ids,
+            } => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <Vec<String>>::sse_encode(distractor_node_ids, serializer);
+            }
+            crate::api::ExerciseDataDto::Translation { node_id } => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(node_id, serializer);
+            }
+            crate::api::ExerciseDataDto::ContextualTranslation { node_id, verse_key } => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(verse_key, serializer);
+            }
+            crate::api::ExerciseDataDto::ClozeDeletion {
+                node_id,
+                blank_position,
+            } => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(blank_position, serializer);
+            }
+            crate::api::ExerciseDataDto::FirstLetterHint {
+                node_id,
+                word_position,
+            } => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(word_position, serializer);
+            }
+            crate::api::ExerciseDataDto::MissingWordMcq {
+                node_id,
+                blank_position,
+                distractor_node_ids,
+            } => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(blank_position, serializer);
+                <Vec<String>>::sse_encode(distractor_node_ids, serializer);
+            }
+            crate::api::ExerciseDataDto::NextWordMcq {
+                node_id,
+                context_position,
+                distractor_node_ids,
+            } => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(context_position, serializer);
+                <Vec<String>>::sse_encode(distractor_node_ids, serializer);
+            }
+            crate::api::ExerciseDataDto::FullVerseInput { node_id } => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(node_id, serializer);
+            }
+            crate::api::ExerciseDataDto::AyahChain {
+                node_id,
+                verse_keys,
+                current_index,
+                completed_count,
+            } => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <Vec<String>>::sse_encode(verse_keys, serializer);
+                <usize>::sse_encode(current_index, serializer);
+                <usize>::sse_encode(completed_count, serializer);
+            }
+            crate::api::ExerciseDataDto::FindMistake {
+                node_id,
+                mistake_position,
+                correct_word_node_id,
+                incorrect_word_node_id,
+            } => {
+                <i32>::sse_encode(11, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(mistake_position, serializer);
+                <String>::sse_encode(correct_word_node_id, serializer);
+                <String>::sse_encode(incorrect_word_node_id, serializer);
+            }
+            crate::api::ExerciseDataDto::AyahSequence {
+                node_id,
+                correct_sequence,
+            } => {
+                <i32>::sse_encode(12, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <Vec<String>>::sse_encode(correct_sequence, serializer);
+            }
+            crate::api::ExerciseDataDto::IdentifyRoot { node_id, root } => {
+                <i32>::sse_encode(13, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(root, serializer);
+            }
+            crate::api::ExerciseDataDto::ReverseCloze {
+                node_id,
+                blank_position,
+            } => {
+                <i32>::sse_encode(14, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(blank_position, serializer);
+            }
+            crate::api::ExerciseDataDto::TranslatePhrase {
+                node_id,
+                translator_id,
+            } => {
+                <i32>::sse_encode(15, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <i32>::sse_encode(translator_id, serializer);
+            }
+            crate::api::ExerciseDataDto::PosTagging {
+                node_id,
+                correct_pos,
+                options,
+            } => {
+                <i32>::sse_encode(16, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <String>::sse_encode(correct_pos, serializer);
+                <Vec<String>>::sse_encode(options, serializer);
+            }
+            crate::api::ExerciseDataDto::CrossVerseConnection {
+                node_id,
+                related_verse_ids,
+                connection_theme,
+            } => {
+                <i32>::sse_encode(17, serializer);
+                <String>::sse_encode(node_id, serializer);
+                <Vec<String>>::sse_encode(related_verse_ids, serializer);
+                <String>::sse_encode(connection_theme, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -2315,12 +3120,22 @@ impl SseEncode for crate::api::LanguageDto {
     }
 }
 
-impl SseEncode for Vec<crate::api::ExerciseDto> {
+impl SseEncode for Vec<String> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::ExerciseDto>::sse_encode(item, serializer);
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::ExerciseDataDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::ExerciseDataDto>::sse_encode(item, serializer);
         }
     }
 }
@@ -2355,6 +3170,16 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<(String, String)> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <(String, String)>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::SessionPreviewDto> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2382,6 +3207,25 @@ impl SseEncode for Vec<crate::api::TranslatorDto> {
         for item in self {
             <crate::api::TranslatorDto>::sse_encode(item, serializer);
         }
+    }
+}
+
+impl SseEncode for Vec<crate::api::WordDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::WordDto>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for crate::api::NodeData {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.node_type, serializer);
+        <std::collections::HashMap<String, String>>::sse_encode(self.metadata, serializer);
     }
 }
 
@@ -2414,6 +3258,16 @@ impl SseEncode for Option<i32> {
     }
 }
 
+impl SseEncode for Option<crate::api::NodeData> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::NodeData>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<crate::api::TranslatorDto> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2421,6 +3275,34 @@ impl SseEncode for Option<crate::api::TranslatorDto> {
         if let Some(value) = self {
             <crate::api::TranslatorDto>::sse_encode(value, serializer);
         }
+    }
+}
+
+impl SseEncode for Option<crate::api::VerseDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::VerseDto>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::WordDto> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::WordDto>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for (String, String) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.0, serializer);
+        <String>::sse_encode(self.1, serializer);
     }
 }
 
@@ -2481,6 +3363,26 @@ impl SseEncode for usize {
             .cursor
             .write_u64::<NativeEndian>(self as _)
             .unwrap();
+    }
+}
+
+impl SseEncode for crate::api::VerseDto {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.key, serializer);
+        <String>::sse_encode(self.text_uthmani, serializer);
+        <i32>::sse_encode(self.chapter_number, serializer);
+        <i32>::sse_encode(self.verse_number, serializer);
+    }
+}
+
+impl SseEncode for crate::api::WordDto {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.text_uthmani, serializer);
+        <String>::sse_encode(self.verse_key, serializer);
+        <i32>::sse_encode(self.position, serializer);
     }
 }
 
@@ -2585,20 +3487,6 @@ mod io {
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>::decrement_strong_count(ptr as _);
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_iqrah_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>::increment_strong_count(ptr as _);
-    }
-
-    #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_iqrah_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>::decrement_strong_count(ptr as _);
     }
 }
 #[cfg(not(target_family = "wasm"))]
@@ -2708,20 +3596,6 @@ mod web {
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>::decrement_strong_count(ptr as _);
-    }
-
-    #[wasm_bindgen]
-    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>::increment_strong_count(ptr as _);
-    }
-
-    #[wasm_bindgen]
-    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExerciseData(
-        ptr: *const std::ffi::c_void,
-    ) {
-        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>::decrement_strong_count(ptr as _);
     }
 }
 #[cfg(target_family = "wasm")]

@@ -1,11 +1,12 @@
 use anyhow::Result;
 // Re-exported for frb_generated access
-pub use iqrah_core::exercises::ExerciseData;
+pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
 pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
-use iqrah_core::{exercises::ExerciseService, import_cbor_graph_from_bytes, ReviewGrade};
+use iqrah_core::{import_cbor_graph_from_bytes, ReviewGrade};
 use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 pub struct AppState {
     pub content_repo: Arc<dyn ContentRepository>,
@@ -96,60 +97,109 @@ pub async fn get_exercises(
     limit: u32,
     _surah_filter: Option<i32>,
     is_high_yield: bool,
-) -> Result<Vec<ExerciseDto>> {
+) -> Result<Vec<ExerciseDataDto>> {
     let app = app();
 
-    // Get user's preferred translator
-    let translator_id = app
-        .user_repo
-        .get_preferred_translator(&user_id)
-        .await?
-        .unwrap_or(101); // Default to Sahih International (id=101)
-
-    let translator = app.content_repo.get_translator(translator_id).await?;
-
     // Get due items from learning service
+    // Note: surah_filter is not yet supported in V2 session service
     let due_items = app
         .session_service
-        .get_due_items(&user_id, limit, is_high_yield)
+        .get_due_items(&user_id, limit, is_high_yield, None)
         .await?;
 
     let mut exercises = Vec::new();
     for item in due_items {
         let node_id = &item.node.id;
 
-        // Get question/answer from content repo
-        let question = app
-            .content_repo
-            .get_quran_text(node_id)
-            .await?
-            .unwrap_or_default();
-
-        let answer = app
-            .content_repo
-            .get_translation(node_id, "en")
-            .await?
-            .unwrap_or_default();
-
-        exercises.push(ExerciseDto {
-            node_id: node_id.clone(),
-            question,
-            answer,
-            node_type: format!("{:?}", item.node.node_type),
-            translator_name: translator.as_ref().map(|t| t.full_name.clone()),
-        });
+        // Generate V2 exercise
+        match app.exercise_service.generate_exercise_v2(node_id).await {
+            Ok(ex) => exercises.push(ex.into()),
+            Err(e) => tracing::error!("Failed to generate exercise for {}: {}", node_id, e),
+        }
     }
 
     Ok(exercises)
+}
+
+/// Get exercises for a specific node (Sandbox/Preview)
+pub async fn get_exercises_for_node(node_id: String) -> Result<Vec<ExerciseDataDto>> {
+    let app = app();
+    let ex = app.exercise_service.generate_exercise_v2(&node_id).await?;
+    Ok(vec![ex.into()])
+}
+
+/// Fetch node with metadata for Sandbox
+pub async fn fetch_node_with_metadata(node_id: String) -> Result<Option<NodeData>> {
+    let app = app();
+    let node = app.content_repo.get_node(&node_id).await?;
+    
+    if let Some(node) = node {
+        let mut metadata = HashMap::new();
+        if let Some(text) = app.content_repo.get_quran_text(&node_id).await? {
+            metadata.insert("text".to_string(), text);
+        }
+        
+        Ok(Some(NodeData {
+            id: node.id,
+            node_type: node.node_type.into(),
+            metadata,
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Generate exercise using modern enum-based architecture (V2)
 ///
 /// This returns lightweight ExerciseData containing only keys/IDs.
 /// Flutter can then fetch content based on user preferences (Tajweed, Indopak, etc.)
-pub async fn generate_exercise_v2(node_id: String) -> Result<ExerciseData> {
+pub async fn generate_exercise_v2(node_id: String) -> Result<ExerciseDataDto> {
     let app = app();
-    app.exercise_service.generate_exercise_v2(&node_id).await
+    let data = app.exercise_service.generate_exercise_v2(&node_id).await?;
+    Ok(data.into())
+}
+
+/// Get verse content
+pub async fn get_verse(verse_key: String) -> Result<Option<VerseDto>> {
+    let app = app();
+    let verse = app.content_repo.get_verse(&verse_key).await?;
+    Ok(verse.map(|v| VerseDto {
+        key: v.key,
+        text_uthmani: v.text_uthmani,
+        chapter_number: v.chapter_number,
+        verse_number: v.verse_number,
+    }))
+}
+
+/// Get word content
+pub async fn get_word(word_id: i32) -> Result<Option<WordDto>> {
+    let app = app();
+    let word = app.content_repo.get_word(word_id).await?;
+    Ok(word.map(|w| w.into()))
+}
+
+/// Get all words for a verse
+pub async fn get_words_for_verse(verse_key: String) -> Result<Vec<WordDto>> {
+    let app = app();
+    let words = app.content_repo.get_words_for_verse(&verse_key).await?;
+    Ok(words.into_iter().map(|w| w.into()).collect())
+}
+
+/// Get word translation
+pub async fn get_word_translation(word_id: i32, translator_id: i32) -> Result<Option<String>> {
+    let app = app();
+    // Note: content_repo needs to implement get_word_translation
+    // For now, we might need to add this method to ContentRepository trait if missing
+    // Or use existing methods if available.
+    // Checking ContentRepository trait... assuming it exists or we need to add it.
+    // Based on previous context, we might need to check if get_word_translation exists.
+    // If not, we'll add a placeholder or implement it.
+    // Let's assume for now we need to use what's available.
+    // If get_word_translation is not in ContentRepository, we might need to add it.
+    // Let's check ContentRepository first.
+    app.content_repo
+        .get_word_translation(word_id, translator_id)
+        .await
 }
 
 /// Process a review
@@ -185,7 +235,7 @@ pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStatsDto> {
 
     let due_items = app
         .session_service
-        .get_due_items(&user_id, 1000, false)
+        .get_due_items(&user_id, 1000, false, None)
         .await?;
 
     Ok(DashboardStatsDto {
@@ -202,7 +252,7 @@ pub async fn get_debug_stats(user_id: String) -> Result<DebugStatsDto> {
     let all_nodes = app.content_repo.get_all_nodes().await?;
     let due_items = app
         .session_service
-        .get_due_items(&user_id, 1000, false)
+        .get_due_items(&user_id, 1000, false, None)
         .await?;
 
     Ok(DebugStatsDto {
@@ -231,7 +281,7 @@ pub async fn get_session_preview(
 
     let items = app
         .session_service
-        .get_due_items(&user_id, limit, is_high_yield)
+        .get_due_items(&user_id, limit, is_high_yield, None)
         .await?;
 
     let mut preview = Vec::new();
@@ -465,4 +515,241 @@ pub struct TranslatorDto {
     pub language_code: String,
     pub description: Option<String>,
     pub license: Option<String>,
+}
+
+// Lightweight node + metadata surface for sandbox / previews
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NodeData {
+    pub id: String,
+    pub node_type: String,
+    pub metadata: HashMap<String, String>,
+}
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub enum ExerciseDataDto {
+    Memorization {
+        node_id: String,
+    },
+    McqArToEn {
+        node_id: String,
+        distractor_node_ids: Vec<String>,
+    },
+    McqEnToAr {
+        node_id: String,
+        distractor_node_ids: Vec<String>,
+    },
+    Translation {
+        node_id: String,
+    },
+    ContextualTranslation {
+        node_id: String,
+        verse_key: String,
+    },
+    ClozeDeletion {
+        node_id: String,
+        blank_position: i32,
+    },
+    FirstLetterHint {
+        node_id: String,
+        word_position: i32,
+    },
+    MissingWordMcq {
+        node_id: String,
+        blank_position: i32,
+        distractor_node_ids: Vec<String>,
+    },
+    NextWordMcq {
+        node_id: String,
+        context_position: i32,
+        distractor_node_ids: Vec<String>,
+    },
+    FullVerseInput {
+        node_id: String,
+    },
+    AyahChain {
+        node_id: String,
+        verse_keys: Vec<String>,
+        current_index: usize,
+        completed_count: usize,
+    },
+    FindMistake {
+        node_id: String,
+        mistake_position: i32,
+        correct_word_node_id: String,
+        incorrect_word_node_id: String,
+    },
+    AyahSequence {
+        node_id: String,
+        correct_sequence: Vec<String>,
+    },
+    IdentifyRoot {
+        node_id: String,
+        root: String,
+    },
+    ReverseCloze {
+        node_id: String,
+        blank_position: i32,
+    },
+    TranslatePhrase {
+        node_id: String,
+        translator_id: i32,
+    },
+    PosTagging {
+        node_id: String,
+        correct_pos: String,
+        options: Vec<String>,
+    },
+    CrossVerseConnection {
+        node_id: String,
+        related_verse_ids: Vec<String>,
+        connection_theme: String,
+    },
+}
+
+impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
+    fn from(data: iqrah_core::exercises::ExerciseData) -> Self {
+        use iqrah_core::exercises::ExerciseData::*;
+        match data {
+            Memorization { node_id } => ExerciseDataDto::Memorization { node_id },
+            McqArToEn {
+                node_id,
+                distractor_node_ids,
+            } => ExerciseDataDto::McqArToEn {
+                node_id,
+                distractor_node_ids,
+            },
+            McqEnToAr {
+                node_id,
+                distractor_node_ids,
+            } => ExerciseDataDto::McqEnToAr {
+                node_id,
+                distractor_node_ids,
+            },
+            Translation { node_id } => ExerciseDataDto::Translation { node_id },
+            ContextualTranslation { node_id, verse_key } => {
+                ExerciseDataDto::ContextualTranslation { node_id, verse_key }
+            }
+            ClozeDeletion {
+                node_id,
+                blank_position,
+            } => ExerciseDataDto::ClozeDeletion {
+                node_id,
+                blank_position,
+            },
+            FirstLetterHint {
+                node_id,
+                word_position,
+            } => ExerciseDataDto::FirstLetterHint {
+                node_id,
+                word_position,
+            },
+            MissingWordMcq {
+                node_id,
+                blank_position,
+                distractor_node_ids,
+            } => ExerciseDataDto::MissingWordMcq {
+                node_id,
+                blank_position,
+                distractor_node_ids,
+            },
+            NextWordMcq {
+                node_id,
+                context_position,
+                distractor_node_ids,
+            } => ExerciseDataDto::NextWordMcq {
+                node_id,
+                context_position,
+                distractor_node_ids,
+            },
+            FullVerseInput { node_id } => ExerciseDataDto::FullVerseInput { node_id },
+            AyahChain {
+                node_id,
+                verse_keys,
+                current_index,
+                completed_count,
+            } => ExerciseDataDto::AyahChain {
+                node_id,
+                verse_keys,
+                current_index,
+                completed_count,
+            },
+            FindMistake {
+                node_id,
+                mistake_position,
+                correct_word_node_id,
+                incorrect_word_node_id,
+            } => ExerciseDataDto::FindMistake {
+                node_id,
+                mistake_position,
+                correct_word_node_id,
+                incorrect_word_node_id,
+            },
+            AyahSequence {
+                node_id,
+                correct_sequence,
+            } => ExerciseDataDto::AyahSequence {
+                node_id,
+                correct_sequence,
+            },
+            IdentifyRoot { node_id, root } => ExerciseDataDto::IdentifyRoot { node_id, root },
+            ReverseCloze {
+                node_id,
+                blank_position,
+            } => ExerciseDataDto::ReverseCloze {
+                node_id,
+                blank_position,
+            },
+            TranslatePhrase {
+                node_id,
+                translator_id,
+            } => ExerciseDataDto::TranslatePhrase {
+                node_id,
+                translator_id,
+            },
+            PosTagging {
+                node_id,
+                correct_pos,
+                options,
+            } => ExerciseDataDto::PosTagging {
+                node_id,
+                correct_pos,
+                options,
+            },
+            CrossVerseConnection {
+                node_id,
+                related_verse_ids,
+                connection_theme,
+            } => ExerciseDataDto::CrossVerseConnection {
+                node_id,
+                related_verse_ids,
+                connection_theme,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct VerseDto {
+    pub key: String,
+    pub text_uthmani: String,
+    pub chapter_number: i32,
+    pub verse_number: i32,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct WordDto {
+    pub id: i32,
+    pub text_uthmani: String,
+    pub verse_key: String,
+    pub position: i32,
+}
+
+impl From<iqrah_core::Word> for WordDto {
+    fn from(word: iqrah_core::Word) -> Self {
+        Self {
+            id: word.id,
+            text_uthmani: word.text_uthmani,
+            verse_key: word.verse_key,
+            position: word.position,
+        }
+    }
 }

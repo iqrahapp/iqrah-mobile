@@ -5,9 +5,12 @@
 
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+part 'api.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `app`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ExerciseDto`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
 
 /// One-time setup: initializes databases and imports graph
 Future<String> setupDatabase({
@@ -25,7 +28,7 @@ Future<String> setupDatabaseInMemory({required List<int> kgBytes}) =>
     RustLib.instance.api.crateApiSetupDatabaseInMemory(kgBytes: kgBytes);
 
 /// Get exercises for review session
-Future<List<ExerciseDto>> getExercises({
+Future<List<ExerciseDataDto>> getExercises({
   required String userId,
   required int limit,
   int? surahFilter,
@@ -37,12 +40,41 @@ Future<List<ExerciseDto>> getExercises({
   isHighYield: isHighYield,
 );
 
+/// Get exercises for a specific node (Sandbox/Preview)
+Future<List<ExerciseDataDto>> getExercisesForNode({required String nodeId}) =>
+    RustLib.instance.api.crateApiGetExercisesForNode(nodeId: nodeId);
+
+/// Fetch node with metadata for Sandbox
+Future<NodeData?> fetchNodeWithMetadata({required String nodeId}) =>
+    RustLib.instance.api.crateApiFetchNodeWithMetadata(nodeId: nodeId);
+
 /// Generate exercise using modern enum-based architecture (V2)
 ///
 /// This returns lightweight ExerciseData containing only keys/IDs.
 /// Flutter can then fetch content based on user preferences (Tajweed, Indopak, etc.)
-Future<ExerciseData> generateExerciseV2({required String nodeId}) =>
+Future<ExerciseDataDto> generateExerciseV2({required String nodeId}) =>
     RustLib.instance.api.crateApiGenerateExerciseV2(nodeId: nodeId);
+
+/// Get verse content
+Future<VerseDto?> getVerse({required String verseKey}) =>
+    RustLib.instance.api.crateApiGetVerse(verseKey: verseKey);
+
+/// Get word content
+Future<WordDto?> getWord({required int wordId}) =>
+    RustLib.instance.api.crateApiGetWord(wordId: wordId);
+
+/// Get all words for a verse
+Future<List<WordDto>> getWordsForVerse({required String verseKey}) =>
+    RustLib.instance.api.crateApiGetWordsForVerse(verseKey: verseKey);
+
+/// Get word translation
+Future<String?> getWordTranslation({
+  required int wordId,
+  required int translatorId,
+}) => RustLib.instance.api.crateApiGetWordTranslation(
+  wordId: wordId,
+  translatorId: translatorId,
+);
 
 /// Process a review
 Future<String> processReview({
@@ -163,9 +195,6 @@ abstract class ArcContentRepository implements RustOpaqueInterface {}
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>
 abstract class ArcUserRepository implements RustOpaqueInterface {}
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExerciseData>>
-abstract class ExerciseData implements RustOpaqueInterface {}
-
 class DashboardStatsDto {
   final int reviewsToday;
   final int streakDays;
@@ -216,39 +245,84 @@ class DebugStatsDto {
           dueCount == other.dueCount;
 }
 
-class ExerciseDto {
-  final String nodeId;
-  final String question;
-  final String answer;
-  final String nodeType;
-  final String? translatorName;
+@freezed
+sealed class ExerciseDataDto with _$ExerciseDataDto {
+  const ExerciseDataDto._();
 
-  const ExerciseDto({
-    required this.nodeId,
-    required this.question,
-    required this.answer,
-    required this.nodeType,
-    this.translatorName,
-  });
-
-  @override
-  int get hashCode =>
-      nodeId.hashCode ^
-      question.hashCode ^
-      answer.hashCode ^
-      nodeType.hashCode ^
-      translatorName.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ExerciseDto &&
-          runtimeType == other.runtimeType &&
-          nodeId == other.nodeId &&
-          question == other.question &&
-          answer == other.answer &&
-          nodeType == other.nodeType &&
-          translatorName == other.translatorName;
+  const factory ExerciseDataDto.memorization({required String nodeId}) =
+      ExerciseDataDto_Memorization;
+  const factory ExerciseDataDto.mcqArToEn({
+    required String nodeId,
+    required List<String> distractorNodeIds,
+  }) = ExerciseDataDto_McqArToEn;
+  const factory ExerciseDataDto.mcqEnToAr({
+    required String nodeId,
+    required List<String> distractorNodeIds,
+  }) = ExerciseDataDto_McqEnToAr;
+  const factory ExerciseDataDto.translation({required String nodeId}) =
+      ExerciseDataDto_Translation;
+  const factory ExerciseDataDto.contextualTranslation({
+    required String nodeId,
+    required String verseKey,
+  }) = ExerciseDataDto_ContextualTranslation;
+  const factory ExerciseDataDto.clozeDeletion({
+    required String nodeId,
+    required int blankPosition,
+  }) = ExerciseDataDto_ClozeDeletion;
+  const factory ExerciseDataDto.firstLetterHint({
+    required String nodeId,
+    required int wordPosition,
+  }) = ExerciseDataDto_FirstLetterHint;
+  const factory ExerciseDataDto.missingWordMcq({
+    required String nodeId,
+    required int blankPosition,
+    required List<String> distractorNodeIds,
+  }) = ExerciseDataDto_MissingWordMcq;
+  const factory ExerciseDataDto.nextWordMcq({
+    required String nodeId,
+    required int contextPosition,
+    required List<String> distractorNodeIds,
+  }) = ExerciseDataDto_NextWordMcq;
+  const factory ExerciseDataDto.fullVerseInput({required String nodeId}) =
+      ExerciseDataDto_FullVerseInput;
+  const factory ExerciseDataDto.ayahChain({
+    required String nodeId,
+    required List<String> verseKeys,
+    required BigInt currentIndex,
+    required BigInt completedCount,
+  }) = ExerciseDataDto_AyahChain;
+  const factory ExerciseDataDto.findMistake({
+    required String nodeId,
+    required int mistakePosition,
+    required String correctWordNodeId,
+    required String incorrectWordNodeId,
+  }) = ExerciseDataDto_FindMistake;
+  const factory ExerciseDataDto.ayahSequence({
+    required String nodeId,
+    required List<String> correctSequence,
+  }) = ExerciseDataDto_AyahSequence;
+  const factory ExerciseDataDto.identifyRoot({
+    required String nodeId,
+    required String root,
+  }) = ExerciseDataDto_IdentifyRoot;
+  const factory ExerciseDataDto.reverseCloze({
+    required String nodeId,
+    required int blankPosition,
+  }) = ExerciseDataDto_ReverseCloze;
+  const factory ExerciseDataDto.translatePhrase({
+    required String nodeId,
+    required int translatorId,
+  }) = ExerciseDataDto_TranslatePhrase;
+  const factory ExerciseDataDto.posTagging({
+    required String nodeId,
+    required String correctPos,
+    required List<String> options,
+  }) = ExerciseDataDto_PosTagging;
+  const factory ExerciseDataDto.crossVerseConnection({
+    required String nodeId,
+    required List<String> relatedVerseIds,
+    required String connectionTheme,
+  }) = ExerciseDataDto_CrossVerseConnection;
 }
 
 class LanguageDto {
@@ -280,6 +354,30 @@ class LanguageDto {
           englishName == other.englishName &&
           nativeName == other.nativeName &&
           direction == other.direction;
+}
+
+class NodeData {
+  final String id;
+  final String nodeType;
+  final Map<String, String> metadata;
+
+  const NodeData({
+    required this.id,
+    required this.nodeType,
+    required this.metadata,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ nodeType.hashCode ^ metadata.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeData &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          nodeType == other.nodeType &&
+          metadata == other.metadata;
 }
 
 class NodeSearchDto {
@@ -396,4 +494,66 @@ class TranslatorDto {
           languageCode == other.languageCode &&
           description == other.description &&
           license == other.license;
+}
+
+class VerseDto {
+  final String key;
+  final String textUthmani;
+  final int chapterNumber;
+  final int verseNumber;
+
+  const VerseDto({
+    required this.key,
+    required this.textUthmani,
+    required this.chapterNumber,
+    required this.verseNumber,
+  });
+
+  @override
+  int get hashCode =>
+      key.hashCode ^
+      textUthmani.hashCode ^
+      chapterNumber.hashCode ^
+      verseNumber.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VerseDto &&
+          runtimeType == other.runtimeType &&
+          key == other.key &&
+          textUthmani == other.textUthmani &&
+          chapterNumber == other.chapterNumber &&
+          verseNumber == other.verseNumber;
+}
+
+class WordDto {
+  final int id;
+  final String textUthmani;
+  final String verseKey;
+  final int position;
+
+  const WordDto({
+    required this.id,
+    required this.textUthmani,
+    required this.verseKey,
+    required this.position,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      textUthmani.hashCode ^
+      verseKey.hashCode ^
+      position.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WordDto &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          textUthmani == other.textUthmani &&
+          verseKey == other.verseKey &&
+          position == other.position;
 }

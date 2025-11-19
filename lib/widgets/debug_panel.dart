@@ -47,7 +47,7 @@ class DebugPanel {
 }
 
 class _DebugPanelDialog extends ConsumerStatefulWidget {
-  final DebugStats stats;
+  final api.DebugStatsDto stats;
 
   const _DebugPanelDialog({required this.stats});
 
@@ -76,8 +76,7 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
               const PropagationLogView(),
               const SizedBox(height: 16),
               const PropagationLeaderboardView(),
-              const SizedBox(height: 16),
-              _buildNextDueSection(widget.stats.nextDueItems),
+              // _buildNextDueSection(widget.stats.nextDueItems), // Removed as not in DTO
             ],
           ),
         ),
@@ -88,11 +87,13 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
           style: TextButton.styleFrom(foregroundColor: Colors.green),
           child: const Text('Session Summary'),
         ),
+        /*
         TextButton(
           onPressed: () => _refreshPriorityScores(context),
           style: TextButton.styleFrom(foregroundColor: Colors.blue),
           child: const Text('Refresh Scores'),
         ),
+        */
         TextButton(
           onPressed: () => _reseedDatabase(context),
           style: TextButton.styleFrom(foregroundColor: Colors.orange),
@@ -106,7 +107,7 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
     );
   }
 
-  static Widget _buildSummarySection(DebugStats stats) {
+  static Widget _buildSummarySection(api.DebugStatsDto stats) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -135,17 +136,7 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
             '${stats.totalEdgesCount}',
             Colors.green[300],
           ),
-          _buildStatRow('Due Today', '${stats.dueToday}', Colors.red[300]),
-          _buildStatRow(
-            'Total Reviewed',
-            '${stats.totalReviewed}',
-            Colors.blue[300],
-          ),
-          _buildStatRow(
-            'Avg Energy',
-            stats.avgEnergy.toStringAsFixed(3),
-            _getEnergyColor(stats.avgEnergy),
-          ),
+          _buildStatRow('Due Count', '${stats.dueCount}', Colors.red[300]),
         ],
       ),
     );
@@ -305,13 +296,13 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
           ),
         ),
         const SizedBox(height: 8),
-        FutureBuilder<List<ItemPreview>>(
+        FutureBuilder<List<api.SessionPreviewDto>>(
           key: _previewKey, // Force rebuild on re-fetch
           future: api.getSessionPreview(
             userId: "default_user",
             limit: 5,
-            surahFilter: ref.watch(surahFilterProvider),
-            isHighYieldMode: ref.watch(highYieldModeProvider),
+            // surahFilter: ref.watch(surahFilterProvider), // Not in DTO yet? Check api.dart
+            isHighYield: ref.watch(highYieldModeProvider),
           ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -406,11 +397,7 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
     }
   }
 
-  Widget _buildPreviewCard(ItemPreview item) {
-    final breakdown = item.scoreBreakdown;
-    final memoryState = item.memoryState;
-    final struggleLevel = _getStruggleLevel(memoryState);
-
+  Widget _buildPreviewCard(api.SessionPreviewDto item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(8),
@@ -439,26 +426,6 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // FSRS Score (based on stability)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    margin: const EdgeInsets.only(right: 4),
-                    decoration: BoxDecoration(
-                      color: _getFsrsScoreColor(memoryState.stability),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      'FSRS ${_getFsrsScore(memoryState.stability)}',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
                   // Priority Score
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -484,59 +451,22 @@ class _DebugPanelDialogState extends ConsumerState<_DebugPanelDialog> {
           ),
 
           // Content preview
-          if (item.arabic != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              item.arabic!,
-              style: TextStyle(fontSize: 12, color: Colors.grey[300]),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-
-          // FSRS Parameters
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              _buildFsrsParameter(
-                'Stability',
-                memoryState.stability,
-                Colors.blue[300],
-              ),
-              const SizedBox(width: 8),
-              _buildFsrsParameter(
-                'Difficulty',
-                memoryState.difficulty,
-                Colors.purple[300],
-              ),
-              const SizedBox(width: 8),
-              _buildStruggleIndicator(struggleLevel),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            item.previewText,
+            style: TextStyle(fontSize: 12, color: Colors.grey[300]),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
 
-          // Score breakdown
+          // Energy
           const SizedBox(height: 6),
           Row(
             children: [
-              _buildScoreComponent(
-                'Due',
-                breakdown.daysOverdue,
-                breakdown.weights.wDue,
-                Colors.red[300],
-              ),
-              const SizedBox(width: 8),
-              _buildScoreComponent(
-                'Need',
-                breakdown.masteryGap,
-                breakdown.weights.wNeed,
-                Colors.orange[300],
-              ),
-              const SizedBox(width: 8),
-              _buildScoreComponent(
-                'Yield',
-                breakdown.importance,
-                breakdown.weights.wYield,
-                Colors.green[300],
+              _buildMiniStat(
+                'Energy',
+                item.energy.toStringAsFixed(2),
+                _getEnergyColor(item.energy),
               ),
             ],
           ),
