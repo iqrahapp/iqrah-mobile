@@ -5,7 +5,6 @@ import 'package:iqrah/pages/sandbox_page.dart';
 import 'package:iqrah/pages/settings_page.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/providers/session_provider.dart';
-import 'package:iqrah/widgets/debug_panel.dart';
 import 'package:iqrah/widgets/surah_dropdown.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -41,13 +40,6 @@ class DashboardPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(exercisesProvider),
-          ),
-          GestureDetector(
-            onLongPress: () => DebugPanel.show(context),
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Icon(Icons.info_outline),
-            ),
           ),
         ],
       ),
