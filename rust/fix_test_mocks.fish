@@ -3,28 +3,28 @@
 # Run from: rust/ directory
 
 set files \
-    crates/iqrah-core/src/exercises/find_mistake_tests.rs \
-    crates/iqrah-core/src/exercises/graph_tests.rs \
-    crates/iqrah-core/src/exercises/translate_phrase_tests.rs \
-    crates/iqrah-core/src/exercises/full_verse_input_tests.rs \
-    crates/iqrah-core/src/exercises/grammar_tests.rs \
-    crates/iqrah-core/src/exercises/ayah_sequence_tests.rs \
-    crates/iqrah-core/src/exercises/reverse_cloze_tests.rs \
-    crates/iqrah-core/src/exercises/translation_tests.rs \
-    crates/iqrah-core/src/exercises/pos_tagging_tests.rs \
-    crates/iqrah-core/src/exercises/memorization_tests.rs \
-    crates/iqrah-core/src/services/session_service_tests.rs \
-    crates/iqrah-core/src/services/learning_service_tests.rs
+crates/iqrah-core/src/exercises/find_mistake_tests.rs \
+crates/iqrah-core/src/exercises/graph_tests.rs \
+crates/iqrah-core/src/exercises/translate_phrase_tests.rs \
+crates/iqrah-core/src/exercises/full_verse_input_tests.rs \
+crates/iqrah-core/src/exercises/grammar_tests.rs \
+crates/iqrah-core/src/exercises/ayah_sequence_tests.rs \
+crates/iqrah-core/src/exercises/reverse_cloze_tests.rs \
+crates/iqrah-core/src/exercises/translation_tests.rs \
+crates/iqrah-core/src/exercises/pos_tagging_tests.rs \
+crates/iqrah-core/src/exercises/memorization_tests.rs \
+crates/iqrah-core/src/services/session_service_tests.rs \
+crates/iqrah-core/src/services/learning_service_tests.rs
 
 echo "Adding batch methods to test mocks..."
 
 for file in $files
-    echo "Processing $file"
-    
-    # Find the line with "async fn get_nodes_for_goal" and insert batch methods before the closing brace
-    # This is a placeholder - manual editing required due to fish shell limitations
-    
-    # For manual fix: Add these two methods before the final closing brace of impl ContentRepository
+echo "Processing $file"
+
+# Find the line with "async fn get_nodes_for_goal" and insert batch methods before the closing brace
+# This is a placeholder - manual editing required due to fish shell limitations
+
+# For manual fix: Add these two methods before the final closing brace of impl ContentRepository
 end
 
 echo ""
@@ -59,5 +59,5 @@ echo '    }'
 echo ""
 echo "Files to update:"
 for file in $files
-    echo "  - $file"
+echo "  - $file"
 end

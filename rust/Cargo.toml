@@ -18,7 +18,12 @@ thiserror = "1.0"
 tokio = { version = "1.47.1", features = ["full"] }
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite", "macros", "migrate"] }
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-native-tls",
+    "sqlite",
+    "macros",
+    "migrate",
+] }
 
 # Traits
 async-trait = "0.1.89"
