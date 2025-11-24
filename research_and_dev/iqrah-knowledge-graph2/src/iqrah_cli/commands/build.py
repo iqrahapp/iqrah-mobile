@@ -16,6 +16,7 @@ from iqrah.graph.statistics import compute_graph_statistics
 from iqrah.content.builder import ContentDatabaseBuilder
 from iqrah.export import export_graph_to_cbor
 from iqrah.config import load_config, load_preset, get_available_presets
+from iqrah.validation.pipeline_validation import validate_graph_stability, GraphValidationError
 
 
 def setup_parser(subparsers):
@@ -225,6 +226,19 @@ def _setup_knowledge_graph_parser(subparsers):
         "--no-progress",
         action="store_true",
         help="Disable progress bars"
+    )
+
+    # Validation arguments
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip node ID stability validation (DANGEROUS - only for major version bumps)"
+    )
+
+    parser.add_argument(
+        "--baseline",
+        type=str,
+        help="Path to baseline graph for validation (default: auto-detected)"
     )
 
 
@@ -470,6 +484,17 @@ def build_knowledge_graph(args) -> nx.DiGraph:
             show_progress=not args.no_progress,
         )
         logger.success(f"CBOR export saved: {cbor_path}")
+
+        # Validate graph stability
+        try:
+            validate_graph_stability(
+                new_graph_path=Path(cbor_path),
+                baseline_path=Path(args.baseline) if hasattr(args, 'baseline') and args.baseline else None,
+                skip_validation=args.skip_validation if hasattr(args, 'skip_validation') else False,
+            )
+        except GraphValidationError as e:
+            logger.error(str(e))
+            sys.exit(1)
 
     if output_format in ("graphml", "both"):
         graphml_path = args.output if output_format == "graphml" else args.output.replace(".cbor.zst", ".graphml")

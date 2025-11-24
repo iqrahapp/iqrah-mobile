@@ -80,7 +80,7 @@ impl KnowledgeAxis {
         }
     }
 
-    pub fn to_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Self::Memorization => "memorization",
             Self::Translation => "translation",
@@ -90,11 +90,16 @@ impl KnowledgeAxis {
             Self::Meaning => "meaning",
         }
     }
+
+    #[deprecated(note = "Use as_str() instead")]
+    pub fn to_str(&self) -> &'static str {
+        self.as_str()
+    }
 }
 
 impl std::fmt::Display for KnowledgeAxis {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_str())
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -137,7 +142,7 @@ impl KnowledgeNode {
 
     /// Construct a new knowledge node from base ID and axis
     pub fn new(base_node_id: String, axis: KnowledgeAxis) -> Self {
-        let full_id = format!("{}:{}", base_node_id, axis.to_str());
+        let full_id = format!("{}:{}", base_node_id, axis.as_str());
         Self {
             base_node_id,
             axis,
