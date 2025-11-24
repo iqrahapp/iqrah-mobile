@@ -36,7 +36,7 @@ pub fn word_instance(chapter: u8, verse: u16, position: u8) -> String {
 
 /// Build a knowledge node ID: "VERSE:1:1:memorization"
 pub fn knowledge(base_id: &str, axis: KnowledgeAxis) -> String {
-    format!("{}:{}", base_id, axis.to_str())
+    format!("{}:{}", base_id, axis.as_str())
 }
 
 // ============================================================================
@@ -62,16 +62,17 @@ pub fn parse_chapter(id: &str) -> Result<u8> {
     Ok(num)
 }
 
-/// Parse a verse ID: "VERSE:1:1" -> (1, 1) or "1:1" -> (1, 1)
+/// Parse a verse ID: "VERSE:1:1" -> (1, 1)
 pub fn parse_verse(id: &str) -> Result<(u8, u16)> {
     let parts: Vec<&str> = id.split(':').collect();
 
-    // Handle both "VERSE:1:1" and "1:1" formats (migration compatibility)
-    let (chapter_str, verse_str) = match parts.len() {
-        2 => (parts[0], parts[1]),                        // "1:1" format
-        3 if parts[0] == "VERSE" => (parts[1], parts[2]), // "VERSE:1:1" format
-        _ => return Err(NodeIdError::InvalidFormat(id.to_string())),
-    };
+    // Only accept prefixed format "VERSE:1:1"
+    if parts.len() != 3 || parts[0] != "VERSE" {
+        return Err(NodeIdError::InvalidFormat(id.to_string()));
+    }
+
+    let chapter_str = parts[1];
+    let verse_str = parts[2];
 
     let chapter = chapter_str
         .parse::<u8>()
@@ -173,14 +174,7 @@ pub fn node_type(id: &str) -> Result<NodeType> {
         "VERSE" => Ok(NodeType::Verse),
         "WORD" => Ok(NodeType::Word),
         "WORD_INSTANCE" => Ok(NodeType::WordInstance),
-        _ => {
-            // Handle unprefixed verse IDs like "1:1"
-            if parts.len() == 2 && parts[0].parse::<u8>().is_ok() {
-                Ok(NodeType::Verse)
-            } else {
-                Err(NodeIdError::InvalidPrefix(parts[0].to_string()))
-            }
-        }
+        _ => Err(NodeIdError::InvalidPrefix(parts[0].to_string())),
     }
 }
 
@@ -235,10 +229,10 @@ mod tests {
     #[test]
     fn test_parse_verse() {
         assert_eq!(parse_verse("VERSE:1:1").unwrap(), (1, 1));
-        assert_eq!(parse_verse("1:1").unwrap(), (1, 1)); // Handle unprefixed
         assert_eq!(parse_verse("VERSE:2:286").unwrap(), (2, 286));
         assert!(parse_verse("VERSE:1").is_err());
         assert!(parse_verse("CHAPTER:1").is_err());
+        assert!(parse_verse("1:1").is_err()); // Unprefixed format not supported
     }
 
     #[test]
@@ -271,7 +265,7 @@ mod tests {
     fn test_node_type_detection() {
         assert!(matches!(node_type("CHAPTER:1").unwrap(), NodeType::Chapter));
         assert!(matches!(node_type("VERSE:1:1").unwrap(), NodeType::Verse));
-        assert!(matches!(node_type("1:1").unwrap(), NodeType::Verse));
+        assert!(node_type("1:1").is_err()); // Unprefixed format not supported
         assert!(matches!(node_type("WORD:123").unwrap(), NodeType::Word));
         assert!(matches!(
             node_type("WORD_INSTANCE:1:1:3").unwrap(),
