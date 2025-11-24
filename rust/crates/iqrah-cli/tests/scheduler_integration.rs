@@ -84,7 +84,7 @@ async fn test_scheduler_goal_data() -> Result<()> {
     assert!(
         goal.description
             .as_ref()
-            .map_or(false, |d| d.contains("493 verses")),
+            .is_some_and(|d| d.contains("493 verses")),
         "Description should mention 493 verses"
     );
 

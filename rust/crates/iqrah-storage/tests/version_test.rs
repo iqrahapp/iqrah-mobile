@@ -1,6 +1,6 @@
 use iqrah_storage::content::init_content_db;
 use iqrah_storage::user::init_user_db;
-use iqrah_storage::version::{get_schema_version, is_compatible};
+use iqrah_storage::version::get_schema_version;
 use tempfile::TempDir;
 
 #[tokio::test]
