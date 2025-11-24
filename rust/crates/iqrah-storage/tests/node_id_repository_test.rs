@@ -25,7 +25,10 @@ async fn test_get_node_refactor() {
 
     // Test Word Node
     // We need to find a valid word ID first
-    let words = repo.get_words_in_ayahs(&[verse_id.clone()]).await.unwrap();
+    let words = repo
+        .get_words_in_ayahs(std::slice::from_ref(&verse_id))
+        .await
+        .unwrap();
     assert!(!words.is_empty());
     let word_node = &words[0];
     let word_id = &word_node.id; // Should be "WORD:..."
