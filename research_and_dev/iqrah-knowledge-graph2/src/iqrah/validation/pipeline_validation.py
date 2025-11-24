@@ -130,6 +130,5 @@ def validate_graph_stability(
 
 def _save_baseline(source: Path, target: Path) -> None:
     """Copy graph file to baseline location."""
-    import shutil
     shutil.copy2(source, target)
     logger.info(f"Baseline saved: {target}")
