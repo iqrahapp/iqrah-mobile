@@ -54,9 +54,14 @@ def load_graph_node_ids(cbor_path: Path) -> Set[str]:
 
                 # Handle both dict-based and list-based CBOR formats
                 if isinstance(record, dict):
-                    record_type = record.get('type')
-                    if record_type == 'node':
-                        node_ids.add(record['id'])
+                    # Check for "t": "node" (new format)
+                    if record.get('t') == 'node':
+                        if 'id' in record:
+                            node_ids.add(record['id'])
+                    # Check for legacy formats
+                    elif record.get('type') == 'node':
+                        if 'id' in record:
+                            node_ids.add(record['id'])
                 elif isinstance(record, (list, tuple)) and len(record) >= 2:
                     # Format: [record_type, data]
                     record_type = record[0]
@@ -65,7 +70,7 @@ def load_graph_node_ids(cbor_path: Path) -> Set[str]:
                         if isinstance(data, dict) and 'id' in data:
                             node_ids.add(data['id'])
 
-        except cbor2.CBORDecodeEOF:
+        except (cbor2.CBORDecodeEOF, EOFError):
             # End of file reached
             pass
 
