@@ -767,12 +767,9 @@ async fn handle_generate_exercise(
             let exercise = exercise_type.as_exercise();
 
             // Try to get MCQ options if it's an MCQ exercise
-            let options =
-                if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
-                    Some(mcq.get_options().to_vec())
-                } else {
-                    None
-                };
+            let options = (exercise as &dyn std::any::Any)
+                .downcast_ref::<McqExercise>()
+                .map(|mcq| mcq.get_options().to_vec());
 
             vec![Event::ExerciseGenerated {
                 node_id: node_id.to_string(),
