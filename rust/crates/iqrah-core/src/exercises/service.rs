@@ -427,7 +427,10 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_verses_batch(&self, verse_keys: &[String]) -> Result<HashMap<String, crate::Verse>> {
+        async fn get_verses_batch(
+            &self,
+            verse_keys: &[String],
+        ) -> Result<HashMap<String, crate::Verse>> {
             let mut result = HashMap::new();
             for key in verse_keys {
                 if let Some(verse) = self.get_verse(key).await? {
@@ -857,7 +860,10 @@ mod tests {
             Ok(self.words.get(&word_id).cloned())
         }
 
-        async fn get_verses_batch(&self, verse_keys: &[String]) -> Result<HashMap<String, crate::Verse>> {
+        async fn get_verses_batch(
+            &self,
+            verse_keys: &[String],
+        ) -> Result<HashMap<String, crate::Verse>> {
             let mut result = HashMap::new();
             for key in verse_keys {
                 if let Some(verse) = self.get_verse(key).await? {

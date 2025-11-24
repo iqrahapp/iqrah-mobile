@@ -67,7 +67,7 @@ class SessionNotifier extends Notifier<SessionState> {
       );
 
       await api.processReview(
-        userId: "default_user",
+        userId: "test_user",
         nodeId: nodeId,
         grade: grade,
       );

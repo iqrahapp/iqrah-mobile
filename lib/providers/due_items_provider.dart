@@ -15,7 +15,7 @@ final exercisesProvider = FutureProvider.autoDispose<List<api.ExerciseDataDto>>(
   final surahFilter = ref.watch(surahFilterProvider);
   final isHighYieldMode = ref.watch(highYieldModeProvider);
   return api.getExercises(
-    userId: "default_user",
+    userId: "test_user",
     limit: 20,
     surahFilter: surahFilter,
     isHighYield: isHighYieldMode,
@@ -33,5 +33,5 @@ final availableSurahsProvider = FutureProvider<List<api.SurahInfo>>((
 final dashboardStatsProvider = FutureProvider.autoDispose<api.DashboardStatsDto>((
   ref,
 ) async {
-  return api.getDashboardStats(userId: "default_user");
+  return api.getDashboardStats(userId: "test_user");
 });

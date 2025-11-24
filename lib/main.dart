@@ -26,13 +26,20 @@ Future<void> main() async {
     exit(1);
   }
 
-  final dbPath = await getDatabasePath();
-  print('db path: $dbPath');
+  final dbDir = await getDatabasePath();
+  print('db directory: $dbDir');
+
+  // Ensure the database directory exists
+  final directory = Directory(dbDir);
+  if (!await directory.exists()) {
+    await directory.create(recursive: true);
+  }
+
   final bytes = assetData.buffer.asUint8List();
 
   // setupDatabase now requires contentDbPath and userDbPath separately
-  final contentDbPath = "$dbPath/content.db";
-  final userDbPath = "$dbPath/user.db";
+  final contentDbPath = "$dbDir/content.db";
+  final userDbPath = "$dbDir/user.db";
 
   final initMsg = await setupDatabase(
     contentDbPath: contentDbPath,

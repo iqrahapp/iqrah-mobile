@@ -128,7 +128,7 @@ impl McqExercise {
     fn generate_translation_distractors(correct: &str, count: usize) -> Vec<String> {
         // In production, fetch actual similar translations from database
         // For now, using common Islamic/Quranic terms as distractors
-        let common_translations = vec![
+        let common_translations = [
             "the merciful",
             "the compassionate",
             "the lord",

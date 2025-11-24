@@ -573,10 +573,13 @@ async fn test_v2_schema_version_validation() {
     // Test that schema version is enforced
     let pool = init_content_db(":memory:").await.unwrap();
 
-    // Verify schema version is 2
-    let version: i32 = sqlx::query_scalar("SELECT version FROM schema_version")
+    // Verify schema version is 2.0.0
+    let version: String = sqlx::query_scalar("SELECT version FROM schema_version")
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(version, 2, "Schema version should be 2 for v2 database");
+    assert_eq!(
+        version, "2.0.0",
+        "Schema version should be 2.0.0 for v2 database"
+    );
 }
