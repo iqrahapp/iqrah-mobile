@@ -1,8 +1,7 @@
-//! Integration tests for the iqrah CLI scheduler functionality
-//!
-//! These tests verify that the scheduler command works correctly end-to-end,
-//! including database initialization, session generation, and output.
-
+/// Integration tests for the iqrah CLI scheduler functionality
+///
+/// These tests verify that the scheduler command works correctly end-to-end,
+/// including database initialization, session generation, and output.
 use anyhow::Result;
 use iqrah_core::{ContentRepository, UserRepository};
 use iqrah_storage::{
