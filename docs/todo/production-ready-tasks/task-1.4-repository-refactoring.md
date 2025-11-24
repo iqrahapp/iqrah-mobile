@@ -97,12 +97,15 @@ async fn get_node(&self, node_id: &str) -> Result<Option<Node>> {
         }
         NodeType::Knowledge => {
             let (base_id, axis) = node_id::parse_knowledge(node_id)?;
-            // Knowledge nodes are virtual (no direct DB representation)
-            // Return node with axis metadata
-            Ok(Some(Node {
-                id: node_id.to_string(),
+            // Knowledge nodes ARE stored in node_metadata with their full ID
+            // (e.g., "VERSE:1:1:memorization" is a real node in the database)
+            let node = self.get_node_by_id(node_id).await?;
+            Ok(node.map(|n| Node {
+                id: n.id,
                 node_type: NodeType::Knowledge,
-                // ... fill from base node
+                axis: Some(axis),
+                base_id: Some(base_id),
+                // ... other fields from database
             }))
         }
     }
@@ -179,17 +182,18 @@ async fn get_node(&self, node_id: &str) -> Result<Option<Node>> {
 
         NodeType::Knowledge => {
             let (base_id, axis) = node_id::parse_knowledge(node_id)?;
-            // Knowledge nodes are derived from content nodes
-            // Get the base node and add axis information
-            let base_node = self.get_node(&base_id).await?;
-            if let Some(mut node) = base_node {
-                node.id = node_id.to_string();
-                node.node_type = NodeType::Knowledge;
-                // Store axis in node metadata or knowledge_node field
-                Ok(Some(node))
-            } else {
-                Ok(None)
-            }
+            // Knowledge nodes ARE stored in node_metadata table
+            // Query: SELECT * FROM node_metadata WHERE node_id = ? (e.g., "VERSE:1:1:memorization")
+            self.get_node_metadata(node_id).await.map(|metadata| {
+                metadata.map(|meta| Node {
+                    id: node_id.to_string(),
+                    node_type: NodeType::Knowledge,
+                    axis: Some(axis),
+                    base_id: Some(base_id),
+                    scores: meta.scores,
+                    // ... other fields from node_metadata
+                })
+            })
         }
     }
 }
@@ -348,9 +352,9 @@ RUSTFLAGS="-D warnings" cargo test --all-features
 ### ⚠️ If Uncertain
 
 - If a method's parsing logic is complex → break it into helper methods first
-- If tests fail after refactoring → check node ID format matches migration data
+- If tests fail after refactoring → check node ID format matches migration data (must use prefixed format)
 - If you find node IDs in other repositories (user repository) → note them but don't change (out of scope)
-- If knowledge node handling is unclear → they're virtual nodes derived from content nodes
+- If knowledge node handling is unclear → they ARE stored in `node_metadata` table with their full ID (e.g., `VERSE:1:1:memorization`)
 
 ## Success Criteria
 
@@ -383,17 +387,22 @@ RUSTFLAGS="-D warnings" cargo test --all-features
 
 ## Notes
 
-### Migration Compatibility
+### Node ID Format Standard
 
-The node_id module supports both formats:
-- `"VERSE:1:1"` (prefixed)
-- `"1:1"` (unprefixed)
+**IMPORTANT:** Only prefixed format is supported:
+- `"VERSE:1:1"` ✅
+- `"1:1"` ❌ (rejected with error)
 
-This ensures compatibility with existing migration data which uses unprefixed verse keys.
+No backward compatibility for unprefixed IDs. All migration data MUST use prefixed format.
 
 ### Knowledge Nodes
 
-Knowledge nodes like `"VERSE:1:1:memorization"` don't have direct DB representation. They're virtual nodes derived from content nodes with axis metadata attached. Handle them specially in `get_node()`.
+Knowledge nodes like `"VERSE:1:1:memorization"` **ARE stored in the database** in the `node_metadata` table with their full ID as the primary key. They are NOT virtual nodes - they are real database entities with:
+- `node_id`: e.g., `"VERSE:1:1:memorization"`
+- Scores: `foundational_score`, `influence_score`, etc.
+- Graph edges connecting them
+
+Query them directly: `SELECT * FROM node_metadata WHERE node_id = 'VERSE:1:1:memorization'`
 
 ### Performance
 

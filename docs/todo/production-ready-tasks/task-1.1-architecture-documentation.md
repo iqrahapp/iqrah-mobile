@@ -48,6 +48,8 @@ AI agents implementing subsequent tasks need clear contracts to avoid hallucinat
    - Package installation strategy (insert into content.db)
 
 2. **Node ID Format Specification**
+   - **⚠️ IMPORTANT:** All node IDs MUST use prefixed format. No backward compatibility for unprefixed IDs.
+
    - **Content Nodes:**
      - `CHAPTER:{chapter_num}` (e.g., `CHAPTER:1`)
      - `VERSE:{chapter}:{verse}` (e.g., `VERSE:1:1`)
@@ -60,7 +62,8 @@ AI agents implementing subsequent tasks need clear contracts to avoid hallucinat
 
    - **Parsing Rules:**
      - Split on `:` delimiter
-     - Validate prefix matches enum
+     - Validate prefix matches enum (`CHAPTER`, `VERSE`, `WORD`, `WORD_INSTANCE`)
+     - **Reject unprefixed formats** (e.g., `"1:1"` is invalid, must be `"VERSE:1:1"`)
      - Validate numeric parts in valid ranges
      - Return typed errors for malformed IDs
 

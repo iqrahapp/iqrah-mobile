@@ -20,8 +20,8 @@ Generate a complete knowledge graph migration file that includes ALL 6 knowledge
 - ❌ **Migration file only has content nodes, NO knowledge nodes**
 
 **Current Migration:** `migrations_content/20241118000001_knowledge_graph_chapters_1_3.sql`
-- Contains: Verse IDs like `"1:1"`, `"2:5"` (content nodes)
-- Missing: Knowledge nodes like `"1:1:memorization"`, `"1:1:translation"`
+- Contains: Verse IDs like `"VERSE:1:1"`, `"VERSE:2:5"` (content nodes)
+- Missing: Knowledge nodes like `"VERSE:1:1:memorization"`, `"VERSE:1:1:translation"`
 
 **Why This Matters:**
 Knowledge axis is a CORE FEATURE. Without the data:
@@ -59,14 +59,14 @@ Knowledge axis is a CORE FEATURE. Without the data:
 **Contents:**
 1. **Content Nodes** (already exist):
    - Chapters: `CHAPTER:1`, `CHAPTER:2`, `CHAPTER:3`
-   - Verses: `1:1`, `1:2`, ..., `3:200` (493 verses total)
+   - Verses: `VERSE:1:1`, `VERSE:1:2`, ..., `VERSE:3:200` (493 verses total)
    - Words: `WORD_INSTANCE:1:1:1`, `WORD_INSTANCE:1:1:2`, ...
 
 2. **Knowledge Nodes** (NEW):
-   - Verse memorization: `1:1:memorization`, `1:2:memorization`, ... (493 nodes)
-   - Verse translation: `1:1:translation`, `1:2:translation`, ... (493 nodes)
-   - Verse tafsir: `1:1:tafsir`, ... (493 nodes)
-   - Verse tajweed: `1:1:tajweed`, ... (493 nodes)
+   - Verse memorization: `VERSE:1:1:memorization`, `VERSE:1:2:memorization`, ... (493 nodes)
+   - Verse translation: `VERSE:1:1:translation`, `VERSE:1:2:translation`, ... (493 nodes)
+   - Verse tafsir: `VERSE:1:1:tafsir`, ... (493 nodes)
+   - Verse tajweed: `VERSE:1:1:tajweed`, ... (493 nodes)
    - Word memorization: `WORD_INSTANCE:1:1:1:memorization`, ...
    - Word translation: `WORD_INSTANCE:1:1:1:translation`, ...
    - (Estimate: ~2000-3000 knowledge nodes total)
@@ -76,9 +76,9 @@ Knowledge axis is a CORE FEATURE. Without the data:
    - Hierarchical: Chapter → Verse, Verse → Word
 
 4. **Knowledge Edges** (NEW):
-   - Sequential: `1:1:memorization` → `1:2:memorization`
-   - Cross-axis: `1:1:translation` → `1:1:memorization` (translation helps memorization)
-   - Contextual: `WORD_INSTANCE:1:1:1:memorization` → `1:1:memorization`
+   - Sequential: `VERSE:1:1:memorization` → `VERSE:1:2:memorization`
+   - Cross-axis: `VERSE:1:1:translation` → `VERSE:1:1:memorization` (translation helps memorization)
+   - Contextual: `WORD_INSTANCE:1:1:1:memorization` → `VERSE:1:1:memorization`
 
 5. **Node Metadata** (updated):
    - PageRank scores for ALL nodes (content + knowledge)
@@ -133,51 +133,101 @@ def build_knowledge_graph(chapters_range=(1, 3)):
 
 **If this doesn't exist**, you may need to implement it based on existing code patterns.
 
-### Step 3: Run Graph Builder (30 min)
+### Step 3: Build Knowledge Graph with All Axes (1-2 hours)
 
-**Commands:**
+**Command:**
 ```bash
 cd research_and_dev/iqrah-knowledge-graph2
 
-# Build knowledge graph with all axes
-python -m iqrah.cli build-graph \
-    --chapters 1-3 \
-    --include-knowledge-axis \
-    --output-format json \
-    --output knowledge_graph_full.json
+# Build complete knowledge graph with all axes and scoring
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology ../data/morphology/quran-morphology-v0.5.csv \
+    --preset full \
+    --chapters "1-3" \
+    -o output/knowledge_graph_full_axis.cbor.zst
 ```
+
+**What this does:**
+- Builds dependency graph from scratch (chapters, verses, words, lemmas, roots)
+- Adds knowledge edges for all 6 axes (memorization, translation, tafsir, tajweed, contextual_memorization, meaning)
+- Computes PageRank scores (integrated, no separate scoring step needed)
+- Exports to CBOR format with Zstandard compression
 
 **Verify output:**
-- JSON file created
-- Contains knowledge nodes (check for `:memorization`, `:translation` in node IDs)
-- Contains knowledge edges (EdgeType::Knowledge = 1)
-
-### Step 4: Run PageRank Scoring (1 hour)
-
-**Commands:**
 ```bash
-# Score the graph (PageRank algorithm)
-python -m iqrah.cli score-graph \
-    --input knowledge_graph_full.json \
-    --output knowledge_graph_scored.json \
-    --iterations 100
+# Check file was created
+ls -lh output/knowledge_graph_full_axis.cbor.zst
+
+# Inspect graph structure
+python inspect_graph.py output/knowledge_graph_full_axis.cbor.zst
 ```
 
-**Verify:**
-- All nodes (content + knowledge) have scores
-- Scores are normalized (sum to ~1.0)
-- Foundational, influence, and difficulty scores present
+**Expected output:**
+```
+File size: 5.2 MB
+Version: 2
+Format: structure_only
+Nodes: 11,234
+Edges: 45,678
 
-### Step 5: Export to SQL Migration (1 hour)
+Node types:
+  chapter: 3
+  verse: 493
+  word: 2,145
+  word_instance: 6,234
+  lemma: 1,523
+  root: 836
 
-**File:** `research_and_dev/iqrah-knowledge-graph2/score_and_extract.py`
+Sample nodes with knowledge axes:
+  - VERSE:1:1:memorization
+  - VERSE:1:1:translation
+  - WORD_INSTANCE:1:1:1:memorization
+```
 
-Run the exporter:
+### Step 4: Export Graph to SQL Migration (1 hour)
+
+**Note:** The `score_and_extract.py` script is for the OLD workflow that generates SQL directly from GraphML. For the new CBOR-based workflow, we need a different approach.
+
+**Option A: Use existing export script (if it supports CBOR input):**
+
+Check if `score_and_extract.py` can read CBOR files:
 
 ```bash
+python score_and_extract.py --help
+```
+
+If it supports CBOR:
+```bash
 python score_and_extract.py \
-    --input knowledge_graph_scored.json \
-    --output ../iqrah-mobile/rust/crates/iqrah-storage/migrations_content/20241124000002_knowledge_graph_full_axis.sql
+    output/knowledge_graph_full_axis.cbor.zst \
+    > ../../rust/crates/iqrah-storage/migrations_content/20241124000002_knowledge_graph_full_axis.sql
+```
+
+**Option B: Create new CBOR-to-SQL exporter:**
+
+If `score_and_extract.py` only works with GraphML, you'll need to either:
+1. Export to GraphML format during build (use `--format both`)
+2. Create a new script to convert CBOR → SQL
+
+**Recommended approach:**
+
+```bash
+# Build with both CBOR and GraphML output
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology ../data/morphology/quran-morphology-v0.5.csv \
+    --preset full \
+    --chapters "1-3" \
+    --format both \
+    -o output/knowledge_graph_full_axis.cbor.zst
+
+# This creates:
+# - output/knowledge_graph_full_axis.cbor.zst (for Rust import)
+# - output/knowledge_graph_full_axis.graphml (for SQL generation)
+
+# Generate SQL from GraphML
+python score_and_extract.py output/knowledge_graph_full_axis.graphml
 ```
 
 **Verify SQL structure:**
@@ -186,20 +236,20 @@ python score_and_extract.py \
 
 -- Knowledge nodes in node_metadata
 INSERT INTO node_metadata (node_id, key, value) VALUES
-    ('1:1:memorization', 'foundational_score', 0.0123),
-    ('1:1:translation', 'foundational_score', 0.0098),
+    ('VERSE:1:1:memorization', 'foundational_score', 0.0123),
+    ('VERSE:1:1:translation', 'foundational_score', 0.0098),
     ...;
 
 -- Knowledge edges
 INSERT INTO edges (source_id, target_id, edge_type, distribution_type, distribution_param1, distribution_param2) VALUES
-    ('1:1:memorization', '1:2:memorization', 1, 0, 0.8, 0.0),  -- Sequential
-    ('1:1:translation', '1:1:memorization', 1, 0, 0.3, 0.0),  -- Cross-axis
+    ('VERSE:1:1:memorization', 'VERSE:1:2:memorization', 1, 0, 0.8, 0.0),  -- Sequential
+    ('VERSE:1:1:translation', 'VERSE:1:1:memorization', 1, 0, 0.3, 0.0),  -- Cross-axis
     ...;
 
 -- Updated goals with axis-specific nodes
 INSERT INTO node_goals (goal_id, node_id) VALUES
-    ('memorization:chapters-1-3', '1:1:memorization'),
-    ('memorization:chapters-1-3', '1:2:memorization'),
+    ('memorization:chapters-1-3', 'VERSE:1:1:memorization'),
+    ('memorization:chapters-1-3', 'VERSE:1:2:memorization'),
     ...;
 ```
 
@@ -337,7 +387,8 @@ cargo test --test knowledge_axis_test -- --nocapture
 ### CLI End-to-End Test
 
 ```bash
-# Generate sessions for each axis
+# Generate sessions for each main verse-level axis
+# (contextual_memorization and meaning are word-level only)
 for axis in memorization translation tafsir tajweed; do
     echo "Testing axis: $axis"
     cargo run --bin iqrah-cli -- schedule \
@@ -347,9 +398,18 @@ for axis in memorization translation tafsir tajweed; do
 done
 ```
 
-- [ ] All 4 axes return results
+- [ ] All 4 main verse-level axes return results
 - [ ] Node IDs end with correct axis suffix
 - [ ] No errors or panics
+
+**Note on Axis Distribution:**
+The 6 knowledge axes are distributed across two granularity levels:
+- **Verse-level axes (4):** memorization, translation, tafsir, tajweed
+  - Applied to all 493 verses in chapters 1-3
+  - User practices these at verse granularity (e.g., `VERSE:1:1:memorization`)
+- **Word-level axes (2):** contextual_memorization, meaning
+  - Applied to individual word instances
+  - User practices these at word granularity (e.g., `WORD_INSTANCE:1:1:3:contextual_memorization`)
 
 ## Scope Limits & Safeguards
 
@@ -435,9 +495,9 @@ done
 
 **For chapters 1-3 (493 verses, ~6000 words):**
 - Content nodes: ~6500
-- Knowledge nodes (verse × 4 axes): ~2000
-- Knowledge nodes (word × 2 axes): ~3000
-- **Total nodes: ~11,500**
+- Knowledge nodes (verse × 4 verse-level axes): ~2000
+- Knowledge nodes (word × 2 word-level axes): ~3000
+- **Total nodes: ~11,500** (6 knowledge axes total)
 - Dependency edges: ~6000
 - Knowledge edges: ~10,000
 - **Total edges: ~16,000**

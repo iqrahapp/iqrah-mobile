@@ -1,4 +1,4 @@
-# Task 1.5: Add Node ID Stability Validation to Python Pipeline
+# Task 1.5: Integrate Node ID Stability Validation into Build Pipeline
 
 ## Metadata
 - **Priority:** P0 (Critical Foundation)
@@ -9,7 +9,7 @@
 
 ## Goal
 
-Implement validation in the Python knowledge graph build pipeline to prevent accidental node ID changes that would break user progress, enforcing the node ID stability policy.
+Integrate the existing node ID stability validation script into the Python knowledge graph build pipeline to prevent accidental node ID changes that would break user progress.
 
 ## Context
 
@@ -30,455 +30,338 @@ Result: User progress for "VERSE:1:1" orphaned
 - Typos or bugs in ID construction
 
 **Solution:**
-Before generating a new graph migration, validate that all previous node IDs still exist. New nodes are fine, removed/changed nodes are breaking changes that require explicit migration.
+Before generating a new graph, validate that all previous node IDs still exist. New nodes are fine, removed/changed nodes are breaking changes that require explicit migration.
 
 ## Current State
 
 **Python R&D Project:**
 - **Location:** `research_and_dev/iqrah-knowledge-graph2/`
-- **Graph Builder:** `src/iqrah/graph/builder.py`, `knowledge_builder.py`
-- **Export Script:** `score_and_extract.py` (generates SQL migrations)
+- **Graph Library:** NetworkX (`import networkx as nx`)
+- **Graph Format:** CBOR binary with Zstandard compression (`.cbor.zst`)
+- **Builder:** `src/iqrah/graph/builder.py`, `knowledge_builder.py`
+- **Export Module:** `src/iqrah/export/cbor_export.py`
+- **CLI:** `src/iqrah_cli/commands/build.py`
 
-**No Validation:**
-- Nothing prevents node IDs from changing
-- Nothing compares old vs new graph
-- Could accidentally break user data
+**Validation Script (ALREADY EXISTS):**
+- **File:** `research_and_dev/iqrah-knowledge-graph2/validate_stability.py` (196 lines)
+- **Status:** Fully functional standalone script
+- **Features:**
+  - Loads CBOR graph files
+  - Extracts node IDs from both dict and list-based CBOR formats
+  - Compares old vs new graph node IDs
+  - Reports missing IDs with sample output
+  - Returns exit code 0 (pass) or 1 (fail)
+  - CLI with argparse (proper usage, help text)
 
-**Example Build Process (Current):**
+**Current Workflow (Manual):**
 ```bash
 cd research_and_dev/iqrah-knowledge-graph2
-python score_and_extract.py --output ../iqrah-mobile/rust/crates/iqrah-storage/migrations_content/new_graph.sql
+
+# Build graph
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology ../data/morphology.csv \
+    --preset full \
+    -o output/knowledge_graph.cbor.zst
+
+# Manual validation (optional, not enforced)
+python validate_stability.py old_graph.cbor.zst output/knowledge_graph.cbor.zst
 ```
 
-No checks, just overwrites.
+**The Problem:**
+Validation is manual and optional. Nothing prevents developers from accidentally breaking node IDs.
 
 ## Target State
 
-### Validation Script
+### Automated Validation in Build Pipeline
 
-**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/node_stability.py`
+**Workflow:**
+1. Build new graph
+2. Export to CBOR
+3. **Automatically validate** against previous version (if exists)
+4. **Exit with error** if validation fails
+5. Save current graph as baseline for next build
 
-```python
-def validate_node_stability(old_graph: Graph, new_graph: Graph) -> ValidationResult:
-    """
-    Validate that all node IDs from old graph still exist in new graph.
-
-    Returns:
-        ValidationResult with:
-        - is_valid: bool
-        - missing_nodes: Set[str] (node IDs removed)
-        - added_nodes: Set[str] (new node IDs - informational)
-        - summary: str
-    """
-```
-
-### Integration into Build Pipeline
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/score_and_extract.py`
-
-```python
-if __name__ == "__main__":
-    # Build new graph
-    new_graph = build_knowledge_graph()
-
-    # Load previous version (if exists)
-    if Path("previous_graph.json").exists():
-        old_graph = load_graph("previous_graph.json")
-
-        # Validate stability
-        result = validate_node_stability(old_graph, new_graph)
-
-        if not result.is_valid:
-            print("ERROR: Node ID stability check FAILED!")
-            print(f"Missing node IDs: {result.missing_nodes}")
-            sys.exit(1)
-
-        print(f"✅ Node ID stability validated ({len(result.added_nodes)} new nodes)")
-
-    # Save current graph for next validation
-    save_graph(new_graph, "previous_graph.json")
-
-    # Export to SQL
-    export_to_sql(new_graph, output_path)
-```
-
-### CI Integration (Documentation)
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/README.md`
-
-Document how to run validation in CI:
-```bash
-# Before merging graph updates:
-python score_and_extract.py --validate-only
-
-# Should exit with code 1 if node IDs removed
-```
+**Integration Points:**
+- CLI command: Add `--validate` flag (default: true)
+- Build script: Call `validate_stability.py` automatically
+- CI/CD: Validation failure blocks merge
 
 ## Implementation Steps
 
-### Step 1: Create Validation Module (2 hours)
+### Step 1: Test Existing Validation Script (30 min)
 
-**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/__init__.py`
+**Verify the script works correctly:**
 
-```python
-"""Validation utilities for knowledge graph stability."""
-```
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/node_stability.py`
-
-```python
-from typing import Set, NamedTuple
-from ..graph.models import Graph
-
-class ValidationResult(NamedTuple):
-    is_valid: bool
-    missing_nodes: Set[str]
-    added_nodes: Set[str]
-    summary: str
-
-def validate_node_stability(
-    old_graph: Graph,
-    new_graph: Graph,
-    allow_removals: bool = False
-) -> ValidationResult:
-    """
-    Validate that all node IDs from old graph still exist in new graph.
-
-    Args:
-        old_graph: Previous version of the graph
-        new_graph: New version of the graph
-        allow_removals: If True, only warn about removals (don't fail)
-
-    Returns:
-        ValidationResult with validation status and details
-    """
-    old_nodes = set(old_graph.nodes.keys())
-    new_nodes = set(new_graph.nodes.keys())
-
-    missing_nodes = old_nodes - new_nodes
-    added_nodes = new_nodes - old_nodes
-
-    is_valid = len(missing_nodes) == 0 or allow_removals
-
-    summary = f"""
-Node Stability Validation:
-- Old graph: {len(old_nodes)} nodes
-- New graph: {len(new_nodes)} nodes
-- Added: {len(added_nodes)} nodes
-- Removed: {len(missing_nodes)} nodes
-- Status: {'✅ PASS' if is_valid else '❌ FAIL'}
-"""
-
-    if missing_nodes:
-        summary += f"\nMissing node IDs:\n"
-        for node_id in sorted(missing_nodes)[:10]:  # Show first 10
-            summary += f"  - {node_id}\n"
-        if len(missing_nodes) > 10:
-            summary += f"  ... and {len(missing_nodes) - 10} more\n"
-
-    return ValidationResult(
-        is_valid=is_valid,
-        missing_nodes=missing_nodes,
-        added_nodes=added_nodes,
-        summary=summary
-    )
-
-def validate_node_id_formats(graph: Graph) -> ValidationResult:
-    """
-    Validate that all node IDs follow the documented format specification.
-
-    Checks:
-    - Prefixes match expected types (CHAPTER, VERSE, WORD, WORD_INSTANCE)
-    - Chapter numbers in range 1-114
-    - Verse numbers >= 1
-    - Knowledge axis names are valid
-
-    Returns:
-        ValidationResult with validation status
-    """
-    invalid_nodes = set()
-    valid_prefixes = {"CHAPTER", "VERSE", "WORD", "WORD_INSTANCE"}
-    valid_axes = {"memorization", "translation", "tafsir", "tajweed", "contextual_memorization", "meaning"}
-
-    for node_id in graph.nodes.keys():
-        parts = node_id.split(":")
-
-        if len(parts) < 1:
-            invalid_nodes.add(node_id)
-            continue
-
-        # Check if it's a knowledge node (ends with axis)
-        if len(parts) >= 2 and parts[-1] in valid_axes:
-            # Valid knowledge node
-            continue
-
-        # Check content node prefix
-        prefix = parts[0]
-
-        # Handle unprefixed verse IDs like "1:1"
-        if prefix.isdigit() and len(parts) == 2:
-            # Likely unprefixed verse
-            try:
-                ch = int(parts[0])
-                v = int(parts[1])
-                if not (1 <= ch <= 114) or v < 1:
-                    invalid_nodes.add(node_id)
-            except ValueError:
-                invalid_nodes.add(node_id)
-            continue
-
-        # Check prefixed nodes
-        if prefix not in valid_prefixes and prefix != "WORD":  # WORD is sometimes numeric
-            invalid_nodes.add(node_id)
-            continue
-
-        # Validate chapter numbers if present
-        if prefix in ["CHAPTER", "VERSE", "WORD_INSTANCE"]:
-            try:
-                ch_idx = 1
-                if prefix == "CHAPTER" and len(parts) >= 2:
-                    ch = int(parts[1])
-                elif prefix in ["VERSE", "WORD_INSTANCE"] and len(parts) >= 3:
-                    ch = int(parts[1])
-                else:
-                    continue  # Can't validate structure
-
-                if not (1 <= ch <= 114):
-                    invalid_nodes.add(node_id)
-            except (ValueError, IndexError):
-                invalid_nodes.add(node_id)
-
-    is_valid = len(invalid_nodes) == 0
-
-    summary = f"""
-Node ID Format Validation:
-- Total nodes: {len(graph.nodes)}
-- Invalid formats: {len(invalid_nodes)}
-- Status: {'✅ PASS' if is_valid else '❌ FAIL'}
-"""
-
-    if invalid_nodes:
-        summary += "\nInvalid node IDs:\n"
-        for node_id in sorted(invalid_nodes)[:10]:
-            summary += f"  - {node_id}\n"
-        if len(invalid_nodes) > 10:
-            summary += f"  ... and {len(invalid_nodes) - 10} more\n"
-
-    return ValidationResult(
-        is_valid=is_valid,
-        missing_nodes=set(),
-        added_nodes=invalid_nodes,
-        summary=summary
-    )
-```
-
-### Step 2: Add Graph Serialization (1 hour)
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/serialization.py`
-
-```python
-import json
-from pathlib import Path
-from .models import Graph
-
-def save_graph_snapshot(graph: Graph, path: str) -> None:
-    """Save a snapshot of node IDs for validation."""
-    snapshot = {
-        "node_ids": sorted(graph.nodes.keys()),
-        "version": "2.0.0",  # Graph schema version
-        "node_count": len(graph.nodes),
-    }
-
-    with open(path, 'w') as f:
-        json.dump(snapshot, f, indent=2)
-
-def load_graph_snapshot(path: str) -> Set[str]:
-    """Load node IDs from snapshot."""
-    with open(path, 'r') as f:
-        snapshot = json.load(f)
-    return set(snapshot["node_ids"])
-```
-
-### Step 3: Integrate into Build Script (1-2 hours)
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/score_and_extract.py`
-
-Add validation logic:
-
-```python
-import sys
-from pathlib import Path
-from iqrah.validation.node_stability import validate_node_stability, validate_node_id_formats
-from iqrah.graph.serialization import save_graph_snapshot, load_graph_snapshot
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output", required=True)
-    parser.add_argument("--validate-only", action="store_true", help="Only run validation, don't generate")
-    parser.add_argument("--skip-validation", action="store_true", help="Skip stability validation (dangerous!)")
-    args = parser.parse_args()
-
-    # Build new graph
-    print("Building knowledge graph...")
-    new_graph = build_knowledge_graph()
-
-    # Validate node ID formats
-    print("\nValidating node ID formats...")
-    format_result = validate_node_id_formats(new_graph)
-    print(format_result.summary)
-
-    if not format_result.is_valid:
-        print("ERROR: Node ID format validation failed!")
-        sys.exit(1)
-
-    # Validate node stability (if previous version exists)
-    snapshot_path = Path("graph_snapshot.json")
-
-    if snapshot_path.exists() and not args.skip_validation:
-        print("\nValidating node ID stability...")
-        old_node_ids = load_graph_snapshot(snapshot_path)
-
-        # Create minimal old graph structure
-        old_graph = Graph()
-        for node_id in old_node_ids:
-            old_graph.add_node(node_id)  # Simplified
-
-        stability_result = validate_node_stability(old_graph, new_graph)
-        print(stability_result.summary)
-
-        if not stability_result.is_valid:
-            print("\n❌ BREAKING CHANGE DETECTED!")
-            print("Node IDs have been removed, which will break user progress.")
-            print("If this is intentional, you must:")
-            print("1. Create a migration mapping (see docs/migration-strategy.md)")
-            print("2. Bump major version (2.0.0 -> 3.0.0)")
-            print("3. Run with --skip-validation (not recommended)")
-            sys.exit(1)
-
-        print(f"✅ Node stability validated: {len(stability_result.added_nodes)} new nodes added")
-
-    if args.validate_only:
-        print("\nValidation complete (--validate-only mode)")
-        return
-
-    # Save snapshot for next validation
-    print("\nSaving graph snapshot...")
-    save_graph_snapshot(new_graph, snapshot_path)
-
-    # Export to SQL
-    print(f"\nExporting to {args.output}...")
-    export_to_sql(new_graph, args.output)
-
-    print("✅ Graph generation complete!")
-
-if __name__ == "__main__":
-    main()
-```
-
-### Step 4: Add Tests (1-2 hours)
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/tests/test_node_stability.py`
-
-```python
-import pytest
-from iqrah.graph.models import Graph
-from iqrah.validation.node_stability import validate_node_stability, validate_node_id_formats
-
-def test_no_changes():
-    """Test that identical graphs pass validation."""
-    graph = Graph()
-    graph.add_node("VERSE:1:1")
-    graph.add_node("VERSE:1:2")
-
-    result = validate_node_stability(graph, graph)
-    assert result.is_valid
-    assert len(result.missing_nodes) == 0
-    assert len(result.added_nodes) == 0
-
-def test_added_nodes():
-    """Test that adding nodes is allowed."""
-    old_graph = Graph()
-    old_graph.add_node("VERSE:1:1")
-
-    new_graph = Graph()
-    new_graph.add_node("VERSE:1:1")
-    new_graph.add_node("VERSE:1:2")
-
-    result = validate_node_stability(old_graph, new_graph)
-    assert result.is_valid
-    assert len(result.added_nodes) == 1
-    assert "VERSE:1:2" in result.added_nodes
-
-def test_removed_nodes():
-    """Test that removing nodes fails validation."""
-    old_graph = Graph()
-    old_graph.add_node("VERSE:1:1")
-    old_graph.add_node("VERSE:1:2")
-
-    new_graph = Graph()
-    new_graph.add_node("VERSE:1:1")
-
-    result = validate_node_stability(old_graph, new_graph)
-    assert not result.is_valid
-    assert len(result.missing_nodes) == 1
-    assert "VERSE:1:2" in result.missing_nodes
-
-def test_valid_node_formats():
-    """Test that valid node IDs pass format validation."""
-    graph = Graph()
-    graph.add_node("CHAPTER:1")
-    graph.add_node("VERSE:1:1")
-    graph.add_node("WORD:123")
-    graph.add_node("WORD_INSTANCE:1:1:3")
-    graph.add_node("VERSE:1:1:memorization")
-    graph.add_node("1:1")  # Unprefixed verse (legacy)
-
-    result = validate_node_id_formats(graph)
-    assert result.is_valid
-
-def test_invalid_node_formats():
-    """Test that invalid node IDs fail format validation."""
-    graph = Graph()
-    graph.add_node("INVALID:1:1")
-    graph.add_node("CHAPTER:115")  # Out of range
-
-    result = validate_node_id_formats(graph)
-    assert not result.is_valid
-```
-
-Run tests:
 ```bash
 cd research_and_dev/iqrah-knowledge-graph2
-pytest tests/test_node_stability.py
+
+# If you have sample graphs, test it:
+python validate_stability.py \
+    /path/to/old_graph.cbor.zst \
+    /path/to/new_graph.cbor.zst
+
+# Check exit code
+echo $?  # Should be 0 (pass) or 1 (fail)
 ```
 
-### Step 5: Document Usage (30 min)
+**Expected output (on success):**
+```
+Loading old graph: old_graph.cbor.zst
+Loading new graph: new_graph.cbor.zst
+
+✅ ID stability validated
+   Old graph: 11,234 nodes
+   New graph: 11,450 nodes
+   Added: 216 new nodes
+
+   Sample new node IDs (showing first 5):
+     + VERSE:4:1:memorization
+     + VERSE:4:2:memorization
+     ...
+
+✅ PASSED: Graph update is safe - no breaking changes detected
+   User progress will be preserved.
+```
+
+**Expected output (on failure):**
+```
+Loading old graph: old_graph.cbor.zst
+Loading new graph: new_graph.cbor.zst
+
+❌ ERROR: Node IDs removed in new graph version!
+   Missing IDs count: 5
+
+   Sample missing IDs (showing first 10):
+     - VERSE:1:1:memorization
+     - VERSE:1:2:memorization
+     ...
+
+⚠️  FAILED: Breaking changes detected!
+   User progress will be lost if this graph is released.
+
+   To fix:
+   1. Ensure node IDs are never changed or removed
+   2. Only ADD new nodes, never modify/remove existing ones
+   3. If IDs must change, provide a migration mapping
+```
+
+**Verify:**
+- [ ] Script runs without errors
+- [ ] Correctly detects missing node IDs
+- [ ] Exit code 0 on success, 1 on failure
+- [ ] Output is clear and actionable
+
+### Step 2: Create Build Pipeline Wrapper (1-2 hours)
+
+**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/pipeline_validation.py` (NEW)
+
+```python
+"""
+Pipeline validation integration for knowledge graph builds.
+
+This module integrates the standalone validate_stability.py script
+into the automated build pipeline.
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+from loguru import logger
+
+
+class GraphValidationError(Exception):
+    """Raised when graph validation fails."""
+    pass
+
+
+def validate_graph_stability(
+    new_graph_path: Path,
+    baseline_path: Optional[Path] = None,
+    skip_validation: bool = False,
+) -> bool:
+    """
+    Validate graph stability against baseline.
+
+    Args:
+        new_graph_path: Path to newly built graph (.cbor.zst)
+        baseline_path: Path to baseline graph (if None, uses default)
+        skip_validation: If True, skip validation (dangerous!)
+
+    Returns:
+        True if validation passed or skipped
+
+    Raises:
+        GraphValidationError: If validation fails
+    """
+    if skip_validation:
+        logger.warning("⚠️  VALIDATION SKIPPED (--skip-validation flag)")
+        return True
+
+    # Determine baseline path
+    if baseline_path is None:
+        baseline_path = new_graph_path.parent / "baseline_graph.cbor.zst"
+
+    # If no baseline exists, this is the first build
+    if not baseline_path.exists():
+        logger.info("No baseline graph found - first build detected")
+        logger.info(f"Saving baseline: {baseline_path}")
+        _save_baseline(new_graph_path, baseline_path)
+        return True
+
+    # Run validation script
+    logger.info(f"Validating against baseline: {baseline_path}")
+
+    validate_script = Path(__file__).parent.parent.parent.parent / "validate_stability.py"
+
+    if not validate_script.exists():
+        raise FileNotFoundError(f"Validation script not found: {validate_script}")
+
+    result = subprocess.run(
+        [sys.executable, str(validate_script), str(baseline_path), str(new_graph_path)],
+        capture_output=True,
+        text=True,
+    )
+
+    # Print validation output
+    print(result.stdout)
+
+    if result.returncode != 0:
+        # Validation failed
+        logger.error("❌ Graph validation FAILED!")
+        logger.error(result.stderr)
+        raise GraphValidationError(
+            "Node ID stability check failed. "
+            "Use --skip-validation to override (not recommended)."
+        )
+
+    logger.success("✅ Graph validation PASSED")
+
+    # Update baseline for next build
+    logger.info(f"Updating baseline: {baseline_path}")
+    _save_baseline(new_graph_path, baseline_path)
+
+    return True
+
+
+def _save_baseline(source: Path, target: Path) -> None:
+    """Copy graph file to baseline location."""
+    import shutil
+    shutil.copy2(source, target)
+    logger.info(f"Baseline saved: {target}")
+```
+
+### Step 3: Integrate into CLI Build Command (1 hour)
+
+**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah_cli/commands/build.py`
+
+Add validation step after graph export:
+
+```python
+# Around line 460, after CBOR export
+
+from iqrah.validation.pipeline_validation import validate_graph_stability, GraphValidationError
+
+def build_knowledge_graph(args) -> nx.DiGraph:
+    # ... existing code ...
+
+    # Save graph (existing code)
+    if output_format in ("cbor", "both"):
+        cbor_path = args.output if output_format == "cbor" else args.output + ".cbor.zst"
+        export_graph_to_cbor(
+            G,
+            cbor_path,
+            compression_level=config.export.compression_level,
+            show_progress=not args.no_progress,
+        )
+        logger.success(f"CBOR export saved: {cbor_path}")
+
+        # NEW: Validate graph stability
+        try:
+            validate_graph_stability(
+                new_graph_path=Path(cbor_path),
+                baseline_path=args.baseline if hasattr(args, 'baseline') else None,
+                skip_validation=args.skip_validation if hasattr(args, 'skip_validation') else False,
+            )
+        except GraphValidationError as e:
+            logger.error(str(e))
+            sys.exit(1)
+
+    # ... rest of function ...
+```
+
+**Add CLI arguments** (around line 230):
+
+```python
+def _setup_knowledge_graph_parser(subparsers):
+    # ... existing arguments ...
+
+    # NEW: Validation arguments
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip node ID stability validation (DANGEROUS - only for major version bumps)"
+    )
+
+    parser.add_argument(
+        "--baseline",
+        type=str,
+        help="Path to baseline graph for validation (default: auto-detected)"
+    )
+```
+
+### Step 4: Update Documentation (30 min)
 
 **File:** `research_and_dev/iqrah-knowledge-graph2/README.md`
 
 Add section:
+
 ```markdown
 ## Node ID Stability Validation
 
-To prevent breaking user progress, all graph updates must pass node ID stability validation.
+All graph builds are automatically validated to prevent breaking user progress.
 
-### Running Validation
+### How It Works
+
+1. **First Build:** Graph is saved as baseline (`baseline_graph.cbor.zst`)
+2. **Subsequent Builds:** New graph is validated against baseline
+3. **Validation Checks:** All node IDs from baseline must exist in new graph
+4. **On Success:** New graph becomes the baseline
+5. **On Failure:** Build exits with error
+
+### Running Builds
 
 ```bash
-# Generate graph with validation (default):
-python score_and_extract.py --output migrations/new_graph.sql
+# Normal build (validation enabled by default)
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology path/to/corpus.csv \
+    --preset full \
+    -o output/graph.cbor.zst
 
-# Validate only (don't generate):
-python score_and_extract.py --output dummy.sql --validate-only
+# Skip validation (DANGEROUS - only for major version bumps)
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology path/to/corpus.csv \
+    --skip-validation \
+    -o output/graph.cbor.zst
 
-# Skip validation (DANGEROUS - only for major version bumps):
-python score_and_extract.py --output migrations/new_graph.sql --skip-validation
+# Use custom baseline
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology path/to/corpus.csv \
+    --baseline path/to/baseline.cbor.zst \
+    -o output/graph.cbor.zst
 ```
 
-### What Gets Validated
+### Manual Validation
 
-1. **Node ID Stability:** All node IDs from previous version must exist
-2. **Format Validation:** Node IDs follow documented format specification
+You can also run validation manually:
+
+```bash
+python validate_stability.py old_graph.cbor.zst new_graph.cbor.zst
+```
 
 ### Handling Breaking Changes
 
@@ -487,7 +370,147 @@ If you MUST remove/change node IDs:
 1. Document the change in `CHANGELOG.md`
 2. Bump major version (2.0.0 → 3.0.0)
 3. Create migration mapping (see `docs/migration-strategy.md`)
-4. Use `--skip-validation` flag with extreme caution
+4. Run with `--skip-validation` flag
+5. Communicate breaking change to users
+
+### CI/CD Integration
+
+In CI pipeline:
+
+```yaml
+- name: Build and validate knowledge graph
+  run: |
+    cd research_and_dev/iqrah-knowledge-graph2
+    python -m iqrah_cli build knowledge-graph \
+      --from-scratch \
+      --morphology data/corpus.csv \
+      --preset ci-test \
+      -o output/graph.cbor.zst
+    # Validation runs automatically - will fail build if broken
+```
+
+Validation failures will cause CI to fail, preventing merge.
+```
+
+### Step 5: Add Tests (1 hour)
+
+**File:** `research_and_dev/iqrah-knowledge-graph2/tests/test_pipeline_validation.py` (NEW)
+
+```python
+import pytest
+from pathlib import Path
+import tempfile
+import networkx as nx
+from iqrah.validation.pipeline_validation import validate_graph_stability, GraphValidationError
+from iqrah.export.cbor_export import export_graph_to_cbor
+
+
+def test_first_build_no_baseline(tmp_path):
+    """First build should succeed and create baseline."""
+    graph = nx.DiGraph()
+    graph.add_node("VERSE:1:1", type="verse")
+    graph.add_node("VERSE:1:2", type="verse")
+
+    graph_path = tmp_path / "test_graph.cbor.zst"
+    export_graph_to_cbor(graph, str(graph_path), show_progress=False)
+
+    baseline_path = tmp_path / "baseline_graph.cbor.zst"
+
+    # Should succeed (no baseline yet)
+    result = validate_graph_stability(
+        new_graph_path=graph_path,
+        baseline_path=baseline_path,
+    )
+
+    assert result is True
+    assert baseline_path.exists()
+
+
+def test_validation_passes_with_added_nodes(tmp_path):
+    """Validation should pass when only adding nodes."""
+    # Create baseline
+    old_graph = nx.DiGraph()
+    old_graph.add_node("VERSE:1:1", type="verse")
+    old_graph.add_node("VERSE:1:2", type="verse")
+
+    baseline_path = tmp_path / "baseline.cbor.zst"
+    export_graph_to_cbor(old_graph, str(baseline_path), show_progress=False)
+
+    # Create new graph with added nodes
+    new_graph = nx.DiGraph()
+    new_graph.add_node("VERSE:1:1", type="verse")
+    new_graph.add_node("VERSE:1:2", type="verse")
+    new_graph.add_node("VERSE:1:3", type="verse")  # NEW
+
+    new_path = tmp_path / "new_graph.cbor.zst"
+    export_graph_to_cbor(new_graph, str(new_path), show_progress=False)
+
+    # Should succeed
+    result = validate_graph_stability(
+        new_graph_path=new_path,
+        baseline_path=baseline_path,
+    )
+
+    assert result is True
+
+
+def test_validation_fails_with_removed_nodes(tmp_path):
+    """Validation should fail when nodes are removed."""
+    # Create baseline
+    old_graph = nx.DiGraph()
+    old_graph.add_node("VERSE:1:1", type="verse")
+    old_graph.add_node("VERSE:1:2", type="verse")
+    old_graph.add_node("VERSE:1:3", type="verse")
+
+    baseline_path = tmp_path / "baseline.cbor.zst"
+    export_graph_to_cbor(old_graph, str(baseline_path), show_progress=False)
+
+    # Create new graph with removed node
+    new_graph = nx.DiGraph()
+    new_graph.add_node("VERSE:1:1", type="verse")
+    new_graph.add_node("VERSE:1:2", type="verse")
+    # VERSE:1:3 removed!
+
+    new_path = tmp_path / "new_graph.cbor.zst"
+    export_graph_to_cbor(new_graph, str(new_path), show_progress=False)
+
+    # Should fail
+    with pytest.raises(GraphValidationError):
+        validate_graph_stability(
+            new_graph_path=new_path,
+            baseline_path=baseline_path,
+        )
+
+
+def test_skip_validation_flag(tmp_path):
+    """Skip validation should bypass checks."""
+    # Create graphs with breaking change
+    old_graph = nx.DiGraph()
+    old_graph.add_node("VERSE:1:1", type="verse")
+
+    baseline_path = tmp_path / "baseline.cbor.zst"
+    export_graph_to_cbor(old_graph, str(baseline_path), show_progress=False)
+
+    new_graph = nx.DiGraph()
+    new_graph.add_node("VERSE:1:2", type="verse")  # Different node
+
+    new_path = tmp_path / "new_graph.cbor.zst"
+    export_graph_to_cbor(new_graph, str(new_path), show_progress=False)
+
+    # Should succeed with skip flag
+    result = validate_graph_stability(
+        new_graph_path=new_path,
+        baseline_path=baseline_path,
+        skip_validation=True,
+    )
+
+    assert result is True
+```
+
+Run tests:
+```bash
+cd research_and_dev/iqrah-knowledge-graph2
+pytest tests/test_pipeline_validation.py -v
 ```
 
 ## Verification Plan
@@ -496,120 +519,167 @@ If you MUST remove/change node IDs:
 
 ```bash
 cd research_and_dev/iqrah-knowledge-graph2
-pytest tests/test_node_stability.py -v
+pytest tests/test_pipeline_validation.py -v
 ```
 
-- [ ] `test_no_changes` passes (identical graphs)
-- [ ] `test_added_nodes` passes (new nodes OK)
-- [ ] `test_removed_nodes` fails validation correctly
-- [ ] `test_valid_node_formats` passes
-- [ ] `test_invalid_node_formats` fails correctly
+- [ ] `test_first_build_no_baseline` passes
+- [ ] `test_validation_passes_with_added_nodes` passes
+- [ ] `test_validation_fails_with_removed_nodes` passes (raises error correctly)
+- [ ] `test_skip_validation_flag` passes
 
 ### Integration Test
 
 ```bash
-# First run (no previous snapshot):
-python score_and_extract.py --output test_output.sql
-# Should succeed, create graph_snapshot.json
+cd research_and_dev/iqrah-knowledge-graph2
 
-# Second run (with snapshot):
-python score_and_extract.py --output test_output.sql
-# Should succeed (no changes)
+# First build (creates baseline)
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology ../data/morphology.csv \
+    --preset basic \
+    --chapters "1-2" \
+    -o test_output/graph1.cbor.zst
 
-# Test breaking change:
-# Manually edit graph builder to remove a node
-python score_and_extract.py --output test_output.sql
-# Should FAIL with node stability error
+# Should succeed, create baseline_graph.cbor.zst
+
+# Second build (no changes)
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology ../data/morphology.csv \
+    --preset basic \
+    --chapters "1-2" \
+    -o test_output/graph2.cbor.zst
+
+# Should succeed (validation passes)
+
+# Third build (with changes - add chapter 3)
+python -m iqrah_cli build knowledge-graph \
+    --from-scratch \
+    --morphology ../data/morphology.csv \
+    --preset basic \
+    --chapters "1-3" \
+    -o test_output/graph3.cbor.zst
+
+# Should succeed (added nodes OK)
 ```
 
 ### Manual Verification
 
-- [ ] First run creates `graph_snapshot.json`
-- [ ] Snapshot contains node IDs as JSON array
-- [ ] Second run validates against snapshot
-- [ ] Removing a node triggers validation failure
+- [ ] First build creates baseline file
+- [ ] Baseline file is valid CBOR
+- [ ] Second build validates against baseline
+- [ ] Validation output is printed to console
+- [ ] Adding nodes passes validation
+- [ ] Removing nodes fails validation (test manually by editing graph)
+- [ ] `--skip-validation` flag works
 - [ ] Exit code is 1 on validation failure (for CI)
-- [ ] Error message clearly explains the issue
+- [ ] Error messages are clear and actionable
+
+### CI Test
+
+Create a breaking change intentionally:
+
+```bash
+# Manually edit builder to remove a node, then build
+python -m iqrah_cli build knowledge-graph ... -o test.cbor.zst
+
+# Should exit with code 1 and error message
+echo $?  # Should be 1
+```
 
 ## Scope Limits & Safeguards
 
 ### ✅ MUST DO
 
-- Implement node stability validation (compare old vs new)
-- Implement node ID format validation
-- Integrate into `score_and_extract.py`
+- Integrate existing `validate_stability.py` script into build pipeline
+- Add CLI flags for validation control
+- Create wrapper module for pipeline integration
 - Add comprehensive tests
-- Document usage in README
+- Document validation workflow
+- Ensure validation runs by default
 - Exit with code 1 on validation failure (for CI)
 
 ### ❌ DO NOT
 
-- Modify graph generation logic (only add validation)
-- Change existing node IDs (this is validation, not refactoring)
-- Touch Rust code (Python-side only)
+- Modify `validate_stability.py` itself (it already works)
+- Change CBOR format or export logic
+- Touch Rust code
 - Implement automatic migration (out of scope)
-- Add overly complex validation rules (keep it simple)
+- Add overly complex validation rules
 
 ### ⚠️ If Uncertain
 
-- If graph structure is complex → simplify by only tracking node IDs (not full graph)
-- If snapshot format unclear → use simple JSON with node ID array
-- If validation seems too strict → add `--skip-validation` flag as escape hatch
-- If tests don't run → check pytest installation and project structure
+- If baseline path unclear → Use `baseline_graph.cbor.zst` in output directory
+- If validation script path unclear → Use relative path from validation module
+- If subprocess call fails → Check Python executable path
+- If tests don't run → Verify pytest is installed
+- If unsure about integration point → Add validation right after CBOR export
 
 ## Success Criteria
 
-- [ ] `node_stability.py` module exists with validation functions
-- [ ] `score_and_extract.py` runs validation by default
-- [ ] Validation compares old vs new node IDs
-- [ ] Format validation checks ID structure
-- [ ] Tests pass (5+ test cases)
-- [ ] First run succeeds and creates snapshot
-- [ ] Second run validates against snapshot
-- [ ] Removing node triggers failure (exit code 1)
-- [ ] README documents validation usage
-- [ ] `--validate-only` flag works
-- [ ] `--skip-validation` escape hatch exists
+- [ ] `pipeline_validation.py` module created
+- [ ] Integration added to `build.py` CLI command
+- [ ] `--skip-validation` flag works
+- [ ] `--baseline` flag works
+- [ ] Tests pass (4+ test cases)
+- [ ] First build creates baseline
+- [ ] Second build validates against baseline
+- [ ] Adding nodes passes validation
+- [ ] Removing nodes fails validation (exit code 1)
+- [ ] README documents validation workflow
+- [ ] Error messages are clear
+- [ ] CI will fail on validation errors
 
 ## Related Files
 
 **Create These Files:**
 - `/research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/__init__.py`
-- `/research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/node_stability.py`
-- `/research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/serialization.py`
-- `/research_and_dev/iqrah-knowledge-graph2/tests/test_node_stability.py`
+- `/research_and_dev/iqrah-knowledge-graph2/src/iqrah/validation/pipeline_validation.py`
+- `/research_and_dev/iqrah-knowledge-graph2/tests/test_pipeline_validation.py`
 
 **Modify These Files:**
-- `/research_and_dev/iqrah-knowledge-graph2/score_and_extract.py` - Add validation
-- `/research_and_dev/iqrah-knowledge-graph2/README.md` - Document usage
+- `/research_and_dev/iqrah-knowledge-graph2/src/iqrah_cli/commands/build.py` - Add validation call
+- `/research_and_dev/iqrah-knowledge-graph2/README.md` - Document validation
+
+**Use Existing (No Changes):**
+- `/research_and_dev/iqrah-knowledge-graph2/validate_stability.py` - Standalone validation script
+- `/research_and_dev/iqrah-knowledge-graph2/src/iqrah/export/cbor_export.py` - CBOR export
 
 **Will Create:**
-- `/research_and_dev/iqrah-knowledge-graph2/graph_snapshot.json` - Node ID snapshot (generated)
+- `/research_and_dev/iqrah-knowledge-graph2/output/baseline_graph.cbor.zst` - Baseline for validation (generated)
 
 ## Notes
 
 ### Why This Matters
 
-Without this validation, it's easy to accidentally:
-- Rename node IDs during refactoring
-- Change ID format (e.g., "1:1" → "VERSE:1:1")
-- Remove nodes during testing
-- Break user progress silently
+The existing `validate_stability.py` script is excellent but requires manual execution. By integrating it into the build pipeline:
 
-This validation acts as a **safety net** to prevent production incidents.
+1. **Automatic enforcement** - No way to accidentally skip validation
+2. **CI integration** - Validation failures block merges
+3. **Developer experience** - Clear error messages when mistakes happen
+4. **Production safety** - User progress is protected
 
-### CI Integration
+### Technical Approach
 
-In CI/CD pipeline, add:
-```yaml
-- name: Validate knowledge graph stability
-  run: |
-    cd research_and_dev/iqrah-knowledge-graph2
-    python score_and_extract.py --output /tmp/test.sql
-```
+We're using a **wrapper + subprocess** approach:
+- Keep `validate_stability.py` standalone (works independently)
+- Create thin wrapper (`pipeline_validation.py`) for integration
+- Call validation script via subprocess (clean separation)
+- Capture output and exit codes for CI integration
 
-This ensures every graph update is validated before merge.
+### Baseline Management
+
+The baseline graph serves as the "source of truth" for node IDs:
+- Stored as `baseline_graph.cbor.zst` next to output
+- Updated automatically on successful validation
+- Can be overridden with `--baseline` flag
+- First build creates initial baseline
 
 ### Escape Hatch
 
-The `--skip-validation` flag exists for legitimate breaking changes (e.g., major version bump with migration plan). Document its use clearly and require explicit user confirmation.
+The `--skip-validation` flag exists for:
+- Major version bumps with intentional breaking changes
+- Migration scenarios with documented mapping
+- Emergency situations (use with extreme caution)
+
+Always document why validation was skipped.

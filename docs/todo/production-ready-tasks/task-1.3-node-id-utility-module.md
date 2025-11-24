@@ -217,16 +217,17 @@ pub fn parse_chapter(id: &str) -> Result<u8> {
     Ok(num)
 }
 
-/// Parse a verse ID: "VERSE:1:1" -> (1, 1) or "1:1" -> (1, 1)
+/// Parse a verse ID: "VERSE:1:1" -> (1, 1)
 pub fn parse_verse(id: &str) -> Result<(u8, u16)> {
     let parts: Vec<&str> = id.split(':').collect();
 
-    // Handle both "VERSE:1:1" and "1:1" formats (migration compatibility)
-    let (chapter_str, verse_str) = match parts.len() {
-        2 => (parts[0], parts[1]),  // "1:1" format
-        3 if parts[0] == "VERSE" => (parts[1], parts[2]),  // "VERSE:1:1" format
-        _ => return Err(NodeIdError::InvalidFormat(id.to_string())),
-    };
+    // Only accept prefixed format "VERSE:1:1"
+    if parts.len() != 3 || parts[0] != "VERSE" {
+        return Err(NodeIdError::InvalidFormat(id.to_string()));
+    }
+
+    let chapter_str = parts[1];
+    let verse_str = parts[2];
 
     let chapter = chapter_str
         .parse::<u8>()
@@ -328,14 +329,7 @@ pub fn node_type(id: &str) -> Result<NodeType> {
         "VERSE" => Ok(NodeType::Verse),
         "WORD" => Ok(NodeType::Word),
         "WORD_INSTANCE" => Ok(NodeType::WordInstance),
-        _ => {
-            // Handle unprefixed verse IDs like "1:1"
-            if parts.len() == 2 && parts[0].parse::<u8>().is_ok() {
-                Ok(NodeType::Verse)
-            } else {
-                Err(NodeIdError::InvalidPrefix(parts[0].to_string()))
-            }
-        }
+        _ => Err(NodeIdError::InvalidPrefix(parts[0].to_string())),
     }
 }
 ```
@@ -409,10 +403,10 @@ mod tests {
     #[test]
     fn test_parse_verse() {
         assert_eq!(parse_verse("VERSE:1:1").unwrap(), (1, 1));
-        assert_eq!(parse_verse("1:1").unwrap(), (1, 1)); // Handle unprefixed
         assert_eq!(parse_verse("VERSE:2:286").unwrap(), (2, 286));
         assert!(parse_verse("VERSE:1").is_err());
         assert!(parse_verse("CHAPTER:1").is_err());
+        assert!(parse_verse("1:1").is_err()); // Unprefixed format not supported
     }
 
     #[test]
@@ -442,7 +436,7 @@ mod tests {
     fn test_node_type_detection() {
         assert!(matches!(node_type("CHAPTER:1").unwrap(), NodeType::Chapter));
         assert!(matches!(node_type("VERSE:1:1").unwrap(), NodeType::Verse));
-        assert!(matches!(node_type("1:1").unwrap(), NodeType::Verse));
+        assert!(node_type("1:1").is_err()); // Unprefixed format not supported
         assert!(matches!(node_type("WORD:123").unwrap(), NodeType::Word));
         assert!(matches!(node_type("WORD_INSTANCE:1:1:3").unwrap(), NodeType::WordInstance));
         assert!(matches!(node_type("VERSE:1:1:memorization").unwrap(), NodeType::Knowledge));
@@ -518,7 +512,7 @@ assert_eq!((ch, v), (1, 1));
 
 - Create `node_id.rs` module with builders and parsers
 - Add comprehensive unit tests (15+ test cases)
-- Handle both prefixed (`VERSE:1:1`) and unprefixed (`1:1`) verse formats (migration compat)
+- **Only support prefixed format** (`VERSE:1:1`, `CHAPTER:1`, etc.) - no backward compatibility
 - Proper error types with clear messages
 - Validate ranges (chapter 1-114, verse >= 1)
 
@@ -534,7 +528,7 @@ assert_eq!((ch, v), (1, 1));
 - If `KnowledgeAxis` already has `as_str()` and `from_str()` → use them, don't duplicate
 - If error types exist elsewhere → reuse them, don't create new ones unnecessarily
 - If builder validation seems too strict → use `debug_assert!` not `assert!` (fail in debug, pass in release)
-- If unsure about verse ID format → support both `"VERSE:1:1"` and `"1:1"` for backwards compat
+- **Node ID format:** Only prefixed format is supported (`VERSE:1:1`). Reject unprefixed (`1:1`) with clear error
 
 ## Success Criteria
 
@@ -569,7 +563,7 @@ assert_eq!((ch, v), (1, 1));
 **Design Principles:**
 - **Infallible builders:** `chapter(1)` always returns valid ID (panics in debug if invalid input)
 - **Fallible parsers:** `parse_chapter(id)` returns `Result` because input is untrusted
-- **Backwards compat:** Support both `"VERSE:1:1"` and `"1:1"` for migration ease
+- **No backward compatibility:** Only prefixed format (`"VERSE:1:1"`) supported. Unprefixed format (`"1:1"`) is REJECTED with clear error
 
 **Why Not Typed Node IDs?**
 We considered `enum NodeId { Verse { chapter: u8, verse: u16 }, ... }` but:

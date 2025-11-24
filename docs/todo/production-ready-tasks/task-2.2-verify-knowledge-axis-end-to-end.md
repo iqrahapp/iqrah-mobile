@@ -42,7 +42,7 @@ The Rust implementation was done by AI agents previously. This task validates th
 - No CLI tests for axis filtering
 
 **After Task 2.1:**
-- Database has knowledge nodes (e.g., `1:1:memorization`)
+- Database has knowledge nodes (e.g., `VERSE:1:1:memorization`)
 - Migration file imported successfully
 
 ## Target State
@@ -235,7 +235,7 @@ async fn test_exercise_routing_by_axis() {
 
     // Memorization node should generate memorization exercise
     let exercise = exercise_service
-        .generate_exercise("1:1:memorization")
+        .generate_exercise("VERSE:1:1:memorization")
         .await
         .unwrap();
 
@@ -243,7 +243,7 @@ async fn test_exercise_routing_by_axis() {
 
     // Translation node should generate translation exercise
     let exercise = exercise_service
-        .generate_exercise("1:1:translation")
+        .generate_exercise("VERSE:1:1:translation")
         .await
         .unwrap();
 
@@ -251,7 +251,7 @@ async fn test_exercise_routing_by_axis() {
 
     // Tafsir node should generate translation exercise (tafsir uses translation type)
     let exercise = exercise_service
-        .generate_exercise("1:1:tafsir")
+        .generate_exercise("VERSE:1:1:tafsir")
         .await
         .unwrap();
 
@@ -271,17 +271,17 @@ async fn test_energy_propagation_within_axis() {
 
     // Review verse 1:1 memorization
     learning_service
-        .record_review("default", "1:1:memorization", Rating::Good)
+        .record_review("default", "VERSE:1:1:memorization", Rating::Good)
         .await
         .unwrap();
 
     // Check that verse 1:2 memorization received energy
     let state = user_repo
-        .get_memory_state("default", "1:2:memorization")
+        .get_memory_state("default", "VERSE:1:2:memorization")
         .await
         .unwrap();
 
-    assert!(state.is_some(), "Verse 1:2:memorization should have energy");
+    assert!(state.is_some(), "Node VERSE:1:2:memorization should have energy");
     let state = state.unwrap();
     assert!(state.energy > 0.0, "Energy should be > 0");
 }
@@ -293,13 +293,13 @@ async fn test_cross_axis_energy_propagation() {
 
     // Review translation node
     learning_service
-        .record_review("default", "1:1:translation", Rating::Good)
+        .record_review("default", "VERSE:1:1:translation", Rating::Good)
         .await
         .unwrap();
 
     // Check that memorization node also received energy (cross-axis edge)
     let mem_state = user_repo
-        .get_memory_state("default", "1:1:memorization")
+        .get_memory_state("default", "VERSE:1:1:memorization")
         .await
         .unwrap();
 
@@ -369,25 +369,25 @@ chmod +x rust/scripts/verify_knowledge_axis.sh
 # 1. Get session
 cargo run --bin iqrah-cli -- schedule --axis memorization --limit 1
 
-# Output: Node 1:1:memorization
+# Output: Node VERSE:1:1:memorization
 
 # 2. Generate exercise
-cargo run --bin iqrah-cli -- exercise --node-id "1:1:memorization"
+cargo run --bin iqrah-cli -- exercise --node-id "VERSE:1:1:memorization"
 
 # Output: Memorization exercise (recitation prompt)
 
 # 3. Record review
-cargo run --bin iqrah-cli -- review --node-id "1:1:memorization" --rating good
+cargo run --bin iqrah-cli -- review --node-id "VERSE:1:1:memorization" --rating good
 
 # Output: Review recorded, energy propagated
 
 # 4. Check energy of next node
-cargo run --bin iqrah-cli -- stats --node-id "1:2:memorization"
+cargo run --bin iqrah-cli -- stats --node-id "VERSE:1:2:memorization"
 
 # Output: Energy > 0 (from propagation)
 
 # 5. Verify cross-axis
-cargo run --bin iqrah-cli -- stats --node-id "1:1:translation"
+cargo run --bin iqrah-cli -- stats --node-id "VERSE:1:1:translation"
 
 # Output: Energy > 0 (cross-axis propagation)
 ```
@@ -426,7 +426,7 @@ async fn test_knowledge_node_without_base() {
     // Edge case: Knowledge node for non-existent base node
     let content_repo = setup_content_repo().await;
 
-    let node = content_repo.get_node("999:999:memorization").await.unwrap();
+    let node = content_repo.get_node("VERSE:999:999:memorization").await.unwrap();
     // Should return None or handle gracefully
 }
 ```
@@ -463,8 +463,8 @@ cd rust
 
 - [ ] Generate session for memorization axis → Returns memorization nodes
 - [ ] Generate session for translation axis → Returns translation nodes
-- [ ] Generate exercise for `1:1:memorization` → Returns memorization exercise
-- [ ] Generate exercise for `1:1:translation` → Returns translation exercise
+- [ ] Generate exercise for `VERSE:1:1:memorization` → Returns memorization exercise
+- [ ] Generate exercise for `VERSE:1:1:translation` → Returns translation exercise
 - [ ] Record review for memorization node → Energy propagates to next memorization node
 - [ ] Record review for translation node → Energy propagates to memorization node (cross-axis)
 - [ ] Session generation without axis filter → Returns mixed nodes
@@ -571,7 +571,7 @@ This is a **critical validation gate** before production.
 ### Expected Issues
 
 Common issues that might surface:
-- Node ID format mismatches (Python generates `1:1:memorization`, Rust expects `VERSE:1:1:memorization`)
+- Node ID format mismatches (ensure all code uses `VERSE:1:1:memorization` format)
 - Missing edges between axis nodes
 - Exercise service doesn't handle all axes
 - Energy propagation weights incorrect

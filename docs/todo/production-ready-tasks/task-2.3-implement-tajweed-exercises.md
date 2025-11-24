@@ -444,12 +444,13 @@ async fn test_generate_tajweed_exercise() {
     let exercise_service = ExerciseService::new(content_repo);
 
     let exercise = exercise_service
-        .generate_exercise("1:1:tajweed")
+        .generate_exercise("VERSE:1:1:tajweed")
         .await
         .unwrap();
 
     match exercise {
         Exercise::Tajweed(taj) => {
+            // Note: verse_key is the database key (chapter:verse) without VERSE: prefix
             assert_eq!(taj.verse_key, "1:1");
             assert!(!taj.verse_text.is_empty());
             assert!(!taj.question.is_empty());
@@ -466,7 +467,7 @@ async fn test_tajweed_answer_verification() {
     let exercise_service = ExerciseService::new(content_repo);
 
     let exercise = exercise_service
-        .generate_exercise("1:1:tajweed")
+        .generate_exercise("VERSE:1:1:tajweed")
         .await
         .unwrap();
 
@@ -525,7 +526,7 @@ cargo test tajweed_exercise --nocapture
 
 ```bash
 # Generate tajweed exercise via CLI
-cargo run --bin iqrah-cli -- exercise --node-id "1:1:tajweed"
+cargo run --bin iqrah-cli -- exercise --node-id "VERSE:1:1:tajweed"
 ```
 
 - [ ] Exercise displays verse text
@@ -538,9 +539,9 @@ cargo run --bin iqrah-cli -- exercise --node-id "1:1:tajweed"
 
 Test with different verses:
 ```bash
-cargo run --bin iqrah-cli -- exercise --node-id "1:1:tajweed"
-cargo run --bin iqrah-cli -- exercise --node-id "1:7:tajweed"
-cargo run --bin iqrah-cli -- exercise --node-id "2:255:tajweed"
+cargo run --bin iqrah-cli -- exercise --node-id "VERSE:1:1:tajweed"
+cargo run --bin iqrah-cli -- exercise --node-id "VERSE:1:7:tajweed"
+cargo run --bin iqrah-cli -- exercise --node-id "VERSE:2:255:tajweed"
 ```
 
 - [ ] Different rules applied to different verses

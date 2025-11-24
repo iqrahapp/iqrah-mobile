@@ -209,11 +209,11 @@ async fn test_graceful_handling_of_missing_node() {
 #[tokio::test]
 async fn test_error_messages_are_clear() {
     let error = LearningError::NodeNotFound {
-        node_id: "1:1:memorization".to_string(),
+        node_id: "VERSE:1:1:memorization".to_string(),
     };
 
     let message = error.to_string();
-    assert!(message.contains("1:1:memorization"));
+    assert!(message.contains("VERSE:1:1:memorization"));
     assert!(message.contains("not found"));
 }
 ```

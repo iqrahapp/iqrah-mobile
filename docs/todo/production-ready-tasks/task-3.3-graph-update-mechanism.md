@@ -219,8 +219,8 @@ async fn test_graph_update_success() {
 
     // Create new graph SQL
     let new_graph_sql = r#"
-        INSERT INTO node_metadata (node_id, key, value) VALUES ('1:1', 'score', 0.9);
-        INSERT INTO edges (source_id, target_id, edge_type, ...) VALUES ('1:1', '1:2', 0, ...);
+        INSERT INTO node_metadata (node_id, key, value) VALUES ('VERSE:1:1', 'score', 0.9);
+        INSERT INTO edges (source_id, target_id, edge_type, ...) VALUES ('VERSE:1:1', 'VERSE:1:2', 0, ...);
     "#;
 
     let sql_file = tmp.path().join("new_graph.sql");
@@ -239,11 +239,11 @@ async fn test_graph_update_rejects_removed_nodes() {
     // Setup with existing user progress
     let (content_pool, user_pool) = setup_test_dbs().await;
 
-    // User has progress on node "1:1:memorization"
-    create_user_progress(&user_pool, "1:1:memorization").await;
+    // User has progress on node "VERSE:1:1:memorization"
+    create_user_progress(&user_pool, "VERSE:1:1:memorization").await;
 
-    // New graph removes "1:1:memorization"
-    let new_graph_sql = "/* SQL without 1:1:memorization */";
+    // New graph removes "VERSE:1:1:memorization"
+    let new_graph_sql = "/* SQL without VERSE:1:1:memorization */";
     let sql_file = write_temp_sql(new_graph_sql);
 
     let updater = GraphUpdate::new(content_pool);

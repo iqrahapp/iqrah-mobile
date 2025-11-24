@@ -141,14 +141,14 @@ async fn test_review_rollback_on_error() {
 
     // Simulate error during propagation (e.g., invalid target node)
     let result = learning_service
-        .record_review("default", "1:1:memorization", Rating::Good)
+        .record_review("default", "VERSE:1:1:memorization", Rating::Good)
         .await;
 
     // If any step fails, entire transaction should rollback
     if result.is_err() {
         // Verify memory state was NOT updated
         let state = user_repo
-            .get_memory_state("default", "1:1:memorization")
+            .get_memory_state("default", "VERSE:1:1:memorization")
             .await
             .unwrap();
 
