@@ -698,7 +698,7 @@ async fn handle_get_due_items(
             serde_json::json!({
                 "node_id": item.node.id,
                 "node_type": item.node.node_type,
-                "knowledge_axis": item.knowledge_axis.map(|a| a.to_str()),
+                "knowledge_axis": item.knowledge_axis.map(|a| a.as_str()),
                 "priority_score": item.priority_score,
                 "days_overdue": item.days_overdue,
                 "mastery_gap": item.mastery_gap,
