@@ -1,154 +1,80 @@
 # Data Architecture v2: Production Design
 
 **Version:** 2.0.0
-**Last Updated:** 2024-11-24
+**Last Updated:** 2024-11-25
 **Status:** Authoritative
 
 ## Executive Summary
-
-Iqrah's data architecture employs a strict separation of concerns between immutable Quranic content (shipped with the app) and mutable user learning progress (stored on the device). This design relies on a two-database system (`content.db` and `user.db`) coordinated by the application layer.
-
-This document defines the authoritative contracts for Node IDs, which serve as the primary keys linking content, the knowledge graph, and user progress. **Stability of these IDs is critical**: once a Node ID is released in production, it must never change, as user learning history is keyed to it.
-
-The architecture also introduces a "knowledge axis" concept, allowing users to track progress in multiple dimensions (memorization, translation, tajweed) for the same underlying content.
+This document defines the authoritative data architecture for the Iqrah application, version 2.0. It outlines a two-database design that separates immutable content from mutable user data, ensuring stability and safe updates. It also establishes strict contracts for Node Unique Keys (`ukeys`) and a formal stability policy to guarantee that user progress is preserved across all future content updates. The core principle is "Internal Ints, External Strings," where the application uses performant integer IDs for internal graph operations and stable string `ukeys` for all external references, including user data.
 
 ## Database Design
-
 ### Architecture Decision: 2 Databases
+The application employs a two-database architecture to achieve a clean separation of concerns:
 
-We use two separate SQLite database files:
+*   **`content.db`**: This is the immutable knowledge graph. It contains the Quranic text, translations, node relationships, and all other core content. It uses volatile `INTEGER` primary keys for maximum performance within the graph. This database is shipped with the application and is completely replaced during monthly content updates.
+*   **`user.db`**: This database stores all mutable user-specific data, including memory states (FSRS), review history, and settings. To ensure data integrity across content updates, it **exclusively** uses stable `STRING` unique keys (`ukeys`) to reference nodes in `content.db`.
 
-1.  **Content Database (`content.db`)**:
-    *   **Nature:** Read-only, immutable (except for package installations).
-    *   **Distribution:** Shipped with the application bundle.
-    *   **Contents:**
-        *   Quranic text (Uthmani, etc.) and metadata (Chapters, Verses, Words).
-        *   The Knowledge Graph (Nodes, Edges) defining learning dependencies.
-        *   Linguistic data (Lemmas, Roots, Morphology).
-        *   Available content packages (Translations, Audio).
-    *   **Updates:** Updated by replacing the entire file during app updates (for core data) or by inserting rows (for downloadable packages).
-
-2.  **User Database (`user.db`)**:
-    *   **Nature:** Read-write, local to the user's device.
-    *   **Distribution:** Created on first launch.
-    *   **Contents:**
-        *   User learning state (FSRS memory stability/difficulty, energy levels).
-        *   Session history and exercise logs.
-        *   User preferences and settings.
-    *   **Updates:** Managed via standard SQL migrations.
-
-**Rationale:**
-*   **Separation of Concerns:** We can update the Quranic data and Knowledge Graph (e.g., adding new connections or fixing typos) without risking corruption of user data.
-*   **Performance:** `content.db` can be optimized for read-heavy workloads (indexes, vacuumed), while `user.db` handles high-frequency writes.
-*   **Simplification:** Avoids complex migration scripts for content data; we simply replace the reference data.
-
-### Graph Update Strategy
-
-The Knowledge Graph (nodes and edges) lives within `content.db`.
-
-*   **Frequency:** Monthly (approximate cadence).
-*   **Method:** **Erase & Replace**.
-    *   The build pipeline regenerates the entire graph from source Python definitions.
-    *   The new graph is imported into `content.db`.
-    *   **Critical Constraint:** The new graph MUST preserve all existing Node IDs. New nodes can be added, but existing IDs cannot be changed or removed to ensure `user.db` references remain valid.
-
-## Node ID Specification
-
-Node IDs are the "foreign keys" that link the Content DB, Knowledge Graph, and User DB. They are string-based identifiers.
-
-**⚠️ IMPORTANT:** All node IDs MUST use the **prefixed format**. Unprefixed IDs (e.g., "1:1") are strictly forbidden in the graph and user data.
-
-### Content Node Formats
-
-These nodes represent the actual Quranic entities.
-
-| Entity | Format | Example | Description |
-| :--- | :--- | :--- | :--- |
-| **Chapter** | `CHAPTER:{number}` | `CHAPTER:1` | Surah number (1-114). |
-| **Verse** | `VERSE:{chapter}:{verse}` | `VERSE:1:1` | Verse reference. |
-| **Word** | `WORD:{word_id}` | `WORD:123` | Unique word ID from DB (autoincrement). *Note: Python tooling currently uses `WORD:{text}`, but production runtime expects integer-based IDs.* |
-| **Word Instance** | `WORD_INSTANCE:{c}:{v}:{p}` | `WORD_INSTANCE:1:1:1` | Specific occurrence of a word at `position` (1-indexed) in a verse. |
-| **Root** | `ROOT:{root_text}` | `ROOT:ktb` | Arabic root text. |
-| **Lemma** | `LEMMA:{lemma_text}` | `LEMMA:kataba` | Dictionary form of the word. |
-
-### Knowledge Node Formats
-
-Knowledge nodes represent a specific *aspect* of learning a content node. They are "virtual" nodes in the graph that wrap a content node.
-
-*   **Format:** `{base_node_id}:{axis}`
-*   **Example:** `VERSE:1:1:memorization`
-
-**Valid Axes:**
-
-| Axis | Description | Applicable Nodes |
-| :--- | :--- | :--- |
-| `memorization` | Rote recall of the item. | Chapter, Verse, Word Instance |
-| `translation` | Understanding the meaning. | Chapter, Verse, Word Instance, Word, Lemma |
-| `tafsir` | Deep understanding/exegesis. | Chapter, Verse |
-| `tajweed` | Correct pronunciation rules. | Verse, Word Instance |
-| `contextual_memorization` | Recall within the sequence. | Word Instance |
-| `meaning` | Definition of a root. | Root |
-
-### Parsing and Validation Rules
-
-1.  **Prefix Validation:** IDs must start with a valid prefix from the `NodeType` enum.
-2.  **Delimiter:** Components are separated by `:`.
-3.  **Numeric Validation:** Numeric parts (chapter, verse, position, word_id) must be parsed as integers and fall within valid ranges (e.g., Chapter 1-114).
-4.  **Axis Validation:** If parsing a knowledge node, the suffix must match a valid `KnowledgeAxis`.
-5.  **Strictness:** Parsers should reject malformed IDs immediately rather than attempting fuzzy matching.
-
-## Node ID Stability Policy
-
-### Guarantees
-
-We promise users that their learning progress will never be lost due to technical updates. To fulfill this:
-
-> **Once a Node ID is released in a production build, it is IMMUTABLE.**
-
-*   It cannot be renamed.
-*   It cannot be deleted.
-*   It cannot change its meaning (e.g., `WORD:123` cannot point to a different word later).
-
-### Rationale
-
-The `user_memory_states` table in `user.db` is keyed by `node_id`. If we change `VERSE:1:1` to `V:1:1`, the user's memory stability history for Al-Fatihah is orphaned, effectively resetting their progress.
-
-### Enforcement
-
-*   **Task 1.5 (Stability Validation):** A build-time check will compare the generated graph against a "golden record" of released IDs. Any missing or changed IDs will fail the build.
-
-### Migration Process
-
-If a structural change is absolutely unavoidable (e.g., correcting a massive error in the Quran text dataset):
-
-1.  **Deprecation:** The old node remains in the graph but is marked hidden/deprecated.
-2.  **Migration Script:** A SQL migration for `user.db` must be written to move user progress from the old ID to the new ID.
-3.  **Avoidance:** We prioritize adding *new* nodes over changing existing ones.
-
-## Schema Versioning
-
-We use **Semantic Versioning** (`major.minor.patch`) for the `content.db` schema, tracked in the `schema_version` table.
-
-*   **Major (X.0.0):** Breaking changes to the schema structure (tables/columns removed) or Node ID format changes (requires user.db migration).
-*   **Minor (0.X.0):** Graph updates (new edges, new nodes, weight adjustments) or new content packages. No breaking changes.
-*   **Patch (0.0.X):** Data fixes (typos in translation, score corrections) that do not alter the graph structure significantly.
+This separation allows for seamless content updates without ever touching user data, making the process safe and reliable.
 
 ## Graph Update Process
+The `content.db` is treated as an ephemeral artifact. The monthly update process is as follows:
+1.  A new version of the knowledge graph is generated by the Python toolchain.
+2.  The new graph is packaged into a new `content.db` file.
+3.  This new database file is shipped with the application update.
+4.  Upon starting, the application replaces the old `content.db` with the new one.
+5.  User progress in `user.db` remains untouched. The application uses the `NodeRegistry` in the new `content.db` to resolve the stable `ukeys` from `user.db` to the new, volatile integer IDs.
 
-The monthly graph update procedure:
+## Node ID Specification
+The system uses two types of identifiers: internal, volatile integer IDs and external, stable string `ukeys`.
 
-1.  **Generate:** Python pipeline generates the new graph (CBOR format).
-2.  **Validate:** Check for ID stability against the golden record.
-3.  **Build Content DB:**
-    *   Begin Transaction.
-    *   Clear `edges`, `node_metadata`, `goals`, `node_goals` tables.
-    *   Insert new graph data.
-    *   Commit.
-4.  **Ship:** Release updated `content.db` in the app bundle.
-5.  **User Update:** On app launch, if the shipped `content.db` version > existing version, the app uses the new file. `user.db` remains untouched.
+### Node Unique Key (ukey) Specification
+`ukeys` are the stable string identifiers used in `user.db` and any external APIs. They are guaranteed to never change once established.
+
+#### Content Node Formats
+*   **Chapter**: `CHAPTER:{chapter_num}`
+    *   Example: `CHAPTER:1`
+*   **Verse**: `VERSE:{chapter_num}:{verse_num}`
+    *   Example: `VERSE:1:1`
+*   **Word Instance**: `WORD_INSTANCE:{chapter_num}:{verse_num}:{position}`
+    *   Example: `WORD_INSTANCE:1:1:3`
+
+**Note on `ukey` Simplification:** Formats for `WORD`, `LEMMA`, and `ROOT` are intentionally omitted. User progress is tracked only at the verse and word-instance level to simplify the learning model and reduce the surface area for potential stability violations.
+
+#### Knowledge Node Formats
+Knowledge nodes represent a specific learning axis for a content node.
+*   **Format**: `{content_ukey}:{axis}`
+*   **Examples**:
+    *   `VERSE:1:1:memorization`
+    *   `WORD_INSTANCE:1:1:3:translation`
+
+### Enum Mappings
+All enums (`NodeType`, `KnowledgeAxis`, `EdgeType`) are stored as `INTEGER`s in the database for efficiency. The authoritative string-to-integer mappings are defined in `docs/reference/enum-mappings.md`.
+
+### Parsing and Validation Rules
+*   All node `ukey` parsing and construction in the Rust codebase **must** be handled by the `iqrah-core::domain::node_id` utility module.
+*   Ad-hoc string splitting or concatenation is strictly prohibited to ensure consistency.
+*   The `node_id` module is the single source of truth for `ukey` formats.
+
+## Node ID Stability Policy
+### Guarantees
+The **string `ukey`** for any given node, once released in a production build, **MUST NOT CHANGE**. This is the fundamental contract that protects user data.
+
+### Enforcement
+A validation step will be added to the pre-commit checks (Task 1.5) that compares the `ukeys` in a new graph build against the `ukeys` from the previous production build. Any changes (modifications or deletions) will fail the check, preventing breaking changes from being merged.
+
+### Migration Process
+In the rare event that a `ukey` must be changed, a formal migration path is required. This involves:
+1.  Documenting the change in a migration file.
+2.  Implementing logic in the application's startup sequence to read this file and perform a one-time `UPDATE` on the `user.db`, changing the old `ukey` to the new one.
+3.  This process must be handled with extreme care and is reserved for critical bug fixes only.
+
+## Schema Versioning
+Schema versioning is managed independently for the two databases:
+*   **`content.db`**: Versioning is handled at the file level. The entire database is replaced on update, and the schema is defined by the SQL migrations in `rust/crates/iqrah-storage/migrations_content/`. The application will validate the schema version on startup to ensure compatibility.
+*   **`user.db`**: Versioning follows a standard migration-based approach using `sqlx-cli`. Migrations are located in `rust/crates/iqrah-storage/migrations_user/` and are applied sequentially to the user's local database file. This ensures user data is safely evolved across application updates.
 
 ## Related Documentation
-
-*   `docs/content-db-schema.md` - Detailed SQL schema reference.
-*   `docs/database-architecture/00-executive-summary.md` - Architecture overview.
-*   `docs/database-architecture/06-knowledge-axis-design.md` - Deep dive into Knowledge Axes.
+*   [Database Architecture Audit](/docs/database-architecture/)
+*   [Content DB Schema](/docs/content-db-schema.md)
+*   [Node ID Utility Module (Task 1.3)](/docs/todo/production-ready-tasks/task-1.3-node-id-utility-module.md)
+*   [Node ID Stability Validation (Task 1.5)](/docs/todo/production-ready-tasks/task-1.5-node-id-stability-validation.md)
