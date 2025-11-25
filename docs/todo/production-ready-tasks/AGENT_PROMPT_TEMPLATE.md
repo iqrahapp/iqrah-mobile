@@ -22,10 +22,25 @@ Please execute the production-ready task documented in:
 
 ## Important Notes
 
-- **Node ID format:** ALL node IDs MUST use prefixed format (e.g., `VERSE:1:1`, `CHAPTER:1`)
-  - ❌ NEVER use unprefixed format like `"1:1"`
-  - ✅ ALWAYS use prefixed format like `"VERSE:1:1"`
-  - Exception: `verse_key` database fields remain unprefixed (e.g., `"1:1"`)
+- **Node IDs: Internal Ints, External Strings**
+  - The architecture uses **INTEGER** IDs internally for all graph operations.
+  - External APIs and user-facing data (`user.db`) use stable **STRING** unique keys (`ukeys`).
+  - The `NodeRegistry` is the boundary layer that maps between `ukeys` and `integer IDs`.
+  - **Exception**: `user.db` **always** uses string `ukeys` for stability across content updates.
+
+- **Graph Operations: Always Use Integer IDs**
+  - When querying the graph, always resolve the string `ukey` to an integer `id` first. This is critical for performance and referential integrity.
+  - **❌ AVOID**: String-based queries, which are slow and deprecated.
+    ```rust
+    // This is incorrect and will not work with the new schema.
+    query!("SELECT * FROM edges WHERE source_id = ?", "VERSE:1:1:memorization");
+    ```
+  - **✅ PREFER**: Integer-based queries for all graph operations.
+    ```rust
+    // Correct approach: resolve the ukey to an integer ID first.
+    let node_id = registry.get_id("VERSE:1:1:memorization").await?;
+    query!("SELECT * FROM edges WHERE source_id = ?", node_id);
+    ```
 
 - **Before committing:** Run ALL pre-commit checks from `CLAUDE.md`:
   ```bash
@@ -35,13 +50,6 @@ Please execute the production-ready task documented in:
   cargo test --all-features
   cargo fmt --all -- --check
   ```
-
-- **Python project:** Located at `research_and_dev/iqrah-knowledge-graph2/`
-  - CLI command: `python -m iqrah_cli` (NOT `python -m iqrah.cli`)
-
-- **Knowledge axes:** 6 total
-  - Verse-level (4): memorization, translation, tafsir, tajweed
-  - Word-level (2): contextual_memorization, meaning
 
 ## Success Criteria
 

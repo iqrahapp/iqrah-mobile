@@ -98,30 +98,35 @@ Document test results and any issues found.
 ```bash
 cd rust
 
-# Initialize database with new migration
+# Initialize database with new migration from Task 2.1
 cargo run --bin iqrah-cli -- init
 
-# Query knowledge nodes
+# --- VERIFICATION QUERIES ---
+
+# Query physical knowledge nodes for the memorization axis
 sqlite3 ~/.local/share/iqrah/content.db \
-    "SELECT COUNT(*) FROM node_metadata WHERE node_id LIKE '%:memorization'"
+    "SELECT COUNT(*) FROM knowledge_nodes WHERE axis = 0"
+# Should return > 400 (0 is the enum for Memorization)
 
-# Should return > 400
-
-# Query knowledge edges
+# Query edges using INTEGER IDs
 sqlite3 ~/.local/share/iqrah/content.db \
     "SELECT COUNT(*) FROM edges WHERE edge_type = 1"
-
-# Should return > 2000
+# Should return > 2000 (1 is the enum for Knowledge edge type)
 ```
 
 **Verify:**
-- [ ] Knowledge nodes exist in database
-- [ ] All 6 axes present
-- [ ] Knowledge edges (type 1) exist
+- [ ] Physical knowledge nodes exist in the `knowledge_nodes` table.
+- [ ] All 6 axes are represented with their correct integer enum values.
+- [ ] `edges` table uses integer IDs and contains knowledge edges.
 
-### Step 2: Test Session Generation by Axis (1-2 hours)
+### Step 2: Update Test Assumptions (1-2 hours)
 
-**Create integration test file:**
+**Key Change**: Tests must now accommodate the "Internal Ints, External Strings" principle.
+
+- Tests should continue to use **string ukeys** (e.g., `"VERSE:1:1:memorization"`) when interacting with service layers.
+- The test setup must properly initialize a `NodeRegistry` so that the services can map these string ukeys to integer IDs for their internal queries.
+
+**Update integration test file:**
 
 **File:** `rust/tests/knowledge_axis_integration_test.rs`
 

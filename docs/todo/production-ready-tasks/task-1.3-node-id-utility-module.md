@@ -173,14 +173,14 @@ pub fn word_instance(chapter: u8, verse: u16, position: u8) -> String {
 
 /// Build a knowledge node ID: "VERSE:1:1:memorization"
 pub fn knowledge(base_id: &str, axis: KnowledgeAxis) -> String {
-    format!("{}:{}", base_id, axis.as_str())
+    format!("{}:{}", base_id, axis.as_ref())
 }
 ```
 
 **Note:** Also add `impl KnowledgeAxis` method if not already present:
 ```rust
-impl KnowledgeAxis {
-    pub fn as_str(&self) -> &'static str {
+impl AsRef<str> for KnowledgeAxis {
+    fn as_ref(&self) -> &str {
         match self {
             KnowledgeAxis::Memorization => "memorization",
             KnowledgeAxis::Translation => "translation",

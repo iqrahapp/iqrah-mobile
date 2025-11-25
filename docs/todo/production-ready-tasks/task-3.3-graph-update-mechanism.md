@@ -39,169 +39,91 @@ COMMIT;
 
 ## Implementation Steps
 
-### Step 1: Create Graph Update Function (2 hours)
+### Content Update Strategy
 
-**File:** `rust/crates/iqrah-storage/src/content/graph_update.rs` (NEW)
+The core of the graph update mechanism is the two-database architecture, which is designed for safe, seamless content updates.
 
-```rust
-use sqlx::{SqlitePool, Transaction};
-use std::path::Path;
+#### 1. `content.db` Replacement
 
-pub struct GraphUpdate {
-    pool: SqlitePool,
-}
+The `content.db` file, which contains the entire knowledge graph, is treated as an **immutable artifact**. The update process does not involve `UPDATE` or `DELETE` statements. Instead, the entire file is replaced.
 
-pub struct UpdateStats {
-    pub nodes_before: usize,
-    pub nodes_after: usize,
-    pub edges_before: usize,
-    pub edges_after: usize,
-    pub new_nodes: Vec<String>,
-    pub removed_nodes: Vec<String>,
-}
+- **Process**:
+    1. The Python generator creates a new `content.db` file from scratch.
+    2. This new database file is shipped to the user's device.
+    3. The application replaces the old `content.db` with the new one.
+- **Impact on IDs**:
+    - All internal **integer node IDs will change** during this process, as they are auto-incrementing primary keys.
+    - The **string unique keys (`ukeys`) remain stable**, as they are guaranteed by the generator's validation logic.
 
-impl GraphUpdate {
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
-    }
+#### 2. `user.db` Stability
 
-    pub async fn update_from_sql_file(&self, sql_path: &Path) -> Result<UpdateStats> {
-        // 1. Collect current graph stats
-        let stats_before = self.collect_graph_stats().await?;
+The `user.db` is **never replaced**. It stores all user-specific data, such as memory states, and persists across all content updates.
 
-        // 2. Read new graph SQL
-        let new_graph_sql = std::fs::read_to_string(sql_path)?;
+- **Key Design**: User data is linked to nodes via the stable **string `ukey`**, not the volatile integer ID.
+    ```sql
+    CREATE TABLE user_memory_states (
+        user_id TEXT NOT NULL,
+        node_ukey TEXT NOT NULL,  -- Stable string key, immune to content updates
+        stability REAL NOT NULL,
+        -- ... other state fields ...
+        PRIMARY KEY (user_id, node_ukey)
+    ) STRICT, WITHOUT ROWID;
+    ```
 
-        // 3. Parse and validate (extract node IDs from SQL)
-        let new_node_ids = self.extract_node_ids_from_sql(&new_graph_sql)?;
+### Application Logic at Startup
 
-        // 4. Check for removed nodes
-        let removed_nodes = stats_before.node_ids
-            .iter()
-            .filter(|id| !new_node_ids.contains(*id))
-            .cloned()
-            .collect::<Vec<_>>();
+When the application loads after a content update, it must re-link the user's progress from `user.db` to the new graph in `content.db`.
 
-        if !removed_nodes.is_empty() {
-            return Err(GraphUpdateError::RemovedNodes {
-                count: removed_nodes.len(),
-                sample: removed_nodes.iter().take(5).cloned().collect(),
-            });
-        }
+1. **Load User State**: Query `user.db` to get the list of `node_ukey`s for which the user has progress.
+2. **Resolve New IDs**: For each `node_ukey`, use the `NodeRegistry` (which is connected to the new `content.db`) to look up the new integer `id`.
+3. **Perform Operations**: All subsequent graph operations for the session (fetching nodes, propagating energy, etc.) will use the newly resolved integer IDs.
 
-        // 5. Begin transaction
-        let mut tx = self.pool.begin().await?;
+This ensures that user progress is seamlessly carried over, even though the internal graph structure and primary keys have completely changed.
 
-        // 6. Delete old graph
-        self.delete_graph_tables(&mut tx).await?;
+### CLI Command for Verification
 
-        // 7. Insert new graph
-        sqlx::raw_sql(&new_graph_sql)
-            .execute(&mut *tx)
-            .await?;
+A CLI command should be implemented to simulate and verify this update process.
 
-        // 8. Collect new stats
-        let stats_after = self.collect_graph_stats_tx(&mut tx).await?;
-
-        // 9. Commit
-        tx.commit().await?;
-
-        // 10. Return stats
-        Ok(UpdateStats {
-            nodes_before: stats_before.node_ids.len(),
-            nodes_after: stats_after.node_ids.len(),
-            edges_before: stats_before.edge_count,
-            edges_after: stats_after.edge_count,
-            new_nodes: new_node_ids.iter()
-                .filter(|id| !stats_before.node_ids.contains(*id))
-                .cloned()
-                .collect(),
-            removed_nodes,
-        })
-    }
-
-    async fn delete_graph_tables(&self, tx: &mut Transaction<'_, Sqlite>) -> Result<()> {
-        sqlx::query("DELETE FROM edges").execute(&mut **tx).await?;
-        sqlx::query("DELETE FROM node_metadata").execute(&mut **tx).await?;
-        sqlx::query("DELETE FROM goals").execute(&mut **tx).await?;
-        sqlx::query("DELETE FROM node_goals").execute(&mut **tx).await?;
-        Ok(())
-    }
-
-    async fn collect_graph_stats(&self) -> Result<GraphStats> {
-        let node_ids: Vec<String> = sqlx::query_scalar("SELECT DISTINCT node_id FROM node_metadata")
-            .fetch_all(&self.pool)
-            .await?;
-
-        let edge_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM edges")
-            .fetch_one(&self.pool)
-            .await?;
-
-        Ok(GraphStats {
-            node_ids,
-            edge_count: edge_count as usize,
-        })
-    }
-
-    fn extract_node_ids_from_sql(&self, sql: &str) -> Result<Vec<String>> {
-        // Parse INSERT statements to extract node IDs
-        // Regex: INSERT INTO node_metadata \(node_id, ...\) VALUES \('([^']+)'
-        let re = regex::Regex::new(r"'([^']+)'").unwrap();
-
-        let mut node_ids = std::collections::HashSet::new();
-        for line in sql.lines() {
-            if line.contains("INSERT INTO node_metadata") {
-                if let Some(caps) = re.captures(line) {
-                    node_ids.insert(caps[1].to_string());
-                }
-            }
-        }
-
-        Ok(node_ids.into_iter().collect())
-    }
-}
-```
-
-### Step 2: Add CLI Command (1 hour)
-
-**File:** `rust/crates/iqrah-cli/src/commands/update_graph.rs`
+**File:** `rust/crates/iqrah-cli/src/commands/verify_update.rs`
 
 ```rust
-pub async fn update_graph(sql_path: PathBuf, content_db: PathBuf) -> Result<()> {
-    println!("Updating knowledge graph...");
-    println!("  Source: {}", sql_path.display());
-    println!("  Target: {}", content_db.display());
+pub async fn verify_update(old_db: PathBuf, new_db: PathBuf, user_db: PathBuf) -> Result<()> {
+    println!("Verifying graph update compatibility...");
 
-    let pool = SqlitePool::connect(content_db.to_str().unwrap()).await?;
-    let updater = GraphUpdate::new(pool);
+    // Setup repositories for both old and new content versions
+    let old_content_repo = setup_content_repo(&old_db).await?;
+    let new_content_repo = setup_content_repo(&new_db).await?;
+    let user_repo = setup_user_repo(&user_db).await?;
 
-    let stats = updater.update_from_sql_file(&sql_path).await?;
+    // 1. Get user progress (list of ukeys) from user.db
+    let user_nodes = user_repo.get_all_user_nodes("default_user").await?;
 
-    println!("\n✅ Graph updated successfully!");
-    println!("\nStatistics:");
-    println!("  Nodes before: {}", stats.nodes_before);
-    println!("  Nodes after:  {}", stats.nodes_after);
-    println!("  New nodes:    {}", stats.new_nodes.len());
-    println!("  Edges before: {}", stats.edges_before);
-    println!("  Edges after:  {}", stats.edges_after);
+    // 2. For each ukey, check if it exists in the OLD and NEW content.db
+    for ukey in user_nodes {
+        let old_node = old_content_repo.get_node(&ukey).await?;
+        let new_node = new_content_repo.get_node(&ukey).await?;
 
-    if !stats.new_nodes.is_empty() {
-        println!("\nNew nodes (sample):");
-        for node in stats.new_nodes.iter().take(5) {
-            println!("  + {}", node);
+        if old_node.is_none() {
+            // This should not happen if data is consistent
+            println!("⚠️ Warning: User has progress for a node that doesn't exist in the OLD DB: {}", ukey);
         }
-        if stats.new_nodes.len() > 5 {
-            println!("  ... and {} more", stats.new_nodes.len() - 5);
+        if new_node.is_none() {
+            // CRITICAL ERROR: A node the user had progress on was removed in the update
+            return Err(anyhow!("Error: Node '{}' was removed in the new version, leading to data loss.", ukey));
         }
     }
 
+    println!("✅ Verification successful: All user progress can be migrated.");
     Ok(())
 }
 ```
 
 **Usage:**
 ```bash
-cargo run --bin iqrah-cli -- update-graph --file new_graph.sql
+cargo run --bin iqrah-cli -- verify-update \
+    --old-db /path/to/old_content.db \
+    --new-db /path/to/new_content.db \
+    --user-db /path/to/user.db
 ```
 
 ### Step 3: Add Tests (2 hours)

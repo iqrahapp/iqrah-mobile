@@ -94,41 +94,62 @@ Contains:
 
 ## Implementation Steps
 
-### Step 1: Verify Cross-Axis Edges in Database (30 min)
+### Graph Traversal with Integer IDs
 
-**Commands:**
-```bash
-cd rust
+Energy propagation and all other graph traversal algorithms now operate on high-performance **integer IDs**. The `LearningService` will perform the following steps when a review is recorded:
 
-# Initialize database with Task 2.1 migration
-cargo run --bin iqrah-cli -- init
+1.  Accept a **string ukey** (e.g., `"VERSE:1:1:translation"`) from the application layer.
+2.  Use the `NodeRegistry` to resolve the ukey into its corresponding **integer ID**.
+3.  Query the `edges` table using the **integer ID** to find outgoing connections.
+4.  Propagate energy to the `target_id` of each edge, which is also an integer.
 
-# Query cross-axis edges
-sqlite3 ~/.local/share/iqrah/content.db <<EOF
--- Count knowledge edges by source/target axis
+This process is significantly faster and more robust than the previous string-based approach.
+
+**Example Propagation Logic:**
+```rust
+async fn propagate_energy(&self, source_node_ukey: &str, energy: f64) -> Result<()> {
+    // 1. Resolve ukey to integer ID
+    let source_node_id = self.registry.get_id(source_node_ukey).await?;
+
+    // 2. Query edges using the integer ID
+    let edges = sqlx::query!(
+        "SELECT target_id, weight FROM edges WHERE source_id = ?",
+        source_node_id
+    ).fetch_all(&self.pool).await?;
+
+    // 3. Propagate to target integer IDs
+    for edge in edges {
+        self.add_energy_by_id(edge.target_id, energy * edge.weight).await?;
+    }
+    Ok(())
+}
+```
+
+### Step 1: Update Verification Queries (30 min)
+
+The verification queries must be updated to join against the `nodes` and `knowledge_nodes` tables to get axis information, as the `edges` table only contains integer IDs.
+
+**Updated Query to Verify Cross-Axis Edges:**
+```sql
+-- Join edges with nodes and knowledge_nodes to find cross-axis connections
 SELECT
-    SUBSTR(source_id, INSTR(source_id, ':') + 1) as source_axis,
-    SUBSTR(target_id, INSTR(target_id, ':') + 1) as target_axis,
+    kn_source.axis AS source_axis,
+    kn_target.axis AS target_axis,
     COUNT(*) as edge_count,
-    AVG(distribution_param1) as avg_weight
-FROM edges
-WHERE edge_type = 1
-    AND source_id LIKE '%:%'
-    AND target_id LIKE '%:%'
+    AVG(e.weight) as avg_weight
+FROM edges e
+JOIN knowledge_nodes kn_source ON e.source_id = kn_source.node_id
+JOIN knowledge_nodes kn_target ON e.target_id = kn_target.node_id
+WHERE e.edge_type = 1  -- Knowledge edges
 GROUP BY source_axis, target_axis
 ORDER BY edge_count DESC;
-EOF
 ```
 
-**Expected output:**
-```
-source_axis         | target_axis         | edge_count | avg_weight
---------------------+--------------------+------------+-----------
-translation         | memorization        | 493        | 0.30
-tafsir              | translation         | 493        | 0.25
-memorization        | memorization        | 492        | 0.80  (sequential)
-contextual_memorization | memorization   | 100        | 0.40
-```
+### Step 2: Update Test Code (2-3 hours)
+
+- Tests should continue to pass **string ukeys** to the `LearningService`.
+- The test setup must ensure the `NodeRegistry` is available and populated so that the service can resolve the ukeys to integer IDs internally.
+- Assertions will remain the same: check that reviewing a node of one axis causes an energy increase in a node of a connected axis.
 
 **Verify:**
 - [ ] Cross-axis edges exist
