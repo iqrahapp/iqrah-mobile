@@ -14,6 +14,7 @@ use std::str::FromStr;
 const EXPECTED_USER_VERSION: &str = "1.0.0";
 
 /// Initialize user database with migrations
+/// Initialize user database with migrations
 pub async fn init_user_db(db_path: &str) -> Result<SqlitePool> {
     // FK constraints enabled - all migrations properly handle foreign key references
     let options = SqliteConnectOptions::from_str(db_path)?

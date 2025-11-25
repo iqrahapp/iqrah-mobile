@@ -33,7 +33,7 @@ fn parse_version(version: &str) -> (u32, u32, u32) {
     let parts: Vec<u32> = version.split('.').filter_map(|s| s.parse().ok()).collect();
 
     (
-        parts.first().copied().unwrap_or(0),
+        parts.get(0).copied().unwrap_or(0),
         parts.get(1).copied().unwrap_or(0),
         parts.get(2).copied().unwrap_or(0),
     )

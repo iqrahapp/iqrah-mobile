@@ -14,6 +14,7 @@ use std::str::FromStr;
 const EXPECTED_CONTENT_VERSION: &str = "2.0.0";
 
 /// Initialize content database
+/// Initialize content database
 pub async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
     // FK constraints enabled - all migrations properly handle foreign key references
     let options = SqliteConnectOptions::from_str(db_path)?
