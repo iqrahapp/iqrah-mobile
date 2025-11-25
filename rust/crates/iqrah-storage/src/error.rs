@@ -5,18 +5,18 @@ pub enum StorageError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 
-    #[error("Migration error: {0}")]
-    Migration(#[from] sqlx::migrate::MigrateError),
-
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-
     #[error("Incompatible schema version: DB {db_version}, App {app_version} - {message}")]
     IncompatibleSchema {
         db_version: String,
         app_version: String,
         message: String,
     },
+
+    #[error("Migration error: {0}")]
+    Migration(#[from] sqlx::migrate::MigrateError),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 
     #[error("Invalid node ID: {node_id} - {reason}")]
     InvalidNodeId { node_id: String, reason: String },

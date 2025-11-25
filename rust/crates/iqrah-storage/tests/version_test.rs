@@ -13,8 +13,7 @@ async fn test_content_db_has_version() {
 
     assert!(
         version.starts_with("2."),
-        "Content DB should be version 2.x.x, found {}",
-        version
+        "Content DB should be version 2.x.x"
     );
 }
 
@@ -26,9 +25,5 @@ async fn test_user_db_has_version() {
     let pool = init_user_db(db_path.to_str().unwrap()).await.unwrap();
     let version = get_schema_version(&pool).await.unwrap();
 
-    assert!(
-        version.starts_with("1."),
-        "User DB should be version 1.x.x, found {}",
-        version
-    );
+    assert!(version.starts_with("1."), "User DB should be version 1.x.x");
 }
