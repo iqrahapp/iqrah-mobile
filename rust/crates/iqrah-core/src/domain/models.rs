@@ -67,39 +67,35 @@ pub enum KnowledgeAxis {
 }
 
 impl KnowledgeAxis {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn from_str(s: &str) -> std::result::Result<Self, ()> {
         match s {
-            "memorization" => Some(Self::Memorization),
-            "translation" => Some(Self::Translation),
-            "tafsir" => Some(Self::Tafsir),
-            "tajweed" => Some(Self::Tajweed),
-            "contextual_memorization" => Some(Self::ContextualMemorization),
-            "meaning" => Some(Self::Meaning),
-            _ => None,
+            "memorization" => Ok(Self::Memorization),
+            "translation" => Ok(Self::Translation),
+            "tafsir" => Ok(Self::Tafsir),
+            "tajweed" => Ok(Self::Tajweed),
+            "contextual_memorization" => Ok(Self::ContextualMemorization),
+            "meaning" => Ok(Self::Meaning),
+            _ => Err(()),
         }
     }
+}
 
-    pub fn as_str(&self) -> &'static str {
+impl AsRef<str> for KnowledgeAxis {
+    fn as_ref(&self) -> &str {
         match self {
-            Self::Memorization => "memorization",
-            Self::Translation => "translation",
-            Self::Tafsir => "tafsir",
-            Self::Tajweed => "tajweed",
-            Self::ContextualMemorization => "contextual_memorization",
-            Self::Meaning => "meaning",
+            KnowledgeAxis::Memorization => "memorization",
+            KnowledgeAxis::Translation => "translation",
+            KnowledgeAxis::Tafsir => "tafsir",
+            KnowledgeAxis::Tajweed => "tajweed",
+            KnowledgeAxis::ContextualMemorization => "contextual_memorization",
+            KnowledgeAxis::Meaning => "meaning",
         }
-    }
-
-    #[deprecated(note = "Use as_str() instead")]
-    pub fn to_str(&self) -> &'static str {
-        self.as_str()
     }
 }
 
 impl std::fmt::Display for KnowledgeAxis {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -127,22 +123,24 @@ impl KnowledgeNode {
 
         // Last part should be the axis
         let axis_str = parts.last()?;
-        let axis = KnowledgeAxis::from_str(axis_str)?;
+        if let Ok(axis) = KnowledgeAxis::from_str(axis_str) {
+            // Everything except last part is base node ID
+            let base_parts = &parts[..parts.len() - 1];
+            let base_node_id = base_parts.join(":");
 
-        // Everything except last part is base node ID
-        let base_parts = &parts[..parts.len() - 1];
-        let base_node_id = base_parts.join(":");
-
-        Some(Self {
-            base_node_id,
-            axis,
-            full_id: node_id.to_string(),
-        })
+            Some(Self {
+                base_node_id,
+                axis,
+                full_id: node_id.to_string(),
+            })
+        } else {
+            None
+        }
     }
 
     /// Construct a new knowledge node from base ID and axis
     pub fn new(base_node_id: String, axis: KnowledgeAxis) -> Self {
-        let full_id = format!("{}:{}", base_node_id, axis.as_str());
+        let full_id = format!("{}:{}", base_node_id, axis.as_ref());
         Self {
             base_node_id,
             axis,

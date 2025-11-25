@@ -334,10 +334,20 @@ mod tests {
             // Add test data
             quran_text.insert("WORD:1:1:1".to_string(), "بِسْمِ".to_string());
             translations.insert("WORD:1:1:1".to_string(), "In the name".to_string());
+            quran_text.insert("WORD:1".to_string(), "بِسْمِ".to_string());
+            translations.insert("WORD:1".to_string(), "In the name".to_string());
 
             Self {
                 quran_text,
                 translations,
+            }
+        }
+
+        fn get_base_id(&self, node_id: &str) -> String {
+            if let Some(kn) = KnowledgeNode::parse(node_id) {
+                kn.base_node_id
+            } else {
+                node_id.to_string()
             }
         }
     }
@@ -357,11 +367,13 @@ mod tests {
         }
 
         async fn get_quran_text(&self, node_id: &str) -> Result<Option<String>> {
-            Ok(self.quran_text.get(node_id).cloned())
+            let base_id = self.get_base_id(node_id);
+            Ok(self.quran_text.get(&base_id).cloned())
         }
 
         async fn get_translation(&self, node_id: &str, _lang: &str) -> Result<Option<String>> {
-            Ok(self.translations.get(node_id).cloned())
+            let base_id = self.get_base_id(node_id);
+            Ok(self.translations.get(&base_id).cloned())
         }
 
         async fn get_metadata(&self, _node_id: &str, _key: &str) -> Result<Option<String>> {
