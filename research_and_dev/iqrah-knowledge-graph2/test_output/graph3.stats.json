@@ -1,0 +1,739 @@
+{
+  "metadata": {
+    "timestamp": "2025-11-25T11:50:06.123332",
+    "directed": true,
+    "multigraph": false,
+    "graph_attributes": {
+      "knowledge_edges": 96769,
+      "knowledge_compiled": true
+    }
+  },
+  "basic_stats": {
+    "total_nodes": 42730,
+    "total_edges": 160491,
+    "density": 8.79012520781391e-05,
+    "is_connected": true
+  },
+  "node_stats": {
+    "by_type": {
+      "chapter": 3,
+      "verse": 493,
+      "word_instance": 10120,
+      "word": 4381,
+      "lemma": 1423,
+      "root": 697,
+      "knowledge": 25613
+    },
+    "attribute_coverage": {
+      "chapter_type": 3,
+      "chapter_name": 3,
+      "verse_type": 493,
+      "word_instance_type": 10120,
+      "word_type": 4381,
+      "lemma_type": 1423,
+      "root_type": 697,
+      "knowledge_type": 25613,
+      "knowledge_axis": 25613,
+      "knowledge_parent_node": 25613
+    }
+  },
+  "edge_stats": {
+    "by_type": {
+      "dependency": 63722,
+      "knowledge": 96769
+    },
+    "attribute_coverage": {
+      "type": 160491,
+      "dist": 122382,
+      "m": 122382,
+      "s": 122382
+    }
+  },
+  "knowledge_edge_stats": {
+    "by_axis": {
+      "memorization": 86650,
+      "translation": 46345
+    },
+    "by_distribution": {
+      "normal": 122382
+    },
+    "total_knowledge_edges": 132995
+  },
+  "score_stats": {
+    "foundational": {},
+    "influence": {},
+    "scored_nodes": 0,
+    "scored_percentage": 0.0
+  },
+  "top_nodes": {
+    "by_foundational_score": [
+      {
+        "node_id": "CHAPTER:1",
+        "score": 0,
+        "type": "chapter"
+      },
+      {
+        "node_id": "VERSE:1:1",
+        "score": 0,
+        "type": "verse"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:1",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0628\u0650\u0633\u0652\u0645\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0628",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0633\u0652\u0645",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0633\u0645\u0648",
+        "score": 0,
+        "type": "root"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:2",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0644\u0651\u064e\u0647",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0623\u0644\u0647",
+        "score": 0,
+        "type": "root"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:3",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0631\u0651\u064e\u062d\u0652\u0645\u064e\u0640\u0670\u0646\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u062d\u0652\u0645\u0670\u0646",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0631\u062d\u0645",
+        "score": 0,
+        "type": "root"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:4",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0631\u0651\u064e\u062d\u0650\u064a\u0645\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u062d\u0650\u064a\u0645",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:5",
+        "score": 0,
+        "type": "word_instance"
+      }
+    ],
+    "by_influence_score": [
+      {
+        "node_id": "CHAPTER:1",
+        "score": 0,
+        "type": "chapter"
+      },
+      {
+        "node_id": "VERSE:1:1",
+        "score": 0,
+        "type": "verse"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:1",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0628\u0650\u0633\u0652\u0645\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0628",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0633\u0652\u0645",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0633\u0645\u0648",
+        "score": 0,
+        "type": "root"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:2",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0644\u0651\u064e\u0647",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0623\u0644\u0647",
+        "score": 0,
+        "type": "root"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:3",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0631\u0651\u064e\u062d\u0652\u0645\u064e\u0640\u0670\u0646\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u062d\u0652\u0645\u0670\u0646",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "ROOT:\u0631\u062d\u0645",
+        "score": 0,
+        "type": "root"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:4",
+        "score": 0,
+        "type": "word_instance"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0631\u0651\u064e\u062d\u0650\u064a\u0645\u0650",
+        "score": 0,
+        "type": "word"
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u062d\u0650\u064a\u0645",
+        "score": 0,
+        "type": "lemma"
+      },
+      {
+        "node_id": "WORD_INSTANCE:1:1:5",
+        "score": 0,
+        "type": "word_instance"
+      }
+    ],
+    "by_degree": [
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "degree": 608,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0648",
+        "degree": 589,
+        "type": "lemma"
+      },
+      {
+        "node_id": "CHAPTER:2",
+        "degree": 288,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:2:memorization",
+        "degree": 287,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "CHAPTER:2:translation",
+        "degree": 287,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0644",
+        "degree": 228,
+        "type": "lemma"
+      },
+      {
+        "node_id": "LEMMA:\u0641",
+        "degree": 208,
+        "type": "lemma"
+      },
+      {
+        "node_id": "CHAPTER:3",
+        "degree": 202,
+        "type": "chapter"
+      },
+      {
+        "node_id": "CHAPTER:3:memorization",
+        "degree": 201,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "CHAPTER:3:translation",
+        "degree": 201,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "LEMMA:\u0628",
+        "degree": 180,
+        "type": "lemma"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0651\u064e\u0630\u0650\u064a\u0646\u064e",
+        "degree": 134,
+        "type": "word"
+      },
+      {
+        "node_id": "VERSE:2:282",
+        "degree": 134,
+        "type": "verse"
+      },
+      {
+        "node_id": "VERSE:2:282:memorization",
+        "degree": 132,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0651\u064e\u0630\u0650\u064a\u0646\u064e:translation",
+        "degree": 132,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "VERSE:2:282:translation",
+        "degree": 132,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0641\u0650\u0649",
+        "degree": 125,
+        "type": "word"
+      },
+      {
+        "node_id": "WORD:\u0641\u0650\u0649:translation",
+        "degree": 124,
+        "type": "knowledge"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u064e",
+        "degree": 118,
+        "type": "word"
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u064e:translation",
+        "degree": 116,
+        "type": "knowledge"
+      }
+    ],
+    "top_chapters": [
+      {
+        "node_id": "CHAPTER:1",
+        "score": 0
+      },
+      {
+        "node_id": "CHAPTER:2",
+        "score": 0
+      },
+      {
+        "node_id": "CHAPTER:3",
+        "score": 0
+      }
+    ],
+    "top_verses": [
+      {
+        "node_id": "VERSE:1:1",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:1:2",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:1:3",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:1:4",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:1:5",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:1:6",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:1:7",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:1",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:2",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:3",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:4",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:5",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:6",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:7",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:8",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:9",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:10",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:11",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:12",
+        "score": 0
+      },
+      {
+        "node_id": "VERSE:2:13",
+        "score": 0
+      }
+    ],
+    "top_words": [
+      {
+        "node_id": "WORD:\u0628\u0650\u0633\u0652\u0645\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0644\u0651\u064e\u0647\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0631\u0651\u064e\u062d\u0652\u0645\u064e\u0640\u0670\u0646\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0631\u0651\u064e\u062d\u0650\u064a\u0645\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0661",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0652\u062d\u064e\u0645\u0652\u062f\u064f",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0644\u0650\u0644\u0651\u064e\u0647\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0631\u064e\u0628\u0651\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u0652\u0639\u064e\u0640\u0670\u0644\u064e\u0645\u0650\u064a\u0646\u064e",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0662",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0663",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0645\u064e\u0640\u0670\u0644\u0650\u0643\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u064a\u064e\u0648\u0652\u0645\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0671\u0644\u062f\u0651\u0650\u064a\u0646\u0650",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0664",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0625\u0650\u064a\u0651\u064e\u0627\u0643\u064e",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0646\u064e\u0639\u0652\u0628\u064f\u062f\u064f",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0648\u064e\u0625\u0650\u064a\u0651\u064e\u0627\u0643\u064e",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0646\u064e\u0633\u0652\u062a\u064e\u0639\u0650\u064a\u0646\u064f",
+        "score": 0
+      },
+      {
+        "node_id": "WORD:\u0665",
+        "score": 0
+      }
+    ],
+    "top_lemmas": [
+      {
+        "node_id": "LEMMA:\u0628",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0633\u0652\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644\u0644\u0651\u064e\u0647",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0644",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u062d\u0652\u0645\u0670\u0646",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u062d\u0650\u064a\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u062d\u064e\u0645\u0652\u062f",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0644",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0631\u064e\u0628\u0651",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0639\u0627\u0644\u064e\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0645\u0627\u0644\u0650\u0643",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u064a\u064e\u0648\u0652\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u062f\u0650\u064a\u0646",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0625\u0650\u064a\u0651\u0627",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0639\u064e\u0628\u064e\u062f\u064e",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0648",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0627\u0633\u0652\u062a\u064e\u0639\u0650\u064a\u0646\u064f",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0647\u064e\u062f\u064e\u0649",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0635\u0650\u0631\u0627\u0637",
+        "score": 0
+      },
+      {
+        "node_id": "LEMMA:\u0645\u064f\u0633\u0652\u062a\u064e\u0642\u0650\u064a\u0645",
+        "score": 0
+      }
+    ],
+    "top_roots": [
+      {
+        "node_id": "ROOT:\u0633\u0645\u0648",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0623\u0644\u0647",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0631\u062d\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u062d\u0645\u062f",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0631\u0628\u0628",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0639\u0644\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0645\u0644\u0643",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u064a\u0648\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u062f\u064a\u0646",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0639\u0628\u062f",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0639\u0648\u0646",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0647\u062f\u064a",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0635\u0631\u0637",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0642\u0648\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0646\u0639\u0645",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u063a\u064a\u0631",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u063a\u0636\u0628",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0636\u0644\u0644",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0643\u062a\u0628",
+        "score": 0
+      },
+      {
+        "node_id": "ROOT:\u0631\u064a\u0628",
+        "score": 0
+      }
+    ]
+  },
+  "connectivity": {
+    "avg_in_degree": 3.7559326000468056,
+    "avg_out_degree": 3.7559326000468056,
+    "max_in_degree": 608,
+    "max_out_degree": 286,
+    "weakly_connected_components": 1
+  },
+  "validation": {
+    "errors": [],
+    "warnings": [],
+    "checks": {
+      "all_nodes_have_type": true,
+      "all_knowledge_edges_have_dist": true,
+      "all_scores_in_range": true,
+      "graph_is_connected": true
+    },
+    "total_errors": 0,
+    "total_warnings": 0,
+    "passed_checks": 4,
+    "total_checks": 4
+  }
+}
