@@ -111,34 +111,36 @@ impl ContentRepository for SqliteContentRepository {
             }
             NodeType::Knowledge => {
                 let (base_id, axis) = nid::parse_knowledge(node_id)?;
-                // Knowledge nodes are virtual wrappers around content nodes
-                // Recursively get the base node
-                if let Some(mut node) = Box::pin(self.get_node(&base_id)).await? {
-                    // Override ID and type to match the requested knowledge node
-                    node.id = node_id.to_string();
-                    node.node_type = NodeType::Knowledge;
 
-                    // Populate knowledge_node field if needed (currently it's Option<KnowledgeNode>)
-                    // But Node struct definition might need checking.
-                    // Based on imports, KnowledgeNode is a struct/enum.
-                    // Let's check Node definition in iqrah-core/src/domain/models.rs if needed.
-                    // For now, just returning the node with modified ID/type is what was requested.
-
-                    // The task says: "Return node with axis metadata"
-                    // The Node struct has `knowledge_node: Option<KnowledgeNode>`
-                    // We should construct that.
-
-                    let kn = KnowledgeNode {
-                        base_node_id: base_id,
-                        axis,
-                        full_id: node_id.to_string(),
-                    };
-                    node.knowledge_node = Some(kn);
-
-                    Ok(Some(node))
-                } else {
-                    Ok(None)
+                // 1. Referential Integrity: Base node must exist
+                if !self.node_exists(&base_id).await? {
+                    return Ok(None);
                 }
+
+                // 2. Entity Existence: Knowledge node must exist in node_metadata
+                // (Task says they are REAL entities, so they must be in the DB)
+                let exists: (i64,) = query_as("SELECT COUNT(*) FROM node_metadata WHERE node_id = ?")
+                    .bind(node_id)
+                    .fetch_one(&self.pool)
+                    .await?;
+
+                if exists.0 == 0 {
+                    // Not a real knowledge node in our DB
+                    return Ok(None);
+                }
+
+                // 3. Construct Node
+                let kn = KnowledgeNode {
+                    base_node_id: base_id,
+                    axis,
+                    full_id: node_id.to_string(),
+                };
+
+                Ok(Some(Node {
+                    id: node_id.to_string(),
+                    node_type: NodeType::Knowledge,
+                    knowledge_node: Some(kn),
+                }))
             }
             _ => Ok(None), // Other types not supported yet
         }
@@ -572,67 +574,8 @@ impl ContentRepository for SqliteContentRepository {
         // V2 schema: Use words table with verse_key and position
         use iqrah_core::domain::node_id as nid;
 
-        // Parse word_id using node_id module
-        // We expect a WORD node ID here, e.g. "WORD:123" or just "123" if legacy?
-        // The task says "Replace ad-hoc string parsing".
-        // If the input is a proper node ID "WORD:123", parse_word handles it.
-        // If it's just "123", parse_word might fail if it expects prefix.
-        // Let's check node_id implementation. parse_word expects "WORD:123".
-        // But the previous code did `word_node_id.parse::<i32>()`, implying it expected a number string.
-        // If the input is "WORD:123", previous code would fail.
-        // If the input is "123", previous code works.
-        // The repository contract should be to take a Node ID.
-        // If the caller passes "WORD:123", we should handle it.
-        // If the caller passes "123", we should probably handle it too if we want to be nice, or enforce "WORD:123".
-        // Given this is a refactor to "Use Node ID Module", we should expect proper Node IDs.
-        // However, let's look at how `get_adjacent_words` is called.
-        // If it's called with "WORD:123", `nid::parse_word` works.
-        // If it's called with "123", `nid::parse_word` fails.
-        // Let's try `nid::parse_word` first. If it fails, maybe try parsing as i32 directly?
-        // Or better, assume it's a proper Node ID.
-
-        // Actually, `get_node` returns "WORD:123" (via `word_id.to_string()` but prefixed? No, `get_node` returns `id: word_id.to_string()` which is just number for words in the current impl).
-        // Wait, in `get_node` refactor:
-        // `Ok(row.map(|(wid, _)| Node { id: wid.to_string(), ... }))`
-        // `wid` is `i32`. So `id` is "123".
-        // So `get_node` returns "123" for words.
-        // But `node_id::word(123)` returns "WORD:123".
-        // This is a discrepancy.
-        // The task says: "Replace all node ID construction to use builders".
-        // So `get_node` SHOULD return "WORD:123".
-        // I need to fix `get_node` to return `nid::word(wid)` instead of `wid.to_string()`.
-
-        // Let's fix `get_node` first, then `get_adjacent_words`.
-        // But I am in the middle of `get_adjacent_words` thought process.
-
-        // If I change `get_node` to return "WORD:123", then `get_adjacent_words` will receive "WORD:123".
-        // So I should use `nid::parse_word`.
-
-        // But wait, `get_node` currently returns `id: wid.to_string()`.
-        // I should update `get_node` to use `nid::word(wid)`.
-        // And `nid::chapter(num)`.
-        // And `nid::verse(ch, v)`.
-
-        // I will update `get_adjacent_words` to handle "WORD:123".
-        // And I will ALSO update `get_node` to return proper IDs.
-
-        // For `get_adjacent_words`, I'll use `nid::parse_word`.
-        // But if the input is "123", `nid::parse_word` fails.
-        // I should probably support "123" for backward compatibility if needed, or just enforce "WORD:123".
-        // The task says "Replace ad-hoc string parsing".
-
-        // Let's try to parse with `nid::parse_word`. If it fails, try to parse as number directly (legacy fallback).
-
-        let word_id = match nid::parse_word(word_node_id) {
-            Ok(id) => id as i32,
-            Err(_) => {
-                // Fallback for legacy "123" format
-                match word_node_id.parse::<i32>() {
-                    Ok(id) => id,
-                    Err(_) => return Ok((None, None)),
-                }
-            }
-        };
+        // Parse word_id using node_id module (strict format "WORD:123")
+        let word_id = nid::parse_word(word_node_id)? as i32;
 
         // Get current word's verse_key and position
         let current_word =

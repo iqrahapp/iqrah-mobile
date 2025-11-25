@@ -5,7 +5,7 @@ use iqrah_storage::{init_content_db, SqliteContentRepository};
 #[tokio::test]
 async fn test_get_node_refactor() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = SqliteContentRepository::new(pool.clone());
 
     // Test Verse Node
     let verse_id = nid::verse(1, 1); // "VERSE:1:1"
@@ -50,6 +50,14 @@ async fn test_get_node_refactor() {
 
     // Test Knowledge Node
     let knowledge_id = nid::knowledge(&verse_id, iqrah_core::KnowledgeAxis::Memorization);
+
+    // Manually insert into node_metadata so validation passes
+    sqlx::query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'score', '10')")
+        .bind(&knowledge_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
     let node = repo.get_node(&knowledge_id).await.unwrap();
     assert!(node.is_some());
     let node = node.unwrap();
