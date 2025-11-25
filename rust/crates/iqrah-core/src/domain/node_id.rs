@@ -36,7 +36,7 @@ pub fn word_instance(chapter: u8, verse: u16, position: u8) -> String {
 
 /// Build a knowledge node ID: "VERSE:1:1:memorization"
 pub fn knowledge(base_id: &str, axis: KnowledgeAxis) -> String {
-    format!("{}:{}", base_id, axis.as_str())
+    format!("{}:{}", base_id, axis.as_ref())
 }
 
 // ============================================================================
@@ -145,7 +145,7 @@ pub fn parse_knowledge(id: &str) -> Result<(String, KnowledgeAxis)> {
     // Last part is the axis
     let axis_str = parts.last().unwrap();
     let axis = KnowledgeAxis::from_str(axis_str)
-        .ok_or_else(|| NodeIdError::InvalidAxis(axis_str.to_string()))?;
+        .map_err(|_| NodeIdError::InvalidAxis(axis_str.to_string()))?;
 
     // Everything before the last part is the base ID
     let base_id = parts[..parts.len() - 1].join(":");
@@ -163,7 +163,7 @@ pub fn node_type(id: &str) -> Result<NodeType> {
 
     // Check if it's a knowledge node (ends with axis)
     if let Some(last) = parts.last() {
-        if KnowledgeAxis::from_str(last).is_some() {
+        if KnowledgeAxis::from_str(last).is_ok() {
             return Ok(NodeType::Knowledge);
         }
     }
@@ -175,6 +175,22 @@ pub fn node_type(id: &str) -> Result<NodeType> {
         "WORD" => Ok(NodeType::Word),
         "WORD_INSTANCE" => Ok(NodeType::WordInstance),
         _ => Err(NodeIdError::InvalidPrefix(parts[0].to_string())),
+    }
+}
+
+// ============================================================================
+// VALIDATION
+// ============================================================================
+
+/// Validate a node ID string
+pub fn validate(id: &str) -> Result<()> {
+    match node_type(id)? {
+        NodeType::Chapter => parse_chapter(id).map(|_| ()),
+        NodeType::Verse => parse_verse(id).map(|_| ()),
+        NodeType::Word => parse_word(id).map(|_| ()),
+        NodeType::WordInstance => parse_word_instance(id).map(|_| ()),
+        NodeType::Knowledge => parse_knowledge(id).map(|_| ()),
+        _ => Err(NodeIdError::InvalidPrefix("Unknown".to_string())),
     }
 }
 
@@ -288,5 +304,35 @@ mod tests {
 
         let word_id = word(999);
         assert_eq!(parse_word(&word_id).unwrap(), 999);
+    }
+
+    // Validation tests
+    #[test]
+    fn test_validate_happy_path() {
+        assert!(validate("CHAPTER:1").is_ok());
+        assert!(validate("VERSE:114:6").is_ok());
+        assert!(validate("WORD:12345").is_ok());
+        assert!(validate("WORD_INSTANCE:2:286:1").is_ok());
+        assert!(validate("VERSE:1:1:memorization").is_ok());
+    }
+
+    #[test]
+    fn test_validate_error_cases() {
+        // Malformed
+        assert!(validate("CHAPTER").is_err());
+        assert!(validate("VERSE:1").is_err());
+        assert!(validate("WORD:").is_err());
+        assert!(validate("WORD_INSTANCE:1:1").is_err());
+        assert!(validate("VERSE:1:1:").is_err());
+        assert!(validate("VERSE:1:1:unknown_axis").is_err());
+
+        // Invalid chapter/verse numbers
+        assert!(validate("CHAPTER:0").is_err());
+        assert!(validate("CHAPTER:115").is_err());
+        assert!(validate("VERSE:0:1").is_err());
+        assert!(validate("VERSE:1:0").is_err());
+
+        // Unprefixed
+        assert!(validate("1:1").is_err());
     }
 }

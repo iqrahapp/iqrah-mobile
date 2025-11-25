@@ -6,13 +6,13 @@ use super::models::{
 use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
-    ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode, Chapter, ContentPackage,
-    ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge, ImportedNode,
-    InstalledPackage, KnowledgeNode, Language, Lemma, MorphologySegment, Node, NodeType,
-    PackageType, Root, Translator, Verse, Word,
+    domain::node_id as nid, ports::content_repository::SchedulerGoal,
+    scheduler_v2::CandidateNode, Chapter, ContentPackage, ContentRepository, DistributionType, Edge,
+    EdgeType, ImportedEdge, ImportedNode, InstalledPackage, KnowledgeNode, Language, Lemma,
+    MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 pub struct SqliteContentRepository {
     pool: SqlitePool,
@@ -21,6 +21,15 @@ pub struct SqliteContentRepository {
 impl SqliteContentRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
+    }
+
+    /// Helper to get the base node ID if a knowledge axis is present
+    fn get_base_id<'a>(&self, node_id: &'a str) -> Cow<'a, str> {
+        if let Ok((base_id, _)) = nid::parse_knowledge(node_id) {
+            Cow::Owned(base_id)
+        } else {
+            Cow::Borrowed(node_id)
+        }
     }
 }
 
@@ -177,10 +186,10 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
         // V2 schema: Query text from verses or words tables
-        use iqrah_core::domain::node_id as nid;
+        let base_id = self.get_base_id(node_id);
 
         // Detect type first
-        let node_type = match nid::node_type(node_id) {
+        let node_type = match nid::node_type(&base_id) {
             Ok(t) => t,
             Err(_) => return Ok(None),
         };
@@ -229,7 +238,7 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_translation(&self, node_id: &str, lang: &str) -> anyhow::Result<Option<String>> {
         // V2 schema: Query from verse_translations or word_translations
-        use iqrah_core::domain::node_id as nid;
+        let base_id = self.get_base_id(node_id);
 
         // First, find a translator for the given language
         let translator = query_as::<_, (i32,)>(
@@ -245,14 +254,14 @@ impl ContentRepository for SqliteContentRepository {
         };
 
         // Detect type
-        let node_type = match nid::node_type(node_id) {
+        let node_type = match nid::node_type(&base_id) {
             Ok(t) => t,
             Err(_) => return Ok(None),
         };
 
         match node_type {
             NodeType::Verse => {
-                let (chapter, verse) = nid::parse_verse(node_id)?;
+                let (chapter, verse) = nid::parse_verse(&base_id)?;
                 let verse_key = format!("{}:{}", chapter, verse);
 
                 let row = query_as::<_, (String,)>(
@@ -266,7 +275,7 @@ impl ContentRepository for SqliteContentRepository {
                 Ok(row.map(|(text,)| text))
             }
             NodeType::Word => {
-                let word_id = nid::parse_word(node_id)?;
+                let word_id = nid::parse_word(&base_id)?;
 
                 let row = query_as::<_, (String,)>(
                     "SELECT translation FROM word_translations WHERE word_id = ? AND translator_id = ?"
@@ -279,7 +288,7 @@ impl ContentRepository for SqliteContentRepository {
                 Ok(row.map(|(text,)| text))
             }
             NodeType::WordInstance => {
-                let (chapter, verse, position) = nid::parse_word_instance(node_id)?;
+                let (chapter, verse, position) = nid::parse_word_instance(&base_id)?;
                 let verse_key = format!("{}:{}", chapter, verse);
 
                 // Need to find word_id first for word instance

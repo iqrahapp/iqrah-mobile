@@ -675,7 +675,7 @@ async fn handle_get_due_items(
     use iqrah_core::KnowledgeAxis;
 
     // Parse axis if provided
-    let axis_filter = axis.and_then(|a| KnowledgeAxis::from_str(&a));
+    let axis_filter = axis.and_then(|a| KnowledgeAxis::from_str(&a).ok());
 
     // Get due items from session service
     let items = match app_state
@@ -698,7 +698,7 @@ async fn handle_get_due_items(
             serde_json::json!({
                 "node_id": item.node.id,
                 "node_type": item.node.node_type,
-                "knowledge_axis": item.knowledge_axis.map(|a| a.as_str()),
+                "knowledge_axis": item.knowledge_axis.map(|a| a.as_ref().to_string()),
                 "priority_score": item.priority_score,
                 "days_overdue": item.days_overdue,
                 "mastery_gap": item.mastery_gap,
@@ -747,7 +747,7 @@ async fn handle_generate_exercise(
         }
     } else if let Some(axis_str) = axis {
         // Parse axis and generate for specific axis
-        if let Some(axis_enum) = KnowledgeAxis::from_str(&axis_str) {
+        if let Ok(axis_enum) = KnowledgeAxis::from_str(&axis_str) {
             app_state
                 .exercise_service
                 .generate_exercise_for_axis(node_id, axis_enum)
