@@ -2,7 +2,6 @@
 ///
 /// These tests verify that the scheduler command works correctly end-to-end,
 /// including database initialization, session generation, and output.
-
 use anyhow::Result;
 use iqrah_core::{ContentRepository, UserRepository};
 use iqrah_storage::{
@@ -37,13 +36,11 @@ async fn test_scheduler_with_new_user() -> Result<()> {
     let user_repo = SqliteUserRepository::new(user_pool);
 
     // Verify goal exists
-    let goal = content_repo
-        .get_goal("memorization:chapters-1-3")
-        .await?;
+    let goal = content_repo.get_goal("memorization:chapters-1-3").await?;
     assert!(goal.is_some(), "Goal should exist from migrations");
 
     let now_ts = chrono::Utc::now().timestamp_millis();
-    
+
     // Get candidates for the goal
     let candidates = content_repo
         .get_scheduler_candidates("memorization:chapters-1-3", "test-user", now_ts)
@@ -85,7 +82,9 @@ async fn test_scheduler_goal_data() -> Result<()> {
     assert_eq!(goal.goal_group, "memorization");
     assert_eq!(goal.label, "Memorize Chapters 1-3");
     assert!(
-        goal.description.as_ref().map_or(false, |d| d.contains("493 verses")),
+        goal.description
+            .as_ref()
+            .is_some_and(|d| d.contains("493 verses")),
         "Description should mention 493 verses"
     );
 
@@ -149,9 +148,7 @@ async fn test_scheduler_prerequisite_edges() -> Result<()> {
     let node_ids: Vec<String> = candidates.iter().map(|c| c.id.clone()).collect();
 
     // Get prerequisite relationships
-    let prerequisites = content_repo
-        .get_prerequisite_parents(&node_ids)
-        .await?;
+    let prerequisites = content_repo.get_prerequisite_parents(&node_ids).await?;
 
     // Verify sequential prerequisites exist
     // 1:2 should have 1:1 as prerequisite
@@ -184,9 +181,7 @@ async fn test_scheduler_database_initialization() -> Result<()> {
 
     // Verify that get_memory_basics works for nodes that don't exist
     let test_nodes = vec!["1:1".to_string(), "1:2".to_string()];
-    let memory_states = user_repo
-        .get_memory_basics("any-user", &test_nodes)
-        .await?;
+    let memory_states = user_repo.get_memory_basics("any-user", &test_nodes).await?;
 
     // Should return empty map for non-existent memory states
     assert!(
@@ -221,9 +216,7 @@ async fn test_scheduler_chunking_behavior() -> Result<()> {
     let node_ids: Vec<String> = candidates.iter().map(|c| c.id.clone()).collect();
 
     // Test prerequisite chunking (should handle 500+ nodes via chunking)
-    let prerequisites = content_repo
-        .get_prerequisite_parents(&node_ids)
-        .await?;
+    let prerequisites = content_repo.get_prerequisite_parents(&node_ids).await?;
 
     // Should successfully retrieve prerequisites without SQL errors
     assert!(

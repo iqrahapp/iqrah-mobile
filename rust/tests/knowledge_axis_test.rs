@@ -87,12 +87,12 @@ async fn test_node_with_knowledge_axis() {
 
 #[tokio::test]
 async fn test_knowledge_axis_to_string() {
-    assert_eq!(KnowledgeAxis::Memorization.to_str(), "memorization");
-    assert_eq!(KnowledgeAxis::Translation.to_str(), "translation");
-    assert_eq!(KnowledgeAxis::Tafsir.to_str(), "tafsir");
-    assert_eq!(KnowledgeAxis::Tajweed.to_str(), "tajweed");
-    assert_eq!(KnowledgeAxis::ContextualMemorization.to_str(), "contextual_memorization");
-    assert_eq!(KnowledgeAxis::Meaning.to_str(), "meaning");
+    assert_eq!(KnowledgeAxis::Memorization.as_str(), "memorization");
+    assert_eq!(KnowledgeAxis::Translation.as_str(), "translation");
+    assert_eq!(KnowledgeAxis::Tafsir.as_str(), "tafsir");
+    assert_eq!(KnowledgeAxis::Tajweed.as_str(), "tajweed");
+    assert_eq!(KnowledgeAxis::ContextualMemorization.as_str(), "contextual_memorization");
+    assert_eq!(KnowledgeAxis::Meaning.as_str(), "meaning");
 }
 
 #[tokio::test]

@@ -698,7 +698,7 @@ async fn handle_get_due_items(
             serde_json::json!({
                 "node_id": item.node.id,
                 "node_type": item.node.node_type,
-                "knowledge_axis": item.knowledge_axis.map(|a| a.to_str()),
+                "knowledge_axis": item.knowledge_axis.map(|a| a.as_str()),
                 "priority_score": item.priority_score,
                 "days_overdue": item.days_overdue,
                 "mastery_gap": item.mastery_gap,
@@ -767,12 +767,9 @@ async fn handle_generate_exercise(
             let exercise = exercise_type.as_exercise();
 
             // Try to get MCQ options if it's an MCQ exercise
-            let options =
-                if let Some(mcq) = (exercise as &dyn std::any::Any).downcast_ref::<McqExercise>() {
-                    Some(mcq.get_options().to_vec())
-                } else {
-                    None
-                };
+            let options = (exercise as &dyn std::any::Any)
+                .downcast_ref::<McqExercise>()
+                .map(|mcq| mcq.get_options().to_vec());
 
             vec![Event::ExerciseGenerated {
                 node_id: node_id.to_string(),

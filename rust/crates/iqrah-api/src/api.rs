@@ -439,6 +439,7 @@ pub async fn get_verse_translation_by_translator(
 }
 
 /// Initialize app (for Flutter bridge)
+#[allow(unexpected_cfgs)]
 #[flutter_rust_bridge::frb(init)]
 pub fn init_app() {
     use once_cell::sync::OnceCell;
