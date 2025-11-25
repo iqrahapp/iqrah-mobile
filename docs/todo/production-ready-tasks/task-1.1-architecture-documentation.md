@@ -41,58 +41,47 @@ AI agents implementing subsequent tasks need clear contracts to avoid hallucinat
 **New Document:** `docs/architecture/data-architecture-v2.md`
 
 **Contents:**
-1. **Database Design Rationale**
-   - Why 2 DBs (content.db + user.db) not 3
-   - What belongs in each DB
-   - Graph update strategy (monthly erase/replace)
-   - Package installation strategy (insert into content.db)
+1.  **Core Principle: "Internal Ints, External Strings"**
+    *   **Internal Graph Operations**: Use **INTEGER** primary keys for performance.
+    *   **External API / User Data**: Use stable **STRING** unique keys (`ukey`).
+    *   **Boundary Layer**: A `NodeRegistry` maps between them.
 
-2. **Node ID Format Specification**
-   - **⚠️ IMPORTANT:** All node IDs MUST use prefixed format. No backward compatibility for unprefixed IDs.
+2.  **Two-Database Architecture**
+    *   `content.db`: The immutable knowledge graph. Uses volatile INTEGER IDs. Can be completely replaced during content updates.
+    *   `user.db`: Mutable user state. Uses stable STRING `ukeys` to ensure user progress is safe across content updates.
 
-   - **Content Nodes:**
-     - `CHAPTER:{chapter_num}` (e.g., `CHAPTER:1`)
-     - `VERSE:{chapter}:{verse}` (e.g., `VERSE:1:1`)
-     - `WORD:{word_id}` (e.g., `WORD:123`) - word_id from DB autoincrement
-     - `WORD_INSTANCE:{chapter}:{verse}:{position}` (e.g., `WORD_INSTANCE:1:1:3`)
+3.  **Node Registry Pattern**
+    *   The `nodes` table is the single source of truth for all graph entities. It provides the mapping between integer IDs and string ukeys.
+    *   **Schema**:
+        ```sql
+        CREATE TABLE nodes (
+            id INTEGER PRIMARY KEY,
+            ukey TEXT NOT NULL UNIQUE,
+            node_type INTEGER NOT NULL
+        ) STRICT;
+        ```
 
-   - **Knowledge Nodes:**
-     - `{content_node_id}:{axis}` (e.g., `VERSE:1:1:memorization`)
-     - Valid axes: `memorization`, `translation`, `tafsir`, `tajweed`, `contextual_memorization`, `meaning`
+4.  **Node Unique Key (ukey) Specification**
+    *   These are the stable string identifiers used in `user.db` and external APIs.
+    *   **Content Nodes:**
+        *   `CHAPTER:{chapter_num}` (e.g., `CHAPTER:1`)
+        *   `VERSE:{chapter}:{verse}` (e.g., `VERSE:1:1`)
+        *   `WORD_INSTANCE:{chapter}:{verse}:{position}` (e.g., `WORD_INSTANCE:1:1:3`)
+    *   **Knowledge Nodes:**
+        *   `{content_ukey}:{axis}` (e.g., `VERSE:1:1:memorization`)
 
-   - **Parsing Rules:**
-     - Split on `:` delimiter
-     - Validate prefix matches enum (`CHAPTER`, `VERSE`, `WORD`, `WORD_INSTANCE`)
-     - **Reject unprefixed formats** (e.g., `"1:1"` is invalid, must be `"VERSE:1:1"`)
-     - Validate numeric parts in valid ranges
-     - Return typed errors for malformed IDs
+5.  **Enum Mappings**
+    *   All enums (`NodeType`, `KnowledgeAxis`, `EdgeType`) are stored as **INTEGERs** in the database.
+    *   The authoritative mapping is defined in `docs/reference/enum-mappings.md`.
 
-3. **Node ID Stability Policy**
-   - **Guarantee:** Once a node ID is released in production, it MUST NOT change or be removed
-   - **Rationale:** User progress (user_memory_states) is keyed by node_id
-   - **Enforcement:** Python build pipeline validation (Task 1.5)
-   - **Exceptions:** Only via explicit migration with user data mapping
+6.  **Node Stability Policy**
+    *   **Guarantee:** The **string `ukey`** for a node, once released, MUST NOT change.
+    *   **Rationale:** User progress in `user.db` is keyed by `node_ukey`.
+    *   **Volatile IDs:** The internal `id` (integer) IS NOT stable and will change with every graph rebuild.
 
-4. **Graph Update Process**
-   - **Frequency:** Monthly (not daily/weekly)
-   - **Method:** Erase & replace
-     ```sql
-     BEGIN TRANSACTION;
-     DELETE FROM edges;
-     DELETE FROM node_metadata;
-     DELETE FROM goals;
-     DELETE FROM node_goals;
-     -- INSERT new graph data
-     COMMIT;
-     ```
-   - **Preservation:** User progress in user.db is untouched
-   - **Validation:** New graph must contain all node IDs from old graph (Task 1.5)
-
-5. **Schema Version Management**
-   - Format: `major.minor.patch` (semantic versioning)
-   - Breaking changes (node ID format changes) → major bump
-   - Graph updates (new nodes/edges) → minor bump
-   - Bug fixes (score corrections) → patch bump
+7.  **Graph Update Process**
+    *   **Method:** The entire `content.db` is erased and replaced monthly.
+    *   **Preservation:** User progress in `user.db` is untouched because it relies on stable `ukeys`. The application will use the `NodeRegistry` in the new `content.db` to look up the new integer IDs for the `ukeys` from `user.db`.
 
 ## Implementation Steps
 
