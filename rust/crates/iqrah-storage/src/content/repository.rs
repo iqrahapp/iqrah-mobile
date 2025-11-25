@@ -155,35 +155,38 @@ impl ContentRepository for SqliteContentRepository {
         }
     }
 
-    async fn get_edges_from(&self, source_id: &str) -> anyhow::Result<Vec<Edge>> {
-        let rows = query_as::<_, EdgeRow>(
-            "SELECT source_id, target_id, edge_type, distribution_type, param1, param2
-             FROM edges
-             WHERE source_id = ?",
+    async fn get_edges_from(&self, source_node_id: &str) -> anyhow::Result<Vec<Edge>> {
+        let source_id = self.registry.get_id(source_node_id).await?;
+        if source_id.is_none() {
+            return Ok(vec![]);
+        }
+        let source_id = source_id.unwrap();
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT e.source_id, s.ukey as source_ukey, e.target_id, t.ukey as target_ukey, e.edge_type, e.distribution_type, e.param1, e.param2
+            FROM edges e
+            JOIN nodes s ON e.source_id = s.id
+            JOIN nodes t ON e.target_id = t.id
+            WHERE e.source_id = ?
+            "#,
+            source_id
         )
-        .bind(source_id)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows
+        let edges = rows
             .into_iter()
-            .map(|r| Edge {
-                source_id: r.source_id,
-                target_id: r.target_id,
-                edge_type: if r.edge_type == 0 {
-                    EdgeType::Dependency
-                } else {
-                    EdgeType::Knowledge
-                },
-                distribution_type: match r.distribution_type {
-                    0 => DistributionType::Const,
-                    1 => DistributionType::Normal,
-                    _ => DistributionType::Beta,
-                },
-                param1: r.param1,
-                param2: r.param2,
+            .map(|row| Edge {
+                source_id: row.source_ukey,
+                target_id: row.target_ukey,
+                edge_type: (row.edge_type as u8).into(),
+                distribution_type: (row.distribution_type as u8).into(),
+                param1: row.param1,
+                param2: row.param2,
             })
-            .collect())
+            .collect();
+        Ok(edges)
     }
 
     async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
