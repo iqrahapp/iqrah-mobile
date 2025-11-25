@@ -1,27 +1,25 @@
-# Task 1.2: Add Schema Versioning System
+# Task 1.2: Schema Migration & Versioning
 
 ## Metadata
 - **Priority:** P0 (Critical Foundation)
 - **Estimated Effort:** 1 day
 - **Dependencies:** None
 - **Agent Type:** Implementation
-- **Parallelizable:** Yes (with tasks 1.1, 1.3, 1.5)
+- **Parallelizable:** No (Blocker for 1.3, 1.4, 2.1)
 
 ## Goal
 
-Implement schema version tracking in both content.db and user.db to enable safe migrations, compatibility checks, and prevent breaking changes when updating databases.
+1.  Implement **Schema Versioning** tables in both databases.
+2.  **Migrate `content.db`** to the new Integer-Based Architecture by creating the `nodes` and `knowledge_nodes` tables.
+3.  Implement version compatibility checks in Rust.
 
 ## Context
 
-Currently, there's no explicit version tracking in the databases. SQLx migrations track which migration files have run (`_sqlx_migrations` table), but there's no application-level schema version that indicates compatibility.
+The architecture is shifting to "Internal Ints, External Strings". This requires a physical `nodes` table to map between them.
+We also need version tracking to ensure safe migrations.
 
-**Why This Matters:**
-- **Graph updates:** When user downloads new graph data (monthly), need to verify it's compatible with current content.db schema
-- **App updates:** When app updates with new schema, need to detect and handle migration
-- **User data safety:** Prevent loading incompatible databases (e.g., old app with new schema)
-- **Debugging:** Easily identify which schema version is deployed
-
-**Referenced in:** [docs/database-architecture/04-versioning-and-migration-strategy.md](/docs/database-architecture/04-versioning-and-migration-strategy.md) (documented but not implemented)
+**The Missing Piece:**
+Currently, `content.db` has `edges` but no `nodes` table. We need to create it to support the `NodeRegistry`.
 
 ## Current State
 
@@ -40,19 +38,38 @@ Currently, there's no explicit version tracking in the databases. SQLx migration
 
 ## Target State
 
-### Schema Version Tables
+### 1. New Tables (content.db)
 
-**content.db:**
+**`nodes` Table:**
+The central registry for all graph nodes.
+```sql
+CREATE TABLE nodes (
+    id INTEGER PRIMARY KEY,      -- Internal Integer ID (volatile)
+    ukey TEXT NOT NULL UNIQUE,   -- External String ID (stable)
+    node_type INTEGER NOT NULL   -- Enum mapping
+) STRICT;
+```
+
+**`knowledge_nodes` Table:**
+Metadata for knowledge nodes (derived from content).
+```sql
+CREATE TABLE knowledge_nodes (
+    node_id INTEGER PRIMARY KEY,
+    content_node_id INTEGER NOT NULL,
+    axis INTEGER NOT NULL,       -- Enum: Memorization, Translation, etc.
+    FOREIGN KEY(node_id) REFERENCES nodes(id),
+    FOREIGN KEY(content_node_id) REFERENCES nodes(id)
+) STRICT;
+```
+
+**`schema_version` Table:**
+Tracks the database version.
 ```sql
 CREATE TABLE schema_version (
-    version TEXT NOT NULL PRIMARY KEY,  -- Format: "major.minor.patch"
+    version TEXT NOT NULL PRIMARY KEY,
     description TEXT NOT NULL,
     applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
--- Initial version
-INSERT INTO schema_version (version, description)
-VALUES ('2.0.0', 'v2 purist schema with knowledge graph integration');
 ```
 
 **user.db:**
@@ -67,6 +84,9 @@ CREATE TABLE schema_version (
 INSERT INTO schema_version (version, description)
 VALUES ('1.0.0', 'Initial user schema with FSRS and scheduler v2');
 ```
+
+### 2. Versioning Logic
+(Same as before: `get_schema_version`, `is_compatible`)
 
 ### Versioning Strategy
 
@@ -117,208 +137,70 @@ async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
 
 ## Implementation Steps
 
-### Step 1: Create Migration for content.db Schema Version (30 min)
+### Step 1: Create Migration for content.db (1 hour)
 
-**File:** `rust/crates/iqrah-storage/migrations_content/20241124000001_add_schema_version.sql`
+**File:** `rust/crates/iqrah-storage/migrations_content/20241125000001_migrate_to_v2_schema.sql`
 
 ```sql
--- Add schema version tracking
+-- 1. Schema Versioning
 CREATE TABLE IF NOT EXISTS schema_version (
     version TEXT NOT NULL PRIMARY KEY,
     description TEXT NOT NULL,
     applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Record current schema version (v2 purist with scheduler v2)
 INSERT INTO schema_version (version, description)
-VALUES ('2.0.0', 'v2 purist schema with scheduler v2 and knowledge graph chapters 1-3');
+VALUES ('2.0.0', 'v2 schema: nodes, knowledge_nodes, and integer IDs');
+
+-- 2. Nodes Table (The Registry)
+CREATE TABLE IF NOT EXISTS nodes (
+    id INTEGER PRIMARY KEY,
+    ukey TEXT NOT NULL UNIQUE,
+    node_type INTEGER NOT NULL
+) STRICT;
+
+CREATE INDEX idx_nodes_ukey ON nodes(ukey);
+
+-- 3. Knowledge Nodes Table
+CREATE TABLE IF NOT EXISTS knowledge_nodes (
+    node_id INTEGER PRIMARY KEY,
+    content_node_id INTEGER NOT NULL,
+    axis INTEGER NOT NULL,
+    FOREIGN KEY(node_id) REFERENCES nodes(id),
+    FOREIGN KEY(content_node_id) REFERENCES nodes(id)
+) STRICT;
+
+CREATE INDEX idx_knowledge_nodes_content ON knowledge_nodes(content_node_id);
 ```
 
-### Step 2: Create Migration for user.db Schema Version (30 min)
+### Step 2: Create Migration for user.db (30 min)
 
-**File:** `rust/crates/iqrah-storage/migrations_user/20241124000001_add_schema_version.sql`
+**File:** `rust/crates/iqrah-storage/migrations_user/20241125000001_add_schema_version.sql`
 
 ```sql
--- Add schema version tracking
 CREATE TABLE IF NOT EXISTS schema_version (
     version TEXT NOT NULL PRIMARY KEY,
     description TEXT NOT NULL,
     applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Record current schema version
 INSERT INTO schema_version (version, description)
-VALUES ('1.0.0', 'Initial user schema with FSRS, propagation tracking, and scheduler v2 bandit');
+VALUES ('1.0.0', 'Initial user schema');
 ```
 
-### Step 3: Add Version Query Function (1 hour)
+### Step 3: Implement Version Checking in Rust (1 hour)
 
-**File:** `rust/crates/iqrah-storage/src/version.rs` (new file)
-
-```rust
-use sqlx::{SqlitePool, Row};
-use crate::error::Result;
-
-/// Get the current schema version from the database
-pub async fn get_schema_version(pool: &SqlitePool) -> Result<String> {
-    let row = sqlx::query("SELECT version FROM schema_version ORDER BY applied_at DESC LIMIT 1")
-        .fetch_one(pool)
-        .await?;
-
-    Ok(row.try_get("version")?)
-}
-
-/// Check if database schema version is compatible with app version
-pub fn is_compatible(db_version: &str, app_version: &str) -> bool {
-    let db_parts = parse_version(db_version);
-    let app_parts = parse_version(app_version);
-
-    // Major version must match (breaking changes)
-    if db_parts.0 != app_parts.0 {
-        return false;
-    }
-
-    // Minor version: DB can be <= app version (backwards compatible)
-    if db_parts.1 > app_parts.1 {
-        return false;  // DB is newer than app
-    }
-
-    // Patch version doesn't affect compatibility
-    true
-}
-
-fn parse_version(version: &str) -> (u32, u32, u32) {
-    let parts: Vec<u32> = version
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
-
-    (
-        parts.get(0).copied().unwrap_or(0),
-        parts.get(1).copied().unwrap_or(0),
-        parts.get(2).copied().unwrap_or(0),
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_version_compatibility() {
-        // Same version
-        assert!(is_compatible("2.0.0", "2.0.0"));
-
-        // App newer (minor): Compatible
-        assert!(is_compatible("2.0.0", "2.1.0"));
-
-        // DB newer (minor): Incompatible
-        assert!(!is_compatible("2.1.0", "2.0.0"));
-
-        // Different major: Incompatible
-        assert!(!is_compatible("1.0.0", "2.0.0"));
-        assert!(!is_compatible("2.0.0", "1.0.0"));
-
-        // Patch differences: Always compatible
-        assert!(is_compatible("2.0.0", "2.0.5"));
-        assert!(is_compatible("2.0.5", "2.0.0"));
-    }
-}
-```
-
-### Step 4: Update lib.rs to Export Version Module (5 min)
+**File:** `rust/crates/iqrah-storage/src/version.rs`
+(Implement `get_schema_version` and `is_compatible` as previously defined)
 
 **File:** `rust/crates/iqrah-storage/src/lib.rs`
+(Export `version` module)
 
-Add:
-```rust
-pub mod version;
-```
-
-### Step 5: Add Version Check to Database Initialization (1 hour)
+### Step 4: Update DB Init Logic (1 hour)
 
 **File:** `rust/crates/iqrah-storage/src/content/mod.rs`
-
-Update `init_content_db()`:
-```rust
-use crate::version::{get_schema_version, is_compatible};
-
-pub async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
-    let pool = SqlitePool::connect(db_path).await?;
-
-    // Run migrations first
-    sqlx::migrate!("./migrations_content")
-        .run(&pool)
-        .await?;
-
-    // Verify schema version compatibility
-    let db_version = get_schema_version(&pool).await?;
-    let app_version = env!("CARGO_PKG_VERSION");
-
-    if !is_compatible(&db_version, app_version) {
-        return Err(StorageError::IncompatibleSchema {
-            db_version,
-            app_version: app_version.to_string(),
-            message: "Content database schema is incompatible with this app version".to_string(),
-        });
-    }
-
-    tracing::info!("Content DB initialized: schema v{}, app v{}", db_version, app_version);
-
-    Ok(pool)
-}
-```
-
 **File:** `rust/crates/iqrah-storage/src/user/mod.rs`
-
-Similar update for `init_user_db()`.
-
-### Step 6: Add Error Type for Schema Incompatibility (30 min)
-
-**File:** `rust/crates/iqrah-storage/src/error.rs`
-
-Add to `StorageError` enum:
-```rust
-#[error("Incompatible schema version: DB {db_version}, App {app_version} - {message}")]
-IncompatibleSchema {
-    db_version: String,
-    app_version: String,
-    message: String,
-},
-```
-
-### Step 7: Add Integration Test (1 hour)
-
-**File:** `rust/crates/iqrah-storage/tests/version_test.rs` (new file)
-
-```rust
-use iqrah_storage::version::{get_schema_version, is_compatible};
-use iqrah_storage::content::init_content_db;
-use iqrah_storage::user::init_user_db;
-use tempfile::TempDir;
-
-#[tokio::test]
-async fn test_content_db_has_version() {
-    let tmp = TempDir::new().unwrap();
-    let db_path = tmp.path().join("content.db");
-
-    let pool = init_content_db(db_path.to_str().unwrap()).await.unwrap();
-    let version = get_schema_version(&pool).await.unwrap();
-
-    assert!(version.starts_with("2."), "Content DB should be version 2.x.x");
-}
-
-#[tokio::test]
-async fn test_user_db_has_version() {
-    let tmp = TempDir::new().unwrap();
-    let db_path = tmp.path().join("user.db");
-
-    let pool = init_user_db(db_path.to_str().unwrap()).await.unwrap();
-    let version = get_schema_version(&pool).await.unwrap();
-
-    assert!(version.starts_with("1."), "User DB should be version 1.x.x");
-}
-```
+(Add version checks to `init_content_db` and `init_user_db`)
 
 ## Verification Plan
 
@@ -337,6 +219,16 @@ async fn test_user_db_has_version() {
 - [ ] `cargo test test_content_db_has_version` - Content DB initialized with version
 - [ ] `cargo test test_user_db_has_version` - User DB initialized with version
 - [ ] Both tests pass after migrations run
+
+### Database Check
+```bash
+cd rust
+sqlx migrate run --source crates/iqrah-storage/migrations_content --database-url sqlite://test.db
+sqlite3 test.db ".schema nodes"
+```
+- [ ] `nodes` table exists with `id`, `ukey`, `node_type`
+- [ ] `knowledge_nodes` table exists
+- [ ] `schema_version` table exists
 
 ### CLI Tests
 
@@ -387,22 +279,14 @@ sqlite3 /tmp/test_user.db "SELECT * FROM schema_version;"
 - If tests fail → check that migrations created the table successfully
 
 ## Success Criteria
-
-- [ ] Migration files created for both databases
-- [ ] `schema_version` table exists in content.db with version "2.0.0"
-- [ ] `schema_version` table exists in user.db with version "1.0.0"
-- [ ] `version.rs` module implements `get_schema_version()` and `is_compatible()`
-- [ ] Unit tests pass (version compatibility logic)
-- [ ] Integration tests pass (version initialization)
-- [ ] CLI test shows version tables populated correctly
-- [ ] All CI checks pass (build, clippy, test, fmt)
-- [ ] Error handling for incompatible versions works
+- [ ] All tables (`nodes`, `knowledge_nodes`, `schema_version`) created via migration.
+- [ ] Version checking logic implemented and tested.
 
 ## Related Files
 
 **Create These Files:**
-- `/rust/crates/iqrah-storage/migrations_content/20241124000001_add_schema_version.sql`
-- `/rust/crates/iqrah-storage/migrations_user/20241124000001_add_schema_version.sql`
+- `/rust/crates/iqrah-storage/migrations_content/20241125000001_migrate_to_v2_schema.sql`
+- `/rust/crates/iqrah-storage/migrations_user/20241125000001_add_schema_version.sql`
 - `/rust/crates/iqrah-storage/src/version.rs`
 - `/rust/crates/iqrah-storage/tests/version_test.rs`
 
