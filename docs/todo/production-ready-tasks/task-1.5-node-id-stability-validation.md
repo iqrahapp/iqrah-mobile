@@ -9,18 +9,18 @@
 
 ## Goal
 
-Integrate the existing node ID stability validation script into the Python knowledge graph build pipeline to prevent accidental node ID changes that would break user progress.
+Integrate the existing **unique key (ukey)** stability validation script into the Python knowledge graph build pipeline to prevent accidental **ukey** changes that would break user progress.
 
 ## Context
 
 **The Problem:**
-User progress (`user_memory_states` table) is keyed by `node_id`. If a node ID changes between graph versions, the user loses all progress for that node.
+User progress (in `user.db`) is keyed by the stable string `ukey`. If a `ukey` changes between graph versions, the user loses all progress for that node because the application can no longer find their data. The internal integer IDs are expected to change, but the `ukeys` must remain stable.
 
 **Example Breaking Change:**
 ```
-Version 1: node_id = "VERSE:1:1"
-Version 2: node_id = "CHAPTER:1:VERSE:1" (NEW FORMAT)
-Result: User progress for "VERSE:1:1" orphaned
+Version 1: ukey = "VERSE:1:1"
+Version 2: ukey = "CHAPTER:1:VERSE:1" (NEW FORMAT)
+Result: User progress for "VERSE:1:1" is orphaned and effectively lost.
 ```
 
 **Why This Can Happen:**

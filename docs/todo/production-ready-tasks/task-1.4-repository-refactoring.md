@@ -1,418 +1,183 @@
-# Task 1.4: Refactor Repository to Use Node ID Module
+# Task 1.4: Refactor Repository for Integer-Based Architecture
 
 ## Metadata
 - **Priority:** P0 (Critical Foundation)
 - **Estimated Effort:** 2 days
-- **Dependencies:** Task 1.3 (Node ID utility module must exist)
+- **Dependencies:** Schema update to integer IDs must be complete.
 - **Agent Type:** Implementation + Refactoring
-- **Parallelizable:** No (depends on 1.3)
+- **Parallelizable:** No (Core architectural change)
 
 ## Goal
 
-Replace ad-hoc string parsing logic in `SqliteContentRepository` with the type-safe node_id utility module, eliminating brittle string manipulation and improving code maintainability.
+**COMPLETE REWRITE**: Refactor `SqliteContentRepository` to use the `NodeRegistry` and integer-based IDs for all internal graph operations. This task implements the "Internal Ints, External Strings" principle at the data access layer, replacing all string-based queries with high-performance integer-based lookups.
 
 ## Context
 
-Currently, `SqliteContentRepository::get_node()` and related methods use ad-hoc string parsing:
+The architecture has shifted from virtual nodes with string IDs to physical nodes with integer IDs. The repository layer is where this transition is most critical. The previous implementation performed queries using slow and brittle string comparisons. This task refactors the entire repository to leverage the performance and referential integrity of the new integer-based schema.
 
-```rust
-// Current approach (BRITTLE):
-let parts: Vec<&str> = node_id.split(':').collect();
-if parts.len() == 2 {
-    // Try as verse...
-} else if parts.len() == 1 {
-    // Try as chapter... or word?
-    let num: i64 = parts[0].parse().unwrap();  // UNSAFE!
-    if num < 114 {
-        // Assume chapter
-    } else {
-        // Assume word
-    }
-}
-```
+**Old Approach (DEPRECATED):**
+- Public methods accepted string IDs.
+- Internal queries used those same string IDs (`WHERE node_id = 'VERSE:1:1'`).
+- Knowledge nodes were wrongly assumed to be stored in `node_metadata` with a string key.
 
-**Problems:**
-- Integer guessing (if num < 114) is ambiguous and buggy
-- Unwraps can panic on malformed IDs
-- Parsing logic duplicated across methods
-- Hard to maintain and error-prone
-
-**After Task 1.3**, we have clean utilities:
-```rust
-use iqrah_core::domain::node_id;
-
-let (ch, v) = node_id::parse_verse(id)?;  // Type-safe!
-```
-
-This task applies those utilities throughout the repository layer.
-
-## Current State
-
-**File:** `rust/crates/iqrah-storage/src/content/repository.rs`
-
-**Methods with String Parsing:**
-- `get_node()` (lines ~32-80) - Main parsing logic
-- `get_edges_from()` - May construct node IDs
-- `get_verse()` - May parse verse keys
-- `get_nodes_for_goal()` - Returns node IDs
-- Any other methods that build or parse node IDs
-
-**Current Logic:**
-```rust
-async fn get_node(&self, node_id: &str) -> Result<Option<Node>> {
-    // Ad-hoc string splitting
-    // Integer guessing
-    // Multiple query attempts
-    // Fallback logic
-}
-```
+**New Approach (MANDATORY):**
+- Public methods accept stable string **unique keys (ukeys)**.
+- A `NodeRegistry` is used to resolve the ukey to a volatile internal **integer ID**.
+- All internal methods and database queries use the fast integer ID (`WHERE n.id = ?`).
 
 ## Target State
 
-**Refactored `get_node()` Using node_id Module:**
+### Node Lookup Strategy
+
+The repository will implement a two-level lookup strategy: a public, string-based API for external callers and a private, integer-based API for internal performance.
+
+#### External API: String-based `get_node`
+
+This method is the entry point for all external services. It takes a stable `ukey` and uses the `NodeRegistry` to find the corresponding integer ID.
 
 ```rust
-use iqrah_core::domain::node_id;
+async fn get_node(&self, ukey: &str) -> Result<Option<Node>> {
+    // 1. Lookup integer ID from string key via the registry
+    let node_id_opt = self.registry.get_id(ukey).await?;
 
-async fn get_node(&self, node_id: &str) -> Result<Option<Node>> {
-    // Detect type first
-    let node_type = node_id::node_type(node_id)?;
-
-    match node_type {
-        NodeType::Chapter => {
-            let num = node_id::parse_chapter(node_id)?;
-            self.get_chapter_node(num).await
-        }
-        NodeType::Verse => {
-            let (ch, v) = node_id::parse_verse(node_id)?;
-            self.get_verse_node(ch, v).await
-        }
-        NodeType::Word => {
-            let word_id = node_id::parse_word(node_id)?;
-            self.get_word_node(word_id).await
-        }
-        NodeType::WordInstance => {
-            let (ch, v, pos) = node_id::parse_word_instance(node_id)?;
-            self.get_word_instance_node(ch, v, pos).await
-        }
-        NodeType::Knowledge => {
-            let (base_id, axis) = node_id::parse_knowledge(node_id)?;
-            // Knowledge nodes ARE stored in node_metadata with their full ID
-            // (e.g., "VERSE:1:1:memorization" is a real node in the database)
-            let node = self.get_node_by_id(node_id).await?;
-            Ok(node.map(|n| Node {
-                id: n.id,
-                node_type: NodeType::Knowledge,
-                axis: Some(axis),
-                base_id: Some(base_id),
-                // ... other fields from database
-            }))
-        }
+    if let Some(node_id) = node_id_opt {
+        // 2. Use the fast, internal integer-based path
+        self.get_node_by_id(node_id).await
+    } else {
+        Ok(None)
     }
 }
 ```
 
-**Benefits:**
-- No ad-hoc string parsing
-- Type-safe extraction of IDs
-- Clear error handling
-- Maintainable code
-- No integer guessing
+#### Internal API: Integer-based `get_node_by_id`
+
+This is the core data retrieval method. It queries the database using the high-performance integer primary key.
+
+```rust
+async fn get_node_by_id(&self, node_id: i64) -> Result<Option<Node>> {
+    let row = sqlx::query!(
+        r#"
+        SELECT n.id, n.ukey, n.node_type, kn.base_node_id, kn.axis
+        FROM nodes n
+        LEFT JOIN knowledge_nodes kn ON kn.node_id = n.id
+        WHERE n.id = ?
+        "#,
+        node_id
+    ).fetch_optional(&self.pool).await?;
+
+    // Logic to construct a Node from the query row...
+    // This will involve mapping integer enums back to Rust enums.
+}
+```
+
+### NodeRegistry Integration
+
+The repository must be initialized with a `NodeRegistry` instance to perform the ukey-to-ID mapping.
+
+```rust
+pub struct SqliteContentRepository {
+    pool: SqlitePool,
+    registry: Arc<NodeRegistry>,
+}
+
+pub struct NodeRegistry {
+    cache: Arc<RwLock<HashMap<String, i64>>>,
+    pool: SqlitePool,
+}
+```
 
 ## Implementation Steps
 
-### Step 1: Add node_id Dependency (10 min)
-
-**File:** `rust/crates/iqrah-storage/Cargo.toml`
-
-Ensure `iqrah-core` is a dependency:
-```toml
-[dependencies]
-iqrah-core = { path = "../iqrah-core" }
-# ... other deps
-```
-
-### Step 2: Refactor `get_node()` Method (2-3 hours)
+### Step 1: Update `SqliteContentRepository` Struct (30 min)
 
 **File:** `rust/crates/iqrah-storage/src/content/repository.rs`
 
-**Current implementation** (lines ~32-80):
-- Read and understand the current logic
-- Identify what queries are executed for each node type
+- Add the `registry: Arc<NodeRegistry>` field to the struct.
+- Update the constructor (`new()`) to accept and store the `NodeRegistry`.
 
-**New implementation:**
+### Step 2: Implement the New Lookup Strategy (3-4 hours)
+
+- **Rewrite `get_node()`** to match the target state example. It should now delegate to the `NodeRegistry` and `get_node_by_id()`.
+- **Create `get_node_by_id()`** to perform the integer-based SQL query. Ensure it correctly joins `nodes` and `knowledge_nodes`.
+
+### Step 3: Refactor All Other Repository Methods (4-5 hours)
+
+Scour the entire repository for any method that queries or interacts with nodes or edges. Every single one must be converted to use integer IDs.
+
+**Example: Refactoring `get_edges_from`**
+
 ```rust
-use iqrah_core::domain::node_id;
-use iqrah_core::domain::models::NodeType;
+// OLD (string-based)
+// async fn get_edges_from(&self, source_node_id: &str) -> Result<Vec<Edge>>
 
-async fn get_node(&self, node_id: &str) -> Result<Option<Node>> {
-    // Use node_id module for type detection
-    let node_type = node_id::node_type(node_id)
-        .map_err(|e| StorageError::InvalidNodeId {
-            node_id: node_id.to_string(),
-            reason: e.to_string(),
-        })?;
+// NEW (integer-based)
+async fn get_edges_from(&self, source_node_id: i64) -> Result<Vec<Edge>> {
+    let edges = sqlx::query_as!(
+        Edge,
+        "SELECT source_id, target_id, edge_type, weight FROM edges WHERE source_id = ?",
+        source_node_id
+    )
+    .fetch_all(&self.pool)
+    .await?;
 
-    match node_type {
-        NodeType::Chapter => {
-            let chapter_num = node_id::parse_chapter(node_id)?;
-            // Query: SELECT * FROM chapters WHERE chapter_number = ?
-            self.get_chapter_by_number(chapter_num).await
-        }
-
-        NodeType::Verse => {
-            let (chapter, verse) = node_id::parse_verse(node_id)?;
-            let verse_key = format!("{}:{}", chapter, verse);
-            // Query: SELECT * FROM verses WHERE verse_key = ?
-            self.get_verse_by_key(&verse_key).await
-        }
-
-        NodeType::Word => {
-            let word_id = node_id::parse_word(node_id)?;
-            // Query: SELECT * FROM words WHERE word_id = ?
-            self.get_word_by_id(word_id).await
-        }
-
-        NodeType::WordInstance => {
-            let (chapter, verse, position) = node_id::parse_word_instance(node_id)?;
-            let verse_key = format!("{}:{}", chapter, verse);
-            // Query: SELECT * FROM words WHERE verse_key = ? AND position = ?
-            self.get_word_by_position(&verse_key, position).await
-        }
-
-        NodeType::Knowledge => {
-            let (base_id, axis) = node_id::parse_knowledge(node_id)?;
-            // Knowledge nodes ARE stored in node_metadata table
-            // Query: SELECT * FROM node_metadata WHERE node_id = ? (e.g., "VERSE:1:1:memorization")
-            self.get_node_metadata(node_id).await.map(|metadata| {
-                metadata.map(|meta| Node {
-                    id: node_id.to_string(),
-                    node_type: NodeType::Knowledge,
-                    axis: Some(axis),
-                    base_id: Some(base_id),
-                    scores: meta.scores,
-                    // ... other fields from node_metadata
-                })
-            })
-        }
-    }
+    Ok(edges)
 }
 ```
 
-**Note:** You may need to extract helper methods like `get_chapter_by_number()`, `get_verse_by_key()` if they don't exist. Keep them private to the repository.
+- Any public method that previously took a string `node_id` must now be updated to either:
+    1.  Keep the `&str` signature but immediately use the registry to convert it to an integer.
+    2.  Be changed to accept an `i64` if it's only called internally by other repository methods.
 
-### Step 3: Refactor Node ID Construction (1-2 hours)
+### Step 4: Update Tests (2-3 hours)
 
-Find all places where node IDs are **constructed** (not just parsed):
-
-**Search for:**
-```bash
-cd rust
-rg 'format!\(".*:\' crates/iqrah-storage/src/
-```
-
-**Replace patterns:**
-```rust
-// Old:
-let node_id = format!("{}:{}", chapter, verse);
-
-// New:
-let node_id = node_id::verse(chapter, verse);
-```
-
-**Likely locations:**
-- Methods returning node IDs from queries
-- Test code constructing sample IDs
-
-### Step 4: Update Error Handling (1 hour)
-
-**File:** `rust/crates/iqrah-storage/src/error.rs`
-
-Add error variant for invalid node IDs:
-```rust
-#[error("Invalid node ID: {node_id} - {reason}")]
-InvalidNodeId {
-    node_id: String,
-    reason: String,
-},
-```
-
-Convert `NodeIdError` to `StorageError`:
-```rust
-impl From<iqrah_core::domain::error::NodeIdError> for StorageError {
-    fn from(err: iqrah_core::domain::error::NodeIdError) -> Self {
-        StorageError::InvalidNodeId {
-            node_id: "unknown".to_string(),
-            reason: err.to_string(),
-        }
-    }
-}
-```
-
-### Step 5: Update Tests (1-2 hours)
-
-**File:** `rust/crates/iqrah-storage/tests/content_repository_test.rs` (or similar)
-
-Update tests to use node_id builders:
-```rust
-use iqrah_core::domain::node_id;
-
-#[tokio::test]
-async fn test_get_verse_node() {
-    let repo = setup_test_repo().await;
-
-    // Old: let id = "1:1";
-    let id = node_id::verse(1, 1);
-
-    let node = repo.get_node(&id).await.unwrap();
-    assert!(node.is_some());
-}
-```
-
-Find all test cases using hardcoded node IDs and replace with builders.
-
-### Step 6: Run Full Test Suite (30 min)
-
-```bash
-cd rust
-cargo test --package iqrah-storage
-cargo test --package iqrah-core
-```
-
-Fix any failing tests. Common issues:
-- Node ID format mismatches
-- Missing imports
-- Error type conversions
+- Tests for public methods should still pass string `ukeys`.
+- Mocks or test setup for the `NodeRegistry` will be required.
+- Tests for internal methods should be updated to work with integer IDs.
+- Add tests to verify that a non-existent `ukey` returns `Ok(None)`.
 
 ## Verification Plan
 
-### Unit Tests
+### Correctness Checklist
+
+- [ ] `SqliteContentRepository` holds a `NodeRegistry`.
+- [ ] `get_node(ukey: &str)` exists and uses the registry.
+- [ ] `get_node_by_id(id: i64)` exists and uses an integer-based query.
+- [ ] **ALL** other data access methods (`get_edges`, `get_metadata`, etc.) have been refactored to use `i64` IDs in their SQL queries.
+- [ ] All references to virtual nodes or string-based node queries are **REMOVED**.
+- [ ] All unit and integration tests pass.
+
+### Verification Queries
+
+Run these checks manually against the code:
 
 ```bash
-cd rust
-cargo test --package iqrah-storage content_repository
+# Search for string-based queries that need to be removed.
+# This should yield 0 results after the refactor.
+cd rust/crates/iqrah-storage/
+rg "WHERE node_id = \?" src/
+rg "WHERE source_id = \?" src/
+rg "WHERE base_node_id = \?" src/
 ```
-
-- [ ] `test_get_verse_node()` passes
-- [ ] `test_get_chapter_node()` passes
-- [ ] `test_get_word_node()` passes
-- [ ] `test_get_knowledge_node()` passes (if exists)
-- [ ] Error handling tests pass (malformed IDs return errors)
-
-### Integration Tests
-
-```bash
-cd rust
-cargo test --package iqrah-storage --test '*'
-```
-
-- [ ] All integration tests pass
-- [ ] No panics on malformed node IDs
-
-### CLI Tests
-
-```bash
-cd rust
-cargo run --bin iqrah-cli -- schedule --goal memorization:chapters-1-3
-```
-
-- [ ] Scheduler works (uses repository to get nodes)
-- [ ] Sessions generated successfully
-- [ ] No errors in logs
-
-### Regression Check
-
-Run the full test suite to ensure no regressions:
-```bash
-cd rust
-RUSTFLAGS="-D warnings" cargo test --all-features
-```
-
-- [ ] All tests pass (not just storage tests)
-- [ ] No new warnings introduced
 
 ## Scope Limits & Safeguards
 
 ### ✅ MUST DO
 
-- Replace all string parsing in `get_node()` with node_id module
-- Update all node ID construction to use builders
-- Add error handling for invalid node IDs
-- Update tests to use node_id builders
-- Remove integer guessing logic (if num < 114)
+- Remove **ALL** "virtual node" references and logic.
+- Update **ALL** code examples to use integer IDs for database operations.
+- Document and implement the `NodeRegistry` usage for lookups.
+- Update **ALL** SQL queries to use `INTEGER` joins and `WHERE` clauses (e.g., `WHERE n.id = ?`).
 
 ### ❌ DO NOT
 
-- Change database schema or queries
-- Modify node ID formats (use existing formats from Task 1.3)
-- Refactor unrelated code (stay focused on node ID handling)
-- Change public API of ContentRepository (only internal implementation)
-- Touch Flutter/UI code
-
-### ⚠️ If Uncertain
-
-- If a method's parsing logic is complex → break it into helper methods first
-- If tests fail after refactoring → check node ID format matches migration data (must use prefixed format)
-- If you find node IDs in other repositories (user repository) → note them but don't change (out of scope)
-- If knowledge node handling is unclear → they ARE stored in `node_metadata` table with their full ID (e.g., `VERSE:1:1:memorization`)
+- Change the public API signatures where they are consumed by external services. They should still accept string `ukeys`.
+- Change the database schema. This task adapts to the new schema.
+- Implement caching beyond what `NodeRegistry` provides.
 
 ## Success Criteria
 
-- [ ] `get_node()` uses `node_id::node_type()` for type detection
-- [ ] All parsing logic uses `node_id::parse_*()` functions
-- [ ] All node ID construction uses `node_id::*()` builders
-- [ ] No more ad-hoc `split(':')` in repository code
-- [ ] No more integer guessing (if num < 114)
-- [ ] All storage tests pass
-- [ ] Integration tests pass
-- [ ] CLI test (`iqrah schedule`) works
-- [ ] CI checks pass (build, clippy, test, fmt)
-- [ ] No new warnings or errors
-
-## Related Files
-
-**Modify These Files:**
-- `/rust/crates/iqrah-storage/src/content/repository.rs` - Main refactoring
-- `/rust/crates/iqrah-storage/src/error.rs` - Add InvalidNodeId error
-- `/rust/crates/iqrah-storage/tests/content_repository_test.rs` - Update tests
-- `/rust/crates/iqrah-storage/Cargo.toml` - Ensure iqrah-core dependency
-
-**Reference These Files:**
-- `/rust/crates/iqrah-core/src/domain/node_id.rs` - Utility functions (from Task 1.3)
-
-**Impacts These Components:**
-- Session service (uses get_node)
-- Learning service (uses get_node)
-- Exercise service (uses content repository)
-
-## Notes
-
-### Node ID Format Standard
-
-**IMPORTANT:** Only prefixed format is supported:
-- `"VERSE:1:1"` ✅
-- `"1:1"` ❌ (rejected with error)
-
-No backward compatibility for unprefixed IDs. All migration data MUST use prefixed format.
-
-### Knowledge Nodes
-
-Knowledge nodes like `"VERSE:1:1:memorization"` **ARE stored in the database** in the `node_metadata` table with their full ID as the primary key. They are NOT virtual nodes - they are real database entities with:
-- `node_id`: e.g., `"VERSE:1:1:memorization"`
-- Scores: `foundational_score`, `influence_score`, etc.
-- Graph edges connecting them
-
-Query them directly: `SELECT * FROM node_metadata WHERE node_id = 'VERSE:1:1:memorization'`
-
-### Performance
-
-This refactoring should have **no performance impact**. String parsing is just as fast, but now it's centralized and type-safe.
-
-### Future Work
-
-After this task, we have a clean abstraction for node IDs. Future improvements could include:
-- Caching parsed node IDs
-- Batch node fetching with type safety
-- Compile-time node ID validation (advanced)
-
-But for now, the focus is on eliminating brittle string parsing.
+- [ ] All references to virtual nodes are purged from the repository.
+- [ ] All SQL queries use integer IDs for node and edge operations.
+- [ ] The `get_node` method correctly implements the ukey-to-ID lookup flow.
+- [ ] The repository code is fully aligned with the "Internal Ints, External Strings" principle.
+- [ ] All CI checks (build, clippy, test, fmt) pass.

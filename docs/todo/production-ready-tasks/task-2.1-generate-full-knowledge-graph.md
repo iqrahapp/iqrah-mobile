@@ -95,233 +95,88 @@ Knowledge axis is a CORE FEATURE. Without the data:
 
 ## Implementation Steps
 
-### Step 1: Understand Current Python Code (1 hour)
+### Generation Approach: Two-Phase
 
-**Read:**
-- `research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/knowledge_builder.py`
-- `research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/knowledge.py`
-- `research_and_dev/iqrah-knowledge-graph2/score_and_extract.py`
+To ensure referential integrity with the new integer-based schema, the Python generator **MUST** use a two-phase process.
 
-**Verify:**
-- `build_memorization_edges()` function exists
-- Knowledge axis enum matches Rust (6 types)
-- Edge types include knowledge edges
+#### Phase 1: Node Registration
 
-### Step 2: Configure Graph Builder for Full Axis (1 hour)
-
-**File:** `research_and_dev/iqrah-knowledge-graph2/src/iqrah/graph/knowledge_builder.py`
-
-Ensure the builder generates all 6 axes. Look for:
+First, register all nodes (content and knowledge) with the database. This populates the `nodes` table and returns the auto-generated integer ID for each node. These IDs are stored in a mapping for use in the next phase.
 
 ```python
-def build_knowledge_graph(chapters_range=(1, 3)):
-    """Build complete knowledge graph with all axes."""
+# A map to store the returned integer ID for each string ukey
+node_id_map = {}  # ukey -> id
 
-    # Base dependency graph
-    graph = build_dependency_graph(chapters_range)
+# --- Register content nodes ---
+for verse in verses:
+    ukey = f"VERSE:{verse.chapter}:{verse.num}"
+    # The builder's register_node method inserts into the `nodes` table
+    # and returns the generated integer primary key.
+    node_id = builder.register_node(ukey, NodeType.VERSE)
+    node_id_map[ukey] = node_id
 
-    # Add knowledge nodes and edges for each axis
-    for axis in KnowledgeAxis:
-        add_axis_nodes(graph, axis, chapters_range)
-        add_axis_edges(graph, axis)
+# --- Register knowledge nodes ---
+for verse in verses:
+    base_ukey = f"VERSE:{verse.chapter}:{verse.num}"
+    base_node_id = node_id_map[base_ukey]
 
-    # Add cross-axis edges (translation → memorization, etc.)
-    add_cross_axis_edges(graph)
+    for axis in [KnowledgeAxis.MEMORIZATION, KnowledgeAxis.TRANSLATION, ...]:
+        kn_ukey = f"{base_ukey}:{axis.name.lower()}"
+        kn_node_id = builder.register_node(kn_ukey, NodeType.KNOWLEDGE)
+        node_id_map[kn_ukey] = kn_node_id
 
-    return graph
+        # This method inserts into the `knowledge_nodes` table, linking
+        # the knowledge node to its base content node using integer IDs.
+        builder.add_knowledge_node(kn_node_id, base_node_id, axis)
 ```
 
-**If this doesn't exist**, you may need to implement it based on existing code patterns.
+#### Phase 2: Edge Creation
 
-### Step 3: Build Knowledge Graph with All Axes (1-2 hours)
+After all nodes have been registered and their integer IDs are known, create the edges. All edges **MUST** be created using the integer IDs retrieved from `node_id_map`.
 
-**Command:**
+```python
+# Create edges using the integer IDs from the map
+for source_ukey, target_ukey in edge_pairs:
+    builder.add_edge(
+        source_id=node_id_map[source_ukey],
+        target_id=node_id_map[target_ukey],
+        edge_type=EdgeType.KNOWLEDGE,
+        weight=0.8
+    )
+```
+
+### SQL Examples: Before and After
+
+This two-phase approach fundamentally changes the generated SQL.
+
+**OLD (string-based):**
+```sql
+-- This is no longer valid and will fail foreign key constraints.
+INSERT INTO edges (source_id, target_id, ...) VALUES
+    ('VERSE:1:1:memorization', 'VERSE:1:2:memorization', ...);
+```
+
+**NEW (integer-based):**
+```sql
+-- The correct approach uses integer IDs from the `nodes` table.
+-- The Python builder will generate SQL like this:
+INSERT INTO edges (source_id, target_id, ...) VALUES
+    (101, 105, ...);  -- Example integer IDs
+```
+
+### Python Script Execution
+
+The high-level command remains the same, but the internal implementation of the builder must be updated to follow the two-phase model.
+
 ```bash
 cd research_and_dev/iqrah-knowledge-graph2
 
-# Build complete knowledge graph with all axes and scoring
+# The builder script must be modified to implement the two-phase approach.
 python -m iqrah_cli build knowledge-graph \
     --from-scratch \
-    --morphology ../data/morphology/quran-morphology-v0.5.csv \
     --preset full \
     --chapters "1-3" \
-    -o output/knowledge_graph_full_axis.cbor.zst
-```
-
-**What this does:**
-- Builds dependency graph from scratch (chapters, verses, words, lemmas, roots)
-- Adds knowledge edges for all 6 axes (memorization, translation, tafsir, tajweed, contextual_memorization, meaning)
-- Computes PageRank scores (integrated, no separate scoring step needed)
-- Exports to CBOR format with Zstandard compression
-
-**Verify output:**
-```bash
-# Check file was created
-ls -lh output/knowledge_graph_full_axis.cbor.zst
-
-# Inspect graph structure
-python inspect_graph.py output/knowledge_graph_full_axis.cbor.zst
-```
-
-**Expected output:**
-```
-File size: 5.2 MB
-Version: 2
-Format: structure_only
-Nodes: 11,234
-Edges: 45,678
-
-Node types:
-  chapter: 3
-  verse: 493
-  word: 2,145
-  word_instance: 6,234
-  lemma: 1,523
-  root: 836
-
-Sample nodes with knowledge axes:
-  - VERSE:1:1:memorization
-  - VERSE:1:1:translation
-  - WORD_INSTANCE:1:1:1:memorization
-```
-
-### Step 4: Export Graph to SQL Migration (1 hour)
-
-**Note:** The `score_and_extract.py` script is for the OLD workflow that generates SQL directly from GraphML. For the new CBOR-based workflow, we need a different approach.
-
-**Option A: Use existing export script (if it supports CBOR input):**
-
-Check if `score_and_extract.py` can read CBOR files:
-
-```bash
-python score_and_extract.py --help
-```
-
-If it supports CBOR:
-```bash
-python score_and_extract.py \
-    output/knowledge_graph_full_axis.cbor.zst \
-    > ../../rust/crates/iqrah-storage/migrations_content/20241124000002_knowledge_graph_full_axis.sql
-```
-
-**Option B: Create new CBOR-to-SQL exporter:**
-
-If `score_and_extract.py` only works with GraphML, you'll need to either:
-1. Export to GraphML format during build (use `--format both`)
-2. Create a new script to convert CBOR → SQL
-
-**Recommended approach:**
-
-```bash
-# Build with both CBOR and GraphML output
-python -m iqrah_cli build knowledge-graph \
-    --from-scratch \
-    --morphology ../data/morphology/quran-morphology-v0.5.csv \
-    --preset full \
-    --chapters "1-3" \
-    --format both \
-    -o output/knowledge_graph_full_axis.cbor.zst
-
-# This creates:
-# - output/knowledge_graph_full_axis.cbor.zst (for Rust import)
-# - output/knowledge_graph_full_axis.graphml (for SQL generation)
-
-# Generate SQL from GraphML
-python score_and_extract.py output/knowledge_graph_full_axis.graphml
-```
-
-**Verify SQL structure:**
-```sql
--- Should contain:
-
--- Knowledge nodes in node_metadata
-INSERT INTO node_metadata (node_id, key, value) VALUES
-    ('VERSE:1:1:memorization', 'foundational_score', 0.0123),
-    ('VERSE:1:1:translation', 'foundational_score', 0.0098),
-    ...;
-
--- Knowledge edges
-INSERT INTO edges (source_id, target_id, edge_type, distribution_type, distribution_param1, distribution_param2) VALUES
-    ('VERSE:1:1:memorization', 'VERSE:1:2:memorization', 1, 0, 0.8, 0.0),  -- Sequential
-    ('VERSE:1:1:translation', 'VERSE:1:1:memorization', 1, 0, 0.3, 0.0),  -- Cross-axis
-    ...;
-
--- Updated goals with axis-specific nodes
-INSERT INTO node_goals (goal_id, node_id) VALUES
-    ('memorization:chapters-1-3', 'VERSE:1:1:memorization'),
-    ('memorization:chapters-1-3', 'VERSE:1:2:memorization'),
-    ...;
-```
-
-### Step 6: Verify Migration File (30 min)
-
-**Checks:**
-1. **File size:** 300-500KB (reasonable)
-2. **Node count:** Query `SELECT COUNT(DISTINCT node_id) FROM node_metadata` after import
-   - Should be ~2500-3500 (content + knowledge nodes)
-3. **Edge types:** Query `SELECT edge_type, COUNT(*) FROM edges GROUP BY edge_type`
-   - Type 0 (dependency): ~500-1000 edges
-   - Type 1 (knowledge): ~2000-3000 edges
-4. **Axis coverage:** Search for all 6 axes:
-   ```bash
-   grep -c ":memorization" migration.sql
-   grep -c ":translation" migration.sql
-   grep -c ":tafsir" migration.sql
-   grep -c ":tajweed" migration.sql
-   grep -c ":contextual_memorization" migration.sql
-   grep -c ":meaning" migration.sql
-   ```
-   All should return > 0.
-
-### Step 7: Test Import in Rust (1 hour)
-
-**Commands:**
-```bash
-cd rust
-
-# Create test database
-rm -f /tmp/test_content.db
-cargo run --bin iqrah-cli -- init --content-db /tmp/test_content.db
-
-# Migrations should run automatically
-# Verify data imported
-
-sqlite3 /tmp/test_content.db "SELECT COUNT(DISTINCT node_id) FROM node_metadata WHERE node_id LIKE '%:memorization'"
-# Should return > 400 (one per verse)
-
-sqlite3 /tmp/test_content.db "SELECT COUNT(*) FROM edges WHERE edge_type = 1"
-# Should return > 2000 (knowledge edges)
-```
-
-### Step 8: Test Rust Code End-to-End (1 hour)
-
-**Commands:**
-```bash
-cd rust
-
-# Test session generation with axis filtering
-cargo run --bin iqrah-cli -- schedule \
-    --goal memorization:chapters-1-3 \
-    --axis memorization \
-    --limit 5
-
-# Should return 5 session items with node IDs ending in ":memorization"
-
-# Test translation axis
-cargo run --bin iqrah-cli -- schedule \
-    --goal memorization:chapters-1-3 \
-    --axis translation \
-    --limit 5
-
-# Should return 5 session items with node IDs ending in ":translation"
-```
-
-**Expected output:**
-```
-Session items (memorization axis):
-1. Node: 1:1:memorization, Type: Knowledge, Score: 0.0649
-2. Node: 1:2:memorization, Type: Knowledge, Score: 0.0523
-...
+    -o output/content.db
 ```
 
 ## Verification Plan
