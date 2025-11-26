@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use std::str::FromStr;
 // Node types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Copy)]
 #[serde(rename_all = "snake_case")]
@@ -15,17 +16,19 @@ pub enum NodeType {
     Knowledge,
 }
 
-impl From<String> for NodeType {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "root" => NodeType::Root,
-            "lemma" => NodeType::Lemma,
-            "word" => NodeType::Word,
-            "word_instance" => NodeType::WordInstance,
-            "verse" => NodeType::Verse,
-            "chapter" => NodeType::Chapter,
-            "knowledge" => NodeType::Knowledge,
-            _ => NodeType::WordInstance,
+impl FromStr for NodeType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "root" => Ok(NodeType::Root),
+            "lemma" => Ok(NodeType::Lemma),
+            "word" => Ok(NodeType::Word),
+            "word_instance" => Ok(NodeType::WordInstance),
+            "verse" => Ok(NodeType::Verse),
+            "chapter" => Ok(NodeType::Chapter),
+            "knowledge" => Ok(NodeType::Knowledge),
+            _ => Err(anyhow::anyhow!("Invalid node type: {}", s)),
         }
     }
 }
@@ -66,8 +69,10 @@ pub enum KnowledgeAxis {
     Meaning,
 }
 
-impl KnowledgeAxis {
-    pub fn from_str(s: &str) -> std::result::Result<Self, ()> {
+impl FromStr for KnowledgeAxis {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "memorization" => Ok(Self::Memorization),
             "translation" => Ok(Self::Translation),
@@ -75,7 +80,7 @@ impl KnowledgeAxis {
             "tajweed" => Ok(Self::Tajweed),
             "contextual_memorization" => Ok(Self::ContextualMemorization),
             "meaning" => Ok(Self::Meaning),
-            _ => Err(()),
+            _ => Err(anyhow::anyhow!("Invalid knowledge axis: {}", s)),
         }
     }
 }
@@ -166,12 +171,37 @@ pub enum EdgeType {
     Knowledge = 1,
 }
 
+impl TryFrom<i32> for EdgeType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(EdgeType::Dependency),
+            1 => Ok(EdgeType::Knowledge),
+            _ => Err(anyhow::anyhow!("Invalid edge type: {}", value)),
+        }
+    }
+}
+
 // Distribution types for energy propagation
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum DistributionType {
     Const,
     Normal,
     Beta,
+}
+
+impl TryFrom<i32> for DistributionType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(DistributionType::Const),
+            1 => Ok(DistributionType::Normal),
+            2 => Ok(DistributionType::Beta),
+            _ => Err(anyhow::anyhow!("Invalid distribution type: {}", value)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

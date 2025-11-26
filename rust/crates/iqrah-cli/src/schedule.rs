@@ -9,7 +9,7 @@ use iqrah_core::{
     ContentRepository, UserRepository,
 };
 use iqrah_storage::{
-    content::{init_content_db, SqliteContentRepository},
+    content::{init_content_db, node_registry::NodeRegistry, SqliteContentRepository},
     user::{init_user_db, SqliteUserRepository},
 };
 use rand::rngs::StdRng;
@@ -46,8 +46,9 @@ pub async fn generate(
     let content_pool = init_content_db(&content_db_path).await?;
     let user_pool = init_user_db(&user_db_path).await?;
 
+    let registry = Arc::new(NodeRegistry::new(content_pool.clone()));
     let content_repo: Arc<dyn ContentRepository> =
-        Arc::new(SqliteContentRepository::new(content_pool));
+        Arc::new(SqliteContentRepository::new(content_pool, registry));
     let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
     // Parse session mode

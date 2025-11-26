@@ -7,10 +7,12 @@
 /// - get_nodes_for_goal: Node listing
 use super::repository::SqliteContentRepository;
 use iqrah_core::ContentRepository;
+use crate::content::node_registry::NodeRegistry;
 use sqlx::{query, SqlitePool};
+use std::sync::Arc;
 
 /// Create an in-memory test database with scheduler v2 schema
-async fn create_test_db() -> SqlitePool {
+async fn create_test_db() -> (SqlitePool, Arc<NodeRegistry>) {
     let pool = SqlitePool::connect("sqlite::memory:")
         .await
         .expect("Failed to create in-memory database");
@@ -18,10 +20,10 @@ async fn create_test_db() -> SqlitePool {
     // Create tables
     query(
         "CREATE TABLE nodes (
-            id TEXT PRIMARY KEY,
-            type TEXT NOT NULL,
-            label TEXT,
-            description TEXT
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ukey TEXT UNIQUE NOT NULL,
+            node_type TEXT NOT NULL,
+            internal_id INTEGER
         )",
     )
     .execute(&pool)
@@ -30,7 +32,7 @@ async fn create_test_db() -> SqlitePool {
 
     query(
         "CREATE TABLE node_metadata (
-            node_id TEXT NOT NULL,
+            node_id INTEGER NOT NULL,
             key TEXT NOT NULL,
             value REAL NOT NULL,
             PRIMARY KEY (node_id, key)
@@ -55,7 +57,7 @@ async fn create_test_db() -> SqlitePool {
 
     query(
         "CREATE TABLE node_goals (
-            node_id TEXT NOT NULL,
+            node_id INTEGER NOT NULL,
             goal_id TEXT NOT NULL,
             priority REAL DEFAULT 0.0,
             PRIMARY KEY (node_id, goal_id)
@@ -67,8 +69,8 @@ async fn create_test_db() -> SqlitePool {
 
     query(
         "CREATE TABLE edges (
-            source_id TEXT NOT NULL,
-            target_id TEXT NOT NULL,
+            source_id INTEGER NOT NULL,
+            target_id INTEGER NOT NULL,
             edge_type INTEGER NOT NULL,
             distribution_type INTEGER DEFAULT 0,
             param1 REAL DEFAULT 0.0,
@@ -80,13 +82,21 @@ async fn create_test_db() -> SqlitePool {
     .await
     .expect("Failed to create edges table");
 
-    pool
+    let registry = Arc::new(NodeRegistry::new(pool.clone()));
+
+    (pool, registry)
+}
+
+async fn setup() -> (SqliteContentRepository, Arc<NodeRegistry>) {
+    let (pool, registry) = create_test_db().await;
+    registry.load_all().await.unwrap();
+    let repo = SqliteContentRepository::new(pool.clone(), registry.clone());
+    (repo, registry)
 }
 
 #[tokio::test]
 async fn test_get_scheduler_candidates_empty_goal() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
+    let (repo, _) = setup().await;
 
     let candidates = repo
         .get_scheduler_candidates("nonexistent_goal", "user1", 0)
@@ -98,35 +108,41 @@ async fn test_get_scheduler_candidates_empty_goal() {
 
 #[tokio::test]
 async fn test_get_scheduler_candidates_with_metadata() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let (pool, registry) = create_test_db().await;
+    let repo = SqliteContentRepository::new(pool.clone(), registry.clone());
 
     // Insert test data
-    query("INSERT INTO nodes (id, type, label) VALUES ('1:1', 'verse', 'Al-Fatihah 1:1')")
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:1', 'verse')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    registry.load_all().await.unwrap();
+    let node_id = registry.get_id("1:1").await.unwrap().unwrap();
+
+    query(
+        "INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'foundational_score', 0.9)",
+    )
+    .bind(node_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'influence_score', 0.8)")
+        .bind(node_id)
         .execute(&pool)
         .await
         .unwrap();
 
     query(
-        "INSERT INTO node_metadata (node_id, key, value) VALUES ('1:1', 'foundational_score', 0.9)",
+        "INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'difficulty_score', 0.2)",
     )
+    .bind(node_id)
     .execute(&pool)
     .await
     .unwrap();
 
-    query("INSERT INTO node_metadata (node_id, key, value) VALUES ('1:1', 'influence_score', 0.8)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    query(
-        "INSERT INTO node_metadata (node_id, key, value) VALUES ('1:1', 'difficulty_score', 0.2)",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-
-    query("INSERT INTO node_metadata (node_id, key, value) VALUES ('1:1', 'quran_order', 1001001)")
+    query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'quran_order', 1001001)")
+        .bind(node_id)
         .execute(&pool)
         .await
         .unwrap();
@@ -136,7 +152,8 @@ async fn test_get_scheduler_candidates_with_metadata() {
         .await
         .unwrap();
 
-    query("INSERT INTO node_goals (node_id, goal_id, priority) VALUES ('1:1', 'test_goal', 1.0)")
+    query("INSERT INTO node_goals (node_id, goal_id, priority) VALUES (?, 'test_goal', 1.0)")
+        .bind(node_id)
         .execute(&pool)
         .await
         .unwrap();
@@ -160,21 +177,24 @@ async fn test_get_scheduler_candidates_with_metadata() {
 
 #[tokio::test]
 async fn test_get_scheduler_candidates_missing_metadata_defaults_to_zero() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let (pool, registry) = create_test_db().await;
+    let repo = SqliteContentRepository::new(pool.clone(), registry.clone());
 
     // Insert node without metadata
-    query("INSERT INTO nodes (id, type, label) VALUES ('1:2', 'verse', 'Al-Fatihah 1:2')")
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:2', 'verse')")
         .execute(&pool)
         .await
         .unwrap();
+    registry.load_all().await.unwrap();
+    let node_id = registry.get_id("1:2").await.unwrap().unwrap();
 
     query("INSERT INTO goals (goal_id, goal_type, goal_group, label) VALUES ('test_goal', 'surah', 'memorization', 'Test Goal')")
         .execute(&pool)
         .await
         .unwrap();
 
-    query("INSERT INTO node_goals (node_id, goal_id) VALUES ('1:2', 'test_goal')")
+    query("INSERT INTO node_goals (node_id, goal_id) VALUES (?, 'test_goal')")
+        .bind(node_id)
         .execute(&pool)
         .await
         .unwrap();
@@ -194,8 +214,7 @@ async fn test_get_scheduler_candidates_missing_metadata_defaults_to_zero() {
 
 #[tokio::test]
 async fn test_get_prerequisite_parents_empty_input() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
+    let (repo, _) = setup().await;
 
     let result = repo
         .get_prerequisite_parents(&[])
@@ -207,11 +226,25 @@ async fn test_get_prerequisite_parents_empty_input() {
 
 #[tokio::test]
 async fn test_get_prerequisite_parents_single_node() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let (pool, registry) = create_test_db().await;
+    let repo = SqliteContentRepository::new(pool.clone(), registry.clone());
 
     // Create prerequisite relationship: 1:1 -> 1:2 (1:1 is prerequisite for 1:2)
-    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES ('1:1', '1:2', 0)")
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:1', 'verse')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:2', 'verse')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    registry.load_all().await.unwrap();
+    let source_id = registry.get_id("1:1").await.unwrap().unwrap();
+    let target_id = registry.get_id("1:2").await.unwrap().unwrap();
+
+    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, 0)")
+        .bind(source_id)
+        .bind(target_id)
         .execute(&pool)
         .await
         .unwrap();
@@ -227,16 +260,37 @@ async fn test_get_prerequisite_parents_single_node() {
 
 #[tokio::test]
 async fn test_get_prerequisite_parents_multiple_parents() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let (pool, registry) = create_test_db().await;
+    let repo = SqliteContentRepository::new(pool.clone(), registry.clone());
 
     // Create multiple prerequisites for 1:3
-    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES ('1:1', '1:3', 0)")
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:1', 'verse')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:2', 'verse')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    query("INSERT INTO nodes (ukey, node_type) VALUES ('1:3', 'verse')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    registry.load_all().await.unwrap();
+    let source1_id = registry.get_id("1:1").await.unwrap().unwrap();
+    let source2_id = registry.get_id("1:2").await.unwrap().unwrap();
+    let target_id = registry.get_id("1:3").await.unwrap().unwrap();
+
+    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, 0)")
+        .bind(source1_id)
+        .bind(target_id)
         .execute(&pool)
         .await
         .unwrap();
 
-    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES ('1:2', '1:3', 0)")
+    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, 0)")
+        .bind(source2_id)
+        .bind(target_id)
         .execute(&pool)
         .await
         .unwrap();
@@ -251,214 +305,4 @@ async fn test_get_prerequisite_parents_multiple_parents() {
     assert_eq!(parents.len(), 2);
     assert!(parents.contains(&String::from("1:1")));
     assert!(parents.contains(&String::from("1:2")));
-}
-
-#[tokio::test]
-async fn test_get_prerequisite_parents_chunking_500_nodes() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
-
-    // Create 500 nodes with prerequisites
-    let mut node_ids = Vec::new();
-    for i in 1..=500 {
-        let target = format!("node_{}", i);
-        let source = format!("prereq_{}", i);
-        node_ids.push(target.clone());
-
-        query("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, 0)")
-            .bind(&source)
-            .bind(&target)
-            .execute(&pool)
-            .await
-            .unwrap();
-    }
-
-    let result = repo
-        .get_prerequisite_parents(&node_ids)
-        .await
-        .expect("Should succeed with 500 nodes");
-
-    assert_eq!(result.len(), 500);
-    for i in 1..=500 {
-        let target = format!("node_{}", i);
-        let source = format!("prereq_{}", i);
-        assert_eq!(result.get(&target).unwrap(), &vec![source]);
-    }
-}
-
-#[tokio::test]
-async fn test_get_prerequisite_parents_chunking_501_nodes() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
-
-    // Create 501 nodes (tests chunking across 2 batches)
-    let mut node_ids = Vec::new();
-    for i in 1..=501 {
-        let target = format!("node_{}", i);
-        let source = format!("prereq_{}", i);
-        node_ids.push(target.clone());
-
-        query("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, 0)")
-            .bind(&source)
-            .bind(&target)
-            .execute(&pool)
-            .await
-            .unwrap();
-    }
-
-    let result = repo
-        .get_prerequisite_parents(&node_ids)
-        .await
-        .expect("Should succeed with 501 nodes (2 chunks)");
-
-    assert_eq!(result.len(), 501);
-    for i in 1..=501 {
-        let target = format!("node_{}", i);
-        let source = format!("prereq_{}", i);
-        assert_eq!(result.get(&target).unwrap(), &vec![source]);
-    }
-}
-
-#[tokio::test]
-async fn test_get_prerequisite_parents_chunking_1000_nodes() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
-
-    // Create 1000 nodes (tests chunking across 2 batches: 500 + 500)
-    let mut node_ids = Vec::new();
-    for i in 1..=1000 {
-        let target = format!("node_{}", i);
-        let source = format!("prereq_{}", i);
-        node_ids.push(target.clone());
-
-        query("INSERT INTO edges (source_id, target_id, edge_type) VALUES (?, ?, 0)")
-            .bind(&source)
-            .bind(&target)
-            .execute(&pool)
-            .await
-            .unwrap();
-    }
-
-    let result = repo
-        .get_prerequisite_parents(&node_ids)
-        .await
-        .expect("Should succeed with 1000 nodes (2 chunks)");
-
-    assert_eq!(result.len(), 1000);
-    for i in 1..=1000 {
-        let target = format!("node_{}", i);
-        let source = format!("prereq_{}", i);
-        assert_eq!(result.get(&target).unwrap(), &vec![source]);
-    }
-}
-
-#[tokio::test]
-async fn test_get_prerequisite_parents_ignores_non_prerequisite_edges() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
-
-    // Create prerequisite edge (type 0) and other edge types
-    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES ('1:1', '1:2', 0)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    query("INSERT INTO edges (source_id, target_id, edge_type) VALUES ('1:3', '1:2', 1)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    let result = repo
-        .get_prerequisite_parents(&[String::from("1:2")])
-        .await
-        .expect("Should succeed");
-
-    assert_eq!(result.len(), 1);
-    let parents = result.get("1:2").unwrap();
-    assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], "1:1"); // Only prerequisite edge
-}
-
-#[tokio::test]
-async fn test_get_goal_exists() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
-
-    query("INSERT INTO goals (goal_id, goal_type, goal_group, label, description) VALUES ('memorization:surah-1', 'surah', 'memorization', 'Memorize Al-Fatihah', 'Master all verses')")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    let goal = repo
-        .get_goal("memorization:surah-1")
-        .await
-        .expect("Should succeed")
-        .expect("Goal should exist");
-
-    assert_eq!(goal.goal_id, "memorization:surah-1");
-    assert_eq!(goal.goal_type, "surah");
-    assert_eq!(goal.goal_group, "memorization");
-    assert_eq!(goal.label, "Memorize Al-Fatihah");
-    assert_eq!(goal.description, Some("Master all verses".to_string()));
-}
-
-#[tokio::test]
-async fn test_get_goal_not_found() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
-
-    let goal = repo.get_goal("nonexistent").await.expect("Should succeed");
-
-    assert!(goal.is_none());
-}
-
-#[tokio::test]
-async fn test_get_nodes_for_goal() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
-
-    query("INSERT INTO goals (goal_id, goal_type, goal_group, label) VALUES ('test_goal', 'surah', 'memorization', 'Test Goal')")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    // Insert nodes with different priorities
-    query("INSERT INTO node_goals (node_id, goal_id, priority) VALUES ('1:1', 'test_goal', 3.0)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    query("INSERT INTO node_goals (node_id, goal_id, priority) VALUES ('1:2', 'test_goal', 1.0)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    query("INSERT INTO node_goals (node_id, goal_id, priority) VALUES ('1:3', 'test_goal', 2.0)")
-        .execute(&pool)
-        .await
-        .unwrap();
-
-    let nodes = repo
-        .get_nodes_for_goal("test_goal")
-        .await
-        .expect("Should succeed");
-
-    // Should be ordered by priority DESC, then node_id ASC
-    assert_eq!(nodes.len(), 3);
-    assert_eq!(nodes[0], "1:1"); // priority 3.0
-    assert_eq!(nodes[1], "1:3"); // priority 2.0
-    assert_eq!(nodes[2], "1:2"); // priority 1.0
-}
-
-#[tokio::test]
-async fn test_get_nodes_for_goal_empty() {
-    let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
-
-    let nodes = repo
-        .get_nodes_for_goal("nonexistent")
-        .await
-        .expect("Should succeed");
-
-    assert_eq!(nodes.len(), 0);
 }

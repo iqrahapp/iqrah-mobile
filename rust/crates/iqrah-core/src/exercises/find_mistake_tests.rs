@@ -90,6 +90,10 @@ impl ContentRepository for MockContentRepo {
         Ok(Vec::new())
     }
 
+    async fn get_edges_to(&self, _target_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+        Ok(Vec::new())
+    }
+
     async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
         if let Some(verse_key) = node_id.strip_prefix("VERSE:") {
             Ok(self.verses.get(verse_key).map(|v| v.text_uthmani.clone()))
@@ -319,6 +323,7 @@ impl ContentRepository for MockContentRepo {
         _goal_id: &str,
         _user_id: &str,
         _now_ts: i64,
+        _user_repo: &dyn crate::ports::user_repository::UserRepository,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }

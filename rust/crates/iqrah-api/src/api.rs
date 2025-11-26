@@ -3,7 +3,10 @@ use anyhow::Result;
 pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
 use iqrah_core::{import_cbor_graph_from_bytes, ReviewGrade};
 pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
-use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
+use iqrah_storage::{
+    content::node_registry::NodeRegistry, init_content_db, init_user_db, SqliteContentRepository,
+    SqliteUserRepository,
+};
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,8 +40,9 @@ pub async fn setup_database(
     let user_pool = init_user_db(&user_db_path).await?;
 
     // Create repositories
+    let registry = Arc::new(NodeRegistry::new(content_pool.clone()));
     let content_repo: Arc<dyn ContentRepository> =
-        Arc::new(SqliteContentRepository::new(content_pool));
+        Arc::new(SqliteContentRepository::new(content_pool, registry));
     let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
     // Check if data already imported

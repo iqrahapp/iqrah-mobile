@@ -1,5 +1,6 @@
 use super::error::NodeIdError;
 use super::models::{KnowledgeAxis, NodeType};
+use std::str::FromStr;
 
 pub type Result<T> = std::result::Result<T, NodeIdError>;
 

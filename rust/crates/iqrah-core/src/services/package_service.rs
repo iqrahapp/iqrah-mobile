@@ -351,6 +351,10 @@ mod tests {
         async fn get_edges_from(&self, _source_id: &str) -> Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
+
+        async fn get_edges_to(&self, _target_id: &str) -> Result<Vec<crate::Edge>> {
+            Ok(vec![])
+        }
         async fn get_quran_text(&self, _node_id: &str) -> Result<Option<String>> {
             Ok(None)
         }

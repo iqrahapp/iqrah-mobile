@@ -366,6 +366,10 @@ mod tests {
             Ok(vec![])
         }
 
+        async fn get_edges_to(&self, _target_id: &str) -> Result<Vec<crate::Edge>> {
+            Ok(vec![])
+        }
+
         async fn get_quran_text(&self, node_id: &str) -> Result<Option<String>> {
             let base_id = self.get_base_id(node_id);
             Ok(self.quran_text.get(&base_id).cloned())
@@ -594,6 +598,7 @@ mod tests {
             _goal_id: &str,
             _user_id: &str,
             _now_ts: i64,
+            _user_repo: &dyn crate::ports::user_repository::UserRepository,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
@@ -793,6 +798,10 @@ mod tests {
         }
 
         async fn get_edges_from(&self, _source_id: &str) -> Result<Vec<crate::Edge>> {
+            Ok(vec![])
+        }
+
+        async fn get_edges_to(&self, _target_id: &str) -> Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
 
@@ -1027,6 +1036,7 @@ mod tests {
             _goal_id: &str,
             _user_id: &str,
             _now_ts: i64,
+            _user_repo: &dyn crate::ports::user_repository::UserRepository,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }

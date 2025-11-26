@@ -67,6 +67,10 @@ mod tests {
             Ok(vec![])
         }
 
+        async fn get_edges_to(&self, _target_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+            Ok(vec![])
+        }
+
         async fn get_quran_text(&self, _node_id: &str) -> anyhow::Result<Option<String>> {
             Ok(Some("Test Arabic".to_string()))
         }

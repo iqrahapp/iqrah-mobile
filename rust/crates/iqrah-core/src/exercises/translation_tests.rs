@@ -171,6 +171,10 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
+    async fn get_edges_to(&self, _target_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+        Ok(vec![])
+    }
+
     async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
         Ok(self.words_text.get(node_id).cloned())
     }

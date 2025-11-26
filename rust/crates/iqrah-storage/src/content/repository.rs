@@ -1,6 +1,6 @@
 use super::models::{
-    CandidateNodeRow, ChapterRow, ContentPackageRow, EdgeRow, GoalRow, InstalledPackageRow,
-    LanguageRow, LemmaRow, MorphologySegmentRow, NodeGoalRow, PrerequisiteRow, RootRow,
+    ChapterRow, ContentPackageRow, GoalRow, InstalledPackageRow,
+    LanguageRow, LemmaRow, MorphologySegmentRow, PrerequisiteRow, RootRow,
     TranslatorRow, VerseRow, VerseTranslationRow, WordRow, WordTranslationRow,
 };
 use async_trait::async_trait;
@@ -11,16 +11,18 @@ use iqrah_core::{
     EdgeType, ImportedEdge, ImportedNode, InstalledPackage, KnowledgeNode, Language, Lemma,
     MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
 };
+use super::node_registry::NodeRegistry;
 use sqlx::{query, query_as, SqlitePool};
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 pub struct SqliteContentRepository {
     pool: SqlitePool,
+    registry: Arc<NodeRegistry>,
 }
 
 impl SqliteContentRepository {
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+    pub fn new(pool: SqlitePool, registry: Arc<NodeRegistry>) -> Self {
+        Self { pool, registry }
     }
 
     /// Helper to get the base node ID if a knowledge axis is present
@@ -31,135 +33,84 @@ impl SqliteContentRepository {
             Cow::Borrowed(node_id)
         }
     }
+
+    /// Retrieves a node by its integer ID.
+    /// This is the fast, internal method for node lookups.
+    pub async fn get_node_by_id(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
+        let row: Option<(String, String, Option<String>, Option<String>)> = query_as(
+            r#"
+            SELECT
+                n.ukey,
+                n.node_type,
+                kn.base_node_id,
+                kn.axis
+            FROM nodes n
+            LEFT JOIN knowledge_nodes kn ON kn.node_id = n.id
+            WHERE n.id = ?
+            "#,
+        )
+        .bind(node_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        match row {
+            Some((ukey, node_type, base_node_ukey, axis)) => {
+                let node_type: NodeType = node_type.parse()?;
+                let knowledge_node = if node_type == NodeType::Knowledge {
+                    Some(KnowledgeNode {
+                        base_node_id: base_node_ukey.unwrap(), // Should be present for knowledge nodes
+                        axis: axis.unwrap().parse()?, // Should be present for knowledge nodes
+                        full_id: ukey.clone(),
+                    })
+                } else {
+                    None
+                };
+
+                Ok(Some(Node {
+                    id: ukey,
+                    node_type,
+                    knowledge_node,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
 }
 
 #[async_trait]
 impl ContentRepository for SqliteContentRepository {
-    async fn get_node(&self, node_id: &str) -> anyhow::Result<Option<Node>> {
-        // V2 schema: Parse node_id to determine type and query appropriate table
-        use iqrah_core::domain::node_id as nid;
+    async fn get_node(&self, ukey: &str) -> anyhow::Result<Option<Node>> {
+        // 1. Lookup integer ID from string key via the registry
+        let node_id_opt = self.registry.get_id(ukey).await?;
 
-        // Detect type first
-        let node_type = match nid::node_type(node_id) {
-            Ok(t) => t,
-            Err(_) => return Ok(None), // Invalid ID format means node doesn't exist
-        };
-
-        match node_type {
-            NodeType::Verse => {
-                let (chapter, verse) = nid::parse_verse(node_id)?;
-                // Ensure we use the standard verse_key format "chapter:verse" for DB query
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let row = query_as::<_, (String, i64)>(
-                    "SELECT verse_key, created_at FROM verses WHERE verse_key = ?",
-                )
-                .bind(&verse_key)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(_vk, _)| Node {
-                    id: nid::verse(chapter, verse), // Return standardized ID "VERSE:1:1"
-                    node_type: NodeType::Verse,
-                    knowledge_node: None,
-                }))
-            }
-            NodeType::Chapter => {
-                let chapter_num = nid::parse_chapter(node_id)?;
-
-                let row = query_as::<_, (i32, i64)>(
-                    "SELECT chapter_number, created_at FROM chapters WHERE chapter_number = ?",
-                )
-                .bind(chapter_num)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(num, _)| Node {
-                    id: nid::chapter(num as u8), // Return standardized ID "CHAPTER:1"
-                    node_type: NodeType::Chapter,
-                    knowledge_node: None,
-                }))
-            }
-            NodeType::Word => {
-                let word_id = nid::parse_word(node_id)?;
-
-                let row = query_as::<_, (i32, i64)>(
-                    "SELECT word_id, created_at FROM words WHERE word_id = ?",
-                )
-                .bind(word_id)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(wid, _)| Node {
-                    id: nid::word(wid as i64), // Return standardized ID "WORD:123"
-                    node_type: NodeType::Word,
-                    knowledge_node: None,
-                }))
-            }
-            NodeType::WordInstance => {
-                // Word instances map to words in the DB
-                let (chapter, verse, position) = nid::parse_word_instance(node_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let row = query_as::<_, (i32, i64)>(
-                    "SELECT word_id, created_at FROM words WHERE verse_key = ? AND position = ?",
-                )
-                .bind(&verse_key)
-                .bind(position)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(_wid, _)| Node {
-                    // For WordInstance, we return the WordInstance ID, not the underlying Word ID
-                    // The underlying DB entity is a Word, but the requested Node is a WordInstance
-                    // Wait, if the user asks for WORD_INSTANCE:1:1:1, we should return a Node with that ID.
-                    id: nid::word_instance(chapter, verse, position),
-                    node_type: NodeType::WordInstance, // Correct type
-                    knowledge_node: None,
-                }))
-            }
-            NodeType::Knowledge => {
-                let (base_id, axis) = nid::parse_knowledge(node_id)?;
-
-                // 1. Referential Integrity: Base node must exist
-                if !self.node_exists(&base_id).await? {
-                    return Ok(None);
-                }
-
-                // 2. Entity Existence: Knowledge node must exist in node_metadata
-                // (Task says they are REAL entities, so they must be in the DB)
-                let exists: (i64,) = query_as("SELECT COUNT(*) FROM node_metadata WHERE node_id = ?")
-                    .bind(node_id)
-                    .fetch_one(&self.pool)
-                    .await?;
-
-                if exists.0 == 0 {
-                    // Not a real knowledge node in our DB
-                    return Ok(None);
-                }
-
-                // 3. Construct Node
-                let kn = KnowledgeNode {
-                    base_node_id: base_id,
-                    axis,
-                    full_id: node_id.to_string(),
-                };
-
-                Ok(Some(Node {
-                    id: node_id.to_string(),
-                    node_type: NodeType::Knowledge,
-                    knowledge_node: Some(kn),
-                }))
-            }
-            _ => Ok(None), // Other types not supported yet
+        if let Some(node_id) = node_id_opt {
+            // 2. Use the fast, internal integer-based path
+            self.get_node_by_id(node_id).await
+        } else {
+            Ok(None)
         }
     }
 
-    async fn get_edges_from(&self, source_id: &str) -> anyhow::Result<Vec<Edge>> {
-        let rows = query_as::<_, EdgeRow>(
-            "SELECT source_id, target_id, edge_type, distribution_type, param1, param2
-             FROM edges
-             WHERE source_id = ?",
+    async fn get_edges_from(&self, source_ukey: &str) -> anyhow::Result<Vec<Edge>> {
+        let source_id = match self.registry.get_id(source_ukey).await? {
+            Some(id) => id,
+            None => return Ok(Vec::new()),
+        };
+
+        let rows: Vec<(String, String, i32, i32, f64, f64)> = query_as(
+            r#"
+            SELECT
+                source_node.ukey AS source_ukey,
+                target_node.ukey AS target_ukey,
+                e.edge_type,
+                e.distribution_type,
+                e.param1,
+                e.param2
+            FROM edges e
+            JOIN nodes source_node ON e.source_id = source_node.id
+            JOIN nodes target_node ON e.target_id = target_node.id
+            WHERE e.source_id = ?
+            "#,
         )
         .bind(source_id)
         .fetch_all(&self.pool)
@@ -167,164 +118,121 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(rows
             .into_iter()
-            .map(|r| Edge {
-                source_id: r.source_id,
-                target_id: r.target_id,
-                edge_type: if r.edge_type == 0 {
-                    EdgeType::Dependency
-                } else {
-                    EdgeType::Knowledge
-                },
-                distribution_type: match r.distribution_type {
-                    0 => DistributionType::Const,
-                    1 => DistributionType::Normal,
-                    _ => DistributionType::Beta,
-                },
-                param1: r.param1,
-                param2: r.param2,
+            .map(|(source_ukey, target_ukey, edge_type, distribution_type, param1, param2)| Edge {
+                source_id: source_ukey,
+                target_id: target_ukey,
+                edge_type: (edge_type).try_into().unwrap_or(EdgeType::Dependency),
+                distribution_type: (distribution_type)
+                    .try_into()
+                    .unwrap_or(DistributionType::Const),
+                param1,
+                param2,
             })
             .collect())
     }
 
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        // V2 schema: Query text from verses or words tables
-        let base_id = self.get_base_id(node_id);
-
-        // Detect type first
-        let node_type = match nid::node_type(&base_id) {
-            Ok(t) => t,
-            Err(_) => return Ok(None),
+    async fn get_edges_to(&self, target_ukey: &str) -> anyhow::Result<Vec<Edge>> {
+        let target_id = match self.registry.get_id(target_ukey).await? {
+            Some(id) => id,
+            None => return Ok(Vec::new()),
         };
 
-        match node_type {
-            NodeType::Verse => {
-                let (chapter, verse) = nid::parse_verse(node_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
+        let rows: Vec<(String, String, i32, i32, f64, f64)> = query_as(
+            r#"
+            SELECT
+                source_node.ukey AS source_ukey,
+                target_node.ukey AS target_ukey,
+                e.edge_type,
+                e.distribution_type,
+                e.param1,
+                e.param2
+            FROM edges e
+            JOIN nodes source_node ON e.source_id = source_node.id
+            JOIN nodes target_node ON e.target_id = target_node.id
+            WHERE e.target_id = ?
+            "#,
+        )
+        .bind(target_id)
+        .fetch_all(&self.pool)
+        .await?;
 
-                let row =
-                    query_as::<_, (String,)>("SELECT text_uthmani FROM verses WHERE verse_key = ?")
-                        .bind(&verse_key)
-                        .fetch_optional(&self.pool)
-                        .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            NodeType::Word => {
-                let word_id = nid::parse_word(node_id)?;
-
-                let row =
-                    query_as::<_, (String,)>("SELECT text_uthmani FROM words WHERE word_id = ?")
-                        .bind(word_id)
-                        .fetch_optional(&self.pool)
-                        .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            NodeType::WordInstance => {
-                let (chapter, verse, position) = nid::parse_word_instance(node_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let row = query_as::<_, (String,)>(
-                    "SELECT text_uthmani FROM words WHERE verse_key = ? AND position = ?",
-                )
-                .bind(&verse_key)
-                .bind(position)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            _ => Ok(None),
-        }
+        Ok(rows
+            .into_iter()
+            .map(|(source_ukey, target_ukey, edge_type, distribution_type, param1, param2)| Edge {
+                source_id: source_ukey,
+                target_id: target_ukey,
+                edge_type: (edge_type).try_into().unwrap_or(EdgeType::Dependency),
+                distribution_type: (distribution_type)
+                    .try_into()
+                    .unwrap_or(DistributionType::Const),
+                param1,
+                param2,
+            })
+            .collect())
     }
 
-    async fn get_translation(&self, node_id: &str, lang: &str) -> anyhow::Result<Option<String>> {
-        // V2 schema: Query from verse_translations or word_translations
-        let base_id = self.get_base_id(node_id);
+    async fn get_quran_text(&self, ukey: &str) -> anyhow::Result<Option<String>> {
+        let node_id = match self.registry.get_id(ukey).await? {
+            Some(id) => id,
+            None => return Ok(None),
+        };
 
-        // First, find a translator for the given language
-        let translator = query_as::<_, (i32,)>(
-            "SELECT translator_id FROM translators WHERE language_code = ? LIMIT 1",
+        // This query joins nodes with verses/words to get the text using the integer ID
+        let row: Option<(String,)> = sqlx::query_as(
+            r#"
+            SELECT COALESCE(v.text_uthmani, w.text_uthmani)
+            FROM nodes n
+            LEFT JOIN verses v ON n.ukey = v.verse_key
+            LEFT JOIN words w ON n.ukey = w.word_id_str -- Assuming word_id is stored as string in nodes.ukey
+            WHERE n.id = ?
+            "#,
         )
-        .bind(lang)
+        .bind(node_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        let translator_id = match translator {
-            Some((id,)) => id,
-            None => return Ok(None), // No translator found for this language
-        };
-
-        // Detect type
-        let node_type = match nid::node_type(&base_id) {
-            Ok(t) => t,
-            Err(_) => return Ok(None),
-        };
-
-        match node_type {
-            NodeType::Verse => {
-                let (chapter, verse) = nid::parse_verse(&base_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let row = query_as::<_, (String,)>(
-                    "SELECT translation FROM verse_translations WHERE verse_key = ? AND translator_id = ?"
-                )
-                .bind(&verse_key)
-                .bind(translator_id)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            NodeType::Word => {
-                let word_id = nid::parse_word(&base_id)?;
-
-                let row = query_as::<_, (String,)>(
-                    "SELECT translation FROM word_translations WHERE word_id = ? AND translator_id = ?"
-                )
-                .bind(word_id)
-                .bind(translator_id)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            NodeType::WordInstance => {
-                let (chapter, verse, position) = nid::parse_word_instance(&base_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                // Need to find word_id first for word instance
-                let word_row = query_as::<_, (i32,)>(
-                    "SELECT word_id FROM words WHERE verse_key = ? AND position = ?",
-                )
-                .bind(&verse_key)
-                .bind(position)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                if let Some((word_id,)) = word_row {
-                    let row = query_as::<_, (String,)>(
-                        "SELECT translation FROM word_translations WHERE word_id = ? AND translator_id = ?"
-                    )
-                    .bind(word_id)
-                    .bind(translator_id)
-                    .fetch_optional(&self.pool)
-                    .await?;
-
-                    Ok(row.map(|(text,)| text))
-                } else {
-                    Ok(None)
-                }
-            }
-            _ => Ok(None),
-        }
+        Ok(row.map(|(text,)| text))
     }
 
-    async fn get_metadata(&self, node_id: &str, key: &str) -> anyhow::Result<Option<String>> {
+    async fn get_translation(&self, ukey: &str, lang: &str) -> anyhow::Result<Option<String>> {
+        let node_id = match self.registry.get_id(ukey).await? {
+            Some(id) => id,
+            None => return Ok(None),
+        };
+
+        let translator: Option<(i32,)> =
+            query_as("SELECT translator_id FROM translators WHERE language_code = ? LIMIT 1")
+                .bind(lang)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        let translator_id = match translator {
+            Some((id,)) => id,
+            None => return Ok(None),
+        };
+
+        let row: Option<(String,)> = sqlx::query_as(
+            r#"
+            SELECT COALESCE(vt.translation, wt.translation)
+            FROM nodes n
+            LEFT JOIN verse_translations vt ON n.ukey = vt.verse_key AND vt.translator_id = ?1
+            LEFT JOIN word_translations wt ON n.ukey = wt.word_id_str AND wt.translator_id = ?1 -- Assuming word_id is stored as string in nodes.ukey
+            WHERE n.id = ?2
+            "#,
+        )
+        .bind(translator_id)
+        .bind(node_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|(text,)| text))
+    }
+
+    async fn get_metadata(&self, ukey: &str, key: &str) -> anyhow::Result<Option<String>> {
         // For backwards compatibility, map old metadata keys to new tables
         match key {
-            "arabic" => self.get_quran_text(node_id).await,
-            "translation" => self.get_translation(node_id, "en").await,
+            "arabic" => self.get_quran_text(ukey).await,
+            "translation" => self.get_translation(ukey, "en").await,
             _ => {
                 // Unknown key - return None
                 Ok(None)
@@ -332,162 +240,100 @@ impl ContentRepository for SqliteContentRepository {
         }
     }
 
-    async fn get_all_metadata(&self, node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, ukey: &str) -> anyhow::Result<HashMap<String, String>> {
         let mut metadata = HashMap::new();
 
         // Get arabic text
-        if let Some(arabic) = self.get_quran_text(node_id).await? {
+        if let Some(arabic) = self.get_quran_text(ukey).await? {
             metadata.insert("arabic".to_string(), arabic);
         }
 
         // Get translation (default to English)
-        if let Some(translation) = self.get_translation(node_id, "en").await? {
+        if let Some(translation) = self.get_translation(ukey, "en").await? {
             metadata.insert("translation".to_string(), translation);
         }
 
         Ok(metadata)
     }
 
-    async fn node_exists(&self, node_id: &str) -> anyhow::Result<bool> {
-        // V2 schema: Check existence in appropriate table
-        use iqrah_core::domain::node_id as nid;
-
-        // Detect type first
-        let node_type = match nid::node_type(node_id) {
-            Ok(t) => t,
-            Err(_) => return Ok(false),
-        };
-
-        match node_type {
-            NodeType::Verse => {
-                let (chapter, verse) = nid::parse_verse(node_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let count: (i64,) = query_as("SELECT COUNT(*) FROM verses WHERE verse_key = ?")
-                    .bind(&verse_key)
-                    .fetch_one(&self.pool)
-                    .await?;
-                Ok(count.0 > 0)
-            }
-            NodeType::Chapter => {
-                let chapter_num = nid::parse_chapter(node_id)?;
-
-                let count: (i64,) =
-                    query_as("SELECT COUNT(*) FROM chapters WHERE chapter_number = ?")
-                        .bind(chapter_num)
-                        .fetch_one(&self.pool)
-                        .await?;
-                Ok(count.0 > 0)
-            }
-            NodeType::Word => {
-                let word_id = nid::parse_word(node_id)?;
-
-                let count: (i64,) = query_as("SELECT COUNT(*) FROM words WHERE word_id = ?")
-                    .bind(word_id)
-                    .fetch_one(&self.pool)
-                    .await?;
-                Ok(count.0 > 0)
-            }
-            NodeType::WordInstance => {
-                let (chapter, verse, position) = nid::parse_word_instance(node_id)?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let count: (i64,) =
-                    query_as("SELECT COUNT(*) FROM words WHERE verse_key = ? AND position = ?")
-                        .bind(&verse_key)
-                        .bind(position)
-                        .fetch_one(&self.pool)
-                        .await?;
-                Ok(count.0 > 0)
-            }
-            NodeType::Knowledge => {
-                let (base_id, _) = nid::parse_knowledge(node_id)?;
-                // Knowledge node exists if base node exists
-                Box::pin(self.node_exists(&base_id)).await
-            }
-            _ => Ok(false),
-        }
+    async fn node_exists(&self, ukey: &str) -> anyhow::Result<bool> {
+        self.registry.get_id(ukey).await.map(|id| id.is_some())
     }
 
     async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>> {
-        // V2 schema: Query from actual content tables
-        // For import checking, we primarily care about verses
-        use iqrah_core::domain::node_id as nid;
+        let rows: Vec<(String, String, Option<String>, Option<String>)> = query_as(
+            r#"
+            SELECT
+                n.ukey,
+                n.node_type,
+                kn.base_node_id,
+                kn.axis
+            FROM nodes n
+            LEFT JOIN knowledge_nodes kn ON kn.node_id = n.id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
 
-        let verse_rows = query_as::<_, (String, i64)>("SELECT verse_key, created_at FROM verses")
-            .fetch_all(&self.pool)
-            .await?;
+        rows.into_iter()
+            .map(|(ukey, node_type, base_node_ukey, axis)| {
+                let node_type: NodeType = node_type.parse()?;
+                let knowledge_node = if node_type == NodeType::Knowledge {
+                    Some(KnowledgeNode {
+                        base_node_id: base_node_ukey.unwrap(),
+                        axis: axis.unwrap().parse()?,
+                        full_id: ukey.clone(),
+                    })
+                } else {
+                    None
+                };
 
-        let nodes: Vec<Node> = verse_rows
-            .into_iter()
-            .filter_map(|(verse_key, _created_at)| {
-                // Parse verse_key to ensure we construct a valid standardized ID
-                nid::parse_verse(&verse_key).ok().map(|(ch, v)| Node {
-                    id: nid::verse(ch, v),
-                    node_type: NodeType::Verse,
-                    knowledge_node: None,
+                Ok(Node {
+                    id: ukey,
+                    node_type,
+                    knowledge_node,
                 })
             })
-            .collect();
-
-        Ok(nodes)
+            .collect()
     }
 
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>> {
-        // V2 schema: Query from appropriate table based on node_type
-        use iqrah_core::domain::node_id as nid;
+        let rows: Vec<(String, String, Option<String>, Option<String>)> = query_as(
+            r#"
+            SELECT
+                n.ukey,
+                n.node_type,
+                kn.base_node_id,
+                kn.axis
+            FROM nodes n
+            LEFT JOIN knowledge_nodes kn ON kn.node_id = n.id
+            WHERE n.node_type = ?
+            "#,
+        )
+        .bind(node_type.to_string())
+        .fetch_all(&self.pool)
+        .await?;
 
-        match node_type {
-            NodeType::Verse => {
-                let rows = query_as::<_, (String, i64)>("SELECT verse_key, created_at FROM verses")
-                    .fetch_all(&self.pool)
-                    .await?;
-
-                Ok(rows
-                    .into_iter()
-                    .filter_map(|(verse_key, _created_at)| {
-                        nid::parse_verse(&verse_key).ok().map(|(ch, v)| Node {
-                            id: nid::verse(ch, v),
-                            node_type: NodeType::Verse,
-                            knowledge_node: None,
-                        })
+        rows.into_iter()
+            .map(|(ukey, node_type, base_node_ukey, axis)| {
+                let node_type: NodeType = node_type.parse()?;
+                let knowledge_node = if node_type == NodeType::Knowledge {
+                    Some(KnowledgeNode {
+                        base_node_id: base_node_ukey.unwrap(),
+                        axis: axis.unwrap().parse()?,
+                        full_id: ukey.clone(),
                     })
-                    .collect())
-            }
-            NodeType::Word => {
-                let rows = query_as::<_, (i32, i64)>("SELECT word_id, created_at FROM words")
-                    .fetch_all(&self.pool)
-                    .await?;
+                } else {
+                    None
+                };
 
-                Ok(rows
-                    .into_iter()
-                    .map(|(word_id, _created_at)| Node {
-                        id: nid::word(word_id as i64),
-                        node_type: NodeType::Word,
-                        knowledge_node: None,
-                    })
-                    .collect())
-            }
-            NodeType::Chapter => {
-                let rows =
-                    query_as::<_, (i32, i64)>("SELECT chapter_number, created_at FROM chapters")
-                        .fetch_all(&self.pool)
-                        .await?;
-
-                Ok(rows
-                    .into_iter()
-                    .map(|(chapter_number, _created_at)| Node {
-                        id: nid::chapter(chapter_number as u8),
-                        node_type: NodeType::Chapter,
-                        knowledge_node: None,
-                    })
-                    .collect())
-            }
-            _ => {
-                // Other types (Root, Lemma, WordInstance, Knowledge) not yet supported in v2
-                Ok(Vec::new())
-            }
-        }
+                Ok(Node {
+                    id: ukey,
+                    node_type,
+                    knowledge_node,
+                })
+            })
+            .collect()
     }
 
     async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()> {
@@ -509,31 +355,27 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> anyhow::Result<()> {
-        // Batch insert edges
         for edge in edges {
-            let edge_type = match edge.edge_type {
-                EdgeType::Dependency => 0,
-                EdgeType::Knowledge => 1,
-            };
+            let source_id = self.registry.get_id(&edge.source_id).await?;
+            let target_id = self.registry.get_id(&edge.target_id).await?;
 
-            let dist_type = match edge.distribution_type {
-                DistributionType::Const => 0,
-                DistributionType::Normal => 1,
-                DistributionType::Beta => 2,
-            };
+            if let (Some(source_id), Some(target_id)) = (source_id, target_id) {
+                let edge_type = edge.edge_type as i32;
+                let dist_type = edge.distribution_type as i32;
 
-            query(
-                "INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2)
-                 VALUES (?, ?, ?, ?, ?, ?)"
-            )
-            .bind(&edge.source_id)
-            .bind(&edge.target_id)
-            .bind(edge_type)
-            .bind(dist_type)
-            .bind(edge.param1)
-            .bind(edge.param2)
-            .execute(&self.pool)
-            .await?;
+                query(
+                    "INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2)
+                     VALUES (?, ?, ?, ?, ?, ?)",
+                )
+                .bind(source_id)
+                .bind(target_id)
+                .bind(edge_type)
+                .bind(dist_type)
+                .bind(edge.param1)
+                .bind(edge.param2)
+                .execute(&self.pool)
+                .await?;
+            }
         }
 
         Ok(())
@@ -578,17 +420,15 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_adjacent_words(
         &self,
-        word_node_id: &str,
+        word_ukey: &str,
     ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
-        // V2 schema: Use words table with verse_key and position
-        use iqrah_core::domain::node_id as nid;
+        let word_id = match self.registry.get_id(word_ukey).await? {
+            Some(id) => id,
+            None => return Ok((None, None)),
+        };
 
-        // Parse word_id using node_id module (strict format "WORD:123")
-        let word_id = nid::parse_word(word_node_id)? as i32;
-
-        // Get current word's verse_key and position
         let current_word =
-            query_as::<_, (String, i32)>("SELECT verse_key, position FROM words WHERE word_id = ?")
+            query_as::<_, (String, i32)>("SELECT verse_key, position FROM words WHERE word_id = (SELECT internal_id FROM nodes WHERE id = ?)")
                 .bind(word_id)
                 .fetch_optional(&self.pool)
                 .await?;
@@ -598,84 +438,32 @@ impl ContentRepository for SqliteContentRepository {
             None => return Ok((None, None)),
         };
 
-        // Try to get previous word (position - 1 in same verse)
-        let prev_word = query_as::<_, (i32, i64)>(
-            "SELECT word_id, created_at FROM words WHERE verse_key = ? AND position = ?",
+        let prev_word_row = query_as::<_, (String,)>(
+            "SELECT n.ukey FROM nodes n JOIN words w ON n.ukey = w.word_id_str WHERE w.verse_key = ? AND w.position = ?",
         )
         .bind(&verse_key)
         .bind(position - 1)
         .fetch_optional(&self.pool)
-        .await?
-        .map(|(wid, _)| Node {
-            id: nid::word(wid as i64), // Use builder
-            node_type: NodeType::Word,
-            knowledge_node: None,
-        });
+        .await?;
 
-        // If no previous word in current verse, try last word of previous verse
-        let prev_word = if prev_word.is_none() {
-            // Parse verse_key to get chapter and verse numbers
-            // verse_key is "chapter:verse" e.g. "1:1"
-            // parse_verse handles "1:1"
-            if let Ok((chapter, verse_num)) = nid::parse_verse(&verse_key) {
-                if verse_num > 1 {
-                    let prev_verse_key = format!("{}:{}", chapter, verse_num - 1);
-                    query_as::<_, (i32, i64)>(
-                        "SELECT word_id, created_at FROM words WHERE verse_key = ? ORDER BY position DESC LIMIT 1"
-                    )
-                    .bind(&prev_verse_key)
-                    .fetch_optional(&self.pool)
-                    .await?
-                    .map(|(wid, _)| Node {
-                        id: nid::word(wid as i64), // Use builder
-                        node_type: NodeType::Word,
-                        knowledge_node: None,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+        let prev_word = if let Some((ukey,)) = prev_word_row {
+            self.get_node(&ukey).await?
         } else {
-            prev_word
+            None
         };
 
-        // Try to get next word (position + 1 in same verse)
-        let next_word = query_as::<_, (i32, i64)>(
-            "SELECT word_id, created_at FROM words WHERE verse_key = ? AND position = ?",
+        let next_word_row = query_as::<_, (String,)>(
+            "SELECT n.ukey FROM nodes n JOIN words w ON n.ukey = w.word_id_str WHERE w.verse_key = ? AND w.position = ?",
         )
         .bind(&verse_key)
         .bind(position + 1)
         .fetch_optional(&self.pool)
-        .await?
-        .map(|(wid, _)| Node {
-            id: nid::word(wid as i64), // Use builder
-            node_type: NodeType::Word,
-            knowledge_node: None,
-        });
+        .await?;
 
-        // If no next word in current verse, try first word of next verse
-        let next_word = if next_word.is_none() {
-            if let Ok((chapter, verse_num)) = nid::parse_verse(&verse_key) {
-                let next_verse_key = format!("{}:{}", chapter, verse_num + 1);
-
-                query_as::<_, (i32, i64)>(
-                    "SELECT word_id, created_at FROM words WHERE verse_key = ? ORDER BY position ASC LIMIT 1"
-                )
-                .bind(&next_verse_key)
-                .fetch_optional(&self.pool)
-                .await?
-                .map(|(wid, _)| Node {
-                    id: nid::word(wid as i64), // Use builder
-                    node_type: NodeType::Word,
-                    knowledge_node: None,
-                })
-            } else {
-                None
-            }
+        let next_word = if let Some((ukey,)) = next_word_row {
+            self.get_node(&ukey).await?
         } else {
-            next_word
+            None
         };
 
         Ok((prev_word, next_word))
@@ -1326,20 +1114,20 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_scheduler_candidates(
         &self,
         goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
+        user_id: &str,
+        now_ts: i64,
+        user_repo: &dyn iqrah_core::UserRepository,
     ) -> anyhow::Result<Vec<CandidateNode>> {
-        // Fetch node metadata from content.db
-        // Note: energy and next_due_ts are set to defaults here
-        // The caller should fetch memory states from user repository and merge
-        let rows = query_as::<_, CandidateNodeRow>(
-            "SELECT
-                ng.node_id AS node_id,
-                COALESCE(m_found.value, 0.0) AS foundational_score,
-                COALESCE(m_infl.value, 0.0) AS influence_score,
-                COALESCE(m_diff.value, 0.0) AS difficulty_score,
-                CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS quran_order
+        let rows: Vec<(String, f64, f64, f64, i64)> = query_as(
+            r#"
+            SELECT
+                n.ukey AS "node_id!",
+                COALESCE(m_found.value, 0.0) AS "foundational_score!",
+                COALESCE(m_infl.value, 0.0) AS "influence_score!",
+                COALESCE(m_diff.value, 0.0) AS "difficulty_score!",
+                CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS "quran_order!"
             FROM node_goals ng
+            JOIN nodes n ON ng.node_id = n.id
             LEFT JOIN node_metadata m_found
                 ON ng.node_id = m_found.node_id AND m_found.key = 'foundational_score'
             LEFT JOIN node_metadata m_infl
@@ -1349,46 +1137,70 @@ impl ContentRepository for SqliteContentRepository {
             LEFT JOIN node_metadata m_quran
                 ON ng.node_id = m_quran.node_id AND m_quran.key = 'quran_order'
             WHERE ng.goal_id = ?
-            ORDER BY ng.priority DESC, ng.node_id ASC",
+            ORDER BY ng.priority DESC, n.ukey ASC
+            "#,
         )
         .bind(goal_id)
         .fetch_all(&self.pool)
         .await?;
 
+        let node_ids: Vec<String> = rows.iter().map(|(id, ..)| id.clone()).collect();
+        let due_nodes = user_repo
+            .get_due_nodes(user_id, &node_ids, now_ts)
+            .await?;
+
         Ok(rows
             .into_iter()
-            .map(|r| CandidateNode {
-                id: r.node_id,
-                foundational_score: r.foundational_score,
-                influence_score: r.influence_score,
-                difficulty_score: r.difficulty_score,
-                energy: 0.0,    // Default - caller should merge from user repo
-                next_due_ts: 0, // Default - caller should merge from user repo
-                quran_order: r.quran_order,
-            })
+            .filter_map(
+                |(node_id, foundational_score, influence_score, difficulty_score, quran_order)| {
+                    if due_nodes.contains(&node_id) {
+                        Some(CandidateNode {
+                            id: node_id,
+                            foundational_score: foundational_score as f32,
+                            influence_score: influence_score as f32,
+                            difficulty_score: difficulty_score as f32,
+                            energy: 0.0,
+                            next_due_ts: 0,
+                            quran_order,
+                        })
+                    } else {
+                        None
+                    }
+                },
+            )
             .collect())
     }
 
     async fn get_prerequisite_parents(
         &self,
-        node_ids: &[String],
+        ukeys: &[String],
     ) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        if ukeys.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let mut node_ids = Vec::new();
+        for ukey in ukeys {
+            if let Some(id) = self.registry.get_id(ukey).await? {
+                node_ids.push(id);
+            }
+        }
+
         if node_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
         let mut result: HashMap<String, Vec<String>> = HashMap::new();
-
-        // SQLite parameter limit is ~999, so chunk into batches of 500
         const CHUNK_SIZE: usize = 500;
 
         for chunk in node_ids.chunks(CHUNK_SIZE) {
-            // Build parameterized query
             let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
             let sql = format!(
-                "SELECT target_id AS node_id, source_id AS parent_id
-                 FROM edges
-                 WHERE edge_type = 0 AND target_id IN ({})",
+                "SELECT n_target.ukey AS node_id, n_source.ukey AS parent_id
+                 FROM edges e
+                 JOIN nodes n_target ON e.target_id = n_target.id
+                 JOIN nodes n_source ON e.source_id = n_source.id
+                 WHERE e.edge_type = 0 AND e.target_id IN ({})",
                 placeholders
             );
 
@@ -1399,7 +1211,6 @@ impl ContentRepository for SqliteContentRepository {
 
             let rows = query.fetch_all(&self.pool).await?;
 
-            // Group by node_id
             for row in rows {
                 result.entry(row.node_id).or_default().push(row.parent_id);
             }
@@ -1428,17 +1239,20 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<String>> {
-        let rows = query_as::<_, NodeGoalRow>(
-            "SELECT node_id
-             FROM node_goals
-             WHERE goal_id = ?
-             ORDER BY priority DESC, node_id ASC",
+        let rows: Vec<(String,)> = query_as(
+            r#"
+            SELECT n.ukey
+            FROM node_goals ng
+            JOIN nodes n ON ng.node_id = n.id
+            WHERE ng.goal_id = ?
+            ORDER BY ng.priority DESC, n.ukey ASC
+            "#,
         )
         .bind(goal_id)
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| r.node_id).collect())
+        Ok(rows.into_iter().map(|r| r.0).collect())
     }
 
     async fn get_verses_batch(

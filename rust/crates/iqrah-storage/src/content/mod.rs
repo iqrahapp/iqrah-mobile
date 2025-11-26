@@ -1,4 +1,5 @@
 mod models;
+pub mod node_registry;
 pub mod repository;
 
 #[cfg(test)]
