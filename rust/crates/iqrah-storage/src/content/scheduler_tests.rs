@@ -6,8 +6,8 @@
 /// - get_goal: Goal retrieval
 /// - get_nodes_for_goal: Node listing
 use super::repository::SqliteContentRepository;
-use iqrah_core::ContentRepository;
 use crate::content::node_registry::NodeRegistry;
+use iqrah_core::ContentRepository;
 use sqlx::{query, SqlitePool};
 use std::sync::Arc;
 
@@ -119,13 +119,11 @@ async fn test_get_scheduler_candidates_with_metadata() {
     registry.load_all().await.unwrap();
     let node_id = registry.get_id("1:1").await.unwrap().unwrap();
 
-    query(
-        "INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'foundational_score', 0.9)",
-    )
-    .bind(node_id)
-    .execute(&pool)
-    .await
-    .unwrap();
+    query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'foundational_score', 0.9)")
+        .bind(node_id)
+        .execute(&pool)
+        .await
+        .unwrap();
 
     query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'influence_score', 0.8)")
         .bind(node_id)
@@ -133,13 +131,11 @@ async fn test_get_scheduler_candidates_with_metadata() {
         .await
         .unwrap();
 
-    query(
-        "INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'difficulty_score', 0.2)",
-    )
-    .bind(node_id)
-    .execute(&pool)
-    .await
-    .unwrap();
+    query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'difficulty_score', 0.2)")
+        .bind(node_id)
+        .execute(&pool)
+        .await
+        .unwrap();
 
     query("INSERT INTO node_metadata (node_id, key, value) VALUES (?, 'quran_order', 1001001)")
         .bind(node_id)

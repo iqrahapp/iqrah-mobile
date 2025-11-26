@@ -3,7 +3,7 @@
 /// These tests verify that the scheduler command works correctly end-to-end,
 /// including database initialization, session generation, and output.
 use anyhow::Result;
-use iqrah_core::{ContentRepository, UserRepository};
+use iqrah_core::{ContentRepository, SchedulerService, UserRepository};
 use iqrah_storage::{
     content::{init_content_db, node_registry::NodeRegistry, SqliteContentRepository},
     user::{init_user_db, SqliteUserRepository},
@@ -35,8 +35,9 @@ async fn test_scheduler_with_new_user() -> Result<()> {
 
     let registry = Arc::new(NodeRegistry::new(content_pool.clone()));
     registry.load_all().await?;
-    let content_repo = SqliteContentRepository::new(content_pool, registry);
-    let user_repo = SqliteUserRepository::new(user_pool);
+    let content_repo: Arc<dyn ContentRepository> =
+        Arc::new(SqliteContentRepository::new(content_pool, registry));
+    let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
     // Verify goal exists
     let goal = content_repo.get_goal("memorization:chapters-1-3").await?;
@@ -44,14 +45,17 @@ async fn test_scheduler_with_new_user() -> Result<()> {
 
     let now_ts = chrono::Utc::now().timestamp_millis();
 
-    // Get candidates for the goal
-    let candidates = content_repo
+    // Create SchedulerService and get candidates (already filtered for due/new nodes)
+    let scheduler_service = SchedulerService::new(content_repo.clone(), user_repo.clone());
+    let candidates = scheduler_service
         .get_scheduler_candidates("memorization:chapters-1-3", "test-user", now_ts)
         .await?;
+
+    // For a new user, all 493 nodes are "new" (no memory state), so all should be included
     assert_eq!(
         candidates.len(),
         493,
-        "Should have 493 candidates from expanded goal"
+        "Should have 493 candidates (all new for a new user)"
     );
 
     // Verify new user has no memory states

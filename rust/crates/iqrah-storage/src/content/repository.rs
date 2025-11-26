@@ -1,17 +1,17 @@
 use super::models::{
-    ChapterRow, ContentPackageRow, GoalRow, InstalledPackageRow,
-    LanguageRow, LemmaRow, MorphologySegmentRow, PrerequisiteRow, RootRow,
-    TranslatorRow, VerseRow, VerseTranslationRow, WordRow, WordTranslationRow,
+    ChapterRow, ContentPackageRow, GoalRow, InstalledPackageRow, LanguageRow, LemmaRow,
+    MorphologySegmentRow, PrerequisiteRow, RootRow, TranslatorRow, VerseRow, VerseTranslationRow,
+    WordRow, WordTranslationRow,
 };
+use super::node_registry::NodeRegistry;
 use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
-    domain::node_id as nid, ports::content_repository::SchedulerGoal,
-    scheduler_v2::CandidateNode, Chapter, ContentPackage, ContentRepository, DistributionType, Edge,
-    EdgeType, ImportedEdge, ImportedNode, InstalledPackage, KnowledgeNode, Language, Lemma,
-    MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
+    domain::node_id as nid, ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode,
+    Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, ImportedEdge,
+    ImportedNode, InstalledPackage, KnowledgeNode, Language, Lemma, MorphologySegment, Node,
+    NodeType, PackageType, Root, Translator, Verse, Word,
 };
-use super::node_registry::NodeRegistry;
 use sqlx::{query, query_as, SqlitePool};
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
@@ -26,6 +26,8 @@ impl SqliteContentRepository {
     }
 
     /// Helper to get the base node ID if a knowledge axis is present
+    /// TODO: Will be used when implementing knowledge axis filtering
+    #[allow(dead_code)]
     fn get_base_id<'a>(&self, node_id: &'a str) -> Cow<'a, str> {
         if let Ok((base_id, _)) = nid::parse_knowledge(node_id) {
             Cow::Owned(base_id)
@@ -118,16 +120,18 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(rows
             .into_iter()
-            .map(|(source_ukey, target_ukey, edge_type, distribution_type, param1, param2)| Edge {
-                source_id: source_ukey,
-                target_id: target_ukey,
-                edge_type: (edge_type).try_into().unwrap_or(EdgeType::Dependency),
-                distribution_type: (distribution_type)
-                    .try_into()
-                    .unwrap_or(DistributionType::Const),
-                param1,
-                param2,
-            })
+            .map(
+                |(source_ukey, target_ukey, edge_type, distribution_type, param1, param2)| Edge {
+                    source_id: source_ukey,
+                    target_id: target_ukey,
+                    edge_type: (edge_type).try_into().unwrap_or(EdgeType::Dependency),
+                    distribution_type: (distribution_type)
+                        .try_into()
+                        .unwrap_or(DistributionType::Const),
+                    param1,
+                    param2,
+                },
+            )
             .collect())
     }
 
@@ -158,16 +162,18 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(rows
             .into_iter()
-            .map(|(source_ukey, target_ukey, edge_type, distribution_type, param1, param2)| Edge {
-                source_id: source_ukey,
-                target_id: target_ukey,
-                edge_type: (edge_type).try_into().unwrap_or(EdgeType::Dependency),
-                distribution_type: (distribution_type)
-                    .try_into()
-                    .unwrap_or(DistributionType::Const),
-                param1,
-                param2,
-            })
+            .map(
+                |(source_ukey, target_ukey, edge_type, distribution_type, param1, param2)| Edge {
+                    source_id: source_ukey,
+                    target_id: target_ukey,
+                    edge_type: (edge_type).try_into().unwrap_or(EdgeType::Dependency),
+                    distribution_type: (distribution_type)
+                        .try_into()
+                        .unwrap_or(DistributionType::Const),
+                    param1,
+                    param2,
+                },
+            )
             .collect())
     }
 
@@ -1113,11 +1119,55 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_scheduler_candidates(
         &self,
-        _goal_id: &str,
+        goal_id: &str,
         _user_id: &str,
         _now_ts: i64,
     ) -> anyhow::Result<Vec<CandidateNode>> {
-        Ok(vec![])
+        // Fetch all nodes for the goal with metadata
+        // Note: energy and next_due_ts are set to defaults here
+        // They will be populated by the SchedulerService from UserRepository
+        let rows: Vec<(String, f64, f64, f64, i64)> = query_as(
+            r#"
+            SELECT
+                n.ukey AS "node_id!",
+                COALESCE(m_found.value, 0.0) AS "foundational_score!",
+                COALESCE(m_infl.value, 0.0) AS "influence_score!",
+                COALESCE(m_diff.value, 0.0) AS "difficulty_score!",
+                CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS "quran_order!"
+            FROM node_goals ng
+            JOIN nodes n ON ng.node_id = n.id
+            LEFT JOIN node_metadata m_found
+                ON ng.node_id = m_found.node_id AND m_found.key = 'foundational_score'
+            LEFT JOIN node_metadata m_infl
+                ON ng.node_id = m_infl.node_id AND m_infl.key = 'influence_score'
+            LEFT JOIN node_metadata m_diff
+                ON ng.node_id = m_diff.node_id AND m_diff.key = 'difficulty_score'
+            LEFT JOIN node_metadata m_quran
+                ON ng.node_id = m_quran.node_id AND m_quran.key = 'quran_order'
+            WHERE ng.goal_id = ?
+            ORDER BY ng.priority DESC, n.ukey ASC
+            "#,
+        )
+        .bind(goal_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(
+                |(node_id, foundational_score, influence_score, difficulty_score, quran_order)| {
+                    CandidateNode {
+                        id: node_id,
+                        foundational_score: foundational_score as f32,
+                        influence_score: influence_score as f32,
+                        difficulty_score: difficulty_score as f32,
+                        energy: 0.0,    // Will be populated by SchedulerService
+                        next_due_ts: 0, // Will be populated by SchedulerService
+                        quran_order,
+                    }
+                },
+            )
+            .collect())
     }
 
     async fn get_prerequisite_parents(

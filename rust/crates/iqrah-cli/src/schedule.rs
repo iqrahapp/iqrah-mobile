@@ -6,7 +6,7 @@ use iqrah_core::{
         blend_profile, generate_session, BanditOptimizer, ProfileName, SessionMode, UserProfile,
         BLEND_RATIO, DEFAULT_SAFE_PROFILE,
     },
-    ContentRepository, UserRepository,
+    ContentRepository, SchedulerService, UserRepository,
 };
 use iqrah_storage::{
     content::{init_content_db, node_registry::NodeRegistry, SqliteContentRepository},
@@ -51,6 +51,9 @@ pub async fn generate(
         Arc::new(SqliteContentRepository::new(content_pool, registry));
     let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
+    // Create SchedulerService to orchestrate data fetching
+    let scheduler_service = SchedulerService::new(content_repo.clone(), user_repo.clone());
+
     // Parse session mode
     let session_mode = match mode {
         "revision" => SessionMode::Revision,
@@ -61,9 +64,9 @@ pub async fn generate(
     // Get current timestamp
     let now_ts = Utc::now().timestamp_millis();
 
-    // Fetch candidates from content repository (returns defaults for energy/next_due_ts)
-    println!("   Fetching candidates for goal...");
-    let mut candidates = content_repo
+    // Fetch candidates using SchedulerService (already enriched with user memory data and filtered for due/new nodes)
+    println!("   Fetching scheduler candidates...");
+    let candidates = scheduler_service
         .get_scheduler_candidates(goal_id, user_id, now_ts)
         .await?;
 
@@ -85,31 +88,14 @@ pub async fn generate(
     println!(
         "   {} {}",
         "Found".green(),
-        format!("{} candidate nodes", candidates.len())
+        format!("{} due/new candidate nodes", candidates.len())
             .green()
             .bold()
     );
 
-    // Fetch memory states from user repository and merge
-    println!("   Fetching user memory states...");
-    let node_ids: Vec<String> = candidates.iter().map(|c| c.id.clone()).collect();
-    let memory_basics_map = user_repo.get_memory_basics(user_id, &node_ids).await?;
-
-    // Merge memory states into candidates
-    for candidate in &mut candidates {
-        if let Some(basics) = memory_basics_map.get(&candidate.id) {
-            candidate.energy = basics.energy;
-            candidate.next_due_ts = basics.next_due_ts;
-        }
-    }
-
-    println!(
-        "   Found memory states for {} nodes",
-        memory_basics_map.len()
-    );
-
     // Fetch prerequisite parent relationships
     println!("   Fetching prerequisite relationships...");
+    let node_ids: Vec<String> = candidates.iter().map(|c| c.id.clone()).collect();
     let parent_map = content_repo.get_prerequisite_parents(&node_ids).await?;
     let parent_count: usize = parent_map.values().map(|v| v.len()).sum();
     println!("   Found {} prerequisite edges", parent_count);

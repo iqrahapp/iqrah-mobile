@@ -1,7 +1,7 @@
 use anyhow::Result;
 use iqrah_core::{import_cbor_graph_from_bytes, ContentRepository};
-use iqrah_storage::{
-    content::{init_content_db, node_registry::NodeRegistry, SqliteContentRepository},
+use iqrah_storage::content::{
+    init_content_db, node_registry::NodeRegistry, SqliteContentRepository,
 };
 use std::fs::File;
 use std::sync::Arc;

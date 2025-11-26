@@ -5,6 +5,7 @@ use sqlx::FromRow;
 // V1 Schema (Legacy - for backward compatibility)
 // ============================================================================
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct EdgeRow {
     pub source_id: String,
@@ -191,6 +192,8 @@ pub struct InstalledPackageRow {
 // Scheduler v2.0 Models
 // ============================================================================
 
+// TODO: Will be used when implementing optimized batch queries for scheduler
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct CandidateNodeRow {
     pub node_id: String,
@@ -215,6 +218,8 @@ pub struct GoalRow {
     pub description: Option<String>,
 }
 
+// TODO: Will be used when implementing goal expansion queries
+#[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct NodeGoalRow {
     pub node_id: String,

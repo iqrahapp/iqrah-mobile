@@ -1,6 +1,8 @@
 use iqrah_core::domain::node_id as nid;
 use iqrah_core::{ContentRepository, NodeType};
-use iqrah_storage::{init_content_db, content::node_registry::NodeRegistry, SqliteContentRepository};
+use iqrah_storage::{
+    content::node_registry::NodeRegistry, init_content_db, SqliteContentRepository,
+};
 use std::sync::Arc;
 
 async fn setup() -> (SqliteContentRepository, Arc<NodeRegistry>) {

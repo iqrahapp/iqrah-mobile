@@ -50,7 +50,9 @@ pub use domain::{
 
 pub use ports::{ContentRepository, UserRepository};
 
-pub use services::{LearningService, PackageService, ScoreWeights, ScoredItem, SessionService};
+pub use services::{
+    LearningService, PackageService, SchedulerService, ScoreWeights, ScoredItem, SessionService,
+};
 
 pub use scheduler_v2::{
     calculate_days_overdue, calculate_priority_score, calculate_readiness,

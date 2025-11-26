@@ -1,7 +1,7 @@
 use anyhow::Result;
 use iqrah_core::{import_translators_from_json, ContentRepository};
-use iqrah_storage::{
-    content::{init_content_db, node_registry::NodeRegistry, SqliteContentRepository},
+use iqrah_storage::content::{
+    init_content_db, node_registry::NodeRegistry, SqliteContentRepository,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
