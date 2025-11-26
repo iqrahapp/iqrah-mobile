@@ -598,7 +598,6 @@ mod tests {
             _goal_id: &str,
             _user_id: &str,
             _now_ts: i64,
-            _user_repo: &dyn crate::ports::user_repository::UserRepository,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
@@ -1036,7 +1035,6 @@ mod tests {
             _goal_id: &str,
             _user_id: &str,
             _now_ts: i64,
-            _user_repo: &dyn crate::ports::user_repository::UserRepository,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }

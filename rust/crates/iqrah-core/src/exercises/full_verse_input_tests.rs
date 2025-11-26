@@ -316,7 +316,6 @@ impl ContentRepository for MockContentRepo {
         _goal_id: &str,
         _user_id: &str,
         _now_ts: i64,
-        _user_repo: &dyn crate::ports::user_repository::UserRepository,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }

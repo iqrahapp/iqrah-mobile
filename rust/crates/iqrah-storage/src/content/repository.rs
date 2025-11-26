@@ -1113,62 +1113,11 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_scheduler_candidates(
         &self,
-        goal_id: &str,
-        user_id: &str,
-        now_ts: i64,
-        user_repo: &dyn iqrah_core::UserRepository,
+        _goal_id: &str,
+        _user_id: &str,
+        _now_ts: i64,
     ) -> anyhow::Result<Vec<CandidateNode>> {
-        let rows: Vec<(String, f64, f64, f64, i64)> = query_as(
-            r#"
-            SELECT
-                n.ukey AS "node_id!",
-                COALESCE(m_found.value, 0.0) AS "foundational_score!",
-                COALESCE(m_infl.value, 0.0) AS "influence_score!",
-                COALESCE(m_diff.value, 0.0) AS "difficulty_score!",
-                CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS "quran_order!"
-            FROM node_goals ng
-            JOIN nodes n ON ng.node_id = n.id
-            LEFT JOIN node_metadata m_found
-                ON ng.node_id = m_found.node_id AND m_found.key = 'foundational_score'
-            LEFT JOIN node_metadata m_infl
-                ON ng.node_id = m_infl.node_id AND m_infl.key = 'influence_score'
-            LEFT JOIN node_metadata m_diff
-                ON ng.node_id = m_diff.node_id AND m_diff.key = 'difficulty_score'
-            LEFT JOIN node_metadata m_quran
-                ON ng.node_id = m_quran.node_id AND m_quran.key = 'quran_order'
-            WHERE ng.goal_id = ?
-            ORDER BY ng.priority DESC, n.ukey ASC
-            "#,
-        )
-        .bind(goal_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        let node_ids: Vec<String> = rows.iter().map(|(id, ..)| id.clone()).collect();
-        let due_nodes = user_repo
-            .get_due_nodes(user_id, &node_ids, now_ts)
-            .await?;
-
-        Ok(rows
-            .into_iter()
-            .filter_map(
-                |(node_id, foundational_score, influence_score, difficulty_score, quran_order)| {
-                    if due_nodes.contains(&node_id) {
-                        Some(CandidateNode {
-                            id: node_id,
-                            foundational_score: foundational_score as f32,
-                            influence_score: influence_score as f32,
-                            difficulty_score: difficulty_score as f32,
-                            energy: 0.0,
-                            next_due_ts: 0,
-                            quran_order,
-                        })
-                    } else {
-                        None
-                    }
-                },
-            )
-            .collect())
+        Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
