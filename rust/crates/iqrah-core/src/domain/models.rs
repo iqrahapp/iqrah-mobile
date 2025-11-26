@@ -234,14 +234,14 @@ impl From<u8> for ReviewGrade {
 // Propagation event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationEvent {
-    pub source_node_id: String,
+    pub source_node_id: i64,
     pub event_timestamp: DateTime<Utc>,
     pub details: Vec<PropagationDetail>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationDetail {
-    pub target_node_id: String,
+    pub target_node_id: i64,
     pub energy_change: f64,
     pub reason: String,
 }
@@ -250,23 +250,23 @@ pub struct PropagationDetail {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Exercise {
     Recall {
-        node_id: String,
+        node_id: i64,
         question: String,
         answer: String,
     },
     Cloze {
-        node_id: String,
+        node_id: i64,
         text: String,
         blank_word: String,
     },
     McqArToEn {
-        node_id: String,
+        node_id: i64,
         question: String,
         correct_answer: String,
         distractors: Vec<String>,
     },
     McqEnToAr {
-        node_id: String,
+        node_id: i64,
         question: String,
         correct_answer: String,
         distractors: Vec<String>,

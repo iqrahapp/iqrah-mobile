@@ -16,7 +16,7 @@ pub trait Exercise: Send + Sync + std::any::Any {
     fn get_hint(&self) -> Option<String>;
 
     /// Get the node ID this exercise is for
-    fn get_node_id(&self) -> &str;
+    fn get_node_id(&self) -> i64;
 
     /// Get the exercise type name
     fn get_type_name(&self) -> &'static str;

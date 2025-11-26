@@ -96,24 +96,24 @@ impl ExerciseService {
         match axis {
             KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization => {
                 let exercise =
-                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning => {
                 let exercise =
-                    TranslationExercise::new(node_id, &*self.content_repo).await?;
+                    TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tafsir => {
                 // For now, treat tafsir like translation
                 let exercise =
-                    TranslationExercise::new(node_id, &*self.content_repo).await?;
+                    TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
                 // Tajweed not implemented yet, fall back to memorization
                 let exercise =
-                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
         }
@@ -123,23 +123,24 @@ impl ExerciseService {
     pub async fn generate_exercise_for_axis(
         &self,
         node_id: i64,
+        ukey: &str,
         axis: KnowledgeAxis,
     ) -> Result<ExerciseType> {
         match axis {
             KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization => {
                 let exercise =
-                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning | KnowledgeAxis::Tafsir => {
                 let exercise =
-                    TranslationExercise::new(node_id, &*self.content_repo).await?;
+                    TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
                 // Tajweed not implemented yet, fall back to memorization
                 let exercise =
-                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
         }
@@ -161,23 +162,16 @@ impl ExerciseService {
     /// - User preferences
     /// - Exercise variety (randomization)
     pub async fn generate_exercise_v2(&self, node_id: i64, ukey: &str) -> Result<ExerciseData> {
-        // Strip knowledge axis suffix if present
-        let base_ukey = if let Some(kn) = KnowledgeNode::parse(ukey) {
-            kn.base_node_id
-        } else {
-            ukey.to_string()
-        };
-
         // Route based on node type prefix
-        if base_ukey.starts_with("WORD:") || base_ukey.starts_with("WORD_INSTANCE:") {
+        if ukey.starts_with("WORD:") || ukey.starts_with("WORD_INSTANCE:") {
             // Word-level exercises
-            generators::generate_memorization(node_id, &*self.content_repo).await
-        } else if base_ukey.starts_with("VERSE:") {
+            generators::generate_memorization(node_id, ukey, &*self.content_repo).await
+        } else if ukey.starts_with("VERSE:") {
             // Verse-level exercises
-            generators::generate_full_verse_input(node_id, &*self.content_repo).await
-        } else if base_ukey.starts_with("CHAPTER:") {
+            generators::generate_full_verse_input(node_id, ukey, &*self.content_repo).await
+        } else if ukey.starts_with("CHAPTER:") {
             // Chapter-level exercises
-            generators::generate_ayah_chain(node_id, &*self.content_repo).await
+            generators::generate_ayah_chain(node_id, ukey, &*self.content_repo).await
         } else {
             Err(anyhow::anyhow!(
                 "Cannot determine exercise type for node: {}",
@@ -188,15 +182,15 @@ impl ExerciseService {
 
     /// Generate an MCQ exercise (Arabic to English)
     /// Tests translation understanding with multiple choice
-    pub async fn generate_mcq_ar_to_en(&self, node_id: i64) -> Result<ExerciseType> {
-        let exercise = McqExercise::new_ar_to_en(node_id, &*self.content_repo).await?;
+    pub async fn generate_mcq_ar_to_en(&self, node_id: i64, ukey: &str) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_ar_to_en(node_id, ukey, &*self.content_repo).await?;
         Ok(ExerciseType::McqArToEn(Box::new(exercise)))
     }
 
     /// Generate an MCQ exercise (English to Arabic)
     /// Tests memorization with multiple choice
-    pub async fn generate_mcq_en_to_ar(&self, node_id: i64) -> Result<ExerciseType> {
-        let exercise = McqExercise::new_en_to_ar(node_id, &*self.content_repo).await?;
+    pub async fn generate_mcq_en_to_ar(&self, node_id: i64, ukey: &str) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_en_to_ar(node_id, ukey, &*self.content_repo).await?;
         Ok(ExerciseType::McqEnToAr(Box::new(exercise)))
     }
 
@@ -643,7 +637,10 @@ mod tests {
         let service = ExerciseService::new(content_repo);
 
         // Use MCQ exercise (doesn't require semantic model)
-        let exercise = service.generate_mcq_ar_to_en(111).await.unwrap();
+        let exercise = service
+            .generate_mcq_ar_to_en(111, "WORD:1:1:1")
+            .await
+            .unwrap();
 
         let ex = exercise.as_exercise();
         // MCQ should accept the correct answer
@@ -675,7 +672,10 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_mcq_ar_to_en(111).await.unwrap();
+        let exercise = service
+            .generate_mcq_ar_to_en(111, "WORD:1:1:1")
+            .await
+            .unwrap();
 
         let ex = exercise.as_exercise();
         assert_eq!(ex.get_type_name(), "mcq_ar_to_en");
@@ -687,7 +687,10 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_mcq_en_to_ar(111).await.unwrap();
+        let exercise = service
+            .generate_mcq_en_to_ar(111, "WORD:1:1:1")
+            .await
+            .unwrap();
 
         let ex = exercise.as_exercise();
         assert_eq!(ex.get_type_name(), "mcq_en_to_ar");
@@ -699,7 +702,10 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_mcq_ar_to_en(111).await.unwrap();
+        let exercise = service
+            .generate_mcq_ar_to_en(111, "WORD:1:1:1")
+            .await
+            .unwrap();
 
         let ex = exercise.as_exercise();
         let response = service.check_answer(ex, "In the name");
@@ -1038,7 +1044,10 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_exercise_v2("WORD:1").await.unwrap();
+        let exercise = service
+            .generate_exercise_v2(1, "WORD:1:1:1")
+            .await
+            .unwrap();
 
         // Should generate Memorization exercise
         assert_eq!(exercise.type_name(), "memorization");
@@ -1091,7 +1100,7 @@ mod tests {
         let service = ExerciseService::new(content_repo);
 
         // Should return error for unknown node type
-        let result = service.generate_exercise_v2("INVALID:123").await;
+        let result = service.generate_exercise_v2(123, "INVALID:123").await;
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -1104,7 +1113,10 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_exercise_v2("WORD:1").await.unwrap();
+        let exercise = service
+            .generate_exercise_v2(1, "WORD:1:1:1")
+            .await
+            .unwrap();
 
         // Should be serializable to JSON
         let json = serde_json::to_string(&exercise).unwrap();

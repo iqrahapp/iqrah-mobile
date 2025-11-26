@@ -10,7 +10,8 @@ use rand::seq::SliceRandom;
 /// Supports both Arabic (memorization) and Translation questions
 #[derive(Debug)]
 pub struct McqExercise {
-    node_id: String,
+    node_id: i64,
+    ukey: String,
     question: String,
     correct_answer: String,
     options: Vec<String>, // All options including correct answer, shuffled
@@ -28,25 +29,19 @@ pub enum McqType {
 impl McqExercise {
     /// Create a new MCQ exercise (Arabic to English)
     pub async fn new_ar_to_en(
-        node_id: String,
+        node_id: i64,
+        ukey: &str,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
-        // Parse knowledge node to get base content
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
-            kn.base_node_id
-        } else {
-            node_id.clone()
-        };
-
-        // Get the word text (Arabic)
+        // Get the word text (Arabic) using the i64 ID
         let word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", node_id))?;
 
-        // Get correct translation
+        // Get correct translation using the i64 ID
         let correct_answer = content_repo
-            .get_translation(&base_node_id, "en")
+            .get_translation(node_id, "en")
             .await?
             .unwrap_or_else(|| "[Translation not available]".to_string());
 
@@ -63,6 +58,7 @@ impl McqExercise {
 
         Ok(Self {
             node_id,
+            ukey: ukey.to_string(),
             question,
             correct_answer,
             options,
@@ -72,25 +68,19 @@ impl McqExercise {
 
     /// Create a new MCQ exercise (English to Arabic)
     pub async fn new_en_to_ar(
-        node_id: String,
+        node_id: i64,
+        ukey: &str,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
-        // Parse knowledge node to get base content
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
-            kn.base_node_id
-        } else {
-            node_id.clone()
-        };
-
         // Get the word text (Arabic) - this is the correct answer
         let correct_answer = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", node_id))?;
 
         // Get translation for the question
         let translation = content_repo
-            .get_translation(&base_node_id, "en")
+            .get_translation(node_id, "en")
             .await?
             .unwrap_or_else(|| "[Translation not available]".to_string());
 
@@ -107,6 +97,7 @@ impl McqExercise {
 
         Ok(Self {
             node_id,
+            ukey: ukey.to_string(),
             question,
             correct_answer,
             options,

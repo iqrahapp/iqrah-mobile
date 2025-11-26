@@ -163,8 +163,16 @@ impl ContentRepository for MockContentRepo {
     async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
         Ok(None)
     }
-    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
-        unimplemented!()
+        async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+            // This is a simplified mock. A real implementation would parse the ukey
+            // and query the database. Here, we'll just return a dummy node.
+            let parts: Vec<&str> = ukey.split(':').collect();
+            let id = parts.last().unwrap().parse::<i64>().unwrap_or(0);
+            Ok(Some(crate::Node {
+                id,
+                ukey: ukey.to_string(),
+                node_type: crate::NodeType::Verse,
+            }))
     }
 
     async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -176,16 +184,7 @@ impl ContentRepository for MockContentRepo {
     }
 
     async fn get_translation(&self, node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
-        // This mock is simplified. It uses the last digit of the i64 ID to find the word
-        // in a hardcoded verse. This is a hack for testing.
-        let pos = (node_id % 10) as i32;
-        let verse_key = if node_id < 120 { "1:1" } else { "1:2" };
-        if let Some(words) = self.words.get(verse_key) {
-            if let Some(word) = words.iter().find(|w| w.position == pos) {
-                return Ok(self.word_translations.get(&word.id).cloned());
-            }
-        }
-        Ok(None)
+            Ok(self.word_translations.get(&(node_id as i32)).cloned())
     }
 
     async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
@@ -448,10 +447,9 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_contextual_translation_basic() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+        .await
+        .unwrap();
 
     // Verify question includes verse context
     let question = exercise.generate_question();
@@ -463,10 +461,9 @@ async fn test_contextual_translation_basic() {
 #[tokio::test]
 async fn test_contextual_translation_correct_answer() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+        .await
+        .unwrap();
 
     // Check correct answer
     assert!(exercise.check_answer("In the name"));
@@ -480,10 +477,9 @@ async fn test_contextual_translation_correct_answer() {
 #[tokio::test]
 async fn test_contextual_translation_has_four_options() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
+        .await
+        .unwrap();
 
     let options = exercise.get_options();
     assert_eq!(options.len(), 4); // 1 correct + 3 distractors
@@ -492,10 +488,9 @@ async fn test_contextual_translation_has_four_options() {
 #[tokio::test]
 async fn test_contextual_translation_options_contain_correct() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
+        .await
+        .unwrap();
 
     let options = exercise.get_options();
     assert!(options.contains(&"of Allah".to_string()));
@@ -504,10 +499,9 @@ async fn test_contextual_translation_options_contain_correct() {
 #[tokio::test]
 async fn test_contextual_translation_distractors_are_different() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:3".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(113, "WORD_INSTANCE:1:1:3", &repo)
+        .await
+        .unwrap();
 
     let options = exercise.get_options();
     let correct = exercise.get_correct_answer();
@@ -525,10 +519,9 @@ async fn test_contextual_translation_distractors_are_different() {
 #[tokio::test]
 async fn test_contextual_translation_type_name() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+        .await
+        .unwrap();
 
     assert_eq!(exercise.get_type_name(), "contextual_translation");
 }
@@ -536,10 +529,9 @@ async fn test_contextual_translation_type_name() {
 #[tokio::test]
 async fn test_contextual_translation_hint() {
     let repo = MockContentRepo::new();
-    let exercise =
-        ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+        .await
+        .unwrap();
 
     let hint = exercise.get_hint();
     assert!(hint.is_some());

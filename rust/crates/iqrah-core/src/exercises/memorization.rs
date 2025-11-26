@@ -10,37 +10,41 @@ use rand::seq::SliceRandom;
 /// Exercise for memorizing Quranic words
 /// Tests the user's ability to recall the exact Arabic text using semantic similarity
 pub struct MemorizationExercise {
-    node_id: String,
-    #[allow(dead_code)]
-    base_node_id: String,
+    node_id: i64,
+    ukey: String,
     word_text: String,
     verse_context: Option<String>,
 }
 
 impl MemorizationExercise {
     /// Create a new memorization exercise
-    pub async fn new(node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
-        // Parse the knowledge node to get base content node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
-            kn.base_node_id
-        } else {
-            // If not a knowledge node, use the node_id directly
-            node_id.clone()
-        };
-
-        // Get the word text
+    pub async fn new(
+        node_id: i64,
+        ukey: &str,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
+        // Get the word text from the repository using the integer ID
         let word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node ID: {}", node_id))?;
 
-        // Try to get verse context for hints
-        // Extract verse key from word node ID (e.g., "WORD:1:1:1" -> "VERSE:1:1")
-        let verse_context = if base_node_id.starts_with("WORD:") {
-            let parts: Vec<&str> = base_node_id.split(':').collect();
+        // Try to get verse context for hints by parsing the ukey
+        let verse_context = if ukey.starts_with("WORD:") {
+            let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() >= 3 {
-                let verse_key = format!("VERSE:{}:{}", parts[1], parts[2]);
-                content_repo.get_quran_text(&verse_key).await.ok().flatten()
+                let verse_ukey = format!("VERSE:{}:{}", parts[1], parts[2]);
+                // To get the verse text, we'd need to look up its i64 ID first.
+                // This is a simplification for now. A more robust solution might involve
+                // a `get_node_by_ukey` call to get the verse's i64 ID.
+                // For the purpose of this refactoring, we will assume this logic might
+                // need to be adapted or that `get_quran_text` could also accept a ukey.
+                // Let's assume a lookup is needed.
+                if let Some(verse_node) = content_repo.get_node_by_ukey(&verse_ukey).await? {
+                    content_repo.get_quran_text(verse_node.id).await.ok().flatten()
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -50,7 +54,7 @@ impl MemorizationExercise {
 
         Ok(Self {
             node_id,
-            base_node_id,
+            ukey: ukey.to_string(),
             word_text,
             verse_context,
         })
