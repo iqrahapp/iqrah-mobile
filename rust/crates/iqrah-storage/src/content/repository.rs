@@ -1126,16 +1126,16 @@ impl ContentRepository for SqliteContentRepository {
         // Fetch all nodes for the goal with metadata
         // Note: energy and next_due_ts are set to defaults here
         // They will be populated by the SchedulerService from UserRepository
+        // Note: Current migrations use TEXT node_ids, so we query directly without joining nodes table
         let rows: Vec<(String, f64, f64, f64, i64)> = query_as(
             r#"
             SELECT
-                n.ukey AS "node_id!",
+                ng.node_id AS "node_id!",
                 COALESCE(m_found.value, 0.0) AS "foundational_score!",
                 COALESCE(m_infl.value, 0.0) AS "influence_score!",
                 COALESCE(m_diff.value, 0.0) AS "difficulty_score!",
                 CAST(COALESCE(m_quran.value, 0) AS INTEGER) AS "quran_order!"
             FROM node_goals ng
-            JOIN nodes n ON ng.node_id = n.id
             LEFT JOIN node_metadata m_found
                 ON ng.node_id = m_found.node_id AND m_found.key = 'foundational_score'
             LEFT JOIN node_metadata m_infl
@@ -1145,7 +1145,7 @@ impl ContentRepository for SqliteContentRepository {
             LEFT JOIN node_metadata m_quran
                 ON ng.node_id = m_quran.node_id AND m_quran.key = 'quran_order'
             WHERE ng.goal_id = ?
-            ORDER BY ng.priority DESC, n.ukey ASC
+            ORDER BY ng.priority DESC, ng.node_id ASC
             "#,
         )
         .bind(goal_id)
@@ -1178,34 +1178,23 @@ impl ContentRepository for SqliteContentRepository {
             return Ok(HashMap::new());
         }
 
-        let mut node_ids = Vec::new();
-        for ukey in ukeys {
-            if let Some(id) = self.registry.get_id(ukey).await? {
-                node_ids.push(id);
-            }
-        }
-
-        if node_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-
         let mut result: HashMap<String, Vec<String>> = HashMap::new();
         const CHUNK_SIZE: usize = 500;
 
-        for chunk in node_ids.chunks(CHUNK_SIZE) {
+        // Current migrations use TEXT source_id/target_id in edges table
+        // Query directly using string node identifiers
+        for chunk in ukeys.chunks(CHUNK_SIZE) {
             let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
             let sql = format!(
-                "SELECT n_target.ukey AS node_id, n_source.ukey AS parent_id
-                 FROM edges e
-                 JOIN nodes n_target ON e.target_id = n_target.id
-                 JOIN nodes n_source ON e.source_id = n_source.id
-                 WHERE e.edge_type = 0 AND e.target_id IN ({})",
+                "SELECT target_id AS node_id, source_id AS parent_id
+                 FROM edges
+                 WHERE edge_type = 0 AND target_id IN ({})",
                 placeholders
             );
 
             let mut query = query_as::<_, PrerequisiteRow>(&sql);
-            for node_id in chunk {
-                query = query.bind(node_id);
+            for ukey in chunk {
+                query = query.bind(ukey);
             }
 
             let rows = query.fetch_all(&self.pool).await?;
@@ -1238,13 +1227,13 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<String>> {
+        // Current migrations use TEXT node_id in node_goals table
         let rows: Vec<(String,)> = query_as(
             r#"
-            SELECT n.ukey
-            FROM node_goals ng
-            JOIN nodes n ON ng.node_id = n.id
-            WHERE ng.goal_id = ?
-            ORDER BY ng.priority DESC, n.ukey ASC
+            SELECT node_id
+            FROM node_goals
+            WHERE goal_id = ?
+            ORDER BY priority DESC, node_id ASC
             "#,
         )
         .bind(goal_id)
