@@ -68,7 +68,7 @@ impl UserProfile {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateNode {
     /// Node ID (e.g., "1:1", "WORD:1:1:1")
-    pub id: String,
+    pub id: i64,
 
     /// Foundational score: PageRank on forward graph (0.0-1.0)
     pub foundational_score: f32,
@@ -103,7 +103,7 @@ pub struct InMemNode {
     pub data: CandidateNode,
 
     /// IDs of prerequisite parents (nodes that must be mastered first)
-    pub parent_ids: Vec<String>,
+    pub parent_ids: Vec<i64>,
 }
 
 impl InMemNode {
@@ -116,7 +116,7 @@ impl InMemNode {
     }
 
     /// Creates a new in-memory node with specified parents.
-    pub fn with_parents(data: CandidateNode, parent_ids: Vec<String>) -> Self {
+    pub fn with_parents(data: CandidateNode, parent_ids: Vec<i64>) -> Self {
         Self { data, parent_ids }
     }
 }
@@ -126,7 +126,7 @@ impl InMemNode {
 // ============================================================================
 
 /// Map of node_id -> energy for looking up parent energies.
-pub type ParentEnergyMap = HashMap<String, f32>;
+pub type ParentEnergyMap = HashMap<i64, f32>;
 
 // ============================================================================
 // MEMORY BASICS
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn test_in_mem_node_creation() {
         let candidate = CandidateNode {
-            id: "1:1".to_string(),
+            id: 1,
             foundational_score: 0.5,
             influence_score: 0.3,
             difficulty_score: 0.2,
@@ -193,13 +193,10 @@ mod tests {
         };
 
         let node = InMemNode::new(candidate.clone());
-        assert_eq!(node.data.id, "1:1");
+        assert_eq!(node.data.id, 1);
         assert!(node.parent_ids.is_empty());
 
-        let node_with_parents = InMemNode::with_parents(
-            candidate,
-            vec!["ROOT:ktb".to_string(), "LEMMA:kataba".to_string()],
-        );
+        let node_with_parents = InMemNode::with_parents(candidate, vec![100, 200]);
         assert_eq!(node_with_parents.parent_ids.len(), 2);
     }
 }

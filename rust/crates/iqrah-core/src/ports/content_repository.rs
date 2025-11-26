@@ -12,25 +12,26 @@ pub trait ContentRepository: Send + Sync {
     // ========================================================================
 
     /// Get a node by ID
-    async fn get_node(&self, node_id: &str) -> anyhow::Result<Option<Node>>;
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<Node>>;
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<Node>>;
 
     /// Get edges from a source node
-    async fn get_edges_from(&self, source_id: &str) -> anyhow::Result<Vec<Edge>>;
+    async fn get_edges_from(&self, source_id: i64) -> anyhow::Result<Vec<Edge>>;
 
     /// Get Quranic text (Arabic) for a node
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>>;
+    async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>>;
 
     /// Get translation for a node in a specific language
-    async fn get_translation(&self, node_id: &str, lang: &str) -> anyhow::Result<Option<String>>;
+    async fn get_translation(&self, node_id: i64, lang: &str) -> anyhow::Result<Option<String>>;
 
     /// Get node metadata by key (for backwards compatibility)
-    async fn get_metadata(&self, node_id: &str, key: &str) -> anyhow::Result<Option<String>>;
+    async fn get_metadata(&self, node_id: i64, key: &str) -> anyhow::Result<Option<String>>;
 
     /// Get all metadata for a node
-    async fn get_all_metadata(&self, node_id: &str) -> anyhow::Result<HashMap<String, String>>;
+    async fn get_all_metadata(&self, node_id: i64) -> anyhow::Result<HashMap<String, String>>;
 
     /// Check if node exists
-    async fn node_exists(&self, node_id: &str) -> anyhow::Result<bool>;
+    async fn node_exists(&self, node_id: i64) -> anyhow::Result<bool>;
 
     /// Get all nodes
     async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>>;
@@ -38,20 +39,14 @@ pub trait ContentRepository: Send + Sync {
     /// Get nodes by type
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>>;
 
-    /// Batch insert nodes (for CBOR import)
-    async fn insert_nodes_batch(&self, nodes: &[ImportedNode]) -> anyhow::Result<()>;
-
-    /// Batch insert edges (for CBOR import)
-    async fn insert_edges_batch(&self, edges: &[ImportedEdge]) -> anyhow::Result<()>;
-
     /// Get all WORD nodes within the given ayah node IDs (ordered by position)
-    async fn get_words_in_ayahs(&self, ayah_node_ids: &[String]) -> anyhow::Result<Vec<Node>>;
+    async fn get_words_in_ayahs(&self, ayah_node_ids: &[i64]) -> anyhow::Result<Vec<Node>>;
 
     /// Get the adjacent word nodes (previous and next) for a given word
     /// Returns (previous_word, next_word) where either can be None if at boundaries
     async fn get_adjacent_words(
         &self,
-        word_node_id: &str,
+        word_node_id: i64,
     ) -> anyhow::Result<(Option<Node>, Option<Node>)>;
 
     // ========================================================================
@@ -208,8 +203,6 @@ pub trait ContentRepository: Send + Sync {
     async fn get_scheduler_candidates(
         &self,
         goal_id: &str,
-        user_id: &str,
-        now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>>;
 
     /// Get prerequisite parent IDs for a set of nodes
@@ -224,14 +217,14 @@ pub trait ContentRepository: Send + Sync {
     /// HashMap mapping each node_id to its list of prerequisite parent node_ids
     async fn get_prerequisite_parents(
         &self,
-        node_ids: &[String],
-    ) -> anyhow::Result<HashMap<String, Vec<String>>>;
+        node_ids: &[i64],
+    ) -> anyhow::Result<HashMap<i64, Vec<i64>>>;
 
     /// Get a goal by ID
     async fn get_goal(&self, goal_id: &str) -> anyhow::Result<Option<SchedulerGoal>>;
 
     /// Get all nodes associated with a goal
-    async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<String>>;
+    async fn get_nodes_for_goal(&self, goal_id: &str) -> anyhow::Result<Vec<i64>>;
 
     // ========================================================================
     // Batch Query Methods (for exercise content fetching optimization)

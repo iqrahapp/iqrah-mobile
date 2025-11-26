@@ -202,8 +202,8 @@ pub struct CandidateNodeRow {
 
 #[derive(Debug, Clone, FromRow)]
 pub struct PrerequisiteRow {
-    pub node_id: String,
-    pub parent_id: String,
+    pub node_id: i64,
+    pub parent_id: i64,
 }
 
 #[derive(Debug, Clone, FromRow)]

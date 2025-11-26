@@ -156,40 +156,32 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<Node>> {
+        async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<Node>> {
             Ok(Some(Node {
-                id: "test".to_string(),
+                id: 1,
+                ukey: "test".to_string(),
                 node_type: NodeType::Word,
-                knowledge_node: None,
             }))
         }
+        async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<Node>> {
+            unimplemented!()
+        }
 
-        async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+        async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
 
-        async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-            // Handle WORD_INSTANCE:chapter:verse:position format
-            if node_id.starts_with("WORD_INSTANCE:") || node_id.starts_with("WORD:") {
-                let parts: Vec<&str> = node_id.split(':').collect();
-                if parts.len() >= 4 {
-                    let verse_key = format!("{}:{}", parts[1], parts[2]);
-                    let position: i32 = parts[3].parse().unwrap_or(1);
-
-                    if let Some(words) = self.words.get(&verse_key) {
-                        if let Some(word) = words.iter().find(|w| w.position == position) {
-                            return Ok(Some(word.text_uthmani.clone()));
-                        }
-                    }
-                }
-            }
-
-            // Handle VERSE:chapter:verse format
-            if node_id.starts_with("VERSE:") {
-                let verse_key = node_id.strip_prefix("VERSE:").unwrap_or("");
-                if let Some(verse) = self.verses.get(verse_key) {
-                    return Ok(Some(verse.text_uthmani.clone()));
-                }
+        async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
+            // This mock uses a simple mapping for tests, not a real lookup.
+            // The logic here is a hack to map i64 back to the string keys used internally.
+            let node_id_str = node_id.to_string();
+            let verse_key = if node_id_str.starts_with("11") {
+                "1:1"
+            } else {
+                "1:2"
+            };
+            if let Some(verse) = self.verses.get(verse_key) {
+                return Ok(Some(verse.text_uthmani.clone()));
             }
 
             Ok(None)
@@ -197,24 +189,24 @@ mod tests {
 
         async fn get_translation(
             &self,
-            _node_id: &str,
+            _node_id: i64,
             _lang: &str,
         ) -> anyhow::Result<Option<String>> {
             Ok(Some("test translation".to_string()))
         }
 
-        async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+        async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
             Ok(None)
         }
 
         async fn get_all_metadata(
             &self,
-            _node_id: &str,
+            _node_id: i64,
         ) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
-        async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+        async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
             Ok(true)
         }
 
@@ -226,21 +218,13 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> anyhow::Result<Vec<Node>> {
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<Node>> {
             Ok(vec![])
         }
 
         async fn get_adjacent_words(
             &self,
-            _word_node_id: &str,
+            _word_node_id: i64,
         ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
@@ -418,16 +402,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
             Ok(std::collections::HashMap::new())
         }
 
@@ -438,7 +420,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
             Ok(vec![])
         }
 
@@ -476,10 +458,9 @@ mod tests {
     #[tokio::test]
     async fn test_next_word_mcq_easy_generates_correct_question() {
         let repo = MockContentRepo::new();
-        let exercise =
-            NextWordMcqExercise::new("VERSE:1:1".to_string(), NextWordDifficulty::Easy, &repo)
-                .await
-                .unwrap();
+        let exercise = NextWordMcqExercise::new(11, NextWordDifficulty::Easy, &repo)
+            .await
+            .unwrap();
 
         use crate::exercises::Exercise;
         let question = exercise.generate_question();
@@ -494,10 +475,9 @@ mod tests {
     #[tokio::test]
     async fn test_next_word_mcq_correct_answer() {
         let repo = MockContentRepo::new();
-        let exercise =
-            NextWordMcqExercise::new("VERSE:1:1".to_string(), NextWordDifficulty::Easy, &repo)
-                .await
-                .unwrap();
+        let exercise = NextWordMcqExercise::new(11, NextWordDifficulty::Easy, &repo)
+            .await
+            .unwrap();
 
         use crate::exercises::Exercise;
 
@@ -512,10 +492,9 @@ mod tests {
     #[tokio::test]
     async fn test_next_word_mcq_has_four_options() {
         let repo = MockContentRepo::new();
-        let exercise =
-            NextWordMcqExercise::new("VERSE:1:1".to_string(), NextWordDifficulty::Easy, &repo)
-                .await
-                .unwrap();
+        let exercise = NextWordMcqExercise::new(11, NextWordDifficulty::Easy, &repo)
+            .await
+            .unwrap();
 
         let options = exercise.get_options();
         assert_eq!(options.len(), 4); // 1 correct + 3 distractors
@@ -524,10 +503,9 @@ mod tests {
     #[tokio::test]
     async fn test_next_word_mcq_easy_distractors_from_same_verse() {
         let repo = MockContentRepo::new();
-        let exercise =
-            NextWordMcqExercise::new("VERSE:1:1".to_string(), NextWordDifficulty::Easy, &repo)
-                .await
-                .unwrap();
+        let exercise = NextWordMcqExercise::new(11, NextWordDifficulty::Easy, &repo)
+            .await
+            .unwrap();
 
         let options = exercise.get_options();
 
@@ -544,10 +522,9 @@ mod tests {
     #[tokio::test]
     async fn test_next_word_mcq_medium_distractors_from_same_chapter() {
         let repo = MockContentRepo::new();
-        let exercise =
-            NextWordMcqExercise::new("VERSE:1:1".to_string(), NextWordDifficulty::Medium, &repo)
-                .await
-                .unwrap();
+        let exercise = NextWordMcqExercise::new(11, NextWordDifficulty::Medium, &repo)
+            .await
+            .unwrap();
 
         let options = exercise.get_options();
         assert_eq!(options.len(), 4);
@@ -562,7 +539,7 @@ mod tests {
     async fn test_missing_word_mcq_generates_blank() {
         let repo = MockContentRepo::new();
         let exercise = MissingWordMcqExercise::new(
-            "WORD_INSTANCE:1:1:2".to_string(), // Second word "ٱللَّهِ"
+            112, // Second word "ٱللَّهِ"
             &repo,
         )
         .await
@@ -581,9 +558,7 @@ mod tests {
     #[tokio::test]
     async fn test_missing_word_mcq_correct_answer() {
         let repo = MockContentRepo::new();
-        let exercise = MissingWordMcqExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise = MissingWordMcqExercise::new(112, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
 
@@ -596,9 +571,7 @@ mod tests {
     #[tokio::test]
     async fn test_missing_word_mcq_distractors_from_same_verse() {
         let repo = MockContentRepo::new();
-        let exercise = MissingWordMcqExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise = MissingWordMcqExercise::new(112, &repo).await.unwrap();
 
         let options = exercise.get_options();
         assert_eq!(options.len(), 4);
@@ -615,7 +588,7 @@ mod tests {
     async fn test_cloze_deletion_basic() {
         let repo = MockContentRepo::new();
         let exercise = ClozeDeletionExercise::new(
-            "WORD_INSTANCE:1:1:2".to_string(),
+            112,
             false, // No letter hints
             &repo,
         )
@@ -633,9 +606,7 @@ mod tests {
     #[tokio::test]
     async fn test_cloze_deletion_normalization() {
         let repo = MockContentRepo::new();
-        let exercise = ClozeDeletionExercise::new("WORD_INSTANCE:1:1:2".to_string(), false, &repo)
-            .await
-            .unwrap();
+        let exercise = ClozeDeletionExercise::new(112, false, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
 
@@ -653,7 +624,7 @@ mod tests {
     async fn test_cloze_deletion_with_hint_letters() {
         let repo = MockContentRepo::new();
         let exercise = ClozeDeletionExercise::new(
-            "WORD_INSTANCE:1:1:2".to_string(),
+            112,
             true, // Show letter hints
             &repo,
         )
@@ -677,9 +648,7 @@ mod tests {
     #[tokio::test]
     async fn test_cloze_deletion_wrong_answer() {
         let repo = MockContentRepo::new();
-        let exercise = ClozeDeletionExercise::new("WORD_INSTANCE:1:1:2".to_string(), false, &repo)
-            .await
-            .unwrap();
+        let exercise = ClozeDeletionExercise::new(112, false, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
 
@@ -690,9 +659,7 @@ mod tests {
     #[tokio::test]
     async fn test_cloze_deletion_partial_match_rejected() {
         let repo = MockContentRepo::new();
-        let exercise = ClozeDeletionExercise::new("WORD_INSTANCE:1:1:2".to_string(), false, &repo)
-            .await
-            .unwrap();
+        let exercise = ClozeDeletionExercise::new(112, false, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
 
@@ -707,9 +674,7 @@ mod tests {
     #[tokio::test]
     async fn test_first_letter_hint_display() {
         let repo = MockContentRepo::new();
-        let exercise = FirstLetterHintExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise = FirstLetterHintExercise::new(112, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
         let question = exercise.generate_question();
@@ -725,9 +690,7 @@ mod tests {
     #[tokio::test]
     async fn test_first_letter_hint_correct() {
         let repo = MockContentRepo::new();
-        let exercise = FirstLetterHintExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise = FirstLetterHintExercise::new(112, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
 
@@ -738,9 +701,7 @@ mod tests {
     #[tokio::test]
     async fn test_first_letter_hint_normalization() {
         let repo = MockContentRepo::new();
-        let exercise = FirstLetterHintExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise = FirstLetterHintExercise::new(112, &repo).await.unwrap();
 
         use crate::exercises::Exercise;
 

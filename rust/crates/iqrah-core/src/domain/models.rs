@@ -152,11 +152,9 @@ impl KnowledgeNode {
 // Core node entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
-    pub id: String,
+    pub id: i64,
+    pub ukey: String,
     pub node_type: NodeType,
-    /// Parsed knowledge node info if node_type is Knowledge
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub knowledge_node: Option<KnowledgeNode>,
 }
 
 // Edge types
@@ -176,8 +174,8 @@ pub enum DistributionType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Edge {
-    pub source_id: String,
-    pub target_id: String,
+    pub source_id: i64,
+    pub target_id: i64,
     pub edge_type: EdgeType,
     pub distribution_type: DistributionType,
     pub param1: f64,
@@ -188,7 +186,7 @@ pub struct Edge {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryState {
     pub user_id: String,
-    pub node_id: String,
+    pub node_id: i64,
     pub stability: f64,
     pub difficulty: f64,
     pub energy: f64,
@@ -198,7 +196,7 @@ pub struct MemoryState {
 }
 
 impl MemoryState {
-    pub fn new_for_node(user_id: String, node_id: String) -> Self {
+    pub fn new_for_node(user_id: String, node_id: i64) -> Self {
         Self {
             user_id,
             node_id,

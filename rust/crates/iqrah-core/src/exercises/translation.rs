@@ -10,33 +10,28 @@ use rand::seq::SliceRandom;
 /// Exercise for testing understanding of word meanings
 /// Tests the user's knowledge of translation/meaning using semantic similarity
 pub struct TranslationExercise {
-    node_id: String,
+    node_id: i64,
     #[allow(dead_code)]
-    base_node_id: String,
+    base_node_id: i64,
     word_text: String,
     translation: String,
 }
 
 impl TranslationExercise {
     /// Create a new translation exercise
-    pub async fn new(node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
-        // Parse the knowledge node to get base content node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
-            kn.base_node_id
-        } else {
-            // If not a knowledge node, use the node_id directly
-            node_id.clone()
-        };
+    pub async fn new(node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // In this new model, we assume the node_id is the base content node.
+        let base_node_id = node_id;
 
         // Get the word text
         let word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(base_node_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
 
         // Get translation (default to English for now)
         let translation = content_repo
-            .get_translation(&base_node_id, "en")
+            .get_translation(base_node_id, "en")
             .await?
             .unwrap_or_else(|| "[Translation not available]".to_string());
 
@@ -100,8 +95,8 @@ impl Exercise for TranslationExercise {
             .map(|first_word| format!("Starts with: {}", first_word))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -116,7 +111,7 @@ impl Exercise for TranslationExercise {
 /// Exercise for testing word translation in verse context (MCQ)
 /// Shows the full verse and asks for the meaning of a specific word
 pub struct ContextualTranslationExercise {
-    node_id: String,
+    node_id: i64,
     verse_text: String,
     highlighted_word: String,
     correct_answer: String,
@@ -130,27 +125,31 @@ impl ContextualTranslationExercise {
     /// - The word and its verse context
     /// - The word's translation (correct answer)
     /// - Alternative translations from other words (distractors)
-    pub async fn new(word_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(
+        word_node_id: i64,
+        ukey: &str,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_ukey = if let Some(kn) = KnowledgeNode::parse(ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            ukey.to_string()
         };
 
         // Get the word text
         let highlighted_word = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(word_node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", word_node_id))?;
 
         // Parse node_id to get verse_key
         // Format: "WORD_INSTANCE:chapter:verse:position"
-        let parts: Vec<&str> = base_node_id.split(':').collect();
+        let parts: Vec<&str> = base_ukey.split(':').collect();
         if parts.len() != 4 {
             return Err(anyhow::anyhow!(
                 "Invalid word node ID format: {}",
-                base_node_id
+                base_ukey
             ));
         }
 
@@ -159,17 +158,21 @@ impl ContextualTranslationExercise {
         let verse_key = format!("{}:{}", chapter, verse_num);
 
         // Get verse text for context
-        let verse_node_id = format!("VERSE:{}", verse_key);
-        let verse_text = content_repo
-            .get_quran_text(&verse_node_id)
+        let verse_node_ukey = format!("VERSE:{}", verse_key);
+        let verse_node = content_repo
+            .get_node_by_ukey(&verse_node_ukey)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Verse node not found: {}", verse_node_ukey))?;
+        let verse_text = content_repo
+            .get_quran_text(verse_node.id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_ukey))?;
 
         // Get the correct translation for this word
         let correct_answer = content_repo
-            .get_translation(&base_node_id, "en")
+            .get_translation(word_node_id, "en")
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Translation not found for word: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Translation not found for word: {}", word_node_id))?;
 
         // Generate distractors from other words in the same chapter
         let chapter_num: i32 = chapter.parse()?;
@@ -279,8 +282,8 @@ impl Exercise for ContextualTranslationExercise {
             .map(|c| format!("Starts with: {}", c.to_uppercase()))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

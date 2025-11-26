@@ -14,9 +14,9 @@ use rand::seq::SliceRandom;
 /// Tests understanding of Arabic morphology
 #[derive(Debug)]
 pub struct IdentifyRootExercise {
-    node_id: String,
+    node_id: i64,
     word_text: String,    // The word to analyze (e.g., "يَعْلَمُونَ")
-    correct_root: String, // The correct root (e.g., "ع-ل-م")
+    correct_root: String, // The correct root (e.g., "ع-ل-м")
     options: Vec<String>, // 4 root options (shuffled)
 }
 
@@ -24,27 +24,31 @@ impl IdentifyRootExercise {
     /// Create a new Identify Root exercise
     ///
     /// Queries the morphology database to get the actual root for the word
-    pub async fn new(word_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(
+        word_node_id: i64,
+        ukey: &str,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_ukey = if let Some(kn) = KnowledgeNode::parse(ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            ukey.to_string()
         };
 
         // Get the word text
         let word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(word_node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", word_node_id))?;
 
         // Parse node_id to get verse_key and position
         // Format: "WORD_INSTANCE:chapter:verse:position"
-        let parts: Vec<&str> = base_node_id.split(':').collect();
+        let parts: Vec<&str> = base_ukey.split(':').collect();
         if parts.len() != 4 {
             return Err(anyhow::anyhow!(
                 "Invalid word node ID format: {}",
-                base_node_id
+                base_ukey
             ));
         }
 
@@ -172,8 +176,8 @@ impl Exercise for IdentifyRootExercise {
         Some(format!("{}-letter root", letter_count))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

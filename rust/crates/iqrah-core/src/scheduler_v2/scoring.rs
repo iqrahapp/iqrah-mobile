@@ -39,7 +39,7 @@ pub fn calculate_days_overdue(next_due_ts: i64, now_ts: i64) -> f32 {
 /// * Readiness score (0.0-1.0):
 ///   - 1.0 if no parents (foundational concept)
 ///   - Mean of parent energies otherwise
-pub fn calculate_readiness(parent_ids: &[String], parent_energies: &ParentEnergyMap) -> f32 {
+pub fn calculate_readiness(parent_ids: &[i64], parent_energies: &ParentEnergyMap) -> f32 {
     if parent_ids.is_empty() {
         return 1.0; // No prerequisites = fully ready
     }
@@ -65,13 +65,13 @@ pub fn calculate_readiness(parent_ids: &[String], parent_energies: &ParentEnergy
 /// # Returns
 /// * Number of unsatisfied parents (energy < MASTERY_THRESHOLD)
 pub fn count_unsatisfied_parents(
-    parent_ids: &[String],
+    parent_ids: &[i64],
     parent_energies: &ParentEnergyMap,
 ) -> usize {
     parent_ids
         .iter()
         .filter(|id| {
-            let energy = parent_energies.get(*id).copied().unwrap_or(0.0);
+            let energy = parent_energies.get(id).copied().unwrap_or(0.0);
             energy < MASTERY_THRESHOLD
         })
         .count()
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_calculate_readiness_no_parents() {
-        let parent_ids: Vec<String> = vec![];
+        let parent_ids: Vec<i64> = vec![];
         let parent_energies = HashMap::new();
 
         let readiness = calculate_readiness(&parent_ids, &parent_energies);
@@ -167,11 +167,11 @@ mod tests {
 
     #[test]
     fn test_calculate_readiness_with_parents() {
-        let parent_ids = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+        let parent_ids = vec![1, 2, 3];
         let mut parent_energies = HashMap::new();
-        parent_energies.insert("A".to_string(), 0.6);
-        parent_energies.insert("B".to_string(), 0.9);
-        parent_energies.insert("C".to_string(), 0.3);
+        parent_energies.insert(1, 0.6);
+        parent_energies.insert(2, 0.9);
+        parent_energies.insert(3, 0.3);
 
         let readiness = calculate_readiness(&parent_ids, &parent_energies);
         let expected = (0.6 + 0.9 + 0.3) / 3.0;
@@ -180,10 +180,10 @@ mod tests {
 
     #[test]
     fn test_calculate_readiness_missing_parent_treated_as_zero() {
-        let parent_ids = vec!["A".to_string(), "B".to_string()];
+        let parent_ids = vec![1, 2];
         let mut parent_energies = HashMap::new();
-        parent_energies.insert("A".to_string(), 0.6);
-        // B is missing
+        parent_energies.insert(1, 0.6);
+        // 2 is missing
 
         let readiness = calculate_readiness(&parent_ids, &parent_energies);
         let expected = (0.6 + 0.0) / 2.0;
@@ -192,10 +192,10 @@ mod tests {
 
     #[test]
     fn test_count_unsatisfied_parents_all_satisfied() {
-        let parent_ids = vec!["A".to_string(), "B".to_string()];
+        let parent_ids = vec![1, 2];
         let mut parent_energies = HashMap::new();
-        parent_energies.insert("A".to_string(), 0.5);
-        parent_energies.insert("B".to_string(), 0.8);
+        parent_energies.insert(1, 0.5);
+        parent_energies.insert(2, 0.8);
 
         let count = count_unsatisfied_parents(&parent_ids, &parent_energies);
         assert_eq!(count, 0);
@@ -203,11 +203,11 @@ mod tests {
 
     #[test]
     fn test_count_unsatisfied_parents_some_unsatisfied() {
-        let parent_ids = vec!["A".to_string(), "B".to_string(), "C".to_string()];
+        let parent_ids = vec![1, 2, 3];
         let mut parent_energies = HashMap::new();
-        parent_energies.insert("A".to_string(), 0.5); // Satisfied (>= 0.3)
-        parent_energies.insert("B".to_string(), 0.2); // Unsatisfied (< 0.3)
-        parent_energies.insert("C".to_string(), 0.1); // Unsatisfied (< 0.3)
+        parent_energies.insert(1, 0.5); // Satisfied (>= 0.3)
+        parent_energies.insert(2, 0.2); // Unsatisfied (< 0.3)
+        parent_energies.insert(3, 0.1); // Unsatisfied (< 0.3)
 
         let count = count_unsatisfied_parents(&parent_ids, &parent_energies);
         assert_eq!(count, 2);
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn test_calculate_priority_score_no_urgency() {
         let candidate = CandidateNode {
-            id: "TEST".to_string(),
+            id: 1,
             foundational_score: 0.5,
             influence_score: 0.3,
             difficulty_score: 0.2,
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_calculate_priority_score_with_urgency() {
         let candidate = CandidateNode {
-            id: "TEST".to_string(),
+            id: 1,
             foundational_score: 0.5,
             influence_score: 0.3,
             difficulty_score: 0.2,
@@ -268,7 +268,7 @@ mod tests {
     #[test]
     fn test_priority_score_monotonicity_with_urgency() {
         let candidate = CandidateNode {
-            id: "TEST".to_string(),
+            id: 1,
             foundational_score: 0.5,
             influence_score: 0.3,
             difficulty_score: 0.2,

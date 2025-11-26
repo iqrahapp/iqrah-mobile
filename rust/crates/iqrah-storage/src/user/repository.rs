@@ -245,18 +245,18 @@ impl UserRepository for SqliteUserRepository {
     async fn get_parent_energies(
         &self,
         user_id: &str,
-        node_ids: &[String],
-    ) -> anyhow::Result<HashMap<String, f32>> {
-        if node_ids.is_empty() {
+        parent_ids: &[i64],
+    ) -> anyhow::Result<HashMap<i64, f32>> {
+        if parent_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let mut result: HashMap<String, f32> = HashMap::new();
+        let mut result: HashMap<i64, f32> = HashMap::new();
 
         // SQLite parameter limit is ~999, so chunk into batches of 500
         const CHUNK_SIZE: usize = 500;
 
-        for chunk in node_ids.chunks(CHUNK_SIZE) {
+        for chunk in parent_ids.chunks(CHUNK_SIZE) {
             // Build parameterized query
             let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
             let sql = format!(
@@ -286,13 +286,13 @@ impl UserRepository for SqliteUserRepository {
     async fn get_memory_basics(
         &self,
         user_id: &str,
-        node_ids: &[String],
-    ) -> anyhow::Result<HashMap<String, MemoryBasics>> {
+        node_ids: &[i64],
+    ) -> anyhow::Result<HashMap<i64, MemoryBasics>> {
         if node_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let mut result: HashMap<String, MemoryBasics> = HashMap::new();
+        let mut result: HashMap<i64, MemoryBasics> = HashMap::new();
 
         // SQLite parameter limit is ~999, so chunk into batches of 500
         const CHUNK_SIZE: usize = 500;

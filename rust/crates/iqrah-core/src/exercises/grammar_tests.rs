@@ -13,7 +13,7 @@ mod tests {
     // ==========================================================================
 
     struct MockContentRepo {
-        words_text: HashMap<String, String>,      // node_id -> text
+        words_text: HashMap<i64, String>,         // node_id -> text
         words: HashMap<String, Vec<crate::Word>>, // verse_key -> words
         morphology: HashMap<i32, Vec<crate::MorphologySegment>>, // word_id -> segments
         roots: HashMap<String, crate::Root>,      // root_id -> root
@@ -27,14 +27,14 @@ mod tests {
             let mut roots = HashMap::new();
 
             // Words from Al-Fatihah with text
-            words_text.insert("WORD_INSTANCE:1:1:1".to_string(), "بِسْمِ".to_string());
-            words_text.insert("WORD_INSTANCE:1:1:2".to_string(), "ٱللَّهِ".to_string());
-            words_text.insert("WORD_INSTANCE:1:1:3".to_string(), "ٱلرَّحْمَٰنِ".to_string());
-            words_text.insert("WORD_INSTANCE:1:1:4".to_string(), "ٱلرَّحِيمِ".to_string());
-            words_text.insert("WORD_INSTANCE:1:2:1".to_string(), "ٱلْحَمْدُ".to_string());
-            words_text.insert("WORD_INSTANCE:1:2:2".to_string(), "لِلَّهِ".to_string());
-            words_text.insert("WORD_INSTANCE:1:2:3".to_string(), "رَبِّ".to_string());
-            words_text.insert("WORD_INSTANCE:1:2:4".to_string(), "ٱلْعَٰلَمِينَ".to_string());
+            words_text.insert(111, "بِسْمِ".to_string());
+            words_text.insert(112, "ٱللَّهِ".to_string());
+            words_text.insert(113, "ٱلرَّحْمَٰنِ".to_string());
+            words_text.insert(114, "ٱلرَّحِيمِ".to_string());
+            words_text.insert(121, "ٱلْحَمْدُ".to_string());
+            words_text.insert(122, "لِلَّهِ".to_string());
+            words_text.insert(123, "رَبِّ".to_string());
+            words_text.insert(124, "ٱلْعَٰلَمِينَ".to_string());
 
             // Create Word objects for verse 1:1
             let verse_1_1 = vec![
@@ -268,42 +268,45 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<Node>> {
+        async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<Node>> {
             Ok(Some(Node {
-                id: "test".to_string(),
+                id: 1,
+                ukey: "test".to_string(),
                 node_type: NodeType::Word,
-                knowledge_node: None,
             }))
         }
+        async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<Node>> {
+            unimplemented!()
+        }
 
-        async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+        async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
 
-        async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-            Ok(self.words_text.get(node_id).cloned())
+        async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
+            Ok(self.words_text.get(&node_id).cloned())
         }
 
         async fn get_translation(
             &self,
-            _node_id: &str,
+            _node_id: i64,
             _lang: &str,
         ) -> anyhow::Result<Option<String>> {
             Ok(Some("test translation".to_string()))
         }
 
-        async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+        async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
             Ok(None)
         }
 
         async fn get_all_metadata(
             &self,
-            _node_id: &str,
+            _node_id: i64,
         ) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
-        async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+        async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
             Ok(true)
         }
 
@@ -315,21 +318,13 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> anyhow::Result<Vec<Node>> {
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<Node>> {
             Ok(vec![])
         }
 
         async fn get_adjacent_words(
             &self,
-            _word_node_id: &str,
+            _word_node_id: i64,
         ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
@@ -503,16 +498,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
             Ok(std::collections::HashMap::new())
         }
 
@@ -523,7 +516,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
             Ok(vec![])
         }
 
@@ -561,9 +554,10 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_generates_question() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
         let question = exercise.generate_question();
 
@@ -575,26 +569,28 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_correct_answer_bism() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
-        // Root of "بِسْمِ" is "س-م-و"
-        assert!(exercise.check_answer("س-م-و"));
+        // Root of "بِسْمِ" is "س-м-و"
+        assert!(exercise.check_answer("س-м-و"));
         assert!(exercise.check_answer("سمو")); // Without dashes
         assert!(exercise.check_answer("س م و")); // With spaces
 
         // Wrong roots
         assert!(!exercise.check_answer("ك-ت-ب"));
-        assert!(!exercise.check_answer("ع-ل-م"));
+        assert!(!exercise.check_answer("ع-ل-м"));
     }
 
     #[tokio::test]
     async fn test_identify_root_correct_answer_allah() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
+                .await
+                .unwrap();
 
         // Root of "ٱللَّهِ" is "ا-ل-ه"
         assert!(exercise.check_answer("ا-ل-ه"));
@@ -604,24 +600,26 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_correct_answer_rahman() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:3".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(113, "WORD_INSTANCE:1:1:3", &repo)
+                .await
+                .unwrap();
 
         // Root of "ٱلرَّحْمَٰنِ" is "ر-ح-م"
-        assert!(exercise.check_answer("ر-ح-م"));
+        assert!(exercise.check_answer("ر-ح-м"));
         assert!(exercise.check_answer("رحم")); // Without dashes
 
         let correct_root = exercise.get_correct_root();
-        assert_eq!(correct_root, "ر-ح-م");
+        assert_eq!(correct_root, "ر-ح-м");
     }
 
     #[tokio::test]
     async fn test_identify_root_has_four_options() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
         let options = exercise.get_options();
         assert_eq!(options.len(), 4); // 1 correct + 3 distractors
@@ -630,9 +628,10 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_options_contain_correct() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
         let options = exercise.get_options();
         let correct_root = exercise.get_correct_root();
@@ -644,9 +643,10 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_distractors_are_different() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
         let options = exercise.get_options();
         let correct_root = exercise.get_correct_root();
@@ -663,9 +663,10 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_hint_shows_letter_count() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
         let hint = exercise.get_hint();
         assert!(hint.is_some());
@@ -681,21 +682,21 @@ mod tests {
 
         // Test different words
         let words = vec![
-            ("WORD_INSTANCE:1:1:1", "س-م-و"), // بِسْمِ
-            ("WORD_INSTANCE:1:1:2", "ا-ل-ه"), // ٱللَّهِ
-            ("WORD_INSTANCE:1:1:3", "ر-ح-م"), // ٱلرَّحْمَٰنِ
-            ("WORD_INSTANCE:1:2:1", "ح-م-د"), // ٱلْحَمْدُ
-            ("WORD_INSTANCE:1:2:3", "ر-ب-ب"), // رَبِّ
-            ("WORD_INSTANCE:1:2:4", "ع-ل-م"), // ٱلْعَٰلَمِينَ
+            (111, "WORD_INSTANCE:1:1:1", "س-м-و"), // بِسْمِ
+            (112, "WORD_INSTANCE:1:1:2", "ا-ل-ه"), // ٱللَّهِ
+            (113, "WORD_INSTANCE:1:1:3", "ر-ح-м"), // ٱلرَّحْمَٰنِ
+            (121, "WORD_INSTANCE:1:2:1", "ح-м-د"), // ٱلْحَمْدُ
+            (123, "WORD_INSTANCE:1:2:3", "р-б-б"), // رَبِّ
+            (124, "WORD_INSTANCE:1:2:4", "ع-ل-м"), // ٱلْعَٰلَمِينَ
         ];
 
-        for (word_id, expected_root) in words {
-            let exercise = IdentifyRootExercise::new(word_id.to_string(), &repo)
+        for (word_id, ukey, expected_root) in words {
+            let exercise = IdentifyRootExercise::new(word_id, ukey, &repo)
                 .await
                 .unwrap();
 
             let actual_root = exercise.get_correct_root();
-            assert_eq!(actual_root, expected_root, "Incorrect root for {}", word_id);
+            assert_eq!(actual_root, expected_root, "Incorrect root for {}", ukey);
 
             assert!(exercise.check_answer(expected_root));
         }
@@ -704,9 +705,10 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_type_name() {
         let repo = MockContentRepo::new();
-        let exercise = IdentifyRootExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise =
+            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+                .await
+                .unwrap();
 
         assert_eq!(exercise.get_type_name(), "identify_root");
     }
