@@ -345,25 +345,28 @@ mod tests {
         }
 
         // Stub implementations for other required methods
-        async fn get_node(&self, _node_id: &str) -> Result<Option<crate::Node>> {
+        async fn get_node(&self, _node_id: i64) -> Result<Option<crate::Node>> {
             Ok(None)
         }
-        async fn get_edges_from(&self, _source_id: &str) -> Result<Vec<crate::Edge>> {
+        async fn get_node_by_ukey(&self, _ukey: &str) -> Result<Option<crate::Node>> {
+            unimplemented!()
+        }
+        async fn get_edges_from(&self, _source_id: i64) -> Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
-        async fn get_quran_text(&self, _node_id: &str) -> Result<Option<String>> {
+        async fn get_quran_text(&self, _node_id: i64) -> Result<Option<String>> {
             Ok(None)
         }
-        async fn get_translation(&self, _node_id: &str, _lang: &str) -> Result<Option<String>> {
+        async fn get_translation(&self, _node_id: i64, _lang: &str) -> Result<Option<String>> {
             Ok(None)
         }
-        async fn get_metadata(&self, _node_id: &str, _key: &str) -> Result<Option<String>> {
+        async fn get_metadata(&self, _node_id: i64, _key: &str) -> Result<Option<String>> {
             Ok(None)
         }
-        async fn get_all_metadata(&self, _node_id: &str) -> Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
-        async fn node_exists(&self, _node_id: &str) -> Result<bool> {
+        async fn node_exists(&self, _node_id: i64) -> Result<bool> {
             Ok(false)
         }
         async fn get_all_nodes(&self) -> Result<Vec<crate::Node>> {
@@ -372,18 +375,12 @@ mod tests {
         async fn get_nodes_by_type(&self, _node_type: crate::NodeType) -> Result<Vec<crate::Node>> {
             Ok(vec![])
         }
-        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> Result<()> {
-            Ok(())
-        }
-        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> Result<()> {
-            Ok(())
-        }
-        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> Result<Vec<crate::Node>> {
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> Result<Vec<crate::Node>> {
             Ok(vec![])
         }
         async fn get_adjacent_words(
             &self,
-            _word_node_id: &str,
+            _word_node_id: i64,
         ) -> Result<(Option<crate::Node>, Option<crate::Node>)> {
             Ok((None, None))
         }
@@ -503,16 +500,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> Result<HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> Result<HashMap<i64, Vec<i64>>> {
             Ok(HashMap::new())
         }
 
@@ -523,7 +518,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<i64>> {
             Ok(vec![])
         }
     }

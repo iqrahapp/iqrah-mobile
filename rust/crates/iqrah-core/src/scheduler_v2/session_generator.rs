@@ -99,13 +99,13 @@ impl MasteryBand {
 /// * Vec of node_ids to include in the session
 pub fn generate_session(
     candidates: Vec<CandidateNode>,
-    parent_map: HashMap<String, Vec<String>>,
+    parent_map: HashMap<i64, Vec<i64>>,
     parent_energies: ParentEnergyMap,
     profile: &UserProfile,
     session_size: usize,
     now_ts: i64,
     mode: SessionMode,
-) -> Vec<String> {
+) -> Vec<i64> {
     if candidates.is_empty() || session_size == 0 {
         return Vec::new();
     }
@@ -172,7 +172,7 @@ pub fn generate_session(
 // ============================================================================
 
 /// Composes a revision session using content difficulty buckets (60/30/10).
-fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<String> {
+fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i64> {
     // Bucket by difficulty
     let mut easy = Vec::new();
     let mut medium = Vec::new();
@@ -195,16 +195,16 @@ fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<S
     let mut session = Vec::new();
 
     // Take from each bucket up to target
-    session.extend(easy.iter().take(target_easy).map(|n| n.data.id.clone()));
-    session.extend(medium.iter().take(target_medium).map(|n| n.data.id.clone()));
-    session.extend(hard.iter().take(target_hard).map(|n| n.data.id.clone()));
+    session.extend(easy.iter().take(target_easy).map(|n| n.data.id));
+    session.extend(medium.iter().take(target_medium).map(|n| n.data.id));
+    session.extend(hard.iter().take(target_hard).map(|n| n.data.id));
 
     // Fallback: if we didn't reach session_size, fill from remaining nodes
     if session.len() < session_size {
         let remaining_needed = session_size - session.len();
 
         // Collect remaining nodes (those not yet added)
-        let added_ids: std::collections::HashSet<_> = session.iter().collect();
+        let added_ids: std::collections::HashSet<_> = session.iter().cloned().collect();
         let remaining: Vec<_> = easy
             .iter()
             .chain(medium.iter())
@@ -217,7 +217,7 @@ fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<S
             remaining
                 .iter()
                 .take(remaining_needed)
-                .map(|n| n.data.id.clone()),
+                .map(|n| n.data.id),
         );
     }
 
@@ -231,7 +231,7 @@ fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<S
 // ============================================================================
 
 /// Composes a mixed learning session using mastery bands (10/10/50/20/10).
-fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<String> {
+fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i64> {
     // Bucket by mastery band
     let mut new = Vec::new();
     let mut really_struggling = Vec::new();
@@ -261,37 +261,37 @@ fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) ->
     // Collect session
     let mut session = Vec::new();
 
-    session.extend(new.iter().take(target_new).map(|n| n.data.id.clone()));
+    session.extend(new.iter().take(target_new).map(|n| n.data.id));
     session.extend(
         almost_mastered
             .iter()
             .take(target_almost_mastered)
-            .map(|n| n.data.id.clone()),
+            .map(|n| n.data.id),
     );
     session.extend(
         almost_there
             .iter()
             .take(target_almost_there)
-            .map(|n| n.data.id.clone()),
+            .map(|n| n.data.id),
     );
     session.extend(
         struggling
             .iter()
             .take(target_struggling)
-            .map(|n| n.data.id.clone()),
+            .map(|n| n.data.id),
     );
     session.extend(
         really_struggling
             .iter()
             .take(target_really_struggling)
-            .map(|n| n.data.id.clone()),
+            .map(|n| n.data.id),
     );
 
     // Fallback: if we didn't reach session_size, fill from remaining nodes
     if session.len() < session_size {
         let remaining_needed = session_size - session.len();
 
-        let added_ids: std::collections::HashSet<_> = session.iter().collect();
+        let added_ids: std::collections::HashSet<_> = session.iter().cloned().collect();
         let remaining: Vec<_> = new
             .iter()
             .chain(almost_mastered.iter())
@@ -305,7 +305,7 @@ fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) ->
             remaining
                 .iter()
                 .take(remaining_needed)
-                .map(|n| n.data.id.clone()),
+                .map(|n| n.data.id),
         );
     }
 
@@ -322,7 +322,7 @@ mod tests {
     use super::*;
 
     fn make_candidate(
-        id: &str,
+        id: i64,
         foundational: f32,
         influence: f32,
         difficulty: f32,
@@ -331,7 +331,7 @@ mod tests {
         quran_order: i64,
     ) -> CandidateNode {
         CandidateNode {
-            id: id.to_string(),
+            id,
             foundational_score: foundational,
             influence_score: influence,
             difficulty_score: difficulty,
@@ -358,22 +358,22 @@ mod tests {
     #[test]
     fn test_generate_session_prerequisite_gate() {
         // Node A (no parents, energy = 0.5)
-        let node_a = make_candidate("A", 0.5, 0.3, 0.2, 0.5, 0, 1000);
+        let node_a = make_candidate(1, 0.5, 0.3, 0.2, 0.5, 0, 1000);
         // Node B (no parents, energy = 0.6)
-        let node_b = make_candidate("B", 0.5, 0.3, 0.2, 0.6, 0, 2000);
+        let node_b = make_candidate(2, 0.5, 0.3, 0.2, 0.6, 0, 2000);
         // Node C (parents: A, B; energy = 0.0)
-        let node_c = make_candidate("C", 0.5, 0.3, 0.3, 0.0, 0, 3000);
+        let node_c = make_candidate(3, 0.5, 0.3, 0.3, 0.0, 0, 3000);
         // Node D (parent: C; energy = 0.0)
-        let node_d = make_candidate("D", 0.5, 0.3, 0.4, 0.0, 0, 4000);
+        let node_d = make_candidate(4, 0.5, 0.3, 0.4, 0.0, 0, 4000);
 
         let mut parent_map = HashMap::new();
-        parent_map.insert("C".to_string(), vec!["A".to_string(), "B".to_string()]);
-        parent_map.insert("D".to_string(), vec!["C".to_string()]);
+        parent_map.insert(3, vec![1, 2]);
+        parent_map.insert(4, vec![3]);
 
         let mut parent_energies = HashMap::new();
-        parent_energies.insert("A".to_string(), 0.5);
-        parent_energies.insert("B".to_string(), 0.6);
-        parent_energies.insert("C".to_string(), 0.0); // Below threshold
+        parent_energies.insert(1, 0.5);
+        parent_energies.insert(2, 0.6);
+        parent_energies.insert(3, 0.0); // Below threshold
 
         let session = generate_session(
             vec![node_a, node_b, node_c, node_d],
@@ -388,21 +388,21 @@ mod tests {
         // A and B have no parents -> eligible
         // C has parents A and B both >= 0.3 -> eligible
         // D has parent C with energy = 0.0 (< 0.3) -> NOT eligible
-        assert!(session.contains(&"A".to_string()));
-        assert!(session.contains(&"B".to_string()));
-        assert!(session.contains(&"C".to_string()));
-        assert!(!session.contains(&"D".to_string()));
+        assert!(session.contains(&1));
+        assert!(session.contains(&2));
+        assert!(session.contains(&3));
+        assert!(!session.contains(&4));
     }
 
     #[test]
     fn test_revision_mode_difficulty_bucketing() {
         let candidates = vec![
-            make_candidate("easy1", 0.5, 0.3, 0.1, 0.5, 0, 1000),
-            make_candidate("easy2", 0.5, 0.3, 0.2, 0.5, 0, 2000),
-            make_candidate("medium1", 0.5, 0.3, 0.5, 0.5, 0, 3000),
-            make_candidate("medium2", 0.5, 0.3, 0.6, 0.5, 0, 4000),
-            make_candidate("hard1", 0.5, 0.3, 0.8, 0.5, 0, 5000),
-            make_candidate("hard2", 0.5, 0.3, 0.9, 0.5, 0, 6000),
+            make_candidate(1, 0.5, 0.3, 0.1, 0.5, 0, 1000),
+            make_candidate(2, 0.5, 0.3, 0.2, 0.5, 0, 2000),
+            make_candidate(3, 0.5, 0.3, 0.5, 0.5, 0, 3000),
+            make_candidate(4, 0.5, 0.3, 0.6, 0.5, 0, 4000),
+            make_candidate(5, 0.5, 0.3, 0.8, 0.5, 0, 5000),
+            make_candidate(6, 0.5, 0.3, 0.9, 0.5, 0, 6000),
         ];
 
         let session = generate_session(
@@ -423,11 +423,11 @@ mod tests {
     #[test]
     fn test_mixed_learning_mode_mastery_bucketing() {
         let candidates = vec![
-            make_candidate("new1", 0.5, 0.3, 0.2, 0.0, 0, 1000),
-            make_candidate("really_struggling1", 0.5, 0.3, 0.2, 0.15, 0, 2000),
-            make_candidate("struggling1", 0.5, 0.3, 0.2, 0.35, 0, 3000),
-            make_candidate("almost_there1", 0.5, 0.3, 0.2, 0.55, 0, 4000),
-            make_candidate("almost_mastered1", 0.5, 0.3, 0.2, 0.85, 0, 5000),
+            make_candidate(1, 0.5, 0.3, 0.2, 0.0, 0, 1000),
+            make_candidate(2, 0.5, 0.3, 0.2, 0.15, 0, 2000),
+            make_candidate(3, 0.5, 0.3, 0.2, 0.35, 0, 3000),
+            make_candidate(4, 0.5, 0.3, 0.2, 0.55, 0, 4000),
+            make_candidate(5, 0.5, 0.3, 0.2, 0.85, 0, 5000),
         ];
 
         let session = generate_session(
@@ -441,10 +441,10 @@ mod tests {
         );
 
         assert_eq!(session.len(), 5);
-        assert!(session.contains(&"new1".to_string()));
-        assert!(session.contains(&"really_struggling1".to_string()));
-        assert!(session.contains(&"struggling1".to_string()));
-        assert!(session.contains(&"almost_there1".to_string()));
-        assert!(session.contains(&"almost_mastered1".to_string()));
+        assert!(session.contains(&1));
+        assert!(session.contains(&2));
+        assert!(session.contains(&3));
+        assert!(session.contains(&4));
+        assert!(session.contains(&5));
     }
 }

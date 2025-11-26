@@ -82,35 +82,37 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<crate::Node>> {
+    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
         Ok(None)
     }
+    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        unimplemented!()
+    }
 
-    async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+    async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
         Ok(Vec::new())
     }
 
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        if let Some(verse_key) = node_id.strip_prefix("VERSE:") {
-            Ok(self.verses.get(verse_key).map(|v| v.text_uthmani.clone()))
-        } else {
-            Ok(None)
-        }
+    async fn get_quran_text(&self, _node_id: i64) -> anyhow::Result<Option<String>> {
+        // This mock is verse-key based, not i64. This is a hack.
+        // In a real scenario, we'd look up the ukey from the i64.
+        let verse_key = format!("1:{}", _node_id);
+        Ok(self.verses.get(&verse_key).map(|v| v.text_uthmani.clone()))
     }
 
-    async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+    async fn get_translation(&self, _node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+    async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
         Ok(HashMap::new())
     }
 
-    async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+    async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
         Ok(false)
     }
 
@@ -125,24 +127,16 @@ impl ContentRepository for MockContentRepo {
         Ok(Vec::new())
     }
 
-    async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     async fn get_words_in_ayahs(
         &self,
-        _ayah_node_ids: &[String],
+        _ayah_node_ids: &[i64],
     ) -> anyhow::Result<Vec<crate::Node>> {
         Ok(Vec::new())
     }
 
     async fn get_adjacent_words(
         &self,
-        _word_node_id: &str,
+        _word_node_id: i64,
     ) -> anyhow::Result<(Option<crate::Node>, Option<crate::Node>)> {
         Ok((None, None))
     }
@@ -317,16 +311,14 @@ impl ContentRepository for MockContentRepo {
     async fn get_scheduler_candidates(
         &self,
         _goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
         &self,
-        _node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        _node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
         Ok(std::collections::HashMap::new())
     }
 
@@ -337,7 +329,7 @@ impl ContentRepository for MockContentRepo {
         Ok(None)
     }
 
-    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
         Ok(vec![])
     }
 
@@ -375,9 +367,7 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_find_mistake_creation() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     // Should have a mistake position
     let position = exercise.get_mistake_position();
@@ -391,9 +381,7 @@ async fn test_find_mistake_creation() {
 #[tokio::test]
 async fn test_find_mistake_has_different_word() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     // Correct and incorrect words should be different
     assert_ne!(exercise.get_correct_word(), exercise.get_incorrect_word());
@@ -402,9 +390,7 @@ async fn test_find_mistake_has_different_word() {
 #[tokio::test]
 async fn test_find_mistake_modified_verse_structure() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     // Modified verse should have same number of words as original
     let original_word_count = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".split_whitespace().count();
@@ -415,9 +401,7 @@ async fn test_find_mistake_modified_verse_structure() {
 #[tokio::test]
 async fn test_find_mistake_check_position() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:2".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(2, &repo).await.unwrap();
 
     let correct_position = exercise.get_mistake_position();
 
@@ -435,9 +419,7 @@ async fn test_find_mistake_check_position() {
 #[tokio::test]
 async fn test_find_mistake_check_answer() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:2".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(2, &repo).await.unwrap();
 
     let correct_position = exercise.get_mistake_position();
 
@@ -455,9 +437,7 @@ async fn test_find_mistake_check_answer() {
 #[tokio::test]
 async fn test_find_mistake_question_format() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     let question = exercise.generate_question();
     assert!(question.contains("Find the mistake"));
@@ -467,9 +447,7 @@ async fn test_find_mistake_question_format() {
 #[tokio::test]
 async fn test_find_mistake_hint() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     let hint = exercise.get_hint().unwrap();
     assert!(hint.contains("1:1")); // Should mention verse reference
@@ -481,9 +459,7 @@ async fn test_find_mistake_avoids_first_and_last() {
 
     // Test multiple times due to randomness
     for _ in 0..10 {
-        let exercise = FindMistakeExercise::new("VERSE:1:2".to_string(), &repo)
-            .await
-            .unwrap();
+        let exercise = FindMistakeExercise::new(2, &repo).await.unwrap();
 
         let position = exercise.get_mistake_position();
         let word_count = "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".split_whitespace().count();
@@ -499,9 +475,7 @@ async fn test_find_mistake_avoids_first_and_last() {
 #[tokio::test]
 async fn test_find_mistake_replacement_from_same_chapter() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     let incorrect_word = exercise.get_incorrect_word();
 
@@ -524,9 +498,7 @@ async fn test_find_mistake_replacement_from_same_chapter() {
 #[tokio::test]
 async fn test_find_mistake_type_name() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
     assert_eq!(exercise.get_type_name(), "find_mistake");
 }
@@ -534,9 +506,7 @@ async fn test_find_mistake_type_name() {
 #[tokio::test]
 async fn test_find_mistake_node_id() {
     let repo = MockContentRepo::new();
-    let exercise = FindMistakeExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = FindMistakeExercise::new(1, &repo).await.unwrap();
 
-    assert_eq!(exercise.get_node_id(), "VERSE:1:1");
+    assert_eq!(exercise.get_node_id(), 1);
 }

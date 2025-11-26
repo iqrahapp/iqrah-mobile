@@ -12,9 +12,9 @@ use std::collections::HashMap;
 // ==========================================================================
 
 struct MockContentRepo {
-    words_text: HashMap<String, String>,  // node_id -> text
+    words_text: HashMap<i64, String>,     // node_id -> text
     words: HashMap<String, Vec<Word>>,    // verse_key -> words
-    verses_text: HashMap<String, String>, // node_id -> text
+    verses_text: HashMap<i64, String>,    // node_id -> text
 }
 
 impl MockContentRepo {
@@ -24,23 +24,20 @@ impl MockContentRepo {
         let mut verses_text = HashMap::new();
 
         // Verse 1:1: بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-        words_text.insert("WORD_INSTANCE:1:1:1".to_string(), "بِسْمِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:1:2".to_string(), "ٱللَّهِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:1:3".to_string(), "ٱلرَّحْمَٰنِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:1:4".to_string(), "ٱلرَّحِيمِ".to_string());
+        words_text.insert(111, "بِسْمِ".to_string());
+        words_text.insert(112, "ٱللَّهِ".to_string());
+        words_text.insert(113, "ٱلرَّحْمَٰنِ".to_string());
+        words_text.insert(114, "ٱلرَّحِيمِ".to_string());
 
         // Verse 1:2: ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ
-        words_text.insert("WORD_INSTANCE:1:2:1".to_string(), "ٱلْحَمْدُ".to_string());
-        words_text.insert("WORD_INSTANCE:1:2:2".to_string(), "لِلَّهِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:2:3".to_string(), "رَبِّ".to_string());
-        words_text.insert("WORD_INSTANCE:1:2:4".to_string(), "ٱلْعَٰلَمِينَ".to_string());
+        words_text.insert(121, "ٱلْحَمْدُ".to_string());
+        words_text.insert(122, "لِلَّهِ".to_string());
+        words_text.insert(123, "رَبِّ".to_string());
+        words_text.insert(124, "ٱلْعَٰلَمِينَ".to_string());
 
         // Verse texts
-        verses_text.insert(
-            "VERSE:1:1".to_string(),
-            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
-        );
-        verses_text.insert("VERSE:1:2".to_string(), "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
+        verses_text.insert(11, "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string());
+        verses_text.insert(12, "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
 
         // Create Word objects for verse 1:1
         let verse_1_1 = vec![
@@ -127,35 +124,38 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<crate::Node>> {
+    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
         Ok(None)
     }
+    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        unimplemented!()
+    }
 
-    async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+    async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
         Ok(vec![])
     }
 
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
+    async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
         Ok(self
             .words_text
-            .get(node_id)
-            .or_else(|| self.verses_text.get(node_id))
+            .get(&node_id)
+            .or_else(|| self.verses_text.get(&node_id))
             .cloned())
     }
 
-    async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+    async fn get_translation(&self, _node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+    async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
         Ok(HashMap::new())
     }
 
-    async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+    async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
         Ok(false)
     }
 
@@ -170,24 +170,16 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     async fn get_words_in_ayahs(
         &self,
-        _ayah_node_ids: &[String],
+        _ayah_node_ids: &[i64],
     ) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
     async fn get_adjacent_words(
         &self,
-        _word_node_id: &str,
+        _word_node_id: i64,
     ) -> anyhow::Result<(Option<crate::Node>, Option<crate::Node>)> {
         Ok((None, None))
     }
@@ -355,16 +347,14 @@ impl ContentRepository for MockContentRepo {
     async fn get_scheduler_candidates(
         &self,
         _goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
         &self,
-        _node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        _node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
         Ok(std::collections::HashMap::new())
     }
 
@@ -375,7 +365,7 @@ impl ContentRepository for MockContentRepo {
         Ok(None)
     }
 
-    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
         Ok(vec![])
     }
 
@@ -430,9 +420,7 @@ async fn test_reverse_cloze_basic() {
 #[tokio::test]
 async fn test_reverse_cloze_finds_next_word() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(111, &repo).await.unwrap();
 
     // After "بِسْمِ" (position 1), next word should be "ٱللَّهِ" (position 2)
     assert_eq!(exercise.get_next_word(), "ٱللَّهِ");
@@ -441,9 +429,7 @@ async fn test_reverse_cloze_finds_next_word() {
 #[tokio::test]
 async fn test_reverse_cloze_check_answer_exact() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(111, &repo).await.unwrap();
 
     // Exact match with tashkeel
     assert!(exercise.check_answer("ٱللَّهِ"));
@@ -452,9 +438,7 @@ async fn test_reverse_cloze_check_answer_exact() {
 #[tokio::test]
 async fn test_reverse_cloze_check_answer_normalized() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(111, &repo).await.unwrap();
 
     // Without tashkeel (normalized)
     assert!(exercise.check_answer("الله"));
@@ -463,9 +447,7 @@ async fn test_reverse_cloze_check_answer_normalized() {
 #[tokio::test]
 async fn test_reverse_cloze_wrong_answer() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(111, &repo).await.unwrap();
 
     // Wrong word
     assert!(!exercise.check_answer("ٱلرَّحْمَٰنِ"));
@@ -475,9 +457,7 @@ async fn test_reverse_cloze_wrong_answer() {
 #[tokio::test]
 async fn test_reverse_cloze_hint() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(111, &repo).await.unwrap();
 
     // Hint should show first letter
     let hint = exercise.get_hint();
@@ -491,9 +471,7 @@ async fn test_reverse_cloze_hint() {
 #[tokio::test]
 async fn test_reverse_cloze_middle_word() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(112, &repo).await.unwrap();
 
     // After "ٱللَّهِ" (position 2), next word should be "ٱلرَّحْمَٰنِ" (position 3)
     assert_eq!(exercise.get_next_word(), "ٱلرَّحْمَٰنِ");
@@ -506,7 +484,7 @@ async fn test_reverse_cloze_middle_word() {
 #[tokio::test]
 async fn test_reverse_cloze_last_word_fails() {
     let repo = MockContentRepo::new();
-    let result = ReverseClozeExercise::new("WORD_INSTANCE:1:1:4".to_string(), &repo).await;
+    let result = ReverseClozeExercise::new(114, &repo).await;
 
     // Last word (position 4) should fail because there's no next word
     assert!(result.is_err());
@@ -519,9 +497,7 @@ async fn test_reverse_cloze_last_word_fails() {
 #[tokio::test]
 async fn test_reverse_cloze_different_verse() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:2:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(121, &repo).await.unwrap();
 
     // Verse 1:2, after "ٱلْحَمْدُ" (position 1), next word should be "لِلَّهِ" (position 2)
     assert_eq!(exercise.get_next_word(), "لِلَّهِ");
@@ -532,9 +508,7 @@ async fn test_reverse_cloze_different_verse() {
 #[tokio::test]
 async fn test_reverse_cloze_case_insensitivity() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:2:2".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(122, &repo).await.unwrap();
 
     // After "لِلَّهِ", next should be "رَبِّ"
     assert!(exercise.check_answer("رَبِّ"));

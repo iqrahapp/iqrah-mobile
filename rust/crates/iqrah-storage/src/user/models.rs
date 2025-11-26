@@ -59,7 +59,7 @@ pub struct ParentEnergyRow {
 /// Memory basics for scheduler (energy + next_due_ts)
 #[derive(Debug, Clone, FromRow)]
 pub struct MemoryBasicsRow {
-    pub node_id: String,
+    pub node_id: i64,
     pub energy: f32,
     pub next_due_ts: i64,
 }

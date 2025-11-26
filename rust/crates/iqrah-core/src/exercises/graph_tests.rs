@@ -11,10 +11,10 @@ use std::collections::HashMap;
 // ==========================================================================
 
 struct MockContentRepo {
-    verses_text: HashMap<String, String>, // node_id -> text
-    verses: HashMap<i32, Vec<Verse>>,     // chapter_num -> verses
-    edges: HashMap<String, Vec<Edge>>,    // source_id -> edges
-    words: HashMap<String, Vec<Word>>,    // verse_key -> words
+    verses_text: HashMap<i64, String>, // node_id -> text
+    verses: HashMap<i32, Vec<Verse>>,  // chapter_num -> verses
+    edges: HashMap<i64, Vec<Edge>>,    // source_id -> edges
+    words: HashMap<String, Vec<Word>>, // verse_key -> words
 }
 
 impl MockContentRepo {
@@ -25,19 +25,16 @@ impl MockContentRepo {
         let mut words = HashMap::new();
 
         // Verse 1:1 and 1:2 (Al-Fatihah)
-        verses_text.insert(
-            "VERSE:1:1".to_string(),
-            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
-        );
-        verses_text.insert("VERSE:1:2".to_string(), "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
-        verses_text.insert("VERSE:1:3".to_string(), "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string());
+        verses_text.insert(11, "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string());
+        verses_text.insert(12, "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
+        verses_text.insert(13, "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string());
 
         // Verses from chapter 112 (Al-Ikhlas)
-        verses_text.insert("VERSE:112:1".to_string(), "قُلْ هُوَ ٱللَّهُ أَحَدٌ".to_string());
-        verses_text.insert("VERSE:112:2".to_string(), "ٱللَّهُ ٱلصَّمَدُ".to_string());
+        verses_text.insert(1121, "قُلْ هُوَ ٱللَّهُ أَحَدٌ".to_string());
+        verses_text.insert(1122, "ٱللَّهُ ٱلصَّمَدُ".to_string());
 
         // Verses from chapter 113 (Al-Falaq)
-        verses_text.insert("VERSE:113:1".to_string(), "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ".to_string());
+        verses_text.insert(1131, "قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ".to_string());
 
         // Define verses for chapter 1
         let chapter_1 = vec![
@@ -109,10 +106,10 @@ impl MockContentRepo {
 
         // Create graph edges (verse 1:1 connected to 112:1 via shared "Allah" concept)
         edges.insert(
-            "VERSE:1:1".to_string(),
+            11,
             vec![Edge {
-                source_id: "VERSE:1:1".to_string(),
-                target_id: "VERSE:112:1".to_string(),
+                source_id: 11,
+                target_id: 1121,
                 edge_type: EdgeType::Knowledge,
                 distribution_type: DistributionType::Const,
                 param1: 0.8,
@@ -122,10 +119,10 @@ impl MockContentRepo {
 
         // Verse 1:2 connected to 1:3 (sequential)
         edges.insert(
-            "VERSE:1:2".to_string(),
+            12,
             vec![Edge {
-                source_id: "VERSE:1:2".to_string(),
-                target_id: "VERSE:1:3".to_string(),
+                source_id: 12,
+                target_id: 13,
                 edge_type: EdgeType::Dependency,
                 distribution_type: DistributionType::Const,
                 param1: 1.0,
@@ -157,31 +154,34 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<crate::Node>> {
+    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        Ok(None)
+    }
+    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        unimplemented!()
+    }
+
+    async fn get_edges_from(&self, source_id: i64) -> anyhow::Result<Vec<Edge>> {
+        Ok(self.edges.get(&source_id).cloned().unwrap_or_default())
+    }
+
+    async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
+        Ok(self.verses_text.get(&node_id).cloned())
+    }
+
+    async fn get_translation(&self, _node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_edges_from(&self, source_id: &str) -> anyhow::Result<Vec<Edge>> {
-        Ok(self.edges.get(source_id).cloned().unwrap_or_default())
-    }
-
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        Ok(self.verses_text.get(node_id).cloned())
-    }
-
-    async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+    async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
-        Ok(None)
-    }
-
-    async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
         Ok(HashMap::new())
     }
 
-    async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+    async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
         Ok(false)
     }
 
@@ -196,24 +196,16 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     async fn get_words_in_ayahs(
         &self,
-        _ayah_node_ids: &[String],
+        _ayah_node_ids: &[i64],
     ) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
     async fn get_adjacent_words(
         &self,
-        _word_node_id: &str,
+        _word_node_id: i64,
     ) -> anyhow::Result<(Option<crate::Node>, Option<crate::Node>)> {
         Ok((None, None))
     }
@@ -385,16 +377,14 @@ impl ContentRepository for MockContentRepo {
     async fn get_scheduler_candidates(
         &self,
         _goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
         &self,
-        _node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        _node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
         Ok(std::collections::HashMap::new())
     }
 
@@ -405,7 +395,7 @@ impl ContentRepository for MockContentRepo {
         Ok(None)
     }
 
-    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
         Ok(vec![])
     }
 
@@ -443,9 +433,7 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_cross_verse_basic() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     // Verify question includes source verse
     let question = exercise.generate_question();
@@ -456,9 +444,7 @@ async fn test_cross_verse_basic() {
 #[tokio::test]
 async fn test_cross_verse_finds_connected_verse() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     // Verse 1:1 should be connected to 112:1 via graph edge
     assert_eq!(exercise.get_correct_verse_key(), "112:1");
@@ -467,9 +453,7 @@ async fn test_cross_verse_finds_connected_verse() {
 #[tokio::test]
 async fn test_cross_verse_has_four_options() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     let options = exercise.get_options();
     assert_eq!(options.len(), 4); // 1 correct + 3 distractors
@@ -478,9 +462,7 @@ async fn test_cross_verse_has_four_options() {
 #[tokio::test]
 async fn test_cross_verse_options_contain_correct() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     let options = exercise.get_options();
     let correct_key = exercise.get_correct_verse_key();
@@ -493,9 +475,7 @@ async fn test_cross_verse_options_contain_correct() {
 #[tokio::test]
 async fn test_cross_verse_check_answer_by_key() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     // Check answer by verse key
     assert!(exercise.check_answer("112:1"));
@@ -505,9 +485,7 @@ async fn test_cross_verse_check_answer_by_key() {
 #[tokio::test]
 async fn test_cross_verse_check_answer_by_text() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     // Check answer by verse text
     assert!(exercise.check_answer("قُلْ هُوَ ٱللَّهُ أَحَدٌ"));
@@ -517,9 +495,7 @@ async fn test_cross_verse_check_answer_by_text() {
 #[tokio::test]
 async fn test_cross_verse_type_name() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     assert_eq!(exercise.get_type_name(), "cross_verse_connection");
 }
@@ -527,9 +503,7 @@ async fn test_cross_verse_type_name() {
 #[tokio::test]
 async fn test_cross_verse_hint() {
     let repo = MockContentRepo::new();
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(11, &repo).await.unwrap();
 
     let hint = exercise.get_hint();
     assert!(hint.is_some());
@@ -540,9 +514,7 @@ async fn test_cross_verse_hint() {
 async fn test_cross_verse_fallback_to_same_chapter() {
     let repo = MockContentRepo::new();
     // Verse 1:2 has edges but should use fallback for missing connections
-    let exercise = CrossVerseConnectionExercise::new("VERSE:1:2".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = CrossVerseConnectionExercise::new(12, &repo).await.unwrap();
 
     // Should find verse 1:3 as connected (via edge)
     assert_eq!(exercise.get_correct_verse_key(), "1:3");

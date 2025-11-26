@@ -1371,13 +1371,13 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_prerequisite_parents(
         &self,
-        node_ids: &[String],
-    ) -> anyhow::Result<HashMap<String, Vec<String>>> {
+        node_ids: &[i64],
+    ) -> anyhow::Result<HashMap<i64, Vec<i64>>> {
         if node_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let mut result: HashMap<String, Vec<String>> = HashMap::new();
+        let mut result: HashMap<i64, Vec<i64>> = HashMap::new();
 
         // SQLite parameter limit is ~999, so chunk into batches of 500
         const CHUNK_SIZE: usize = 500;

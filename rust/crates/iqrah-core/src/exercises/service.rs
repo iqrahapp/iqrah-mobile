@@ -83,9 +83,9 @@ impl ExerciseService {
 
     /// Generate an exercise for a given node ID
     /// Automatically detects the knowledge axis from the node ID
-    pub async fn generate_exercise(&self, node_id: &str) -> Result<ExerciseType> {
+    pub async fn generate_exercise(&self, node_id: i64, ukey: &str) -> Result<ExerciseType> {
         // Parse node to determine axis
-        let axis = if let Some(kn) = KnowledgeNode::parse(node_id) {
+        let axis = if let Some(kn) = KnowledgeNode::parse(ukey) {
             kn.axis
         } else {
             // Default to memorization for non-knowledge nodes
@@ -96,24 +96,24 @@ impl ExerciseService {
         match axis {
             KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization => {
                 let exercise =
-                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning => {
                 let exercise =
-                    TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    TranslationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tafsir => {
                 // For now, treat tafsir like translation
                 let exercise =
-                    TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    TranslationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
                 // Tajweed not implemented yet, fall back to memorization
                 let exercise =
-                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
         }
@@ -122,24 +122,24 @@ impl ExerciseService {
     /// Generate an exercise for a specific axis (override node's axis)
     pub async fn generate_exercise_for_axis(
         &self,
-        node_id: &str,
+        node_id: i64,
         axis: KnowledgeAxis,
     ) -> Result<ExerciseType> {
         match axis {
             KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization => {
                 let exercise =
-                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning | KnowledgeAxis::Tafsir => {
                 let exercise =
-                    TranslationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    TranslationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
                 // Tajweed not implemented yet, fall back to memorization
                 let exercise =
-                    MemorizationExercise::new(node_id.to_string(), &*self.content_repo).await?;
+                    MemorizationExercise::new(node_id, &*self.content_repo).await?;
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
         }
@@ -160,43 +160,43 @@ impl ExerciseService {
     /// - Learning state (FSRS energy levels)
     /// - User preferences
     /// - Exercise variety (randomization)
-    pub async fn generate_exercise_v2(&self, node_id: &str) -> Result<ExerciseData> {
+    pub async fn generate_exercise_v2(&self, node_id: i64, ukey: &str) -> Result<ExerciseData> {
         // Strip knowledge axis suffix if present
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(node_id) {
+        let base_ukey = if let Some(kn) = KnowledgeNode::parse(ukey) {
             kn.base_node_id
         } else {
-            node_id.to_string()
+            ukey.to_string()
         };
 
         // Route based on node type prefix
-        if base_node_id.starts_with("WORD:") || base_node_id.starts_with("WORD_INSTANCE:") {
+        if base_ukey.starts_with("WORD:") || base_ukey.starts_with("WORD_INSTANCE:") {
             // Word-level exercises
-            generators::generate_memorization(base_node_id, &*self.content_repo).await
-        } else if base_node_id.starts_with("VERSE:") {
+            generators::generate_memorization(node_id, &*self.content_repo).await
+        } else if base_ukey.starts_with("VERSE:") {
             // Verse-level exercises
-            generators::generate_full_verse_input(base_node_id, &*self.content_repo).await
-        } else if base_node_id.starts_with("CHAPTER:") {
+            generators::generate_full_verse_input(node_id, &*self.content_repo).await
+        } else if base_ukey.starts_with("CHAPTER:") {
             // Chapter-level exercises
-            generators::generate_ayah_chain(base_node_id, &*self.content_repo).await
+            generators::generate_ayah_chain(node_id, &*self.content_repo).await
         } else {
             Err(anyhow::anyhow!(
                 "Cannot determine exercise type for node: {}",
-                node_id
+                ukey
             ))
         }
     }
 
     /// Generate an MCQ exercise (Arabic to English)
     /// Tests translation understanding with multiple choice
-    pub async fn generate_mcq_ar_to_en(&self, node_id: &str) -> Result<ExerciseType> {
-        let exercise = McqExercise::new_ar_to_en(node_id.to_string(), &*self.content_repo).await?;
+    pub async fn generate_mcq_ar_to_en(&self, node_id: i64) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_ar_to_en(node_id, &*self.content_repo).await?;
         Ok(ExerciseType::McqArToEn(Box::new(exercise)))
     }
 
     /// Generate an MCQ exercise (English to Arabic)
     /// Tests memorization with multiple choice
-    pub async fn generate_mcq_en_to_ar(&self, node_id: &str) -> Result<ExerciseType> {
-        let exercise = McqExercise::new_en_to_ar(node_id.to_string(), &*self.content_repo).await?;
+    pub async fn generate_mcq_en_to_ar(&self, node_id: i64) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_en_to_ar(node_id, &*self.content_repo).await?;
         Ok(ExerciseType::McqEnToAr(Box::new(exercise)))
     }
 
@@ -322,8 +322,8 @@ mod tests {
 
     // Mock ContentRepository for testing
     struct MockContentRepo {
-        quran_text: HashMap<String, String>,
-        translations: HashMap<String, String>,
+        quran_text: HashMap<i64, String>,
+        translations: HashMap<i64, String>,
     }
 
     impl MockContentRepo {
@@ -332,10 +332,10 @@ mod tests {
             let mut translations = HashMap::new();
 
             // Add test data
-            quran_text.insert("WORD:1:1:1".to_string(), "بِسْمِ".to_string());
-            translations.insert("WORD:1:1:1".to_string(), "In the name".to_string());
-            quran_text.insert("WORD:1".to_string(), "بِسْمِ".to_string());
-            translations.insert("WORD:1".to_string(), "In the name".to_string());
+            quran_text.insert(111, "بِسْمِ".to_string());
+            translations.insert(111, "In the name".to_string());
+            quran_text.insert(1, "بِسْمِ".to_string());
+            translations.insert(1, "In the name".to_string());
 
             Self {
                 quran_text,
@@ -343,48 +343,48 @@ mod tests {
             }
         }
 
-        fn get_base_id(&self, node_id: &str) -> String {
-            if let Some(kn) = KnowledgeNode::parse(node_id) {
-                kn.base_node_id
-            } else {
-                node_id.to_string()
-            }
+        fn get_base_id(&self, node_id: i64) -> i64 {
+            // This is a simplified mock, assuming the base ID is the same as the node ID
+            node_id
         }
     }
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, _node_id: &str) -> Result<Option<Node>> {
+        async fn get_node(&self, _node_id: i64) -> Result<Option<Node>> {
             Ok(Some(Node {
-                id: "test".to_string(),
+                id: 1,
+                ukey: "test".to_string(),
                 node_type: NodeType::Word,
-                knowledge_node: None,
             }))
         }
+        async fn get_node_by_ukey(&self, _ukey: &str) -> Result<Option<Node>> {
+            unimplemented!()
+        }
 
-        async fn get_edges_from(&self, _source_id: &str) -> Result<Vec<crate::Edge>> {
+        async fn get_edges_from(&self, _source_id: i64) -> Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
 
-        async fn get_quran_text(&self, node_id: &str) -> Result<Option<String>> {
+        async fn get_quran_text(&self, node_id: i64) -> Result<Option<String>> {
             let base_id = self.get_base_id(node_id);
             Ok(self.quran_text.get(&base_id).cloned())
         }
 
-        async fn get_translation(&self, node_id: &str, _lang: &str) -> Result<Option<String>> {
+        async fn get_translation(&self, node_id: i64, _lang: &str) -> Result<Option<String>> {
             let base_id = self.get_base_id(node_id);
             Ok(self.translations.get(&base_id).cloned())
         }
 
-        async fn get_metadata(&self, _node_id: &str, _key: &str) -> Result<Option<String>> {
+        async fn get_metadata(&self, _node_id: i64, _key: &str) -> Result<Option<String>> {
             Ok(None)
         }
 
-        async fn get_all_metadata(&self, _node_id: &str) -> Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
-        async fn node_exists(&self, _node_id: &str) -> Result<bool> {
+        async fn node_exists(&self, _node_id: i64) -> Result<bool> {
             Ok(true)
         }
 
@@ -396,21 +396,13 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> Result<()> {
-            Ok(())
-        }
-
-        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> Result<()> {
-            Ok(())
-        }
-
-        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> Result<Vec<Node>> {
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> Result<Vec<Node>> {
             Ok(vec![])
         }
 
         async fn get_adjacent_words(
             &self,
-            _word_node_id: &str,
+            _word_node_id: i64,
         ) -> Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
@@ -592,16 +584,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> Result<HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> Result<HashMap<i64, Vec<i64>>> {
             Ok(HashMap::new())
         }
 
@@ -612,7 +602,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<i64>> {
             Ok(vec![])
         }
     }
@@ -623,7 +613,7 @@ mod tests {
         let service = ExerciseService::new(content_repo);
 
         let exercise = service
-            .generate_exercise("WORD:1:1:1:memorization")
+            .generate_exercise(111, "WORD:1:1:1:memorization")
             .await
             .unwrap();
 
@@ -638,7 +628,7 @@ mod tests {
         let service = ExerciseService::new(content_repo);
 
         let exercise = service
-            .generate_exercise("WORD:1:1:1:translation")
+            .generate_exercise(111, "WORD:1:1:1:translation")
             .await
             .unwrap();
 
@@ -653,7 +643,7 @@ mod tests {
         let service = ExerciseService::new(content_repo);
 
         // Use MCQ exercise (doesn't require semantic model)
-        let exercise = service.generate_mcq_ar_to_en("WORD:1:1:1").await.unwrap();
+        let exercise = service.generate_mcq_ar_to_en(111).await.unwrap();
 
         let ex = exercise.as_exercise();
         // MCQ should accept the correct answer
@@ -669,7 +659,7 @@ mod tests {
         let service = ExerciseService::new(content_repo);
 
         let exercise = service
-            .generate_exercise("WORD:1:1:1:translation")
+            .generate_exercise(111, "WORD:1:1:1:translation")
             .await
             .unwrap();
 
@@ -685,7 +675,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_mcq_ar_to_en("WORD:1:1:1").await.unwrap();
+        let exercise = service.generate_mcq_ar_to_en(111).await.unwrap();
 
         let ex = exercise.as_exercise();
         assert_eq!(ex.get_type_name(), "mcq_ar_to_en");
@@ -697,7 +687,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_mcq_en_to_ar("WORD:1:1:1").await.unwrap();
+        let exercise = service.generate_mcq_en_to_ar(111).await.unwrap();
 
         let ex = exercise.as_exercise();
         assert_eq!(ex.get_type_name(), "mcq_en_to_ar");
@@ -709,7 +699,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepo::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_mcq_ar_to_en("WORD:1:1:1").await.unwrap();
+        let exercise = service.generate_mcq_ar_to_en(111).await.unwrap();
 
         let ex = exercise.as_exercise();
         let response = service.check_answer(ex, "In the name");
@@ -788,31 +778,34 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepoV2 {
-        async fn get_node(&self, _node_id: &str) -> Result<Option<Node>> {
+        async fn get_node(&self, _node_id: i64) -> Result<Option<Node>> {
             Ok(None)
         }
+        async fn get_node_by_ukey(&self, _ukey: &str) -> Result<Option<Node>> {
+            unimplemented!()
+        }
 
-        async fn get_edges_from(&self, _source_id: &str) -> Result<Vec<crate::Edge>> {
+        async fn get_edges_from(&self, _source_id: i64) -> Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
 
-        async fn get_quran_text(&self, _node_id: &str) -> Result<Option<String>> {
+        async fn get_quran_text(&self, _node_id: i64) -> Result<Option<String>> {
             Ok(None)
         }
 
-        async fn get_translation(&self, _node_id: &str, _lang: &str) -> Result<Option<String>> {
+        async fn get_translation(&self, _node_id: i64, _lang: &str) -> Result<Option<String>> {
             Ok(None)
         }
 
-        async fn get_metadata(&self, _node_id: &str, _key: &str) -> Result<Option<String>> {
+        async fn get_metadata(&self, _node_id: i64, _key: &str) -> Result<Option<String>> {
             Ok(None)
         }
 
-        async fn get_all_metadata(&self, _node_id: &str) -> Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
-        async fn node_exists(&self, _node_id: &str) -> Result<bool> {
+        async fn node_exists(&self, _node_id: i64) -> Result<bool> {
             Ok(false)
         }
 
@@ -824,21 +817,13 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> Result<()> {
-            Ok(())
-        }
-
-        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> Result<()> {
-            Ok(())
-        }
-
-        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> Result<Vec<Node>> {
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> Result<Vec<Node>> {
             Ok(vec![])
         }
 
         async fn get_adjacent_words(
             &self,
-            _word_node_id: &str,
+            _word_node_id: i64,
         ) -> Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
@@ -1025,16 +1010,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> Result<HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> Result<HashMap<i64, Vec<i64>>> {
             Ok(HashMap::new())
         }
 
@@ -1045,7 +1028,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> Result<Vec<i64>> {
             Ok(vec![])
         }
     }
@@ -1059,7 +1042,7 @@ mod tests {
 
         // Should generate Memorization exercise
         assert_eq!(exercise.type_name(), "memorization");
-        assert_eq!(exercise.node_id(), "WORD:1");
+        assert_eq!(exercise.node_id(), 1);
     }
 
     #[tokio::test]
@@ -1067,11 +1050,11 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_exercise_v2("VERSE:1:1").await.unwrap();
+        let exercise = service.generate_exercise_v2(11, "VERSE:1:1").await.unwrap();
 
         // Should generate FullVerseInput exercise
         assert_eq!(exercise.type_name(), "full_verse_input");
-        assert_eq!(exercise.node_id(), "VERSE:1:1");
+        assert_eq!(exercise.node_id(), 11);
     }
 
     #[tokio::test]
@@ -1079,11 +1062,11 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service.generate_exercise_v2("CHAPTER:1").await.unwrap();
+        let exercise = service.generate_exercise_v2(1, "CHAPTER:1").await.unwrap();
 
         // Should generate AyahChain exercise
         assert_eq!(exercise.type_name(), "ayah_chain");
-        assert_eq!(exercise.node_id(), "CHAPTER:1");
+        assert_eq!(exercise.node_id(), 1);
     }
 
     #[tokio::test]
@@ -1093,13 +1076,13 @@ mod tests {
 
         // Test with knowledge axis suffix (should strip it)
         let exercise = service
-            .generate_exercise_v2("WORD:1:memorization")
+            .generate_exercise_v2(1, "WORD:1:memorization")
             .await
             .unwrap();
 
         assert_eq!(exercise.type_name(), "memorization");
         // node_id should be the base without axis
-        assert_eq!(exercise.node_id(), "WORD:1");
+        assert_eq!(exercise.node_id(), 1);
     }
 
     #[tokio::test]

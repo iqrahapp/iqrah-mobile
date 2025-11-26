@@ -9,7 +9,7 @@ mod tests {
 
     // Mock ContentRepository
     struct MockContentRepo {
-        nodes: HashMap<String, Node>,
+        nodes: HashMap<i64, Node>,
     }
 
     impl MockContentRepo {
@@ -18,38 +18,38 @@ mod tests {
 
             // Create test nodes of different types
             nodes.insert(
-                "word_1".to_string(),
+                1,
                 Node {
-                    id: "word_1".to_string(),
+                    id: 1,
+                    ukey: "word_1".to_string(),
                     node_type: NodeType::WordInstance,
-                    knowledge_node: None,
                 },
             );
 
             nodes.insert(
-                "word_2".to_string(),
+                2,
                 Node {
-                    id: "word_2".to_string(),
+                    id: 2,
+                    ukey: "word_2".to_string(),
                     node_type: NodeType::WordInstance,
-                    knowledge_node: None,
                 },
             );
 
             nodes.insert(
-                "verse_1".to_string(),
+                3,
                 Node {
-                    id: "verse_1".to_string(),
+                    id: 3,
+                    ukey: "verse_1".to_string(),
                     node_type: NodeType::Verse,
-                    knowledge_node: None,
                 },
             );
 
             nodes.insert(
-                "surah_1".to_string(),
+                4,
                 Node {
-                    id: "surah_1".to_string(),
+                    id: 4,
+                    ukey: "surah_1".to_string(),
                     node_type: NodeType::Chapter,
-                    knowledge_node: None,
                 },
             );
 
@@ -59,39 +59,43 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, node_id: &str) -> anyhow::Result<Option<Node>> {
-            Ok(self.nodes.get(node_id).cloned())
+        async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
+            Ok(self.nodes.get(&node_id).cloned())
         }
 
-        async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+        async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<Node>> {
+            unimplemented!()
+        }
+
+        async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
             Ok(vec![])
         }
 
-        async fn get_quran_text(&self, _node_id: &str) -> anyhow::Result<Option<String>> {
+        async fn get_quran_text(&self, _node_id: i64) -> anyhow::Result<Option<String>> {
             Ok(Some("Test Arabic".to_string()))
         }
 
         async fn get_translation(
             &self,
-            _node_id: &str,
+            _node_id: i64,
             _lang: &str,
         ) -> anyhow::Result<Option<String>> {
             Ok(Some("Test Translation".to_string()))
         }
 
-        async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+        async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
             Ok(None)
         }
 
         async fn get_all_metadata(
             &self,
-            _node_id: &str,
+            _node_id: i64,
         ) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
-        async fn node_exists(&self, node_id: &str) -> anyhow::Result<bool> {
-            Ok(self.nodes.contains_key(node_id))
+        async fn node_exists(&self, node_id: i64) -> anyhow::Result<bool> {
+            Ok(self.nodes.contains_key(&node_id))
         }
 
         async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>> {
@@ -102,26 +106,17 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[String]) -> anyhow::Result<Vec<Node>> {
+        async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<Node>> {
             Ok(vec![])
         }
 
         async fn get_adjacent_words(
             &self,
-            _word_node_id: &str,
+            _word_node_id: i64,
         ) -> anyhow::Result<(Option<Node>, Option<Node>)> {
             Ok((None, None))
         }
 
-        // V2 Stub Methods
         async fn get_chapter(
             &self,
             _chapter_number: i32,
@@ -291,16 +286,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> anyhow::Result<HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<HashMap<i64, Vec<i64>>> {
             Ok(HashMap::new())
         }
 
@@ -311,7 +304,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
             Ok(vec![])
         }
 
@@ -345,7 +338,7 @@ mod tests {
     // Mock UserRepository
     struct MockUserRepo {
         due_states: std::sync::Mutex<Vec<MemoryState>>,
-        session_state: std::sync::Mutex<Vec<String>>,
+        session_state: std::sync::Mutex<Vec<i64>>,
         stats: std::sync::Mutex<HashMap<String, String>>,
     }
 
@@ -368,7 +361,7 @@ mod tests {
         async fn get_memory_state(
             &self,
             _user_id: &str,
-            _node_id: &str,
+            _node_id: i64,
         ) -> anyhow::Result<Option<MemoryState>> {
             Ok(None)
         }
@@ -389,7 +382,7 @@ mod tests {
         async fn update_energy(
             &self,
             _user_id: &str,
-            _node_id: &str,
+            _node_id: i64,
             _new_energy: f64,
         ) -> anyhow::Result<()> {
             Ok(())
@@ -399,11 +392,11 @@ mod tests {
             Ok(())
         }
 
-        async fn get_session_state(&self) -> anyhow::Result<Vec<String>> {
+        async fn get_session_state(&self) -> anyhow::Result<Vec<i64>> {
             Ok(self.session_state.lock().unwrap().clone())
         }
 
-        async fn save_session_state(&self, node_ids: &[String]) -> anyhow::Result<()> {
+        async fn save_session_state(&self, node_ids: &[i64]) -> anyhow::Result<()> {
             *self.session_state.lock().unwrap() = node_ids.to_vec();
             Ok(())
         }
@@ -436,16 +429,16 @@ mod tests {
         async fn get_parent_energies(
             &self,
             _user_id: &str,
-            _node_ids: &[String],
-        ) -> anyhow::Result<HashMap<String, f32>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<HashMap<i64, f32>> {
             Ok(HashMap::new())
         }
 
         async fn get_memory_basics(
             &self,
             _user_id: &str,
-            _node_ids: &[String],
-        ) -> anyhow::Result<HashMap<String, crate::scheduler_v2::MemoryBasics>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<HashMap<i64, crate::scheduler_v2::MemoryBasics>> {
             Ok(HashMap::new())
         }
 
@@ -482,7 +475,7 @@ mod tests {
         user_repo.set_due_states(vec![
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
+                node_id: 1,
                 stability: 10.0,
                 difficulty: 5.0,
                 energy: 0.3,
@@ -492,7 +485,7 @@ mod tests {
             },
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_2".to_string(),
+                node_id: 2,
                 stability: 5.0,
                 difficulty: 6.0,
                 energy: 0.6,
@@ -523,7 +516,7 @@ mod tests {
 
         user_repo.set_due_states(vec![MemoryState {
             user_id: "user1".to_string(),
-            node_id: "word_1".to_string(),
+            node_id: 1,
             stability: 10.0,
             difficulty: 5.0,
             energy: 0.3,
@@ -563,7 +556,7 @@ mod tests {
         user_repo.set_due_states(vec![
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
+                node_id: 1,
                 stability: 10.0,
                 difficulty: 5.0,
                 energy: 0.3,
@@ -573,7 +566,7 @@ mod tests {
             },
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "verse_1".to_string(),
+                node_id: 3,
                 stability: 5.0,
                 difficulty: 6.0,
                 energy: 0.6,
@@ -583,7 +576,7 @@ mod tests {
             },
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "surah_1".to_string(), // Should be filtered out
+                node_id: 4, // Should be filtered out
                 stability: 3.0,
                 difficulty: 4.0,
                 energy: 0.5,
@@ -626,7 +619,7 @@ mod tests {
         user_repo.set_due_states(vec![
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
+                node_id: 1,
                 stability: 10.0,
                 difficulty: 5.0,
                 energy: 0.9, // High energy, low need
@@ -636,7 +629,7 @@ mod tests {
             },
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_2".to_string(),
+                node_id: 2,
                 stability: 5.0,
                 difficulty: 6.0,
                 energy: 0.1, // Low energy, high need
@@ -655,7 +648,7 @@ mod tests {
         assert_eq!(items.len(), 2);
 
         // First item should be word_2 (more overdue, higher need)
-        assert_eq!(items[0].node.id, "word_2");
+        assert_eq!(items[0].node.id, 2);
         assert!(items[0].priority_score > items[1].priority_score);
     }
 
@@ -671,7 +664,7 @@ mod tests {
         user_repo.set_due_states(vec![
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_1".to_string(),
+                node_id: 1,
                 stability: 10.0,
                 difficulty: 5.0,
                 energy: 0.3,
@@ -681,7 +674,7 @@ mod tests {
             },
             MemoryState {
                 user_id: "user1".to_string(),
-                node_id: "word_2".to_string(),
+                node_id: 2,
                 stability: 5.0,
                 difficulty: 6.0,
                 energy: 0.6,
@@ -707,7 +700,7 @@ mod tests {
         let user_repo = Arc::new(MockUserRepo::new());
         let service = SessionService::new(content_repo, user_repo.clone());
 
-        let node_ids = vec!["word_1".to_string(), "word_2".to_string()];
+        let node_ids = vec![1, 2];
 
         // Act - Save session state
         let save_result = service.save_session_state(&node_ids).await;
@@ -782,7 +775,7 @@ mod tests {
 
         user_repo.set_due_states(vec![MemoryState {
             user_id: "user1".to_string(),
-            node_id: "word_1".to_string(),
+            node_id: 1,
             stability: 10.0,
             difficulty: 5.0,
             energy: 0.2, // mastery_gap should be 0.8
@@ -818,7 +811,7 @@ mod tests {
 
         user_repo.set_due_states(vec![MemoryState {
             user_id: "user1".to_string(),
-            node_id: "word_1".to_string(),
+            node_id: 1,
             stability: 10.0,
             difficulty: 5.0,
             energy: 0.5,

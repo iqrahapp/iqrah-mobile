@@ -8,7 +8,7 @@ pub trait UserRepository: Send + Sync {
     async fn get_memory_state(
         &self,
         user_id: &str,
-        node_id: &str,
+        node_id: i64,
     ) -> anyhow::Result<Option<MemoryState>>;
 
     /// Save or update memory state
@@ -26,7 +26,7 @@ pub trait UserRepository: Send + Sync {
     async fn update_energy(
         &self,
         user_id: &str,
-        node_id: &str,
+        node_id: i64,
         new_energy: f64,
     ) -> anyhow::Result<()>;
 
@@ -34,10 +34,10 @@ pub trait UserRepository: Send + Sync {
     async fn log_propagation(&self, event: &PropagationEvent) -> anyhow::Result<()>;
 
     /// Get session state
-    async fn get_session_state(&self) -> anyhow::Result<Vec<String>>;
+    async fn get_session_state(&self) -> anyhow::Result<Vec<i64>>;
 
     /// Save session state
-    async fn save_session_state(&self, node_ids: &[String]) -> anyhow::Result<()>;
+    async fn save_session_state(&self, node_ids: &[i64]) -> anyhow::Result<()>;
 
     /// Clear session state
     async fn clear_session_state(&self) -> anyhow::Result<()>;
@@ -72,8 +72,8 @@ pub trait UserRepository: Send + Sync {
     async fn get_parent_energies(
         &self,
         user_id: &str,
-        node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, f32>>;
+        parent_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, f32>>;
 
     /// Get memory basics (energy + next_due_ts) for a list of nodes
     ///
@@ -89,8 +89,8 @@ pub trait UserRepository: Send + Sync {
     async fn get_memory_basics(
         &self,
         user_id: &str,
-        node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, crate::scheduler_v2::MemoryBasics>>;
+        node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, crate::scheduler_v2::MemoryBasics>>;
 
     // ========================================================================
     // Scheduler v2.1 Bandit Methods

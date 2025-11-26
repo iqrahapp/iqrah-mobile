@@ -27,7 +27,7 @@ impl LearningService {
     pub async fn process_review(
         &self,
         user_id: &str,
-        node_id: &str,
+        node_id: i64,
         grade: ReviewGrade,
     ) -> Result<MemoryState> {
         // 1. Get or create current memory state
@@ -59,12 +59,12 @@ impl LearningService {
     }
 
     /// Get memory state or create a new one
-    async fn get_or_create_state(&self, user_id: &str, node_id: &str) -> Result<MemoryState> {
+    async fn get_or_create_state(&self, user_id: &str, node_id: i64) -> Result<MemoryState> {
         match self.user_repo.get_memory_state(user_id, node_id).await? {
             Some(state) => Ok(state),
             None => {
                 // Lazy creation - only create state on first review
-                let state = MemoryState::new_for_node(user_id.to_string(), node_id.to_string());
+                let state = MemoryState::new_for_node(user_id.to_string(), node_id);
                 self.user_repo.save_memory_state(&state).await?;
                 Ok(state)
             }
@@ -123,7 +123,7 @@ impl LearningService {
     async fn propagate_energy(
         &self,
         user_id: &str,
-        source_node_id: &str,
+        source_node_id: i64,
         delta: f64,
     ) -> Result<()> {
         // Get edges from this node
@@ -146,17 +146,17 @@ impl LearningService {
             // Get current state of target node
             if let Some(target_state) = self
                 .user_repo
-                .get_memory_state(user_id, &edge.target_id)
+                .get_memory_state(user_id, edge.target_id)
                 .await?
             {
                 // Update target energy
                 let new_energy = (target_state.energy + propagated_delta).clamp(0.0, 1.0);
                 self.user_repo
-                    .update_energy(user_id, &edge.target_id, new_energy)
+                    .update_energy(user_id, edge.target_id, new_energy)
                     .await?;
 
                 details.push(PropagationDetail {
-                    target_node_id: edge.target_id.clone(),
+                    target_node_id: edge.target_id,
                     energy_change: propagated_delta,
                     reason: format!("Propagated from {}", source_node_id),
                 });
@@ -166,7 +166,7 @@ impl LearningService {
         // Log propagation event
         if !details.is_empty() {
             let event = PropagationEvent {
-                source_node_id: source_node_id.to_string(),
+                source_node_id: source_node_id,
                 event_timestamp: Utc::now(),
                 details,
             };
