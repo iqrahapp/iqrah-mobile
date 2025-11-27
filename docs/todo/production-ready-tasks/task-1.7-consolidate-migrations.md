@@ -4,9 +4,9 @@
 
 - **Priority:** P0 (Critical Foundation)
 - **Estimated Effort:** 4-5 hours
-- **Dependencies:** Task 1.6 (Test Data Separation - should be completed first)
+- **Dependencies:** None (Can be done in parallel with Task 1.6 - different databases)
 - **Agent Type:** Database Schema Consolidation + Testing
-- **Parallelizable:** No (Affects all database initialization)
+- **Parallelizable:** Yes (with Task 1.6 - affects user.db, not content.db)
 
 ## Goal
 
@@ -34,7 +34,7 @@ During development (Nov 16-26), the user database schema evolved through multipl
 
 **Related Documentation:**
 - [Two-Database Architecture](/CLAUDE.md) - User DB design principles
-- [Task 1.6](/docs/todo/production-ready-tasks/task-1.6-separate-test-data-from-migrations.md) - Test data separation (content DB)
+- [Task 1.6](/docs/todo/production-ready-tasks/task-1.6-schema-v2.1-and-test-data-separation.md) - Schema v2.1 redesign + test data separation (content DB)
 
 ## Current State
 
@@ -357,10 +357,14 @@ SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='user_memory_stat
 ### ⚠️ Dependencies on Other Tasks
 
 **Task 1.6 Status:**
-- **If Task 1.6 completed**: Test data should be in separate module. Ensure consolidated migration contains ONLY schema (no test INSERTs)
-- **If Task 1.6 not done**: Keep test data in migration temporarily. Extract to separate module when Task 1.6 is implemented
+
+- Task 1.6 now includes comprehensive schema redesign (v2.1) for content.db
+- Task 1.7 focuses on user.db only - can be done in parallel
+- Both tasks follow the same pattern: consolidate migrations, remove test data
+- User DB test data approach can mirror content DB approach (separate test module if desired)
 
 **Task 1.4 Status:**
+
 - ✅ COMPLETE: i64 ID refactoring done. Consolidated migration should use INTEGER content_key throughout.
 
 ## Success Criteria
