@@ -13,14 +13,31 @@ Generate a complete knowledge graph migration file that includes ALL 6 knowledge
 
 ## Context
 
-**Current State:** The Rust code for knowledge axis is FULLY implemented, but the data is missing:
+### Migration File Status (Updated 2025-11-27)
+
+**⚠️ Important:** The migration file structure has changed since this task was written:
+
+- **Old Reference (Task Created):** `20241118000001_knowledge_graph_chapters_1_3.sql` (NO LONGER EXISTS)
+- **Current Migration:** `20241126000001_unified_content_schema.sql` (CONSOLIDATED BASE SCHEMA)
+- **This Task Creates:** `20241127000001_knowledge_graph_full_axis.sql` or similar (NEW SUBSEQUENT MIGRATION)
+
+**Migration Strategy:**
+
+- Task 1.6 consolidated the base schema into a single file (20241126000001)
+- Knowledge graph data should be added as a SUBSEQUENT migration (not modifying the base schema)
+- New migration file number should be AFTER 20241126000001 (e.g., 20241127000001 or 20241128000001)
+
+### Implementation Context
+
+**The Rust code for knowledge axis is FULLY implemented, but the data is missing:**
 - ✅ Domain models (`KnowledgeAxis` enum, `KnowledgeNode` struct)
 - ✅ Exercise routing by axis
 - ✅ Session filtering by axis
-- ❌ **Migration file only has content nodes, NO knowledge nodes**
+- ❌ **Current migration only has content nodes, NO knowledge nodes**
 
-**Current Migration:** `migrations_content/20241118000001_knowledge_graph_chapters_1_3.sql`
-- Contains: Verse IDs like `"VERSE:1:1"`, `"VERSE:2:5"` (content nodes)
+**Current Migration:** `migrations_content/20241126000001_unified_content_schema.sql`
+
+- Contains: Verse nodes (493 verses), basic structure, schema version 2.1.0
 - Missing: Knowledge nodes like `"VERSE:1:1:memorization"`, `"VERSE:1:1:translation"`
 
 **Why This Matters:**
@@ -30,20 +47,22 @@ Knowledge axis is a CORE FEATURE. Without the data:
 - The sophisticated axis-specific exercise system is unused
 - Cross-axis propagation (translation helps memorization) doesn't work
 
-**Python Generator:** The code EXISTS in `knowledge_builder.py` but hasn't been run to generate the current migration.
+**Python Generator:** The code EXISTS in `knowledge_builder.py` but hasn't been run to generate the migration.
 
-## Current State
+## Implementation Details
 
 **Python R&D Project:**
+
 - **Location:** `research_and_dev/iqrah-knowledge-graph2/`
 - **Builder:** `src/iqrah/graph/knowledge_builder.py` (lines 139-196)
 - **Exporter:** `score_and_extract.py`
 
-**Current Migration File:**
-- **Path:** `rust/crates/iqrah-storage/migrations_content/20241118000001_knowledge_graph_chapters_1_3.sql`
-- **Size:** ~126KB
-- **Content:** 493 verses, dependency edges, PageRank scores
-- **Missing:** Knowledge nodes and knowledge edges
+**Base Schema Migration (Already Exists):**
+
+- **Path:** `rust/crates/iqrah-storage/migrations_content/20241126000001_unified_content_schema.sql`
+- **Size:** ~16KB (consolidated, schema-only after Task 1.6)
+- **Content:** 493 verses, nodes registry, scheduler v2 tables
+- **Missing:** Knowledge nodes, knowledge edges, PageRank scores
 
 **Rust Expectations:**
 - `rust/crates/iqrah-core/src/domain/models.rs` (lines 54-147) - Expects 6 axis types
@@ -54,10 +73,13 @@ Knowledge axis is a CORE FEATURE. Without the data:
 
 ### New Migration File Structure
 
-**File:** `rust/crates/iqrah-storage/migrations_content/20241124000002_knowledge_graph_full_axis.sql`
+**File:** `rust/crates/iqrah-storage/migrations_content/20241127000001_knowledge_graph_full_axis.sql`
+
+**Note:** This migration runs AFTER the base schema (20241126000001). Use a date-based number that comes after 20241126.
 
 **Contents:**
-1. **Content Nodes** (already exist):
+
+1. **Content Nodes** (already exist in base migration):
    - Chapters: `CHAPTER:1`, `CHAPTER:2`, `CHAPTER:3`
    - Verses: `VERSE:1:1`, `VERSE:1:2`, ..., `VERSE:3:200` (493 verses total)
    - Words: `WORD_INSTANCE:1:1:1`, `WORD_INSTANCE:1:1:2`, ...
@@ -204,7 +226,7 @@ pytest tests/test_scoring.py -v
 cd rust/crates/iqrah-storage
 
 # Import migration
-sqlite3 test.db < migrations_content/20241124000002_knowledge_graph_full_axis.sql
+sqlite3 test.db < migrations_content/20241127000001_knowledge_graph_full_axis.sql
 
 # Count nodes by type
 sqlite3 test.db "SELECT COUNT(*) FROM node_metadata WHERE node_id LIKE '%:memorization'"
@@ -297,7 +319,7 @@ The 6 knowledge axes are distributed across two granularity levels:
 
 ## Success Criteria
 
-- [ ] New migration file created: `20241124000002_knowledge_graph_full_axis.sql`
+- [ ] New migration file created: `20241127000001_knowledge_graph_full_axis.sql` (or similar date after 20241126)
 - [ ] File contains knowledge nodes (verify with `grep ":memorization"`)
 - [ ] All 6 axes present (memorization, translation, tafsir, tajweed, contextual_memorization, meaning)
 - [ ] Knowledge edges present (EdgeType::Knowledge = 1)
@@ -318,9 +340,11 @@ The 6 knowledge axes are distributed across two granularity levels:
 - `/research_and_dev/iqrah-knowledge-graph2/score_and_extract.py`
 
 **Generated SQL File:**
-- `/rust/crates/iqrah-storage/migrations_content/20241124000002_knowledge_graph_full_axis.sql` (NEW)
+
+- `/rust/crates/iqrah-storage/migrations_content/20241127000001_knowledge_graph_full_axis.sql` (NEW - use date after 20241126)
 
 **Verification Files (No Changes):**
+
 - `/rust/crates/iqrah-core/src/domain/models.rs` - Check axis enum matches
 - `/rust/crates/iqrah-core/src/exercises/service.rs` - Verify exercise routing
 - `/rust/crates/iqrah-core/src/services/session_service.rs` - Verify session filtering

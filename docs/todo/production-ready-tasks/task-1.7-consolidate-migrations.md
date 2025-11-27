@@ -122,7 +122,7 @@ Create a single migration file that contains:
 - Clear structure with section comments
 - No redundancy, no duplicates
 - All INTEGER content_key fields consistent
-- Schema version recorded as 2.0.0 to match content.db
+- Schema version recorded as 2.0.0 (user.db v2: integer IDs + Thompson Sampling)
 
 ## Implementation Steps
 
@@ -340,7 +340,7 @@ SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='user_memory_stat
 - Keep FINAL schema state (INTEGER content_key)
 - Preserve all table structures, columns, and types exactly
 - Preserve all indexes and constraints
-- Update schema version to 2.0.0 (consistent with content.db)
+- Update schema version to 2.0.0 (user.db v2: integer IDs + Thompson Sampling)
 - Ensure all tests pass without modification
 - Clean single migration file ready for production
 
