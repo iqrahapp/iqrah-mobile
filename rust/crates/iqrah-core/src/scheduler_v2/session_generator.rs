@@ -213,12 +213,7 @@ fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i
             .collect();
 
         // Take up to remaining_needed
-        session.extend(
-            remaining
-                .iter()
-                .take(remaining_needed)
-                .map(|n| n.data.id),
-        );
+        session.extend(remaining.iter().take(remaining_needed).map(|n| n.data.id));
     }
 
     // Truncate if we somehow exceeded (shouldn't happen)
@@ -274,12 +269,7 @@ fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) ->
             .take(target_almost_there)
             .map(|n| n.data.id),
     );
-    session.extend(
-        struggling
-            .iter()
-            .take(target_struggling)
-            .map(|n| n.data.id),
-    );
+    session.extend(struggling.iter().take(target_struggling).map(|n| n.data.id));
     session.extend(
         really_struggling
             .iter()
@@ -301,12 +291,7 @@ fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) ->
             .filter(|n| !added_ids.contains(&n.data.id))
             .collect();
 
-        session.extend(
-            remaining
-                .iter()
-                .take(remaining_needed)
-                .map(|n| n.data.id),
-        );
+        session.extend(remaining.iter().take(remaining_needed).map(|n| n.data.id));
     }
 
     session.truncate(session_size);

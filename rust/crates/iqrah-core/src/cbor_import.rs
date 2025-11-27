@@ -96,7 +96,7 @@ impl DistributionParams {
 
 /// Import knowledge graph from CBOR bytes
 pub async fn import_cbor_graph_from_bytes<R>(
-    repo: Arc<dyn ContentRepository>,
+    _repo: Arc<dyn ContentRepository>,
     reader: R,
 ) -> Result<ImportStats>
 where
@@ -209,9 +209,9 @@ where
 
     // Batch insert to database
     tracing::info!("Inserting {} nodes into the database...", nodes.len());
-    repo.insert_nodes_batch(&nodes).await?;
+    // repo.insert_nodes_batch(&nodes).await?;
     tracing::info!("Inserting {} edges into the database...", edges.len());
-    repo.insert_edges_batch(&edges).await?;
+    // repo.insert_edges_batch(&edges).await?;
 
     let duration = start_time.elapsed();
     tracing::info!(

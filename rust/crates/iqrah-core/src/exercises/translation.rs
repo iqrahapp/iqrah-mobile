@@ -9,9 +9,9 @@ use rand::seq::SliceRandom;
 
 /// Exercise for testing understanding of word meanings
 /// Tests the user's knowledge of translation/meaning using semantic similarity
+#[derive(Debug)]
 pub struct TranslationExercise {
     node_id: i64,
-    ukey: String,
     word_text: String,
     translation: String,
 }
@@ -20,7 +20,7 @@ impl TranslationExercise {
     /// Create a new translation exercise
     pub async fn new(
         node_id: i64,
-        ukey: &str,
+        _ukey: &str,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
         // Get the word text
@@ -37,7 +37,6 @@ impl TranslationExercise {
 
         Ok(Self {
             node_id,
-            ukey: ukey.to_string(),
             word_text,
             translation,
         })
@@ -110,6 +109,7 @@ impl Exercise for TranslationExercise {
 
 /// Exercise for testing word translation in verse context (MCQ)
 /// Shows the full verse and asks for the meaning of a specific word
+#[derive(Debug)]
 pub struct ContextualTranslationExercise {
     node_id: i64,
     verse_text: String,

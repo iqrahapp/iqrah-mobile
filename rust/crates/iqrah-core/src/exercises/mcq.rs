@@ -2,7 +2,7 @@
 // Multiple Choice Question exercises
 
 use super::types::Exercise;
-use crate::{ContentRepository, KnowledgeNode};
+use crate::ContentRepository;
 use anyhow::Result;
 use rand::seq::SliceRandom;
 
@@ -11,7 +11,6 @@ use rand::seq::SliceRandom;
 #[derive(Debug)]
 pub struct McqExercise {
     node_id: i64,
-    ukey: String,
     question: String,
     correct_answer: String,
     options: Vec<String>, // All options including correct answer, shuffled
@@ -28,11 +27,7 @@ pub enum McqType {
 
 impl McqExercise {
     /// Create a new MCQ exercise (Arabic to English)
-    pub async fn new_ar_to_en(
-        node_id: i64,
-        ukey: &str,
-        content_repo: &dyn ContentRepository,
-    ) -> Result<Self> {
+    pub async fn new_ar_to_en(node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
         // Get the word text (Arabic) using the i64 ID
         let word_text = content_repo
             .get_quran_text(node_id)
@@ -58,7 +53,6 @@ impl McqExercise {
 
         Ok(Self {
             node_id,
-            ukey: ukey.to_string(),
             question,
             correct_answer,
             options,
@@ -67,11 +61,7 @@ impl McqExercise {
     }
 
     /// Create a new MCQ exercise (English to Arabic)
-    pub async fn new_en_to_ar(
-        node_id: i64,
-        ukey: &str,
-        content_repo: &dyn ContentRepository,
-    ) -> Result<Self> {
+    pub async fn new_en_to_ar(node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
         // Get the word text (Arabic) - this is the correct answer
         let correct_answer = content_repo
             .get_quran_text(node_id)
@@ -97,7 +87,6 @@ impl McqExercise {
 
         Ok(Self {
             node_id,
-            ukey: ukey.to_string(),
             question,
             correct_answer,
             options,
@@ -193,8 +182,8 @@ impl Exercise for McqExercise {
         }
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

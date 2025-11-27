@@ -67,7 +67,7 @@ pub enum KnowledgeAxis {
 }
 
 impl KnowledgeAxis {
-    pub fn from_str(s: &str) -> std::result::Result<Self, ()> {
+    pub fn parse(s: &str) -> std::result::Result<Self, String> {
         match s {
             "memorization" => Ok(Self::Memorization),
             "translation" => Ok(Self::Translation),
@@ -75,7 +75,7 @@ impl KnowledgeAxis {
             "tajweed" => Ok(Self::Tajweed),
             "contextual_memorization" => Ok(Self::ContextualMemorization),
             "meaning" => Ok(Self::Meaning),
-            _ => Err(()),
+            _ => Err(format!("Unknown knowledge axis: {}", s)),
         }
     }
 }
@@ -123,7 +123,7 @@ impl KnowledgeNode {
 
         // Last part should be the axis
         let axis_str = parts.last()?;
-        if let Ok(axis) = KnowledgeAxis::from_str(axis_str) {
+        if let Ok(axis) = KnowledgeAxis::parse(axis_str) {
             // Everything except last part is base node ID
             let base_parts = &parts[..parts.len() - 1];
             let base_node_id = base_parts.join(":");

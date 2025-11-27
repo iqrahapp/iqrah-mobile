@@ -15,7 +15,7 @@ use rand::seq::SliceRandom;
 /// Tests understanding of Arabic grammar basics
 #[derive(Debug)]
 pub struct PosTaggingExercise {
-    node_id: String,
+    node_id: i64,
     word_text: String,
     verse_context: String,
     correct_pos: String,
@@ -29,12 +29,18 @@ impl PosTaggingExercise {
     /// - Word text
     /// - Morphology segments with POS tags
     /// - Verse context
-    pub async fn new(word_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(word_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(word_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            node.ukey.clone()
         };
 
         // Parse node_id to get verse_key and word position
@@ -54,7 +60,7 @@ impl PosTaggingExercise {
 
         // Get word text
         let word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(word_node_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Word text not found: {}", base_node_id))?;
 
@@ -81,11 +87,16 @@ impl PosTaggingExercise {
             .ok_or_else(|| anyhow::anyhow!("No POS tag found for word ID {}", word.id))?;
 
         // Get verse context
-        let verse_node_id = format!("VERSE:{}", verse_key);
-        let verse_context = content_repo
-            .get_quran_text(&verse_node_id)
+        let verse_ukey = format!("VERSE:{}", verse_key);
+        let verse_node = content_repo
+            .get_node_by_ukey(&verse_ukey)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Verse node not found: {}", verse_ukey))?;
+
+        let verse_context = content_repo
+            .get_quran_text(verse_node.id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_ukey))?;
 
         // Generate MCQ options
         let options = Self::generate_options(&correct_pos);
@@ -183,8 +194,8 @@ impl Exercise for PosTaggingExercise {
         }
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

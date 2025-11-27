@@ -83,11 +83,49 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
-        Ok(None)
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        // Mock nodes based on ID
+        let ukey = match node_id {
+            1 => "CHAPTER:1",
+            2 => "CHAPTER:2",
+            11 => "VERSE:1:1",
+            12 => "VERSE:1:2",
+            13 => "VERSE:1:3",
+            21 => "VERSE:2:1",
+            _ => return Ok(None),
+        };
+
+        Ok(Some(crate::Node {
+            id: node_id,
+            ukey: ukey.to_string(),
+            node_type: if ukey.starts_with("CHAPTER") {
+                crate::NodeType::Chapter
+            } else {
+                crate::NodeType::Verse
+            },
+        }))
     }
-    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
-        unimplemented!()
+
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        let id = match ukey {
+            "CHAPTER:1" => 1,
+            "CHAPTER:2" => 2,
+            "VERSE:1:1" => 11,
+            "VERSE:1:2" => 12,
+            "VERSE:1:3" => 13,
+            "VERSE:2:1" => 21,
+            _ => return Ok(None),
+        };
+
+        Ok(Some(crate::Node {
+            id,
+            ukey: ukey.to_string(),
+            node_type: if ukey.starts_with("CHAPTER") {
+                crate::NodeType::Chapter
+            } else {
+                crate::NodeType::Verse
+            },
+        }))
     }
 
     async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -125,10 +163,7 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[i64],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
@@ -358,9 +393,7 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_full_verse_input_basic() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Verify exercise was created successfully
     assert_eq!(exercise.get_node_id(), 11);
@@ -371,9 +404,7 @@ async fn test_full_verse_input_basic() {
 #[tokio::test]
 async fn test_full_verse_input_question_format() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Verify question format
     let question = exercise.generate_question();
@@ -385,9 +416,7 @@ async fn test_full_verse_input_question_format() {
 #[tokio::test]
 async fn test_full_verse_input_check_answer_exact() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Exact match with tashkeel
     assert!(exercise.check_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"));
@@ -396,9 +425,7 @@ async fn test_full_verse_input_check_answer_exact() {
 #[tokio::test]
 async fn test_full_verse_input_check_answer_normalized() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Without tashkeel (normalized)
     assert!(exercise.check_answer("بسم الله الرحمان الرحيم"));
@@ -407,9 +434,7 @@ async fn test_full_verse_input_check_answer_normalized() {
 #[tokio::test]
 async fn test_full_verse_input_wrong_answer() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Wrong verse
     assert!(!exercise.check_answer("ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ"));
@@ -424,9 +449,7 @@ async fn test_full_verse_input_wrong_answer() {
 #[tokio::test]
 async fn test_full_verse_input_hint() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Hint should show first word
     let hint = exercise.get_hint();
@@ -439,9 +462,7 @@ async fn test_full_verse_input_hint() {
 #[tokio::test]
 async fn test_full_verse_input_different_verse() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(12, "VERSE:1:2", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(12, &repo).await.unwrap();
 
     assert_eq!(exercise.get_verse_key(), "1:2");
     assert!(exercise.check_answer("ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ"));
@@ -451,9 +472,7 @@ async fn test_full_verse_input_different_verse() {
 #[tokio::test]
 async fn test_full_verse_input_different_chapter() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(21, "VERSE:2:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(21, &repo).await.unwrap();
 
     let question = exercise.generate_question();
     assert!(question.contains("البقرة")); // Chapter 2 name
@@ -466,9 +485,7 @@ async fn test_full_verse_input_different_chapter() {
 #[tokio::test]
 async fn test_full_verse_input_extra_whitespace() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(11, &repo).await.unwrap();
 
     // Extra whitespace should be normalized
     assert!(exercise.check_answer("  بسم   الله   الرحمان   الرحيم  "));
@@ -477,9 +494,7 @@ async fn test_full_verse_input_extra_whitespace() {
 #[tokio::test]
 async fn test_full_verse_input_case_variations() {
     let repo = MockContentRepo::new();
-    let exercise = FullVerseInputExercise::new(13, "VERSE:1:3", &repo)
-        .await
-        .unwrap();
+    let exercise = FullVerseInputExercise::new(13, &repo).await.unwrap();
 
     // Both should work (normalization handles case)
     assert!(exercise.check_answer("ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"));

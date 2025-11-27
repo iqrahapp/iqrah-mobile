@@ -12,8 +12,8 @@ use std::collections::HashMap;
 // ==========================================================================
 
 struct MockContentRepo {
-    verses_text: HashMap<i64, String>,    // node_id -> text
-    verses: HashMap<i32, Vec<Verse>>,     // chapter_num -> verses
+    verses_text: HashMap<i64, String>, // node_id -> text
+    verses: HashMap<i32, Vec<Verse>>,  // chapter_num -> verses
 }
 
 impl MockContentRepo {
@@ -111,11 +111,43 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
-        Ok(None)
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        // Mock nodes based on ID
+        let ukey = match node_id {
+            11 => "VERSE:1:1",
+            12 => "VERSE:1:2",
+            13 => "VERSE:1:3",
+            14 => "VERSE:1:4",
+            15 => "VERSE:1:5",
+            16 => "VERSE:1:6",
+            17 => "VERSE:1:7",
+            _ => return Ok(None),
+        };
+
+        Ok(Some(crate::Node {
+            id: node_id,
+            ukey: ukey.to_string(),
+            node_type: crate::NodeType::Verse,
+        }))
     }
-    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
-        unimplemented!()
+
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        let id = match ukey {
+            "VERSE:1:1" => 11,
+            "VERSE:1:2" => 12,
+            "VERSE:1:3" => 13,
+            "VERSE:1:4" => 14,
+            "VERSE:1:5" => 15,
+            "VERSE:1:6" => 16,
+            "VERSE:1:7" => 17,
+            _ => return Ok(None),
+        };
+
+        Ok(Some(crate::Node {
+            id,
+            ukey: ukey.to_string(),
+            node_type: crate::NodeType::Verse,
+        }))
     }
 
     async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -153,10 +185,7 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[i64],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
@@ -390,9 +419,7 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_ayah_sequence_basic() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Verify exercise was created successfully
     assert_eq!(exercise.get_node_id(), 11);
@@ -407,9 +434,7 @@ async fn test_ayah_sequence_basic() {
 #[tokio::test]
 async fn test_ayah_sequence_finds_correct_next_verse() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Verify correct next verse is verse 1:2
     assert_eq!(exercise.get_correct_verse_key(), "1:2");
@@ -421,9 +446,7 @@ async fn test_ayah_sequence_finds_correct_next_verse() {
 #[tokio::test]
 async fn test_ayah_sequence_has_four_options() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Verify we have 4 MCQ options
     assert_eq!(exercise.get_options().len(), 4);
@@ -432,9 +455,7 @@ async fn test_ayah_sequence_has_four_options() {
 #[tokio::test]
 async fn test_ayah_sequence_options_contain_correct() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Verify correct answer is in the options
     let correct_key = exercise.get_correct_verse_key();
@@ -447,9 +468,7 @@ async fn test_ayah_sequence_options_contain_correct() {
 #[tokio::test]
 async fn test_ayah_sequence_check_answer_by_key() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Check answer by verse key
     assert!(exercise.check_answer("1:2"));
@@ -460,9 +479,7 @@ async fn test_ayah_sequence_check_answer_by_key() {
 #[tokio::test]
 async fn test_ayah_sequence_check_answer_by_text() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Check answer by verse text
     assert!(exercise.check_answer("ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ"));
@@ -472,9 +489,7 @@ async fn test_ayah_sequence_check_answer_by_text() {
 #[tokio::test]
 async fn test_ayah_sequence_hint() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     // Verify hint shows verse number
     let hint = exercise.get_hint();
@@ -485,9 +500,7 @@ async fn test_ayah_sequence_hint() {
 #[tokio::test]
 async fn test_ayah_sequence_middle_verse() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(13, "VERSE:1:3", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(13, &repo).await.unwrap();
 
     // Verify correct next verse is 1:4
     assert_eq!(exercise.get_correct_verse_key(), "1:4");
@@ -497,7 +510,7 @@ async fn test_ayah_sequence_middle_verse() {
 #[tokio::test]
 async fn test_ayah_sequence_last_verse_fails() {
     let repo = MockContentRepo::new();
-    let result = AyahSequenceExercise::new(17, "VERSE:1:7", &repo).await;
+    let result = AyahSequenceExercise::new(17, &repo).await;
 
     // Last verse should fail because there's no next verse
     assert!(result.is_err());
@@ -510,9 +523,7 @@ async fn test_ayah_sequence_last_verse_fails() {
 #[tokio::test]
 async fn test_ayah_sequence_distractors_are_different() {
     let repo = MockContentRepo::new();
-    let exercise = AyahSequenceExercise::new(11, "VERSE:1:1", &repo)
-        .await
-        .unwrap();
+    let exercise = AyahSequenceExercise::new(11, &repo).await.unwrap();
 
     let options = exercise.get_options();
     let current_key = &exercise.current_verse_key;

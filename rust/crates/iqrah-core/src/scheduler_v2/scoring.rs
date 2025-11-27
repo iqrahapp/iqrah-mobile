@@ -64,10 +64,7 @@ pub fn calculate_readiness(parent_ids: &[i64], parent_energies: &ParentEnergyMap
 ///
 /// # Returns
 /// * Number of unsatisfied parents (energy < MASTERY_THRESHOLD)
-pub fn count_unsatisfied_parents(
-    parent_ids: &[i64],
-    parent_energies: &ParentEnergyMap,
-) -> usize {
+pub fn count_unsatisfied_parents(parent_ids: &[i64], parent_energies: &ParentEnergyMap) -> usize {
     parent_ids
         .iter()
         .filter(|id| {

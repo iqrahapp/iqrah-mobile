@@ -15,7 +15,7 @@ use anyhow::Result;
 /// Tests word-to-word progression in memorized verses
 #[derive(Debug)]
 pub struct ReverseClozeExercise {
-    node_id: String,
+    node_id: i64,
     current_word_text: String,
     #[allow(dead_code)] // Used for hints showing verse context
     verse_text: String,
@@ -31,12 +31,18 @@ impl ReverseClozeExercise {
     /// - Current word text
     /// - Next word in sequence (correct answer)
     /// - Full verse text (for context/hint)
-    pub async fn new(word_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(word_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(word_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            node.ukey.clone()
         };
 
         // Parse node_id to get verse_key and position
@@ -56,7 +62,7 @@ impl ReverseClozeExercise {
 
         // Get current word text
         let current_word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(word_node_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Word text not found: {}", base_node_id))?;
 
@@ -77,21 +83,31 @@ impl ReverseClozeExercise {
                 )
             })?;
 
-        let next_word_node_id = format!(
+        let next_word_ukey = format!(
             "WORD_INSTANCE:{}:{}:{}",
             chapter, verse_num, next_word.position
         );
-        let next_word_text = content_repo
-            .get_quran_text(&next_word_node_id)
+        let next_word_node = content_repo
+            .get_node_by_ukey(&next_word_ukey)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Next word text not found: {}", next_word_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Next word node not found: {}", next_word_ukey))?;
+
+        let next_word_text = content_repo
+            .get_quran_text(next_word_node.id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Next word text not found: {}", next_word_ukey))?;
 
         // Get verse text for context/hints
-        let verse_node_id = format!("VERSE:{}", verse_key);
-        let verse_text = content_repo
-            .get_quran_text(&verse_node_id)
+        let verse_ukey = format!("VERSE:{}", verse_key);
+        let verse_node = content_repo
+            .get_node_by_ukey(&verse_ukey)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Verse node not found: {}", verse_ukey))?;
+
+        let verse_text = content_repo
+            .get_quran_text(verse_node.id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_ukey))?;
 
         Ok(Self {
             node_id: word_node_id,
@@ -133,8 +149,8 @@ impl Exercise for ReverseClozeExercise {
             .map(|c| format!("Starts with: {}", c))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

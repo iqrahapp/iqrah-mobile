@@ -82,11 +82,33 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
-        Ok(None)
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        let (ukey, node_type) = match node_id {
+            1 => ("VERSE:1:1".to_string(), crate::NodeType::Verse),
+            2 => ("VERSE:1:2".to_string(), crate::NodeType::Verse),
+            3 => ("VERSE:1:3".to_string(), crate::NodeType::Verse),
+            4 => ("VERSE:1:4".to_string(), crate::NodeType::Verse),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id: node_id,
+            ukey,
+            node_type,
+        }))
     }
-    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
-        unimplemented!()
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        let (id, node_type) = match ukey {
+            "VERSE:1:1" => (1, crate::NodeType::Verse),
+            "VERSE:1:2" => (2, crate::NodeType::Verse),
+            "VERSE:1:3" => (3, crate::NodeType::Verse),
+            "VERSE:1:4" => (4, crate::NodeType::Verse),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id,
+            ukey: ukey.to_string(),
+            node_type,
+        }))
     }
 
     async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -127,10 +149,7 @@ impl ContentRepository for MockContentRepo {
         Ok(Vec::new())
     }
 
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[i64],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(Vec::new())
     }
 

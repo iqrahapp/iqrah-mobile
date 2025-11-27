@@ -12,8 +12,9 @@ use rand::seq::SliceRandom;
 
 /// Exercise for finding thematically connected verses using the Knowledge Graph
 /// Leverages graph edges to find verses with semantic or grammatical connections
+#[derive(Debug)]
 pub struct CrossVerseConnectionExercise {
-    node_id: String,
+    node_id: i64,
     verse_text: String,
     #[allow(dead_code)]
     // Used for potential future features (e.g., showing source verse reference)
@@ -29,12 +30,18 @@ impl CrossVerseConnectionExercise {
     /// Queries the Knowledge Graph to find:
     /// - Connected verses via graph edges
     /// - Disconnected verses for distractors
-    pub async fn new(verse_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(verse_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(verse_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", verse_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&verse_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            verse_node_id.clone()
+            node.ukey.clone()
         };
 
         // Extract verse key from node ID
@@ -45,20 +52,23 @@ impl CrossVerseConnectionExercise {
             .to_string();
 
         // Get source verse text
+        // Get source verse text
         let verse_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(verse_node_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", base_node_id))?;
 
         // Find connected verses via Knowledge Graph edges
-        let edges = content_repo.get_edges_from(&base_node_id).await?;
+        let edges = content_repo.get_edges_from(verse_node_id).await?;
 
         // Filter for verse connections
         let mut connected_verse_keys = Vec::new();
         for edge in &edges {
             // Check if target is a VERSE node
-            if let Some(target_verse_key) = edge.target_id.strip_prefix("VERSE:") {
-                connected_verse_keys.push(target_verse_key.to_string());
+            if let Some(node) = content_repo.get_node(edge.target_id).await? {
+                if let Some(target_verse_key) = node.ukey.strip_prefix("VERSE:") {
+                    connected_verse_keys.push(target_verse_key.to_string());
+                }
             }
         }
 
@@ -75,8 +85,15 @@ impl CrossVerseConnectionExercise {
             .clone();
 
         let correct_verse_node = format!("VERSE:{}", correct_verse_key);
+        let correct_verse_node_obj = content_repo
+            .get_node_by_ukey(&correct_verse_node)
+            .await?
+            .ok_or_else(|| {
+                anyhow::anyhow!("Connected verse node not found: {}", correct_verse_node)
+            })?;
+
         let correct_verse_text = content_repo
-            .get_quran_text(&correct_verse_node)
+            .get_quran_text(correct_verse_node_obj.id)
             .await?
             .ok_or_else(|| {
                 anyhow::anyhow!("Connected verse text not found: {}", correct_verse_node)
@@ -168,11 +185,13 @@ impl CrossVerseConnectionExercise {
 
             for verse in verses.iter().take(3) {
                 if !exclude_verse_keys.contains(&verse.key) {
-                    let verse_node_id = format!("VERSE:{}", verse.key);
-                    if let Some(text) = content_repo.get_quran_text(&verse_node_id).await? {
-                        distractors.push((verse.key.clone(), text));
-                        if distractors.len() >= 3 {
-                            return Ok(distractors);
+                    let verse_ukey = format!("VERSE:{}", verse.key);
+                    if let Some(node) = content_repo.get_node_by_ukey(&verse_ukey).await? {
+                        if let Some(text) = content_repo.get_quran_text(node.id).await? {
+                            distractors.push((verse.key.clone(), text));
+                            if distractors.len() >= 3 {
+                                return Ok(distractors);
+                            }
                         }
                     }
                 }
@@ -185,11 +204,13 @@ impl CrossVerseConnectionExercise {
             for verse in verses.iter().rev().take(5) {
                 // Take from end
                 if verse.key != source_verse_key && !exclude_verse_keys.contains(&verse.key) {
-                    let verse_node_id = format!("VERSE:{}", verse.key);
-                    if let Some(text) = content_repo.get_quran_text(&verse_node_id).await? {
-                        distractors.push((verse.key.clone(), text));
-                        if distractors.len() >= 3 {
-                            break;
+                    let verse_ukey = format!("VERSE:{}", verse.key);
+                    if let Some(node) = content_repo.get_node_by_ukey(&verse_ukey).await? {
+                        if let Some(text) = content_repo.get_quran_text(node.id).await? {
+                            distractors.push((verse.key.clone(), text));
+                            if distractors.len() >= 3 {
+                                break;
+                            }
                         }
                     }
                 }
@@ -244,8 +265,8 @@ impl Exercise for CrossVerseConnectionExercise {
         None
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

@@ -87,10 +87,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_all_metadata(
-            &self,
-            _node_id: i64,
-        ) -> anyhow::Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
@@ -287,16 +284,14 @@ mod tests {
         async fn get_scheduler_candidates(
             &self,
             _goal_id: &str,
-            _user_id: &str,
-            _now_ts: i64,
         ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
             Ok(vec![])
         }
 
         async fn get_prerequisite_parents(
             &self,
-            _node_ids: &[String],
-        ) -> anyhow::Result<HashMap<String, Vec<String>>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<HashMap<i64, Vec<i64>>> {
             Ok(HashMap::new())
         }
 
@@ -307,7 +302,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+        async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
             Ok(vec![])
         }
 
@@ -398,11 +393,11 @@ mod tests {
             Ok(())
         }
 
-        async fn get_session_state(&self) -> anyhow::Result<Vec<String>> {
+        async fn get_session_state(&self) -> anyhow::Result<Vec<i64>> {
             Ok(vec![])
         }
 
-        async fn save_session_state(&self, _node_ids: &[String]) -> anyhow::Result<()> {
+        async fn save_session_state(&self, _node_ids: &[i64]) -> anyhow::Result<()> {
             Ok(())
         }
 
@@ -429,16 +424,16 @@ mod tests {
         async fn get_parent_energies(
             &self,
             _user_id: &str,
-            _node_ids: &[String],
-        ) -> anyhow::Result<HashMap<String, f32>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<HashMap<i64, f32>> {
             Ok(HashMap::new())
         }
 
         async fn get_memory_basics(
             &self,
             _user_id: &str,
-            _node_ids: &[String],
-        ) -> anyhow::Result<HashMap<String, crate::scheduler_v2::MemoryBasics>> {
+            _node_ids: &[i64],
+        ) -> anyhow::Result<HashMap<i64, crate::scheduler_v2::MemoryBasics>> {
             Ok(HashMap::new())
         }
 
@@ -470,9 +465,7 @@ mod tests {
         let service = LearningService::new(content_repo, user_repo.clone());
 
         // Act
-        let result = service
-            .process_review("user1", 1, ReviewGrade::Good)
-            .await;
+        let result = service.process_review("user1", 1, ReviewGrade::Good).await;
 
         // Assert
         assert!(result.is_ok());
@@ -504,9 +497,7 @@ mod tests {
         user_repo.save_memory_state(&initial_state).await.unwrap();
 
         // Act
-        let result = service
-            .process_review("user1", 1, ReviewGrade::Good)
-            .await;
+        let result = service.process_review("user1", 1, ReviewGrade::Good).await;
 
         // Assert
         assert!(result.is_ok());
@@ -541,9 +532,7 @@ mod tests {
         user_repo.save_memory_state(&initial_state).await.unwrap();
 
         // Act
-        let result = service
-            .process_review("user1", 1, ReviewGrade::Again)
-            .await;
+        let result = service.process_review("user1", 1, ReviewGrade::Again).await;
 
         // Assert
         assert!(result.is_ok());

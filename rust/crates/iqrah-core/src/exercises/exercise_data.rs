@@ -20,38 +20,38 @@ pub enum ExerciseData {
     /// Exercise 1: Memorization - Recall exact Arabic text
     /// User must type the exact Arabic word/verse from memory
     Memorization {
-        /// Node ID (e.g., "WORD_INSTANCE:1:1:1" or "VERSE:1:1")
-        node_id: String,
+        /// Node ID
+        node_id: i64,
     },
 
     /// Exercise 2a: MCQ Arabic to English - Multiple choice translation
     /// Given Arabic word, select English translation
     McqArToEn {
         /// Word node ID
-        node_id: String,
+        node_id: i64,
         /// Indices of distractor words (to fetch from database)
-        distractor_node_ids: Vec<String>,
+        distractor_node_ids: Vec<i64>,
     },
 
     /// Exercise 2b: MCQ English to Arabic - Multiple choice memorization
     /// Given English translation, select Arabic word
     McqEnToAr {
         /// Word node ID
-        node_id: String,
+        node_id: i64,
         /// Indices of distractor words (to fetch from database)
-        distractor_node_ids: Vec<String>,
+        distractor_node_ids: Vec<i64>,
     },
 
     /// Exercise 3: Translation - Type English translation of Arabic word
     Translation {
         /// Word node ID
-        node_id: String,
+        node_id: i64,
     },
 
     /// Exercise 4: Contextual Translation - Translation with verse context
     ContextualTranslation {
         /// Word node ID
-        node_id: String,
+        node_id: i64,
         /// Verse key for context (e.g., "1:1")
         verse_key: String,
     },
@@ -59,7 +59,7 @@ pub enum ExerciseData {
     /// Exercise 5: Cloze Deletion - Fill in missing word in verse
     ClozeDeletion {
         /// Verse node ID
-        node_id: String,
+        node_id: i64,
         /// Position of the word to blank out (1-indexed)
         blank_position: i32,
     },
@@ -67,7 +67,7 @@ pub enum ExerciseData {
     /// Exercise 6: First Letter Hint - Memorization with first letter hint
     FirstLetterHint {
         /// Verse node ID
-        node_id: String,
+        node_id: i64,
         /// Position of the word to test (1-indexed)
         word_position: i32,
     },
@@ -75,33 +75,33 @@ pub enum ExerciseData {
     /// Exercise 7: Missing Word MCQ - MCQ for missing word in verse
     MissingWordMcq {
         /// Verse node ID
-        node_id: String,
+        node_id: i64,
         /// Position of the missing word (1-indexed)
         blank_position: i32,
         /// Node IDs of distractor words
-        distractor_node_ids: Vec<String>,
+        distractor_node_ids: Vec<i64>,
     },
 
     /// Exercise 8: Next Word MCQ - Predict next word in sequence
     NextWordMcq {
         /// Verse node ID
-        node_id: String,
+        node_id: i64,
         /// Position before the target word (1-indexed, target is position+1)
         context_position: i32,
         /// Node IDs of distractor words
-        distractor_node_ids: Vec<String>,
+        distractor_node_ids: Vec<i64>,
     },
 
     /// Exercise 9: Full Verse Input - Type entire verse from memory
     FullVerseInput {
-        /// Verse node ID (e.g., "VERSE:1:1")
-        node_id: String,
+        /// Verse node ID
+        node_id: i64,
     },
 
     /// Exercise 10: Ayah Chain - Continuous verse typing (stateful)
     AyahChain {
-        /// Chapter node ID or range (e.g., "CHAPTER:1" or "CHAPTER:1:1:7")
-        node_id: String,
+        /// Chapter node ID or range
+        node_id: i64,
         /// Verse keys in the chain (e.g., ["1:1", "1:2", "1:3"])
         verse_keys: Vec<String>,
         /// Current index in the chain (0-indexed)
@@ -113,27 +113,27 @@ pub enum ExerciseData {
     /// Exercise 11: Find the Mistake - Identify incorrect word in modified verse
     FindMistake {
         /// Verse node ID
-        node_id: String,
+        node_id: i64,
         /// Position of the mistake (1-indexed)
         mistake_position: i32,
         /// Node ID of the correct word at that position
-        correct_word_node_id: String,
+        correct_word_node_id: i64,
         /// Node ID of the incorrect (substituted) word
-        incorrect_word_node_id: String,
+        incorrect_word_node_id: i64,
     },
 
     /// Exercise 12: Ayah Sequence - Put verses/words in correct order
     AyahSequence {
         /// Base node ID (verse or chapter)
-        node_id: String,
+        node_id: i64,
         /// Node IDs in correct order (for validation)
-        correct_sequence: Vec<String>,
+        correct_sequence: Vec<i64>,
     },
 
     /// Exercise 13: Identify Root - Grammar exercise for root identification
     IdentifyRoot {
         /// Word node ID
-        node_id: String,
+        node_id: i64,
         /// Root letters (correct answer key)
         root: String,
     },
@@ -141,7 +141,7 @@ pub enum ExerciseData {
     /// Exercise 14: Reverse Cloze - Given translation, recall Arabic with blank
     ReverseCloze {
         /// Verse node ID
-        node_id: String,
+        node_id: i64,
         /// Position of the word to blank out (1-indexed)
         blank_position: i32,
     },
@@ -149,7 +149,7 @@ pub enum ExerciseData {
     /// Exercise 15: Translate Phrase - Type English translation of verse/phrase
     TranslatePhrase {
         /// Node ID (verse or word)
-        node_id: String,
+        node_id: i64,
         /// Translator ID for fetching correct translation
         translator_id: i32,
     },
@@ -157,7 +157,7 @@ pub enum ExerciseData {
     /// Exercise 16: Part of Speech Tagging - Identify grammatical category
     PosTagging {
         /// Word node ID
-        node_id: String,
+        node_id: i64,
         /// Correct POS tag (e.g., "noun", "verb", "particle")
         correct_pos: String,
         /// Options for MCQ
@@ -167,9 +167,9 @@ pub enum ExerciseData {
     /// Exercise 17: Cross-Verse Connection - Identify thematic connections
     CrossVerseConnection {
         /// Primary verse node ID
-        node_id: String,
+        node_id: i64,
         /// Related verse node IDs (correct answers)
-        related_verse_ids: Vec<String>,
+        related_verse_ids: Vec<i64>,
         /// Theme/connection type
         connection_theme: String,
     },
@@ -177,7 +177,7 @@ pub enum ExerciseData {
 
 impl ExerciseData {
     /// Get the node ID for this exercise
-    pub fn node_id(&self) -> &str {
+    pub fn node_id(&self) -> i64 {
         match self {
             Self::Memorization { node_id }
             | Self::McqArToEn { node_id, .. }
@@ -196,7 +196,7 @@ impl ExerciseData {
             | Self::ReverseCloze { node_id, .. }
             | Self::TranslatePhrase { node_id, .. }
             | Self::PosTagging { node_id, .. }
-            | Self::CrossVerseConnection { node_id, .. } => node_id,
+            | Self::CrossVerseConnection { node_id, .. } => *node_id,
         }
     }
 
@@ -272,10 +272,8 @@ mod tests {
 
     #[test]
     fn test_memorization_node_id() {
-        let exercise = ExerciseData::Memorization {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-        };
-        assert_eq!(exercise.node_id(), "WORD_INSTANCE:1:1:1");
+        let exercise = ExerciseData::Memorization { node_id: 1 };
+        assert_eq!(exercise.node_id(), 1);
         assert_eq!(exercise.type_name(), "memorization");
         assert!(!exercise.is_stateful());
         assert!(exercise.requires_arabic_input());
@@ -284,11 +282,8 @@ mod tests {
     #[test]
     fn test_mcq_ar_to_en() {
         let exercise = ExerciseData::McqArToEn {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-            distractor_node_ids: vec![
-                "WORD_INSTANCE:1:1:2".to_string(),
-                "WORD_INSTANCE:1:1:3".to_string(),
-            ],
+            node_id: 1,
+            distractor_node_ids: vec![2, 3],
         };
         assert_eq!(exercise.type_name(), "mcq_ar_to_en");
         assert!(exercise.is_mcq());
@@ -298,7 +293,7 @@ mod tests {
     #[test]
     fn test_ayah_chain_stateful() {
         let exercise = ExerciseData::AyahChain {
-            node_id: "CHAPTER:1".to_string(),
+            node_id: 1,
             verse_keys: vec!["1:1".to_string(), "1:2".to_string()],
             current_index: 0,
             completed_count: 0,
@@ -310,10 +305,10 @@ mod tests {
     #[test]
     fn test_serialization_deserialization() {
         let exercise = ExerciseData::FindMistake {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             mistake_position: 3,
-            correct_word_node_id: "WORD_INSTANCE:1:1:3".to_string(),
-            incorrect_word_node_id: "WORD_INSTANCE:1:2:5".to_string(),
+            correct_word_node_id: 3,
+            incorrect_word_node_id: 5,
         };
 
         // Serialize to JSON
@@ -329,7 +324,7 @@ mod tests {
     #[test]
     fn test_pos_tagging_mcq() {
         let exercise = ExerciseData::PosTagging {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
+            node_id: 1,
             correct_pos: "noun".to_string(),
             options: vec![
                 "noun".to_string(),
@@ -344,7 +339,7 @@ mod tests {
     #[test]
     fn test_translate_phrase_english_input() {
         let exercise = ExerciseData::TranslatePhrase {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             translator_id: 131,
         };
         assert!(exercise.requires_english_input());
@@ -354,11 +349,11 @@ mod tests {
     #[test]
     fn test_cross_verse_connection() {
         let exercise = ExerciseData::CrossVerseConnection {
-            node_id: "VERSE:1:1".to_string(),
-            related_verse_ids: vec!["VERSE:2:255".to_string(), "VERSE:112:1".to_string()],
+            node_id: 1,
+            related_verse_ids: vec![2, 112],
             connection_theme: "names_of_allah".to_string(),
         };
         assert_eq!(exercise.type_name(), "cross_verse_connection");
-        assert_eq!(exercise.node_id(), "VERSE:1:1");
+        assert_eq!(exercise.node_id(), 1);
     }
 }

@@ -11,6 +11,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 use crate::AppState;
+use iqrah_core::domain::node_id as nid;
 
 /// Create the HTTP router with all REST endpoints
 pub fn create_http_router() -> Router<Arc<AppState>> {
@@ -76,25 +77,25 @@ async fn get_node_debug(
     State(state): State<Arc<AppState>>,
     Path(node_id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
+    // Parse node ID
+    let nid_val = nid::from_ukey(&node_id)
+        .ok_or_else(|| AppError::InvalidInput(format!("Invalid node ID format: {}", node_id)))?;
+
     // Get the node
     let node = state
         .content_repo
-        .get_node(&node_id)
+        .get_node(nid_val)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("Node not found: {}", node_id)))?;
 
     // Get Quran text if available
-    let quran_text = state.content_repo.get_quran_text(&node_id).await.ok();
+    let quran_text = state.content_repo.get_quran_text(nid_val).await.ok();
 
     // Get translation (default to English)
-    let translation = state
-        .content_repo
-        .get_translation(&node_id, "en")
-        .await
-        .ok();
+    let translation = state.content_repo.get_translation(nid_val, "en").await.ok();
 
     // Get edges
-    let edges = state.content_repo.get_edges_from(&node_id).await?;
+    let edges = state.content_repo.get_edges_from(nid_val).await?;
 
     let response = json!({
         "node": {
@@ -120,7 +121,9 @@ async fn get_user_state(
     State(state): State<Arc<AppState>>,
     Path((user_id, node_id)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, AppError> {
-    let memory_state = state.user_repo.get_memory_state(&user_id, &node_id).await?;
+    let nid_val = nid::from_ukey(&node_id)
+        .ok_or_else(|| AppError::InvalidInput(format!("Invalid node ID format: {}", node_id)))?;
+    let memory_state = state.user_repo.get_memory_state(&user_id, nid_val).await?;
 
     match memory_state {
         Some(state) => Ok(Json(json!({
@@ -160,14 +163,17 @@ async fn set_user_state(
         ));
     }
 
+    let nid_val = nid::from_ukey(&node_id)
+        .ok_or_else(|| AppError::InvalidInput(format!("Invalid node ID format: {}", node_id)))?;
+
     // Update the energy
     state
         .user_repo
-        .update_energy(&user_id, &node_id, payload.energy)
+        .update_energy(&user_id, nid_val, payload.energy)
         .await?;
 
     // Return the updated state
-    let memory_state = state.user_repo.get_memory_state(&user_id, &node_id).await?;
+    let memory_state = state.user_repo.get_memory_state(&user_id, nid_val).await?;
 
     match memory_state {
         Some(state) => Ok(Json(json!({
@@ -201,10 +207,15 @@ async fn process_review(
     // Parse the grade
     let grade = parse_review_grade(&payload.grade)?;
 
+    // Parse node ID
+    let nid_val = nid::from_ukey(&payload.node_id).ok_or_else(|| {
+        AppError::InvalidInput(format!("Invalid node ID format: {}", payload.node_id))
+    })?;
+
     // Process the review
     let updated_state = state
         .learning_service
-        .process_review(&user_id, &payload.node_id, grade)
+        .process_review(&user_id, nid_val, grade)
         .await?;
 
     Ok(Json(json!({

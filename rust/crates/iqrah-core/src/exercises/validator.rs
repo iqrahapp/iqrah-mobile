@@ -24,13 +24,13 @@ pub enum AnswerInput {
     /// Numeric position (for find_mistake, word selection)
     Position { value: i32 },
     /// Word/node selection by ID
-    WordId { value: String },
+    WordId { value: i64 },
     /// Verse reference (for sequencing, connections)
     VerseKey { value: String },
     /// MCQ option index (0-indexed)
     OptionIndex { value: usize },
     /// Ordered sequence of IDs (for ayah_sequence)
-    Sequence { values: Vec<String> },
+    Sequence { values: Vec<i64> },
 }
 
 /// Result of answer validation
@@ -59,9 +59,9 @@ pub enum AnswerKeys {
     /// Single position (numeric)
     Position { value: i32 },
     /// Single word/node ID
-    WordId { value: String },
+    WordId { value: i64 },
     /// Ordered sequence of IDs
-    Sequence { values: Vec<String> },
+    Sequence { values: Vec<i64> },
     /// Root letters for grammar exercises
     Root { letters: String },
     /// Part of speech tag
@@ -343,7 +343,14 @@ impl ExerciseValidator for DefaultValidator {
                     correct_answer: if is_correct {
                         None
                     } else {
-                        Some(correct_sequence.join(", "))
+                        // Convert Vec<i64> to string representation
+                        Some(
+                            correct_sequence
+                                .iter()
+                                .map(|id| id.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                        )
                     },
                 })
             }

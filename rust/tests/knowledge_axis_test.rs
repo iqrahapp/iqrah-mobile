@@ -98,28 +98,28 @@ async fn test_knowledge_axis_to_string() {
 #[tokio::test]
 async fn test_knowledge_axis_from_string() {
     assert_eq!(
-        KnowledgeAxis::from_str("memorization"),
-        Some(KnowledgeAxis::Memorization)
+        KnowledgeAxis::parse("memorization"),
+        Ok(KnowledgeAxis::Memorization)
     );
     assert_eq!(
-        KnowledgeAxis::from_str("translation"),
-        Some(KnowledgeAxis::Translation)
+        KnowledgeAxis::parse("translation"),
+        Ok(KnowledgeAxis::Translation)
     );
     assert_eq!(
-        KnowledgeAxis::from_str("tafsir"),
-        Some(KnowledgeAxis::Tafsir)
+        KnowledgeAxis::parse("tafsir"),
+        Ok(KnowledgeAxis::Tafsir)
     );
     assert_eq!(
-        KnowledgeAxis::from_str("tajweed"),
-        Some(KnowledgeAxis::Tajweed)
+        KnowledgeAxis::parse("tajweed"),
+        Ok(KnowledgeAxis::Tajweed)
     );
     assert_eq!(
-        KnowledgeAxis::from_str("contextual_memorization"),
-        Some(KnowledgeAxis::ContextualMemorization)
+        KnowledgeAxis::parse("contextual_memorization"),
+        Ok(KnowledgeAxis::ContextualMemorization)
     );
     assert_eq!(
-        KnowledgeAxis::from_str("meaning"),
-        Some(KnowledgeAxis::Meaning)
+        KnowledgeAxis::parse("meaning"),
+        Ok(KnowledgeAxis::Meaning)
     );
-    assert_eq!(KnowledgeAxis::from_str("invalid"), None);
+    assert!(KnowledgeAxis::parse("invalid").is_err());
 }

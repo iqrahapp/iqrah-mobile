@@ -87,10 +87,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_all_metadata(
-            &self,
-            _node_id: i64,
-        ) -> anyhow::Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 

@@ -2,7 +2,7 @@
 // Exercise 20: Translate Phrase (Text Input) - Type English translation for Arabic phrase/verse
 
 use super::types::Exercise;
-use crate::{ContentRepository, KnowledgeNode};
+use crate::ContentRepository;
 use anyhow::Result;
 
 // ============================================================================
@@ -14,8 +14,7 @@ use anyhow::Result;
 /// Tests deep understanding of meaning
 #[derive(Debug)]
 pub struct TranslatePhraseExercise {
-    node_id: i64,
-    ukey: String,
+    pub node_id: i64,
     arabic_text: String,
     correct_translation: String,
     verse_key: Option<String>,
@@ -44,10 +43,7 @@ impl TranslatePhraseExercise {
             // Verse-level exercise
             let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() != 3 {
-                return Err(anyhow::anyhow!(
-                    "Invalid verse node ID format: {}",
-                    ukey
-                ));
+                return Err(anyhow::anyhow!("Invalid verse node ID format: {}", ukey));
             }
             let vk = format!("{}:{}", parts[1], parts[2]);
             let translation = content_repo
@@ -59,10 +55,7 @@ impl TranslatePhraseExercise {
             // Word-level exercise (phrase)
             let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() != 4 {
-                return Err(anyhow::anyhow!(
-                    "Invalid word node ID format: {}",
-                    ukey
-                ));
+                return Err(anyhow::anyhow!("Invalid word node ID format: {}", ukey));
             }
             let chapter: i32 = parts[1].parse()?;
             let verse: i32 = parts[2].parse()?;
@@ -98,7 +91,6 @@ impl TranslatePhraseExercise {
 
         Ok(Self {
             node_id,
-            ukey: ukey.to_string(),
             arabic_text,
             correct_translation,
             verse_key,

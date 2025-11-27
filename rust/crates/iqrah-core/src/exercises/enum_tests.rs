@@ -12,9 +12,7 @@ mod tests {
 
     #[test]
     fn test_memorization_variant() {
-        let exercise = ExerciseData::Memorization {
-            node_id: 1,
-        };
+        let exercise = ExerciseData::Memorization { node_id: 1 };
 
         assert_eq!(exercise.node_id(), 1);
         assert_eq!(exercise.type_name(), "memorization");
@@ -51,9 +49,7 @@ mod tests {
 
     #[test]
     fn test_translation_variant() {
-        let exercise = ExerciseData::Translation {
-            node_id: 1,
-        };
+        let exercise = ExerciseData::Translation { node_id: 1 };
 
         assert_eq!(exercise.type_name(), "translation");
         assert!(exercise.requires_english_input());
@@ -119,9 +115,7 @@ mod tests {
 
     #[test]
     fn test_full_verse_input_variant() {
-        let exercise = ExerciseData::FullVerseInput {
-            node_id: 1,
-        };
+        let exercise = ExerciseData::FullVerseInput { node_id: 1 };
 
         assert_eq!(exercise.type_name(), "full_verse_input");
         assert!(exercise.requires_arabic_input());
@@ -233,9 +227,7 @@ mod tests {
 
     #[test]
     fn test_memorization_serialization() {
-        let exercise = ExerciseData::Memorization {
-            node_id: 1,
-        };
+        let exercise = ExerciseData::Memorization { node_id: 1 };
 
         let json = serde_json::to_string(&exercise).unwrap();
         let deserialized: ExerciseData = serde_json::from_str(&json).unwrap();
@@ -331,9 +323,7 @@ mod tests {
 
     #[test]
     fn test_answer_input_word_id() {
-        let answer = AnswerInput::WordId {
-            value: 1,
-        };
+        let answer = AnswerInput::WordId { value: 1 };
 
         let json = serde_json::to_string(&answer).unwrap();
         let deserialized: AnswerInput = serde_json::from_str(&json).unwrap();
@@ -414,9 +404,7 @@ mod tests {
     #[test]
     fn test_all_exercise_types_have_unique_type_names() {
         let exercises = vec![
-            ExerciseData::Memorization {
-                node_id: 1,
-            },
+            ExerciseData::Memorization { node_id: 1 },
             ExerciseData::McqArToEn {
                 node_id: 1,
                 distractor_node_ids: vec![],
@@ -425,9 +413,7 @@ mod tests {
                 node_id: 1,
                 distractor_node_ids: vec![],
             },
-            ExerciseData::Translation {
-                node_id: 1,
-            },
+            ExerciseData::Translation { node_id: 1 },
             ExerciseData::ContextualTranslation {
                 node_id: 1,
                 verse_key: "1:1".to_string(),
@@ -450,9 +436,7 @@ mod tests {
                 context_position: 1,
                 distractor_node_ids: vec![],
             },
-            ExerciseData::FullVerseInput {
-                node_id: 1,
-            },
+            ExerciseData::FullVerseInput { node_id: 1 },
             ExerciseData::AyahChain {
                 node_id: 1,
                 verse_keys: vec![],
@@ -515,9 +499,7 @@ mod tests {
             completed_count: 0,
         };
 
-        let memorization = ExerciseData::Memorization {
-            node_id: 1,
-        };
+        let memorization = ExerciseData::Memorization { node_id: 1 };
 
         assert!(ayah_chain.is_stateful());
         assert!(!memorization.is_stateful());
@@ -559,9 +541,7 @@ mod tests {
             );
         }
 
-        let non_mcq = ExerciseData::Memorization {
-            node_id: 1,
-        };
+        let non_mcq = ExerciseData::Memorization { node_id: 1 };
         assert!(!non_mcq.is_mcq());
     }
 }

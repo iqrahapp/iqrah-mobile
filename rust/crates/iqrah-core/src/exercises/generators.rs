@@ -8,7 +8,7 @@
 // 4. Full text is fetched later during question generation
 
 use super::exercise_data::ExerciseData;
-use crate::{ContentRepository, KnowledgeNode};
+use crate::{ContentRepository, KnowledgeNode, Node};
 use anyhow::Result;
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -53,10 +53,7 @@ pub async fn generate_mcq_ar_to_en(
     // Format: "WORD_INSTANCE:chapter:verse:position"
     let parts: Vec<&str> = base_ukey.split(':').collect();
     if parts.len() != 4 {
-        return Err(anyhow::anyhow!(
-            "Invalid word ukey format: {}",
-            base_ukey
-        ));
+        return Err(anyhow::anyhow!("Invalid word ukey format: {}", base_ukey));
     }
 
     let chapter: i32 = parts[1].parse()?;
@@ -121,10 +118,7 @@ pub async fn generate_mcq_en_to_ar(
 
     let parts: Vec<&str> = base_ukey.split(':').collect();
     if parts.len() != 4 {
-        return Err(anyhow::anyhow!(
-            "Invalid word ukey format: {}",
-            base_ukey
-        ));
+        return Err(anyhow::anyhow!("Invalid word ukey format: {}", base_ukey));
     }
 
     let chapter: i32 = parts[1].parse()?;
@@ -199,13 +193,20 @@ pub async fn generate_contextual_translation(
 
 /// Generate Cloze Deletion exercise
 pub async fn generate_cloze_deletion(
-    node_id: String,
+    node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
+
     // Parse verse_key from node_id
-    let verse_key = node_id
+    let verse_key = node
+        .ukey
         .strip_prefix("VERSE:")
-        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node_id))?
+        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
     // Get words to determine valid blank positions
@@ -233,12 +234,19 @@ pub async fn generate_cloze_deletion(
 
 /// Generate First Letter Hint exercise
 pub async fn generate_first_letter_hint(
-    node_id: String,
+    node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    let verse_key = node_id
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
+
+    let verse_key = node
+        .ukey
         .strip_prefix("VERSE:")
-        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node_id))?
+        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
     let words = content_repo.get_words_for_verse(&verse_key).await?;
@@ -259,12 +267,19 @@ pub async fn generate_first_letter_hint(
 
 /// Generate Missing Word MCQ exercise
 pub async fn generate_missing_word_mcq(
-    node_id: String,
+    node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    let verse_key = node_id
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
+
+    let verse_key = node
+        .ukey
         .strip_prefix("VERSE:")
-        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node_id))?
+        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
     let words = content_repo.get_words_for_verse(&verse_key).await?;
@@ -283,11 +298,15 @@ pub async fn generate_missing_word_mcq(
     let chapter: i32 = parts[0].parse()?;
     let verse: i32 = parts[1].parse()?;
 
-    let mut distractor_node_ids: Vec<String> = words
-        .iter()
-        .filter(|w| w.position != blank_position)
-        .map(|w| format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position))
-        .collect();
+    let mut distractor_nodes: Vec<Node> = Vec::new();
+    for w in words.iter().filter(|w| w.position != blank_position) {
+        let ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position);
+        if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
+            distractor_nodes.push(node);
+        }
+    }
+
+    let mut distractor_node_ids: Vec<i64> = distractor_nodes.into_iter().map(|n| n.id).collect();
 
     distractor_node_ids.shuffle(&mut rng);
     distractor_node_ids.truncate(3);
@@ -301,12 +320,19 @@ pub async fn generate_missing_word_mcq(
 
 /// Generate Next Word MCQ exercise
 pub async fn generate_next_word_mcq(
-    node_id: String,
+    node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    let verse_key = node_id
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
+
+    let verse_key = node
+        .ukey
         .strip_prefix("VERSE:")
-        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node_id))?
+        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
     let words = content_repo.get_words_for_verse(&verse_key).await?;
@@ -326,11 +352,15 @@ pub async fn generate_next_word_mcq(
     let chapter: i32 = parts[0].parse()?;
     let verse: i32 = parts[1].parse()?;
 
-    let mut distractor_node_ids: Vec<String> = words
-        .iter()
-        .filter(|w| w.position != context_position + 1)
-        .map(|w| format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position))
-        .collect();
+    let mut distractor_nodes: Vec<Node> = Vec::new();
+    for w in words.iter().filter(|w| w.position != context_position + 1) {
+        let ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position);
+        if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
+            distractor_nodes.push(node);
+        }
+    }
+
+    let mut distractor_node_ids: Vec<i64> = distractor_nodes.into_iter().map(|n| n.id).collect();
 
     distractor_node_ids.shuffle(&mut rng);
     distractor_node_ids.truncate(3);
@@ -491,8 +521,7 @@ pub async fn generate_find_mistake(
             for word in other_words {
                 if word.text_uthmani != correct_word.text_uthmani {
                     let parts: Vec<&str> = verse.key.split(':').collect();
-                    let ukey =
-                        format!("WORD_INSTANCE:{}:{}:{}", parts[0], parts[1], word.position);
+                    let ukey = format!("WORD_INSTANCE:{}:{}:{}", parts[0], parts[1], word.position);
                     if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
                         candidate_nodes.push(node);
                     }
@@ -522,13 +551,20 @@ pub async fn generate_find_mistake(
 
 /// Generate Ayah Sequence exercise
 pub async fn generate_ayah_sequence(
-    node_id: String,
+    node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
+
     // Can be chapter-level or verse-level (word sequence)
-    if node_id.starts_with("CHAPTER:") {
+    if node.ukey.starts_with("CHAPTER:") {
         // Sequence of verses
-        let chapter_num: i32 = node_id
+        let chapter_num: i32 = node
+            .ukey
             .strip_prefix("CHAPTER:")
             .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID"))?
             .parse()?;
@@ -536,11 +572,13 @@ pub async fn generate_ayah_sequence(
         let verses = content_repo.get_verses_for_chapter(chapter_num).await?;
 
         // For now, take first 5 verses
-        let correct_sequence: Vec<String> = verses
-            .iter()
-            .take(5)
-            .map(|v| format!("VERSE:{}", v.key))
-            .collect();
+        let mut correct_sequence: Vec<i64> = Vec::new();
+        for v in verses.iter().take(5) {
+            let ukey = format!("VERSE:{}", v.key);
+            if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
+                correct_sequence.push(node.id);
+            }
+        }
 
         if correct_sequence.len() < 2 {
             return Err(anyhow::anyhow!("Not enough verses for sequence exercise"));
@@ -550,9 +588,10 @@ pub async fn generate_ayah_sequence(
             node_id,
             correct_sequence,
         })
-    } else if node_id.starts_with("VERSE:") {
+    } else if node.ukey.starts_with("VERSE:") {
         // Sequence of words within a verse
-        let verse_key = node_id
+        let verse_key = node
+            .ukey
             .strip_prefix("VERSE:")
             .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID"))?;
 
@@ -562,10 +601,13 @@ pub async fn generate_ayah_sequence(
         let chapter: i32 = parts[0].parse()?;
         let verse: i32 = parts[1].parse()?;
 
-        let correct_sequence: Vec<String> = words
-            .iter()
-            .map(|w| format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position))
-            .collect();
+        let mut correct_sequence: Vec<i64> = Vec::new();
+        for w in words {
+            let ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position);
+            if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
+                correct_sequence.push(node.id);
+            }
+        }
 
         if correct_sequence.len() < 3 {
             return Err(anyhow::anyhow!(
@@ -580,20 +622,26 @@ pub async fn generate_ayah_sequence(
     } else {
         Err(anyhow::anyhow!(
             "Invalid node ID format for sequence exercise: {}",
-            node_id
+            node.ukey
         ))
     }
 }
 
 /// Generate Identify Root exercise
 pub async fn generate_identify_root(
-    word_node_id: String,
+    word_node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(word_node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
+    let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
         kn.base_node_id
     } else {
-        word_node_id.clone()
+        node.ukey.clone()
     };
 
     // Parse to get verse_key and position
@@ -645,12 +693,19 @@ pub async fn generate_identify_root(
 
 /// Generate Reverse Cloze exercise
 pub async fn generate_reverse_cloze(
-    node_id: String,
+    node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    let verse_key = node_id
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
+
+    let verse_key = node
+        .ukey
         .strip_prefix("VERSE:")
-        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node_id))?
+        .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
     let words = content_repo.get_words_for_verse(&verse_key).await?;
@@ -672,7 +727,7 @@ pub async fn generate_reverse_cloze(
 
 /// Generate Translate Phrase exercise
 pub async fn generate_translate_phrase(
-    node_id: String,
+    node_id: i64,
     translator_id: i32,
     _content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
@@ -685,13 +740,19 @@ pub async fn generate_translate_phrase(
 
 /// Generate POS Tagging exercise
 pub async fn generate_pos_tagging(
-    word_node_id: String,
+    word_node_id: i64,
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+    // Get the node to access its ukey
+    let node = content_repo
+        .get_node(word_node_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
+    let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
         kn.base_node_id
     } else {
-        word_node_id.clone()
+        node.ukey.clone()
     };
 
     let parts: Vec<&str> = base_node_id.split(':').collect();
@@ -752,8 +813,8 @@ pub async fn generate_pos_tagging(
 
 /// Generate Cross-Verse Connection exercise
 pub async fn generate_cross_verse_connection(
-    node_id: String,
-    related_verse_ids: Vec<String>,
+    node_id: i64,
+    related_verse_ids: Vec<i64>,
     connection_theme: String,
     _content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
@@ -773,27 +834,21 @@ mod tests {
     fn test_generate_memorization() {
         // Synchronous test - no async needed
         let node_id = 1;
-        let exercise = ExerciseData::Memorization {
-            node_id,
-        };
+        let exercise = ExerciseData::Memorization { node_id };
         assert_eq!(exercise.node_id(), node_id);
     }
 
     #[test]
     fn test_generate_translation() {
         let node_id = 1;
-        let exercise = ExerciseData::Translation {
-            node_id,
-        };
+        let exercise = ExerciseData::Translation { node_id };
         assert_eq!(exercise.node_id(), node_id);
     }
 
     #[test]
     fn test_generate_full_verse_input() {
         let node_id = 1;
-        let exercise = ExerciseData::FullVerseInput {
-            node_id,
-        };
+        let exercise = ExerciseData::FullVerseInput { node_id };
         assert_eq!(exercise.node_id(), node_id);
     }
 }

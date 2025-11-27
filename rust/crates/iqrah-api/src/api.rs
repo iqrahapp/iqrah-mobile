@@ -1,5 +1,6 @@
 use anyhow::Result;
 // Re-exported for frb_generated access
+use iqrah_core::domain::node_id as nid;
 pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
 use iqrah_core::{import_cbor_graph_from_bytes, ReviewGrade};
 pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
@@ -109,12 +110,18 @@ pub async fn get_exercises(
 
     let mut exercises = Vec::new();
     for item in due_items {
-        let node_id = &item.node.id;
+        let nid_val = item.node.id;
+        // We need the ukey for the exercise service
+        let ukey = nid::to_ukey(nid_val).unwrap_or_default();
 
         // Generate V2 exercise
-        match app.exercise_service.generate_exercise_v2(node_id).await {
+        match app
+            .exercise_service
+            .generate_exercise_v2(nid_val, &ukey)
+            .await
+        {
             Ok(ex) => exercises.push(ex.into()),
-            Err(e) => tracing::error!("Failed to generate exercise for {}: {}", node_id, e),
+            Err(e) => tracing::error!("Failed to generate exercise for {}: {}", ukey, e),
         }
     }
 
@@ -124,23 +131,28 @@ pub async fn get_exercises(
 /// Get exercises for a specific node (Sandbox/Preview)
 pub async fn get_exercises_for_node(node_id: String) -> Result<Vec<ExerciseDataDto>> {
     let app = app();
-    let ex = app.exercise_service.generate_exercise_v2(&node_id).await?;
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+    let ex = app
+        .exercise_service
+        .generate_exercise_v2(nid_val, &node_id)
+        .await?;
     Ok(vec![ex.into()])
 }
 
 /// Fetch node with metadata for Sandbox
 pub async fn fetch_node_with_metadata(node_id: String) -> Result<Option<NodeData>> {
     let app = app();
-    let node = app.content_repo.get_node(&node_id).await?;
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+    let node = app.content_repo.get_node(nid_val).await?;
 
     if let Some(node) = node {
         let mut metadata = HashMap::new();
-        if let Some(text) = app.content_repo.get_quran_text(&node_id).await? {
+        if let Some(text) = app.content_repo.get_quran_text(nid_val).await? {
             metadata.insert("text".to_string(), text);
         }
 
         Ok(Some(NodeData {
-            id: node.id,
+            id: nid::to_ukey(node.id).unwrap_or_default(),
             node_type: node.node_type.into(),
             metadata,
         }))
@@ -155,7 +167,11 @@ pub async fn fetch_node_with_metadata(node_id: String) -> Result<Option<NodeData
 /// Flutter can then fetch content based on user preferences (Tajweed, Indopak, etc.)
 pub async fn generate_exercise_v2(node_id: String) -> Result<ExerciseDataDto> {
     let app = app();
-    let data = app.exercise_service.generate_exercise_v2(&node_id).await?;
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+    let data = app
+        .exercise_service
+        .generate_exercise_v2(nid_val, &node_id)
+        .await?;
     Ok(data.into())
 }
 
@@ -207,8 +223,10 @@ pub async fn process_review(user_id: String, node_id: String, grade: u8) -> Resu
     let review_grade = ReviewGrade::from(grade);
     let app = app();
 
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+
     app.learning_service
-        .process_review(&user_id, &node_id, review_grade)
+        .process_review(&user_id, nid_val, review_grade)
         .await?;
     app.session_service.increment_stat("reviews_today").await?;
 
@@ -288,12 +306,12 @@ pub async fn get_session_preview(
     for item in items {
         let arabic = app
             .content_repo
-            .get_quran_text(&item.node.id)
+            .get_quran_text(item.node.id)
             .await?
             .unwrap_or_default();
 
         preview.push(SessionPreviewDto {
-            node_id: item.node.id,
+            node_id: nid::to_ukey(item.node.id).unwrap_or_default(),
             node_type: format!("{:?}", item.node.node_type),
             preview_text: arabic.chars().take(50).collect(),
             energy: item.memory_state.energy,
@@ -320,7 +338,11 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
     // Simple prefix search
     let results: Vec<_> = all_nodes
         .into_iter()
-        .filter(|n| n.id.starts_with(&query))
+        .filter(|n| {
+            nid::to_ukey(n.id)
+                .map(|s| s.starts_with(&query))
+                .unwrap_or(false)
+        })
         .take(limit as usize)
         .collect();
 
@@ -328,11 +350,11 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
     for node in results {
         let arabic = app
             .content_repo
-            .get_quran_text(&node.id)
+            .get_quran_text(node.id)
             .await?
             .unwrap_or_default();
         dtos.push(NodeSearchDto {
-            node_id: node.id,
+            node_id: nid::to_ukey(node.id).unwrap_or_default(),
             node_type: format!("{:?}", node.node_type),
             preview: arabic.chars().take(100).collect(),
         });
@@ -610,37 +632,50 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
     fn from(data: iqrah_core::exercises::ExerciseData) -> Self {
         use iqrah_core::exercises::ExerciseData::*;
         match data {
-            Memorization { node_id } => ExerciseDataDto::Memorization { node_id },
+            Memorization { node_id } => ExerciseDataDto::Memorization {
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+            },
             McqArToEn {
                 node_id,
                 distractor_node_ids,
             } => ExerciseDataDto::McqArToEn {
-                node_id,
-                distractor_node_ids,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                distractor_node_ids: distractor_node_ids
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
             },
             McqEnToAr {
                 node_id,
                 distractor_node_ids,
             } => ExerciseDataDto::McqEnToAr {
-                node_id,
-                distractor_node_ids,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                distractor_node_ids: distractor_node_ids
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
             },
-            Translation { node_id } => ExerciseDataDto::Translation { node_id },
+            Translation { node_id } => ExerciseDataDto::Translation {
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+            },
             ContextualTranslation { node_id, verse_key } => {
-                ExerciseDataDto::ContextualTranslation { node_id, verse_key }
+                ExerciseDataDto::ContextualTranslation {
+                    node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                    verse_key,
+                }
             }
             ClozeDeletion {
                 node_id,
                 blank_position,
             } => ExerciseDataDto::ClozeDeletion {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 blank_position,
             },
             FirstLetterHint {
                 node_id,
                 word_position,
             } => ExerciseDataDto::FirstLetterHint {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 word_position,
             },
             MissingWordMcq {
@@ -648,27 +683,35 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
                 blank_position,
                 distractor_node_ids,
             } => ExerciseDataDto::MissingWordMcq {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 blank_position,
-                distractor_node_ids,
+                distractor_node_ids: distractor_node_ids
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
             },
             NextWordMcq {
                 node_id,
                 context_position,
                 distractor_node_ids,
             } => ExerciseDataDto::NextWordMcq {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 context_position,
-                distractor_node_ids,
+                distractor_node_ids: distractor_node_ids
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
             },
-            FullVerseInput { node_id } => ExerciseDataDto::FullVerseInput { node_id },
+            FullVerseInput { node_id } => ExerciseDataDto::FullVerseInput {
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+            },
             AyahChain {
                 node_id,
                 verse_keys,
                 current_index,
                 completed_count,
             } => ExerciseDataDto::AyahChain {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 verse_keys,
                 current_index,
                 completed_count,
@@ -679,31 +722,37 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
                 correct_word_node_id,
                 incorrect_word_node_id,
             } => ExerciseDataDto::FindMistake {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 mistake_position,
-                correct_word_node_id,
-                incorrect_word_node_id,
+                correct_word_node_id: nid::to_ukey(correct_word_node_id).unwrap_or_default(),
+                incorrect_word_node_id: nid::to_ukey(incorrect_word_node_id).unwrap_or_default(),
             },
             AyahSequence {
                 node_id,
                 correct_sequence,
             } => ExerciseDataDto::AyahSequence {
-                node_id,
-                correct_sequence,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                correct_sequence: correct_sequence
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
             },
-            IdentifyRoot { node_id, root } => ExerciseDataDto::IdentifyRoot { node_id, root },
+            IdentifyRoot { node_id, root } => ExerciseDataDto::IdentifyRoot {
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                root,
+            },
             ReverseCloze {
                 node_id,
                 blank_position,
             } => ExerciseDataDto::ReverseCloze {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 blank_position,
             },
             TranslatePhrase {
                 node_id,
                 translator_id,
             } => ExerciseDataDto::TranslatePhrase {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 translator_id,
             },
             PosTagging {
@@ -711,7 +760,7 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
                 correct_pos,
                 options,
             } => ExerciseDataDto::PosTagging {
-                node_id,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
                 correct_pos,
                 options,
             },
@@ -720,8 +769,11 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
                 related_verse_ids,
                 connection_theme,
             } => ExerciseDataDto::CrossVerseConnection {
-                node_id,
-                related_verse_ids,
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                related_verse_ids: related_verse_ids
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
                 connection_theme,
             },
         }

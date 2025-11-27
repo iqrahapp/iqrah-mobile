@@ -100,14 +100,12 @@ impl ExerciseService {
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning => {
-                let exercise =
-                    TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
+                let exercise = TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tafsir => {
                 // For now, treat tafsir like translation
-                let exercise =
-                    TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
+                let exercise = TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
@@ -133,8 +131,7 @@ impl ExerciseService {
                 Ok(ExerciseType::Memorization(Box::new(exercise)))
             }
             KnowledgeAxis::Translation | KnowledgeAxis::Meaning | KnowledgeAxis::Tafsir => {
-                let exercise =
-                    TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
+                let exercise = TranslationExercise::new(node_id, ukey, &*self.content_repo).await?;
                 Ok(ExerciseType::Translation(Box::new(exercise)))
             }
             KnowledgeAxis::Tajweed => {
@@ -182,15 +179,15 @@ impl ExerciseService {
 
     /// Generate an MCQ exercise (Arabic to English)
     /// Tests translation understanding with multiple choice
-    pub async fn generate_mcq_ar_to_en(&self, node_id: i64, ukey: &str) -> Result<ExerciseType> {
-        let exercise = McqExercise::new_ar_to_en(node_id, ukey, &*self.content_repo).await?;
+    pub async fn generate_mcq_ar_to_en(&self, node_id: i64, _ukey: &str) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_ar_to_en(node_id, &*self.content_repo).await?;
         Ok(ExerciseType::McqArToEn(Box::new(exercise)))
     }
 
     /// Generate an MCQ exercise (English to Arabic)
     /// Tests memorization with multiple choice
-    pub async fn generate_mcq_en_to_ar(&self, node_id: i64, ukey: &str) -> Result<ExerciseType> {
-        let exercise = McqExercise::new_en_to_ar(node_id, ukey, &*self.content_repo).await?;
+    pub async fn generate_mcq_en_to_ar(&self, node_id: i64, _ukey: &str) -> Result<ExerciseType> {
+        let exercise = McqExercise::new_en_to_ar(node_id, &*self.content_repo).await?;
         Ok(ExerciseType::McqEnToAr(Box::new(exercise)))
     }
 
@@ -345,15 +342,29 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, _node_id: i64) -> Result<Option<Node>> {
+        async fn get_node(&self, node_id: i64) -> Result<Option<Node>> {
+            let (ukey, node_type) = match node_id {
+                1 => ("VERSE:1:1".to_string(), NodeType::Verse),
+                111 => ("WORD_INSTANCE:1:1:1".to_string(), NodeType::WordInstance),
+                _ => return Ok(None),
+            };
             Ok(Some(Node {
-                id: 1,
-                ukey: "test".to_string(),
-                node_type: NodeType::Word,
+                id: node_id,
+                ukey,
+                node_type,
             }))
         }
-        async fn get_node_by_ukey(&self, _ukey: &str) -> Result<Option<Node>> {
-            unimplemented!()
+        async fn get_node_by_ukey(&self, ukey: &str) -> Result<Option<Node>> {
+            let (id, node_type) = match ukey {
+                "VERSE:1:1" => (1, NodeType::Verse),
+                "WORD_INSTANCE:1:1:1" => (111, NodeType::WordInstance),
+                _ => return Ok(None),
+            };
+            Ok(Some(Node {
+                id,
+                ukey: ukey.to_string(),
+                node_type,
+            }))
         }
 
         async fn get_edges_from(&self, _source_id: i64) -> Result<Vec<crate::Edge>> {
@@ -784,11 +795,29 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepoV2 {
-        async fn get_node(&self, _node_id: i64) -> Result<Option<Node>> {
-            Ok(None)
+        async fn get_node(&self, node_id: i64) -> Result<Option<Node>> {
+            let (ukey, node_type) = match node_id {
+                1 => ("WORD:1:1:1".to_string(), NodeType::WordInstance),
+                11 => ("VERSE:1:1".to_string(), NodeType::Verse),
+                _ => return Ok(None),
+            };
+            Ok(Some(Node {
+                id: node_id,
+                ukey,
+                node_type,
+            }))
         }
-        async fn get_node_by_ukey(&self, _ukey: &str) -> Result<Option<Node>> {
-            unimplemented!()
+        async fn get_node_by_ukey(&self, ukey: &str) -> Result<Option<Node>> {
+            let (id, node_type) = match ukey {
+                "WORD:1:1:1" => (1, NodeType::WordInstance),
+                "VERSE:1:1" => (11, NodeType::Verse),
+                _ => return Ok(None),
+            };
+            Ok(Some(Node {
+                id,
+                ukey: ukey.to_string(),
+                node_type,
+            }))
         }
 
         async fn get_edges_from(&self, _source_id: i64) -> Result<Vec<crate::Edge>> {
@@ -1044,10 +1073,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service
-            .generate_exercise_v2(1, "WORD:1:1:1")
-            .await
-            .unwrap();
+        let exercise = service.generate_exercise_v2(1, "WORD:1:1:1").await.unwrap();
 
         // Should generate Memorization exercise
         assert_eq!(exercise.type_name(), "memorization");
@@ -1113,10 +1139,7 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        let exercise = service
-            .generate_exercise_v2(1, "WORD:1:1:1")
-            .await
-            .unwrap();
+        let exercise = service.generate_exercise_v2(1, "WORD:1:1:1").await.unwrap();
 
         // Should be serializable to JSON
         let json = serde_json::to_string(&exercise).unwrap();

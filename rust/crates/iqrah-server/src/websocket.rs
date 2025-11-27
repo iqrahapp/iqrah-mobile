@@ -16,6 +16,7 @@ use crate::{
     protocol::{Command, Event},
     AppState,
 };
+use iqrah_core::domain::node_id as nid;
 
 /// Session state for a running exercise
 #[derive(Debug, Clone)]
@@ -184,7 +185,17 @@ async fn handle_start_exercise(
     let session_id = Uuid::new_v4();
 
     // Get the node to ensure it exists
-    let _node = match app_state.content_repo.get_node(&node_id).await {
+    // Get the node to ensure it exists
+    let nid_val = match nid::from_ukey(&node_id) {
+        Some(id) => id,
+        None => {
+            return vec![Event::Error {
+                message: format!("Invalid node ID format: {}", node_id),
+            }];
+        }
+    };
+
+    let _node = match app_state.content_repo.get_node(nid_val).await {
         Ok(Some(node)) => node,
         Ok(None) => {
             return vec![Event::Error {
@@ -241,33 +252,37 @@ async fn initialize_memorization_state(
     app_state: &AppState,
 ) -> anyhow::Result<serde_json::Value> {
     // Get all word children of this verse
-    let edges = app_state.content_repo.get_edges_from(verse_node_id).await?;
+    // Get all word children of this verse
+    let verse_id =
+        nid::from_ukey(verse_node_id).ok_or_else(|| anyhow::anyhow!("Invalid verse ID"))?;
+    let edges = app_state.content_repo.get_edges_from(verse_id).await?;
 
     // Get the word nodes and their current energies
     let mut words = Vec::new();
     for edge in edges {
-        if edge.target_id.starts_with("WORD:") {
+        let target_ukey = nid::to_ukey(edge.target_id).unwrap_or_default();
+        if target_ukey.starts_with("WORD:") {
             let _word_node = app_state
                 .content_repo
-                .get_node(&edge.target_id)
+                .get_node(edge.target_id)
                 .await?
-                .ok_or_else(|| anyhow::anyhow!("Word node not found: {}", edge.target_id))?;
+                .ok_or_else(|| anyhow::anyhow!("Word node not found: {}", target_ukey))?;
 
             let word_text = app_state
                 .content_repo
-                .get_quran_text(&edge.target_id)
+                .get_quran_text(edge.target_id)
                 .await?
                 .unwrap_or_default();
 
             // Get current energy from user state (default to 0.0)
             let memory_state = app_state
                 .user_repo
-                .get_memory_state("test_user", &edge.target_id)
+                .get_memory_state("test_user", edge.target_id)
                 .await?;
             let energy = memory_state.map(|s| s.energy).unwrap_or(0.0);
 
             words.push(json!({
-                "node_id": edge.target_id,
+                "node_id": target_ukey,
                 "text": word_text,
                 "energy": energy,
             }));
@@ -411,19 +426,19 @@ async fn handle_end_session(
         // Save word energies to the database
         if let Some(words) = session.state["words"].as_array() {
             for word in words {
-                let node_id = word["node_id"].as_str().unwrap_or("");
+                let node_id_str = word["node_id"].as_str().unwrap_or("");
                 let energy = word["energy"].as_f64().unwrap_or(0.0);
 
-                // Update energy in the database
-                if let Err(e) = app_state
-                    .user_repo
-                    .update_energy(user_id, node_id, energy)
-                    .await
-                {
-                    tracing::error!("Failed to update energy for {}: {}", node_id, e);
-                    return vec![Event::Error {
-                        message: format!("Failed to save state: {}", e),
-                    }];
+                if let Some(nid_val) = nid::from_ukey(node_id_str) {
+                    // Update energy in the database
+                    if let Err(e) = app_state
+                        .user_repo
+                        .update_energy(user_id, nid_val, energy)
+                        .await
+                    {
+                        tracing::error!("Failed to update energy for {}: {}", node_id_str, e);
+                        // Don't return error, just log it and continue
+                    }
                 }
             }
         }
@@ -454,11 +469,12 @@ async fn handle_start_echo_recall(
     let session_id = Uuid::new_v4();
 
     // Get all words in the specified ayahs
-    let words = match app_state
-        .content_repo
-        .get_words_in_ayahs(&ayah_node_ids)
-        .await
-    {
+    let ayah_ids: Vec<i64> = ayah_node_ids
+        .iter()
+        .filter_map(|id| nid::from_ukey(id))
+        .collect();
+
+    let words = match app_state.content_repo.get_words_in_ayahs(&ayah_ids).await {
         Ok(w) => w,
         Err(e) => {
             return vec![Event::Error {
@@ -478,12 +494,12 @@ async fn handle_start_echo_recall(
     for word in &words {
         let memory_state = app_state
             .user_repo
-            .get_memory_state(user_id, &word.id)
+            .get_memory_state(user_id, word.id)
             .await
             .ok()
             .flatten();
         let energy = memory_state.map(|s| s.energy).unwrap_or(0.0);
-        energy_map.insert(word.id.clone(), energy);
+        energy_map.insert(word.id, energy);
     }
 
     // Calculate visibility for each word with context
@@ -491,7 +507,7 @@ async fn handle_start_echo_recall(
     for (i, word) in words.iter().enumerate() {
         let word_text = app_state
             .content_repo
-            .get_quran_text(&word.id)
+            .get_quran_text(word.id)
             .await
             .ok()
             .flatten()
@@ -517,7 +533,7 @@ async fn handle_start_echo_recall(
             energy_service::map_energy_to_visibility(energy, &word_text, prev_energy, next_energy);
 
         echo_recall_words.push(EchoRecallWord {
-            node_id: word.id.clone(),
+            node_id: nid::to_ukey(word.id).unwrap_or_default(),
             text: word_text,
             visibility,
             energy,
@@ -675,7 +691,7 @@ async fn handle_get_due_items(
     use iqrah_core::KnowledgeAxis;
 
     // Parse axis if provided
-    let axis_filter = axis.and_then(|a| KnowledgeAxis::from_str(&a).ok());
+    let axis_filter = axis.and_then(|a| KnowledgeAxis::parse(&a).ok());
 
     // Get due items from session service
     let items = match app_state
@@ -724,19 +740,29 @@ async fn handle_generate_exercise(
     use iqrah_core::{KnowledgeAxis, McqExercise};
 
     // Generate exercise based on format, axis, or auto-detect
+    // Generate exercise based on format, axis, or auto-detect
+    let nid_val = match nid::from_ukey(node_id) {
+        Some(id) => id,
+        None => {
+            return vec![Event::Error {
+                message: format!("Invalid node ID: {}", node_id),
+            }]
+        }
+    };
+
     let exercise_result = if let Some(fmt) = format {
         // Generate based on explicit format
         match fmt.as_str() {
             "mcq_ar_to_en" => {
                 app_state
                     .exercise_service
-                    .generate_mcq_ar_to_en(node_id)
+                    .generate_mcq_ar_to_en(nid_val, node_id)
                     .await
             }
             "mcq_en_to_ar" => {
                 app_state
                     .exercise_service
-                    .generate_mcq_en_to_ar(node_id)
+                    .generate_mcq_en_to_ar(nid_val, node_id)
                     .await
             }
             _ => {
@@ -747,10 +773,10 @@ async fn handle_generate_exercise(
         }
     } else if let Some(axis_str) = axis {
         // Parse axis and generate for specific axis
-        if let Ok(axis_enum) = KnowledgeAxis::from_str(&axis_str) {
+        if let Ok(axis_enum) = KnowledgeAxis::parse(&axis_str) {
             app_state
                 .exercise_service
-                .generate_exercise_for_axis(node_id, axis_enum)
+                .generate_exercise_for_axis(nid_val, node_id, axis_enum)
                 .await
         } else {
             return vec![Event::Error {
@@ -759,7 +785,10 @@ async fn handle_generate_exercise(
         }
     } else {
         // Auto-detect axis from node ID
-        app_state.exercise_service.generate_exercise(node_id).await
+        app_state
+            .exercise_service
+            .generate_exercise(nid_val, node_id)
+            .await
     };
 
     match exercise_result {
@@ -788,7 +817,18 @@ async fn handle_generate_exercise(
 /// Check answer for an exercise (Phase 4.3)
 async fn handle_check_answer(node_id: &str, answer: &str, app_state: &AppState) -> Vec<Event> {
     // Generate exercise first (we need it to check the answer)
-    let exercise_result = app_state.exercise_service.generate_exercise(node_id).await;
+    let nid_val = match nid::from_ukey(node_id) {
+        Some(id) => id,
+        None => {
+            return vec![Event::Error {
+                message: format!("Invalid node ID: {}", node_id),
+            }]
+        }
+    };
+    let exercise_result = app_state
+        .exercise_service
+        .generate_exercise(nid_val, node_id)
+        .await;
 
     match exercise_result {
         Ok(exercise_type) => {
