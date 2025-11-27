@@ -19,7 +19,7 @@ use rand::Rng;
 /// The modification is temporary and only for testing memorization.
 #[derive(Debug)]
 pub struct FindMistakeExercise {
-    node_id: String,
+    node_id: i64,
     verse_key: String,
     correct_verse_text: String,
     modified_verse_text: String,
@@ -35,11 +35,18 @@ impl FindMistakeExercise {
     /// - The target verse and its words
     /// - Words from other verses in the same chapter (for substitution)
     /// - Randomly selects a word to replace (avoiding first/last words)
-    pub async fn new(verse_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(verse_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(verse_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", verse_node_id))?;
+
         // Parse verse_key from node_id (format: "VERSE:chapter:verse")
-        let verse_key = verse_node_id
+        let verse_key = node
+            .ukey
             .strip_prefix("VERSE:")
-            .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", verse_node_id))?
+            .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
             .to_string();
 
         // Parse chapter number
@@ -51,7 +58,7 @@ impl FindMistakeExercise {
 
         // Get the correct verse text
         let correct_verse_text = content_repo
-            .get_quran_text(&verse_node_id)
+            .get_quran_text(verse_node_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
 
@@ -217,8 +224,8 @@ impl Exercise for FindMistakeExercise {
         ))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

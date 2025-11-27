@@ -9,35 +9,34 @@ use rand::seq::SliceRandom;
 
 /// Exercise for testing understanding of word meanings
 /// Tests the user's knowledge of translation/meaning using semantic similarity
+#[derive(Debug)]
 pub struct TranslationExercise {
     node_id: i64,
-    #[allow(dead_code)]
-    base_node_id: i64,
     word_text: String,
     translation: String,
 }
 
 impl TranslationExercise {
     /// Create a new translation exercise
-    pub async fn new(node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
-        // In this new model, we assume the node_id is the base content node.
-        let base_node_id = node_id;
-
+    pub async fn new(
+        node_id: i64,
+        _ukey: &str,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
         // Get the word text
         let word_text = content_repo
-            .get_quran_text(base_node_id)
+            .get_quran_text(node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", node_id))?;
 
         // Get translation (default to English for now)
         let translation = content_repo
-            .get_translation(base_node_id, "en")
+            .get_translation(node_id, "en")
             .await?
             .unwrap_or_else(|| "[Translation not available]".to_string());
 
         Ok(Self {
             node_id,
-            base_node_id,
             word_text,
             translation,
         })
@@ -110,6 +109,7 @@ impl Exercise for TranslationExercise {
 
 /// Exercise for testing word translation in verse context (MCQ)
 /// Shows the full verse and asks for the meaning of a specific word
+#[derive(Debug)]
 pub struct ContextualTranslationExercise {
     node_id: i64,
     verse_text: String,

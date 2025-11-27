@@ -67,7 +67,7 @@ pub enum KnowledgeAxis {
 }
 
 impl KnowledgeAxis {
-    pub fn from_str(s: &str) -> std::result::Result<Self, ()> {
+    pub fn parse(s: &str) -> std::result::Result<Self, String> {
         match s {
             "memorization" => Ok(Self::Memorization),
             "translation" => Ok(Self::Translation),
@@ -75,7 +75,7 @@ impl KnowledgeAxis {
             "tajweed" => Ok(Self::Tajweed),
             "contextual_memorization" => Ok(Self::ContextualMemorization),
             "meaning" => Ok(Self::Meaning),
-            _ => Err(()),
+            _ => Err(format!("Unknown knowledge axis: {}", s)),
         }
     }
 }
@@ -123,7 +123,7 @@ impl KnowledgeNode {
 
         // Last part should be the axis
         let axis_str = parts.last()?;
-        if let Ok(axis) = KnowledgeAxis::from_str(axis_str) {
+        if let Ok(axis) = KnowledgeAxis::parse(axis_str) {
             // Everything except last part is base node ID
             let base_parts = &parts[..parts.len() - 1];
             let base_node_id = base_parts.join(":");
@@ -234,14 +234,14 @@ impl From<u8> for ReviewGrade {
 // Propagation event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationEvent {
-    pub source_node_id: String,
+    pub source_node_id: i64,
     pub event_timestamp: DateTime<Utc>,
     pub details: Vec<PropagationDetail>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationDetail {
-    pub target_node_id: String,
+    pub target_node_id: i64,
     pub energy_change: f64,
     pub reason: String,
 }
@@ -250,23 +250,23 @@ pub struct PropagationDetail {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Exercise {
     Recall {
-        node_id: String,
+        node_id: i64,
         question: String,
         answer: String,
     },
     Cloze {
-        node_id: String,
+        node_id: i64,
         text: String,
         blank_word: String,
     },
     McqArToEn {
-        node_id: String,
+        node_id: i64,
         question: String,
         correct_answer: String,
         distractors: Vec<String>,
     },
     McqEnToAr {
-        node_id: String,
+        node_id: i64,
         question: String,
         correct_answer: String,
         distractors: Vec<String>,

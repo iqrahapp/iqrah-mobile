@@ -129,10 +129,7 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[i64],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
@@ -368,7 +365,9 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_translate_phrase_verse_basic() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(11, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     // Verify exercise was created successfully
     assert_eq!(exercise.get_node_id(), 11);
@@ -379,7 +378,9 @@ async fn test_translate_phrase_verse_basic() {
 #[tokio::test]
 async fn test_translate_phrase_question_format() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(11, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     let question = exercise.generate_question();
     assert!(question.contains("Translate to English"));
@@ -390,7 +391,9 @@ async fn test_translate_phrase_question_format() {
 #[tokio::test]
 async fn test_translate_phrase_check_answer_exact() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(11, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     // Exact match
     assert!(exercise
@@ -400,7 +403,9 @@ async fn test_translate_phrase_check_answer_exact() {
 #[tokio::test]
 async fn test_translate_phrase_check_answer_normalized() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(11, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     // Case insensitive
     assert!(exercise
@@ -415,7 +420,9 @@ async fn test_translate_phrase_check_answer_normalized() {
 #[tokio::test]
 async fn test_translate_phrase_wrong_answer() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(11, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     // Wrong translation
     assert!(!exercise.check_answer("All praise is due to Allah"));
@@ -430,7 +437,9 @@ async fn test_translate_phrase_wrong_answer() {
 #[tokio::test]
 async fn test_translate_phrase_hint() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(11, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     let hint = exercise.get_hint();
     assert!(hint.is_some());
@@ -442,7 +451,9 @@ async fn test_translate_phrase_hint() {
 #[tokio::test]
 async fn test_translate_phrase_different_verse() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(12, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(12, "VERSE:1:2", 1, &repo)
+        .await
+        .unwrap();
 
     assert_eq!(exercise.get_verse_key(), Some("1:2"));
     assert!(exercise.check_answer("All praise is due to Allah, Lord of the worlds."));
@@ -452,7 +463,9 @@ async fn test_translate_phrase_different_verse() {
 #[tokio::test]
 async fn test_translate_phrase_word_level() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(111, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(111, "WORD_INSTANCE:1:1:1", 1, &repo)
+        .await
+        .unwrap();
 
     assert_eq!(exercise.get_arabic_text(), "بِسْمِ");
     assert_eq!(exercise.get_correct_translation(), "In the name");
@@ -463,7 +476,9 @@ async fn test_translate_phrase_word_level() {
 #[tokio::test]
 async fn test_translate_phrase_extra_whitespace() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(12, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(12, "VERSE:1:2", 1, &repo)
+        .await
+        .unwrap();
 
     // Extra whitespace should be normalized
     assert!(exercise.check_answer("  all  praise  is  due  to  allah  lord  of  the  worlds  "));
@@ -472,7 +487,9 @@ async fn test_translate_phrase_extra_whitespace() {
 #[tokio::test]
 async fn test_translate_phrase_different_punctuation() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(1121, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(1121, "VERSE:112:1", 1, &repo)
+        .await
+        .unwrap();
 
     // Different punctuation variations
     assert!(exercise.check_answer("Say, He is Allah, the One."));
@@ -483,7 +500,9 @@ async fn test_translate_phrase_different_punctuation() {
 #[tokio::test]
 async fn test_translate_phrase_normalization() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new(112, 1, &repo).await.unwrap();
+    let exercise = TranslatePhraseExercise::new(112, "WORD_INSTANCE:1:1:2", 1, &repo)
+        .await
+        .unwrap();
 
     // Test English normalization
     assert!(exercise.check_answer("of Allah"));

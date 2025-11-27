@@ -156,15 +156,51 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<Node>> {
+        async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
+            let (ukey, node_type) = match node_id {
+                // Verse nodes
+                11 => ("VERSE:1:1".to_string(), NodeType::Verse),
+                12 => ("VERSE:1:2".to_string(), NodeType::Verse),
+                // Word instance nodes from verse 1:1
+                111 => ("WORD_INSTANCE:1:1:1".to_string(), NodeType::WordInstance),
+                112 => ("WORD_INSTANCE:1:1:2".to_string(), NodeType::WordInstance),
+                113 => ("WORD_INSTANCE:1:1:3".to_string(), NodeType::WordInstance),
+                114 => ("WORD_INSTANCE:1:1:4".to_string(), NodeType::WordInstance),
+                // Word instance nodes from verse 1:2
+                121 => ("WORD_INSTANCE:1:2:1".to_string(), NodeType::WordInstance),
+                122 => ("WORD_INSTANCE:1:2:2".to_string(), NodeType::WordInstance),
+                123 => ("WORD_INSTANCE:1:2:3".to_string(), NodeType::WordInstance),
+                124 => ("WORD_INSTANCE:1:2:4".to_string(), NodeType::WordInstance),
+                _ => return Ok(None),
+            };
             Ok(Some(Node {
-                id: 1,
-                ukey: "test".to_string(),
-                node_type: NodeType::Word,
+                id: node_id,
+                ukey,
+                node_type,
             }))
         }
-        async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<Node>> {
-            unimplemented!()
+        async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<Node>> {
+            let (id, node_type) = match ukey {
+                // Verse nodes
+                "VERSE:1:1" => (11, NodeType::Verse),
+                "VERSE:1:2" => (12, NodeType::Verse),
+                // Word instance nodes from verse 1:1
+                "WORD_INSTANCE:1:1:1" => (111, NodeType::WordInstance),
+                "WORD_INSTANCE:1:1:2" => (112, NodeType::WordInstance),
+                "WORD_INSTANCE:1:1:3" => (113, NodeType::WordInstance),
+                "WORD_INSTANCE:1:1:4" => (114, NodeType::WordInstance),
+                // Word instance nodes from verse 1:2
+                "WORD_INSTANCE:1:2:1" => (121, NodeType::WordInstance),
+                "WORD_INSTANCE:1:2:2" => (122, NodeType::WordInstance),
+                "WORD_INSTANCE:1:2:3" => (123, NodeType::WordInstance),
+                "WORD_INSTANCE:1:2:4" => (124, NodeType::WordInstance),
+                _ => return Ok(None),
+            };
+            Ok(Some(Node {
+                id,
+                ukey: ukey.to_string(),
+                node_type,
+            }))
         }
 
         async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -199,10 +235,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_all_metadata(
-            &self,
-            _node_id: i64,
-        ) -> anyhow::Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
@@ -588,8 +621,7 @@ mod tests {
     async fn test_cloze_deletion_basic() {
         let repo = MockContentRepo::new();
         let exercise = ClozeDeletionExercise::new(
-            112,
-            false, // No letter hints
+            112, false, // No letter hints
             &repo,
         )
         .await
@@ -624,8 +656,7 @@ mod tests {
     async fn test_cloze_deletion_with_hint_letters() {
         let repo = MockContentRepo::new();
         let exercise = ClozeDeletionExercise::new(
-            112,
-            true, // Show letter hints
+            112, true, // Show letter hints
             &repo,
         )
         .await

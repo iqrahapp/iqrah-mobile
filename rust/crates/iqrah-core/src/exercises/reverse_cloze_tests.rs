@@ -12,9 +12,9 @@ use std::collections::HashMap;
 // ==========================================================================
 
 struct MockContentRepo {
-    words_text: HashMap<i64, String>,     // node_id -> text
-    words: HashMap<String, Vec<Word>>,    // verse_key -> words
-    verses_text: HashMap<i64, String>,    // node_id -> text
+    words_text: HashMap<i64, String>,  // node_id -> text
+    words: HashMap<String, Vec<Word>>, // verse_key -> words
+    verses_text: HashMap<i64, String>, // node_id -> text
 }
 
 impl MockContentRepo {
@@ -124,11 +124,75 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
-        Ok(None)
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        let (ukey, node_type) = match node_id {
+            // Verse nodes
+            11 => ("VERSE:1:1".to_string(), crate::NodeType::Verse),
+            12 => ("VERSE:1:2".to_string(), crate::NodeType::Verse),
+            // Word instance nodes from verse 1:1
+            111 => (
+                "WORD_INSTANCE:1:1:1".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            112 => (
+                "WORD_INSTANCE:1:1:2".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            113 => (
+                "WORD_INSTANCE:1:1:3".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            114 => (
+                "WORD_INSTANCE:1:1:4".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            // Word instance nodes from verse 1:2
+            121 => (
+                "WORD_INSTANCE:1:2:1".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            122 => (
+                "WORD_INSTANCE:1:2:2".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            123 => (
+                "WORD_INSTANCE:1:2:3".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            124 => (
+                "WORD_INSTANCE:1:2:4".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id: node_id,
+            ukey,
+            node_type,
+        }))
     }
-    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
-        unimplemented!()
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        let (id, node_type) = match ukey {
+            // Verse nodes
+            "VERSE:1:1" => (11, crate::NodeType::Verse),
+            "VERSE:1:2" => (12, crate::NodeType::Verse),
+            // Word instance nodes from verse 1:1
+            "WORD_INSTANCE:1:1:1" => (111, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:1:2" => (112, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:1:3" => (113, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:1:4" => (114, crate::NodeType::WordInstance),
+            // Word instance nodes from verse 1:2
+            "WORD_INSTANCE:1:2:1" => (121, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:2:2" => (122, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:2:3" => (123, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:2:4" => (124, crate::NodeType::WordInstance),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id,
+            ukey: ukey.to_string(),
+            node_type,
+        }))
     }
 
     async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -170,10 +234,7 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[i64],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
@@ -403,12 +464,10 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_reverse_cloze_basic() {
     let repo = MockContentRepo::new();
-    let exercise = ReverseClozeExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = ReverseClozeExercise::new(111, &repo).await.unwrap();
 
     // Verify exercise was created successfully
-    assert_eq!(exercise.get_node_id(), "WORD_INSTANCE:1:1:1");
+    assert_eq!(exercise.get_node_id(), 111);
     assert_eq!(exercise.get_type_name(), "reverse_cloze");
 
     // Verify question is generated

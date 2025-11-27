@@ -193,7 +193,7 @@ pub struct InstalledPackageRow {
 
 #[derive(Debug, Clone, FromRow)]
 pub struct CandidateNodeRow {
-    pub node_id: String,
+    pub node_id: i64,
     pub foundational_score: f32,
     pub influence_score: f32,
     pub difficulty_score: f32,
@@ -217,5 +217,5 @@ pub struct GoalRow {
 
 #[derive(Debug, Clone, FromRow)]
 pub struct NodeGoalRow {
-    pub node_id: String,
+    pub node_id: i64,
 }

@@ -154,11 +154,37 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
-        Ok(None)
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        let (ukey, node_type) = match node_id {
+            11 => ("VERSE:1:1".to_string(), crate::NodeType::Verse),
+            12 => ("VERSE:1:2".to_string(), crate::NodeType::Verse),
+            13 => ("VERSE:1:3".to_string(), crate::NodeType::Verse),
+            1121 => ("VERSE:112:1".to_string(), crate::NodeType::Verse),
+            1122 => ("VERSE:112:2".to_string(), crate::NodeType::Verse),
+            1131 => ("VERSE:113:1".to_string(), crate::NodeType::Verse),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id: node_id,
+            ukey,
+            node_type,
+        }))
     }
-    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
-        unimplemented!()
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        let (id, node_type) = match ukey {
+            "VERSE:1:1" => (11, crate::NodeType::Verse),
+            "VERSE:1:2" => (12, crate::NodeType::Verse),
+            "VERSE:1:3" => (13, crate::NodeType::Verse),
+            "VERSE:112:1" => (1121, crate::NodeType::Verse),
+            "VERSE:112:2" => (1122, crate::NodeType::Verse),
+            "VERSE:113:1" => (1131, crate::NodeType::Verse),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id,
+            ukey: ukey.to_string(),
+            node_type,
+        }))
     }
 
     async fn get_edges_from(&self, source_id: i64) -> anyhow::Result<Vec<Edge>> {
@@ -196,10 +222,7 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[i64],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 

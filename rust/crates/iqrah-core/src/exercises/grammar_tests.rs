@@ -268,15 +268,45 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepo {
-        async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<Node>> {
+        async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
+            let (ukey, node_type) = match node_id {
+                // Word instance nodes from verse 1:1
+                111 => ("WORD_INSTANCE:1:1:1".to_string(), NodeType::WordInstance),
+                112 => ("WORD_INSTANCE:1:1:2".to_string(), NodeType::WordInstance),
+                113 => ("WORD_INSTANCE:1:1:3".to_string(), NodeType::WordInstance),
+                114 => ("WORD_INSTANCE:1:1:4".to_string(), NodeType::WordInstance),
+                // Word instance nodes from verse 1:2
+                121 => ("WORD_INSTANCE:1:2:1".to_string(), NodeType::WordInstance),
+                122 => ("WORD_INSTANCE:1:2:2".to_string(), NodeType::WordInstance),
+                123 => ("WORD_INSTANCE:1:2:3".to_string(), NodeType::WordInstance),
+                124 => ("WORD_INSTANCE:1:2:4".to_string(), NodeType::WordInstance),
+                _ => return Ok(None),
+            };
             Ok(Some(Node {
-                id: 1,
-                ukey: "test".to_string(),
-                node_type: NodeType::Word,
+                id: node_id,
+                ukey,
+                node_type,
             }))
         }
-        async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<Node>> {
-            unimplemented!()
+        async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<Node>> {
+            let (id, node_type) = match ukey {
+                // Word instance nodes from verse 1:1
+                "WORD_INSTANCE:1:1:1" => (111, NodeType::WordInstance),
+                "WORD_INSTANCE:1:1:2" => (112, NodeType::WordInstance),
+                "WORD_INSTANCE:1:1:3" => (113, NodeType::WordInstance),
+                "WORD_INSTANCE:1:1:4" => (114, NodeType::WordInstance),
+                // Word instance nodes from verse 1:2
+                "WORD_INSTANCE:1:2:1" => (121, NodeType::WordInstance),
+                "WORD_INSTANCE:1:2:2" => (122, NodeType::WordInstance),
+                "WORD_INSTANCE:1:2:3" => (123, NodeType::WordInstance),
+                "WORD_INSTANCE:1:2:4" => (124, NodeType::WordInstance),
+                _ => return Ok(None),
+            };
+            Ok(Some(Node {
+                id,
+                ukey: ukey.to_string(),
+                node_type,
+            }))
         }
 
         async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
@@ -299,10 +329,7 @@ mod tests {
             Ok(None)
         }
 
-        async fn get_all_metadata(
-            &self,
-            _node_id: i64,
-        ) -> anyhow::Result<HashMap<String, String>> {
+        async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
             Ok(HashMap::new())
         }
 
@@ -554,10 +581,9 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_generates_question() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
         let question = exercise.generate_question();
 
@@ -569,28 +595,26 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_correct_answer_bism() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
-        // Root of "بِسْمِ" is "س-м-و"
-        assert!(exercise.check_answer("س-м-و"));
+        // Root of "بِسْمِ" is "س-م-و"
+        assert!(exercise.check_answer("س-م-و"));
         assert!(exercise.check_answer("سمو")); // Without dashes
         assert!(exercise.check_answer("س م و")); // With spaces
 
         // Wrong roots
         assert!(!exercise.check_answer("ك-ت-ب"));
-        assert!(!exercise.check_answer("ع-ل-м"));
+        assert!(!exercise.check_answer("ع-ل-م"));
     }
 
     #[tokio::test]
     async fn test_identify_root_correct_answer_allah() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
+            .await
+            .unwrap();
 
         // Root of "ٱللَّهِ" is "ا-ل-ه"
         assert!(exercise.check_answer("ا-ل-ه"));
@@ -600,26 +624,24 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_correct_answer_rahman() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(113, "WORD_INSTANCE:1:1:3", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(113, "WORD_INSTANCE:1:1:3", &repo)
+            .await
+            .unwrap();
 
         // Root of "ٱلرَّحْمَٰنِ" is "ر-ح-م"
-        assert!(exercise.check_answer("ر-ح-м"));
+        assert!(exercise.check_answer("ر-ح-م"));
         assert!(exercise.check_answer("رحم")); // Without dashes
 
         let correct_root = exercise.get_correct_root();
-        assert_eq!(correct_root, "ر-ح-м");
+        assert_eq!(correct_root, "ر-ح-م");
     }
 
     #[tokio::test]
     async fn test_identify_root_has_four_options() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
         let options = exercise.get_options();
         assert_eq!(options.len(), 4); // 1 correct + 3 distractors
@@ -628,10 +650,9 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_options_contain_correct() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
         let options = exercise.get_options();
         let correct_root = exercise.get_correct_root();
@@ -643,10 +664,9 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_distractors_are_different() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
         let options = exercise.get_options();
         let correct_root = exercise.get_correct_root();
@@ -663,10 +683,9 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_hint_shows_letter_count() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
         let hint = exercise.get_hint();
         assert!(hint.is_some());
@@ -682,21 +701,25 @@ mod tests {
 
         // Test different words
         let words = vec![
-            ("WORD_INSTANCE:1:1:1", "س-м-و"), // بِسْمِ
-            ("WORD_INSTANCE:1:1:2", "ا-ل-ه"), // ٱللَّهِ
-            ("WORD_INSTANCE:1:1:3", "ر-ح-м"), // ٱلرَّحْمَٰنِ
-            ("WORD_INSTANCE:1:2:1", "ح-м-د"), // ٱلْحَمْدُ
-            ("WORD_INSTANCE:1:2:3", "р-б-б"), // رَبِّ
-            ("WORD_INSTANCE:1:2:4", "ع-ل-м"), // ٱلْعَٰلَمِينَ
+            (111, "WORD_INSTANCE:1:1:1", "س-م-و"), // بِسْمِ
+            (112, "WORD_INSTANCE:1:1:2", "ا-ل-ه"), // ٱللَّهِ
+            (113, "WORD_INSTANCE:1:1:3", "ر-ح-م"), // ٱلرَّحْمَٰنِ
+            (121, "WORD_INSTANCE:1:2:1", "ح-م-د"), // ٱلْحَمْدُ
+            (123, "WORD_INSTANCE:1:2:3", "ر-ب-ب"), // رَبِّ
+            (124, "WORD_INSTANCE:1:2:4", "ع-ل-م"), // ٱلْعَٰلَمِينَ
         ];
 
-        for (word_id, expected_root) in words {
-            let exercise = IdentifyRootExercise::new(word_id.to_string(), &repo)
+        for (word_id, word_ukey, expected_root) in words {
+            let exercise = IdentifyRootExercise::new(word_id, word_ukey, &repo)
                 .await
                 .unwrap();
 
             let actual_root = exercise.get_correct_root();
-            assert_eq!(actual_root, expected_root, "Incorrect root for {}", word_id);
+            assert_eq!(
+                actual_root, expected_root,
+                "Incorrect root for {}",
+                word_ukey
+            );
 
             assert!(exercise.check_answer(expected_root));
         }
@@ -705,10 +728,9 @@ mod tests {
     #[tokio::test]
     async fn test_identify_root_type_name() {
         let repo = MockContentRepo::new();
-        let exercise =
-            IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
-                .await
-                .unwrap();
+        let exercise = IdentifyRootExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
+            .await
+            .unwrap();
 
         assert_eq!(exercise.get_type_name(), "identify_root");
     }

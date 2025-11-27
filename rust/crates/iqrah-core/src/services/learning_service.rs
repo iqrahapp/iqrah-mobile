@@ -120,12 +120,7 @@ impl LearningService {
     }
 
     /// Propagate energy changes through the knowledge graph
-    async fn propagate_energy(
-        &self,
-        user_id: &str,
-        source_node_id: i64,
-        delta: f64,
-    ) -> Result<()> {
+    async fn propagate_energy(&self, user_id: &str, source_node_id: i64, delta: f64) -> Result<()> {
         // Get edges from this node
         let edges = self.content_repo.get_edges_from(source_node_id).await?;
 
@@ -166,7 +161,7 @@ impl LearningService {
         // Log propagation event
         if !details.is_empty() {
             let event = PropagationEvent {
-                source_node_id: source_node_id,
+                source_node_id,
                 event_timestamp: Utc::now(),
                 details,
             };
