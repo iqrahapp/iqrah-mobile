@@ -12,7 +12,7 @@ use std::collections::HashMap;
 // ==========================================================================
 
 struct MockContentRepo {
-    texts: HashMap<String, String>,                     // node_id -> text
+    texts: HashMap<i64, String>,                        // node_id -> text
     verse_translations: HashMap<(String, i32), String>, // (verse_key, translator_id) -> translation
     word_translations: HashMap<(i32, i32), String>,     // (word_id, translator_id) -> translation
     words: HashMap<String, Vec<Word>>,                  // verse_key -> words
@@ -26,32 +26,29 @@ impl MockContentRepo {
         let mut words = HashMap::new();
 
         // Verse 1:1: بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-        texts.insert(
-            "VERSE:1:1".to_string(),
-            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
-        );
+        texts.insert(11, "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string());
         verse_translations.insert(
             ("1:1".to_string(), 1),
             "In the name of Allah, the Entirely Merciful, the Especially Merciful.".to_string(),
         );
 
         // Verse 1:2: ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ
-        texts.insert("VERSE:1:2".to_string(), "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
+        texts.insert(12, "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
         verse_translations.insert(
             ("1:2".to_string(), 1),
             "All praise is due to Allah, Lord of the worlds.".to_string(),
         );
 
         // Verse 112:1: قُلْ هُوَ ٱللَّهُ أَحَدٌ
-        texts.insert("VERSE:112:1".to_string(), "قُلْ هُوَ ٱللَّهُ أَحَدٌ".to_string());
+        texts.insert(1121, "قُلْ هُوَ ٱللَّهُ أَحَدٌ".to_string());
         verse_translations.insert(
             ("112:1".to_string(), 1),
             "Say, He is Allah, the One.".to_string(),
         );
 
         // Word instances for verse 1:1
-        texts.insert("WORD_INSTANCE:1:1:1".to_string(), "بِسْمِ".to_string());
-        texts.insert("WORD_INSTANCE:1:1:2".to_string(), "ٱللَّهِ".to_string());
+        texts.insert(111, "بِسْمِ".to_string());
+        texts.insert(112, "ٱللَّهِ".to_string());
 
         // Word translations
         word_translations.insert((1, 1), "In the name".to_string());
@@ -90,31 +87,34 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<crate::Node>> {
+    async fn get_node(&self, _node_id: i64) -> anyhow::Result<Option<crate::Node>> {
         Ok(None)
     }
+    async fn get_node_by_ukey(&self, _ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        unimplemented!()
+    }
 
-    async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+    async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
         Ok(vec![])
     }
 
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        Ok(self.texts.get(node_id).cloned())
+    async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
+        Ok(self.texts.get(&node_id).cloned())
     }
 
-    async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+    async fn get_translation(&self, _node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+    async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
         Ok(HashMap::new())
     }
 
-    async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+    async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
         Ok(false)
     }
 
@@ -129,24 +129,13 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[String],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
     async fn get_adjacent_words(
         &self,
-        _word_node_id: &str,
+        _word_node_id: i64,
     ) -> anyhow::Result<(Option<crate::Node>, Option<crate::Node>)> {
         Ok((None, None))
     }
@@ -320,16 +309,14 @@ impl ContentRepository for MockContentRepo {
     async fn get_scheduler_candidates(
         &self,
         _goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
         &self,
-        _node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        _node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
         Ok(std::collections::HashMap::new())
     }
 
@@ -340,7 +327,7 @@ impl ContentRepository for MockContentRepo {
         Ok(None)
     }
 
-    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
         Ok(vec![])
     }
 
@@ -378,12 +365,12 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_translate_phrase_verse_basic() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
         .await
         .unwrap();
 
     // Verify exercise was created successfully
-    assert_eq!(exercise.get_node_id(), "VERSE:1:1");
+    assert_eq!(exercise.get_node_id(), 11);
     assert_eq!(exercise.get_type_name(), "translate_phrase");
     assert_eq!(exercise.get_arabic_text(), "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ");
 }
@@ -391,7 +378,7 @@ async fn test_translate_phrase_verse_basic() {
 #[tokio::test]
 async fn test_translate_phrase_question_format() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
         .await
         .unwrap();
 
@@ -404,7 +391,7 @@ async fn test_translate_phrase_question_format() {
 #[tokio::test]
 async fn test_translate_phrase_check_answer_exact() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
         .await
         .unwrap();
 
@@ -416,7 +403,7 @@ async fn test_translate_phrase_check_answer_exact() {
 #[tokio::test]
 async fn test_translate_phrase_check_answer_normalized() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
         .await
         .unwrap();
 
@@ -433,7 +420,7 @@ async fn test_translate_phrase_check_answer_normalized() {
 #[tokio::test]
 async fn test_translate_phrase_wrong_answer() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
         .await
         .unwrap();
 
@@ -450,7 +437,7 @@ async fn test_translate_phrase_wrong_answer() {
 #[tokio::test]
 async fn test_translate_phrase_hint() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(11, "VERSE:1:1", 1, &repo)
         .await
         .unwrap();
 
@@ -464,7 +451,7 @@ async fn test_translate_phrase_hint() {
 #[tokio::test]
 async fn test_translate_phrase_different_verse() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:2".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(12, "VERSE:1:2", 1, &repo)
         .await
         .unwrap();
 
@@ -476,7 +463,7 @@ async fn test_translate_phrase_different_verse() {
 #[tokio::test]
 async fn test_translate_phrase_word_level() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("WORD_INSTANCE:1:1:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(111, "WORD_INSTANCE:1:1:1", 1, &repo)
         .await
         .unwrap();
 
@@ -489,7 +476,7 @@ async fn test_translate_phrase_word_level() {
 #[tokio::test]
 async fn test_translate_phrase_extra_whitespace() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:1:2".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(12, "VERSE:1:2", 1, &repo)
         .await
         .unwrap();
 
@@ -500,7 +487,7 @@ async fn test_translate_phrase_extra_whitespace() {
 #[tokio::test]
 async fn test_translate_phrase_different_punctuation() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("VERSE:112:1".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(1121, "VERSE:112:1", 1, &repo)
         .await
         .unwrap();
 
@@ -513,7 +500,7 @@ async fn test_translate_phrase_different_punctuation() {
 #[tokio::test]
 async fn test_translate_phrase_normalization() {
     let repo = MockContentRepo::new();
-    let exercise = TranslatePhraseExercise::new("WORD_INSTANCE:1:1:2".to_string(), 1, &repo)
+    let exercise = TranslatePhraseExercise::new(112, "WORD_INSTANCE:1:1:2", 1, &repo)
         .await
         .unwrap();
 

@@ -11,7 +11,7 @@ use std::collections::HashMap;
 // ==========================================================================
 
 struct MockContentRepo {
-    words_text: HashMap<String, String>,     // node_id -> text
+    words_text: HashMap<i64, String>,        // node_id -> text
     words: HashMap<String, Vec<Word>>,       // verse_key -> words
     word_translations: HashMap<i32, String>, // word_id -> translation
     verses: HashMap<i32, Vec<Verse>>,        // chapter_num -> verses
@@ -25,23 +25,20 @@ impl MockContentRepo {
         let mut verses = HashMap::new();
 
         // Verse 1:1 words
-        words_text.insert("WORD_INSTANCE:1:1:1".to_string(), "بِسْمِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:1:2".to_string(), "ٱللَّهِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:1:3".to_string(), "ٱلرَّحْمَٰنِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:1:4".to_string(), "ٱلرَّحِيمِ".to_string());
+        words_text.insert(111, "بِسْمِ".to_string());
+        words_text.insert(112, "ٱللَّهِ".to_string());
+        words_text.insert(113, "ٱلرَّحْمَٰنِ".to_string());
+        words_text.insert(114, "ٱلرَّحِيمِ".to_string());
 
         // Verse 1:2 words
-        words_text.insert("WORD_INSTANCE:1:2:1".to_string(), "ٱلْحَمْدُ".to_string());
-        words_text.insert("WORD_INSTANCE:1:2:2".to_string(), "لِلَّهِ".to_string());
-        words_text.insert("WORD_INSTANCE:1:2:3".to_string(), "رَبِّ".to_string());
-        words_text.insert("WORD_INSTANCE:1:2:4".to_string(), "ٱلْعَٰلَمِينَ".to_string());
+        words_text.insert(121, "ٱلْحَمْدُ".to_string());
+        words_text.insert(122, "لِلَّهِ".to_string());
+        words_text.insert(123, "رَبِّ".to_string());
+        words_text.insert(124, "ٱلْعَٰلَمِينَ".to_string());
 
         // Verse texts
-        words_text.insert(
-            "VERSE:1:1".to_string(),
-            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
-        );
-        words_text.insert("VERSE:1:2".to_string(), "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
+        words_text.insert(11, "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string());
+        words_text.insert(12, "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string());
 
         // Create Word objects for verse 1:1
         let verse_1_1 = vec![
@@ -163,46 +160,112 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<crate::Node>> {
-        Ok(None)
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        let (ukey, node_type) = match node_id {
+            // Verse nodes
+            11 => ("VERSE:1:1".to_string(), crate::NodeType::Verse),
+            12 => ("VERSE:1:2".to_string(), crate::NodeType::Verse),
+            // Word instance nodes from verse 1:1
+            111 => (
+                "WORD_INSTANCE:1:1:1".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            112 => (
+                "WORD_INSTANCE:1:1:2".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            113 => (
+                "WORD_INSTANCE:1:1:3".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            114 => (
+                "WORD_INSTANCE:1:1:4".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            // Word instance nodes from verse 1:2
+            121 => (
+                "WORD_INSTANCE:1:2:1".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            122 => (
+                "WORD_INSTANCE:1:2:2".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            123 => (
+                "WORD_INSTANCE:1:2:3".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            124 => (
+                "WORD_INSTANCE:1:2:4".to_string(),
+                crate::NodeType::WordInstance,
+            ),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id: node_id,
+            ukey,
+            node_type,
+        }))
+    }
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        let (id, node_type) = match ukey {
+            // Verse nodes
+            "VERSE:1:1" => (11, crate::NodeType::Verse),
+            "VERSE:1:2" => (12, crate::NodeType::Verse),
+            // Word instance nodes from verse 1:1
+            "WORD_INSTANCE:1:1:1" => (111, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:1:2" => (112, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:1:3" => (113, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:1:4" => (114, crate::NodeType::WordInstance),
+            // Word instance nodes from verse 1:2
+            "WORD_INSTANCE:1:2:1" => (121, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:2:2" => (122, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:2:3" => (123, crate::NodeType::WordInstance),
+            "WORD_INSTANCE:1:2:4" => (124, crate::NodeType::WordInstance),
+            _ => return Ok(None),
+        };
+        Ok(Some(crate::Node {
+            id,
+            ukey: ukey.to_string(),
+            node_type,
+        }))
     }
 
-    async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+    async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
         Ok(vec![])
     }
 
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        Ok(self.words_text.get(node_id).cloned())
+    async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
+        Ok(self.words_text.get(&node_id).cloned())
     }
 
-    async fn get_translation(&self, node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
-        // Parse word ID from node_id
-        if let Some(stripped) = node_id.strip_prefix("WORD_INSTANCE:") {
-            let parts: Vec<&str> = stripped.split(':').collect();
-            if parts.len() >= 3 {
-                // Try to find the word by position
-                let verse_key = format!("{}:{}", parts[0], parts[1]);
-                if let Some(words) = self.words.get(&verse_key) {
-                    if let Ok(pos) = parts[2].parse::<i32>() {
-                        if let Some(word) = words.iter().find(|w| w.position == pos) {
-                            return Ok(self.word_translations.get(&word.id).cloned());
-                        }
-                    }
-                }
-            }
-        }
+    async fn get_translation(&self, node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
+        // Map node_id to word_id
+        // 111-114 map to word_ids 1-4 (verse 1:1)
+        // 121-124 map to word_ids 5-8 (verse 1:2)
+        let word_id = match node_id {
+            111 => 1,
+            112 => 2,
+            113 => 3,
+            114 => 4, // Verse 1:1
+            121 => 5,
+            122 => 6,
+            123 => 7,
+            124 => 8, // Verse 1:2
+            _ => return Ok(None),
+        };
+        Ok(self.word_translations.get(&word_id).cloned())
+    }
+
+    async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
-        Ok(None)
-    }
-
-    async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
         Ok(HashMap::new())
     }
 
-    async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+    async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
         Ok(false)
     }
 
@@ -217,24 +280,13 @@ impl ContentRepository for MockContentRepo {
         Ok(vec![])
     }
 
-    async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[String],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(vec![])
     }
 
     async fn get_adjacent_words(
         &self,
-        _word_node_id: &str,
+        _word_node_id: i64,
     ) -> anyhow::Result<(Option<crate::Node>, Option<crate::Node>)> {
         Ok((None, None))
     }
@@ -406,16 +458,14 @@ impl ContentRepository for MockContentRepo {
     async fn get_scheduler_candidates(
         &self,
         _goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
         &self,
-        _node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        _node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
         Ok(std::collections::HashMap::new())
     }
 
@@ -426,7 +476,7 @@ impl ContentRepository for MockContentRepo {
         Ok(None)
     }
 
-    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
         Ok(vec![])
     }
 
@@ -464,7 +514,7 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_contextual_translation_basic() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
         .await
         .unwrap();
 
@@ -478,7 +528,7 @@ async fn test_contextual_translation_basic() {
 #[tokio::test]
 async fn test_contextual_translation_correct_answer() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
         .await
         .unwrap();
 
@@ -494,7 +544,7 @@ async fn test_contextual_translation_correct_answer() {
 #[tokio::test]
 async fn test_contextual_translation_has_four_options() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
         .await
         .unwrap();
 
@@ -505,7 +555,7 @@ async fn test_contextual_translation_has_four_options() {
 #[tokio::test]
 async fn test_contextual_translation_options_contain_correct() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:2".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(112, "WORD_INSTANCE:1:1:2", &repo)
         .await
         .unwrap();
 
@@ -516,7 +566,7 @@ async fn test_contextual_translation_options_contain_correct() {
 #[tokio::test]
 async fn test_contextual_translation_distractors_are_different() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:3".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(113, "WORD_INSTANCE:1:1:3", &repo)
         .await
         .unwrap();
 
@@ -536,7 +586,7 @@ async fn test_contextual_translation_distractors_are_different() {
 #[tokio::test]
 async fn test_contextual_translation_type_name() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
         .await
         .unwrap();
 
@@ -546,7 +596,7 @@ async fn test_contextual_translation_type_name() {
 #[tokio::test]
 async fn test_contextual_translation_hint() {
     let repo = MockContentRepo::new();
-    let exercise = ContextualTranslationExercise::new("WORD_INSTANCE:1:1:1".to_string(), &repo)
+    let exercise = ContextualTranslationExercise::new(111, "WORD_INSTANCE:1:1:1", &repo)
         .await
         .unwrap();
 

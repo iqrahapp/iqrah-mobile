@@ -15,7 +15,7 @@ use anyhow::Result;
 /// Tests fluent production and full verse recall
 #[derive(Debug)]
 pub struct FullVerseInputExercise {
-    node_id: String,
+    node_id: i64,
     verse_key: String,
     chapter_name: String,
     verse_number: i32,
@@ -28,12 +28,18 @@ impl FullVerseInputExercise {
     /// Queries the database for:
     /// - Verse text (correct answer)
     /// - Chapter name (for question prompt)
-    pub async fn new(verse_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(verse_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(verse_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", verse_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&verse_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            verse_node_id.clone()
+            node.ukey.clone()
         };
 
         // Parse node_id to get verse_key
@@ -52,16 +58,21 @@ impl FullVerseInputExercise {
 
         // Get verse text
         let correct_verse_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(verse_node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
 
         // Get chapter name
-        let chapter_node_id = format!("CHAPTER:{}", chapter_num);
-        let chapter_name = content_repo
-            .get_quran_text(&chapter_node_id)
+        let chapter_ukey = format!("CHAPTER:{}", chapter_num);
+        let chapter_node = content_repo
+            .get_node_by_ukey(&chapter_ukey)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Chapter name not found: {}", chapter_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Chapter node not found: {}", chapter_ukey))?;
+
+        let chapter_name = content_repo
+            .get_quran_text(chapter_node.id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Chapter name not found: {}", chapter_ukey))?;
 
         Ok(Self {
             node_id: verse_node_id,
@@ -106,8 +117,8 @@ impl Exercise for FullVerseInputExercise {
         Some(format!("Starts with: {}", first_word))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

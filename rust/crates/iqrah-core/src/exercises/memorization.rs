@@ -9,38 +9,46 @@ use rand::seq::SliceRandom;
 
 /// Exercise for memorizing Quranic words
 /// Tests the user's ability to recall the exact Arabic text using semantic similarity
+#[derive(Debug)]
 pub struct MemorizationExercise {
-    node_id: String,
-    #[allow(dead_code)]
-    base_node_id: String,
+    pub node_id: i64,
     word_text: String,
     verse_context: Option<String>,
 }
 
 impl MemorizationExercise {
     /// Create a new memorization exercise
-    pub async fn new(node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
-        // Parse the knowledge node to get base content node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
-            kn.base_node_id
-        } else {
-            // If not a knowledge node, use the node_id directly
-            node_id.clone()
-        };
-
-        // Get the word text
+    pub async fn new(
+        node_id: i64,
+        ukey: &str,
+        content_repo: &dyn ContentRepository,
+    ) -> Result<Self> {
+        // Get the word text from the repository using the integer ID
         let word_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node ID: {}", node_id))?;
 
-        // Try to get verse context for hints
-        // Extract verse key from word node ID (e.g., "WORD:1:1:1" -> "VERSE:1:1")
-        let verse_context = if base_node_id.starts_with("WORD:") {
-            let parts: Vec<&str> = base_node_id.split(':').collect();
+        // Try to get verse context for hints by parsing the ukey
+        let verse_context = if ukey.starts_with("WORD:") {
+            let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() >= 3 {
-                let verse_key = format!("VERSE:{}:{}", parts[1], parts[2]);
-                content_repo.get_quran_text(&verse_key).await.ok().flatten()
+                let verse_ukey = format!("VERSE:{}:{}", parts[1], parts[2]);
+                // To get the verse text, we'd need to look up its i64 ID first.
+                // This is a simplification for now. A more robust solution might involve
+                // a `get_node_by_ukey` call to get the verse's i64 ID.
+                // For the purpose of this refactoring, we will assume this logic might
+                // need to be adapted or that `get_quran_text` could also accept a ukey.
+                // Let's assume a lookup is needed.
+                if let Some(verse_node) = content_repo.get_node_by_ukey(&verse_ukey).await? {
+                    content_repo
+                        .get_quran_text(verse_node.id)
+                        .await
+                        .ok()
+                        .flatten()
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -50,7 +58,6 @@ impl MemorizationExercise {
 
         Ok(Self {
             node_id,
-            base_node_id,
             word_text,
             verse_context,
         })
@@ -162,8 +169,8 @@ impl Exercise for MemorizationExercise {
         }
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -179,7 +186,7 @@ impl Exercise for MemorizationExercise {
 /// Given a verse with the last word missing, select the correct word from options
 #[derive(Debug)]
 pub struct NextWordMcqExercise {
-    node_id: String,
+    node_id: i64,
     #[allow(dead_code)] // May be used for debugging or future features
     verse_key: String,
     verse_prefix: String,   // Verse text without last word
@@ -198,15 +205,21 @@ pub enum NextWordDifficulty {
 impl NextWordMcqExercise {
     /// Create a new Next Word MCQ exercise
     pub async fn new(
-        verse_node_id: String,
+        verse_node_id: i64,
         difficulty: NextWordDifficulty,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(verse_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", verse_node_id))?;
+
         // Parse knowledge node to get base verse ID
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&verse_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            verse_node_id.clone()
+            node.ukey.clone()
         };
 
         // Extract verse key from node ID (e.g., "VERSE:1:1" -> "1:1")
@@ -366,8 +379,8 @@ impl Exercise for NextWordMcqExercise {
             .map(|c| format!("First letter: {}", c))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -383,7 +396,7 @@ impl Exercise for NextWordMcqExercise {
 /// A word is removed from the verse, user selects the correct missing word
 #[derive(Debug)]
 pub struct MissingWordMcqExercise {
-    node_id: String,
+    node_id: i64,
     verse_with_blank: String, // "بِسْمِ _____ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
     correct_answer: String,   // "ٱللَّهِ"
     options: Vec<String>,     // 4 options (shuffled)
@@ -391,13 +404,19 @@ pub struct MissingWordMcqExercise {
 
 impl MissingWordMcqExercise {
     /// Create a new Missing Word MCQ exercise
-    /// `word_node_id` should be in format "WORD_INSTANCE:chapter:verse:position"
-    pub async fn new(word_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    /// `word_node_id` should be the i64 ID of the word
+    pub async fn new(word_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(word_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            node.ukey.clone()
         };
 
         // Parse word node ID to extract verse key and position
@@ -496,8 +515,8 @@ impl Exercise for MissingWordMcqExercise {
             .map(|c| format!("First letter: {}", c))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -513,7 +532,7 @@ impl Exercise for MissingWordMcqExercise {
 /// Similar to MissingWordMcqExercise but requires typing the answer
 #[derive(Debug)]
 pub struct ClozeDeletionExercise {
-    node_id: String,
+    node_id: i64,
     verse_with_blank: String,        // "بِسْمِ _____ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
     correct_answer: String,          // "ٱللَّهِ"
     hint_letters: Option<Vec<char>>, // Optional: jumbled letters of the word
@@ -522,15 +541,21 @@ pub struct ClozeDeletionExercise {
 impl ClozeDeletionExercise {
     /// Create a new Cloze Deletion exercise
     pub async fn new(
-        word_node_id: String,
+        word_node_id: i64,
         show_letters_hint: bool,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(word_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            node.ukey.clone()
         };
 
         // Parse word node ID
@@ -631,8 +656,8 @@ impl Exercise for ClozeDeletionExercise {
         }
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -648,7 +673,7 @@ impl Exercise for ClozeDeletionExercise {
 /// Bridges the gap between recognition and pure recall
 #[derive(Debug)]
 pub struct FirstLetterHintExercise {
-    node_id: String,
+    node_id: i64,
     verse_with_hint: String, // "بِسْمِ ٱـ_____ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
     correct_answer: String,  // "ٱللَّهِ"
     first_letter: char,      // 'ٱ'
@@ -656,12 +681,18 @@ pub struct FirstLetterHintExercise {
 
 impl FirstLetterHintExercise {
     /// Create a new First Letter Hint exercise
-    pub async fn new(word_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(word_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(word_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", word_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&word_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            word_node_id.clone()
+            node.ukey.clone()
         };
 
         // Parse word node ID
@@ -746,8 +777,8 @@ impl Exercise for FirstLetterHintExercise {
         ))
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

@@ -67,7 +67,7 @@ pub enum KnowledgeAxis {
 }
 
 impl KnowledgeAxis {
-    pub fn from_str(s: &str) -> std::result::Result<Self, ()> {
+    pub fn parse(s: &str) -> std::result::Result<Self, String> {
         match s {
             "memorization" => Ok(Self::Memorization),
             "translation" => Ok(Self::Translation),
@@ -75,7 +75,7 @@ impl KnowledgeAxis {
             "tajweed" => Ok(Self::Tajweed),
             "contextual_memorization" => Ok(Self::ContextualMemorization),
             "meaning" => Ok(Self::Meaning),
-            _ => Err(()),
+            _ => Err(format!("Unknown knowledge axis: {}", s)),
         }
     }
 }
@@ -123,7 +123,7 @@ impl KnowledgeNode {
 
         // Last part should be the axis
         let axis_str = parts.last()?;
-        if let Ok(axis) = KnowledgeAxis::from_str(axis_str) {
+        if let Ok(axis) = KnowledgeAxis::parse(axis_str) {
             // Everything except last part is base node ID
             let base_parts = &parts[..parts.len() - 1];
             let base_node_id = base_parts.join(":");
@@ -152,11 +152,9 @@ impl KnowledgeNode {
 // Core node entity
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
-    pub id: String,
+    pub id: i64,
+    pub ukey: String,
     pub node_type: NodeType,
-    /// Parsed knowledge node info if node_type is Knowledge
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub knowledge_node: Option<KnowledgeNode>,
 }
 
 // Edge types
@@ -176,8 +174,8 @@ pub enum DistributionType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Edge {
-    pub source_id: String,
-    pub target_id: String,
+    pub source_id: i64,
+    pub target_id: i64,
     pub edge_type: EdgeType,
     pub distribution_type: DistributionType,
     pub param1: f64,
@@ -188,7 +186,7 @@ pub struct Edge {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryState {
     pub user_id: String,
-    pub node_id: String,
+    pub node_id: i64,
     pub stability: f64,
     pub difficulty: f64,
     pub energy: f64,
@@ -198,7 +196,7 @@ pub struct MemoryState {
 }
 
 impl MemoryState {
-    pub fn new_for_node(user_id: String, node_id: String) -> Self {
+    pub fn new_for_node(user_id: String, node_id: i64) -> Self {
         Self {
             user_id,
             node_id,
@@ -236,14 +234,14 @@ impl From<u8> for ReviewGrade {
 // Propagation event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationEvent {
-    pub source_node_id: String,
+    pub source_node_id: i64,
     pub event_timestamp: DateTime<Utc>,
     pub details: Vec<PropagationDetail>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationDetail {
-    pub target_node_id: String,
+    pub target_node_id: i64,
     pub energy_change: f64,
     pub reason: String,
 }
@@ -252,23 +250,23 @@ pub struct PropagationDetail {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Exercise {
     Recall {
-        node_id: String,
+        node_id: i64,
         question: String,
         answer: String,
     },
     Cloze {
-        node_id: String,
+        node_id: i64,
         text: String,
         blank_word: String,
     },
     McqArToEn {
-        node_id: String,
+        node_id: i64,
         question: String,
         correct_answer: String,
         distractors: Vec<String>,
     },
     McqEnToAr {
-        node_id: String,
+        node_id: i64,
         question: String,
         correct_answer: String,
         distractors: Vec<String>,

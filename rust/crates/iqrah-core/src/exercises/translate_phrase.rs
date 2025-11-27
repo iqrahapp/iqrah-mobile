@@ -2,7 +2,7 @@
 // Exercise 20: Translate Phrase (Text Input) - Type English translation for Arabic phrase/verse
 
 use super::types::Exercise;
-use crate::{ContentRepository, KnowledgeNode};
+use crate::ContentRepository;
 use anyhow::Result;
 
 // ============================================================================
@@ -14,7 +14,7 @@ use anyhow::Result;
 /// Tests deep understanding of meaning
 #[derive(Debug)]
 pub struct TranslatePhraseExercise {
-    node_id: String,
+    pub node_id: i64,
     arabic_text: String,
     correct_translation: String,
     verse_key: Option<String>,
@@ -27,32 +27,23 @@ impl TranslatePhraseExercise {
     /// - Arabic text (verse or phrase)
     /// - English translation (correct answer)
     pub async fn new(
-        node_id: String,
+        node_id: i64,
+        ukey: &str,
         translator_id: i32,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
-        // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node_id) {
-            kn.base_node_id
-        } else {
-            node_id.clone()
-        };
-
         // Get Arabic text
         let arabic_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Arabic text not found: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Arabic text not found: {}", node_id))?;
 
         // Determine verse_key and get translation
-        let (verse_key, correct_translation) = if base_node_id.starts_with("VERSE:") {
+        let (verse_key, correct_translation) = if ukey.starts_with("VERSE:") {
             // Verse-level exercise
-            let parts: Vec<&str> = base_node_id.split(':').collect();
+            let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() != 3 {
-                return Err(anyhow::anyhow!(
-                    "Invalid verse node ID format: {}",
-                    base_node_id
-                ));
+                return Err(anyhow::anyhow!("Invalid verse node ID format: {}", ukey));
             }
             let vk = format!("{}:{}", parts[1], parts[2]);
             let translation = content_repo
@@ -60,14 +51,11 @@ impl TranslatePhraseExercise {
                 .await?
                 .ok_or_else(|| anyhow::anyhow!("Verse translation not found for: {}", vk))?;
             (Some(vk), translation)
-        } else if base_node_id.starts_with("WORD_INSTANCE:") {
+        } else if ukey.starts_with("WORD_INSTANCE:") {
             // Word-level exercise (phrase)
-            let parts: Vec<&str> = base_node_id.split(':').collect();
+            let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() != 4 {
-                return Err(anyhow::anyhow!(
-                    "Invalid word node ID format: {}",
-                    base_node_id
-                ));
+                return Err(anyhow::anyhow!("Invalid word node ID format: {}", ukey));
             }
             let chapter: i32 = parts[1].parse()?;
             let verse: i32 = parts[2].parse()?;
@@ -97,7 +85,7 @@ impl TranslatePhraseExercise {
         } else {
             return Err(anyhow::anyhow!(
                 "Unsupported node type for translation exercise: {}",
-                base_node_id
+                ukey
             ));
         };
 
@@ -176,8 +164,8 @@ impl Exercise for TranslatePhraseExercise {
         }
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

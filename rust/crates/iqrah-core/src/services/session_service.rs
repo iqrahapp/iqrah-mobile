@@ -1,4 +1,5 @@
-use crate::{ContentRepository, KnowledgeAxis, MemoryState, Node, NodeType, UserRepository};
+use crate::domain::{KnowledgeAxis, KnowledgeNode, MemoryState, NodeType};
+use crate::{ContentRepository, Node, UserRepository};
 use anyhow::Result;
 use chrono::Utc;
 use std::sync::Arc;
@@ -88,7 +89,7 @@ impl SessionService {
 
         for state in due_states {
             // Get node info
-            let node = match self.content_repo.get_node(&state.node_id).await? {
+            let node = match self.content_repo.get_node(state.node_id).await? {
                 Some(n) => n,
                 None => continue, // Skip if node doesn't exist
             };
@@ -104,7 +105,7 @@ impl SessionService {
             }
 
             // Phase 4: Filter by knowledge axis if specified
-            let knowledge_axis = node.knowledge_node.as_ref().map(|kn| kn.axis);
+            let knowledge_axis = KnowledgeNode::parse(&node.ukey).map(|kn| kn.axis);
 
             if let Some(filter_axis) = axis_filter {
                 // If filtering by axis, only include matching knowledge nodes
@@ -163,12 +164,12 @@ impl SessionService {
     }
 
     /// Get session state (for resuming)
-    pub async fn get_session_state(&self) -> Result<Vec<String>> {
+    pub async fn get_session_state(&self) -> Result<Vec<i64>> {
         self.user_repo.get_session_state().await
     }
 
     /// Save session state (for persistence)
-    pub async fn save_session_state(&self, node_ids: &[String]) -> Result<()> {
+    pub async fn save_session_state(&self, node_ids: &[i64]) -> Result<()> {
         self.user_repo.save_session_state(node_ids).await
     }
 

@@ -1,4 +1,5 @@
 use chrono::Utc;
+use iqrah_core::domain::node_id as nid;
 use iqrah_core::{ContentRepository, MemoryState, UserRepository};
 use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
 use sqlx::Row;
@@ -71,7 +72,7 @@ async fn test_user_repository_memory_states() {
     // Create a memory state
     let state = MemoryState {
         user_id: "user1".to_string(),
-        node_id: "node1".to_string(),
+        node_id: 100, // node_id is i64
         stability: 1.5,
         difficulty: 5.0,
         energy: 0.7,
@@ -84,12 +85,12 @@ async fn test_user_repository_memory_states() {
     repo.save_memory_state(&state).await.unwrap();
 
     // Retrieve it
-    let retrieved = repo.get_memory_state("user1", "node1").await.unwrap();
+    let retrieved = repo.get_memory_state("user1", 100).await.unwrap();
     assert!(retrieved.is_some());
 
     let retrieved = retrieved.unwrap();
     assert_eq!(retrieved.user_id, "user1");
-    assert_eq!(retrieved.node_id, "node1");
+    assert_eq!(retrieved.node_id, 100);
     assert_eq!(retrieved.stability, 1.5);
     assert_eq!(retrieved.difficulty, 5.0);
     assert_eq!(retrieved.energy, 0.7);
@@ -102,11 +103,7 @@ async fn test_user_repository_memory_states() {
 
     repo.save_memory_state(&updated).await.unwrap();
 
-    let retrieved = repo
-        .get_memory_state("user1", "node1")
-        .await
-        .unwrap()
-        .unwrap();
+    let retrieved = repo.get_memory_state("user1", 100).await.unwrap().unwrap();
     assert_eq!(retrieved.energy, 0.9);
     assert_eq!(retrieved.review_count, 4);
 }
@@ -121,7 +118,7 @@ async fn test_user_repository_get_due_states() {
     // Create overdue state
     let overdue = MemoryState {
         user_id: "user1".to_string(),
-        node_id: "node1".to_string(),
+        node_id: 100,
         stability: 1.0,
         difficulty: 5.0,
         energy: 0.5,
@@ -133,7 +130,7 @@ async fn test_user_repository_get_due_states() {
     // Create future state
     let future = MemoryState {
         user_id: "user1".to_string(),
-        node_id: "node2".to_string(),
+        node_id: 101,
         stability: 1.0,
         difficulty: 5.0,
         energy: 0.5,
@@ -149,7 +146,7 @@ async fn test_user_repository_get_due_states() {
     let due = repo.get_due_states("user1", now, 10).await.unwrap();
 
     assert_eq!(due.len(), 1, "Should only return overdue items");
-    assert_eq!(due[0].node_id, "node1");
+    assert_eq!(due[0].node_id, 100);
 }
 
 #[tokio::test]
@@ -179,11 +176,7 @@ async fn test_user_repository_session_state() {
     let pool = init_user_db(":memory:").await.unwrap();
     let repo = SqliteUserRepository::new(pool);
 
-    let nodes = vec![
-        "node1".to_string(),
-        "node2".to_string(),
-        "node3".to_string(),
-    ];
+    let nodes = vec![100, 101, 102];
 
     // Save session
     repo.save_session_state(&nodes).await.unwrap();
@@ -191,9 +184,9 @@ async fn test_user_repository_session_state() {
     // Retrieve session
     let retrieved = repo.get_session_state().await.unwrap();
     assert_eq!(retrieved.len(), 3);
-    assert_eq!(retrieved[0], "node1");
-    assert_eq!(retrieved[1], "node2");
-    assert_eq!(retrieved[2], "node3");
+    assert_eq!(retrieved[0], 100);
+    assert_eq!(retrieved[1], 101);
+    assert_eq!(retrieved[2], 102);
 
     // Clear session
     repo.clear_session_state().await.unwrap();
@@ -209,7 +202,7 @@ async fn test_update_energy() {
     // Create initial state
     let state = MemoryState {
         user_id: "user1".to_string(),
-        node_id: "node1".to_string(),
+        node_id: 100,
         stability: 1.0,
         difficulty: 5.0,
         energy: 0.5,
@@ -221,14 +214,10 @@ async fn test_update_energy() {
     repo.save_memory_state(&state).await.unwrap();
 
     // Update just the energy
-    repo.update_energy("user1", "node1", 0.8).await.unwrap();
+    repo.update_energy("user1", 100, 0.8).await.unwrap();
 
     // Verify energy was updated
-    let updated = repo
-        .get_memory_state("user1", "node1")
-        .await
-        .unwrap()
-        .unwrap();
+    let updated = repo.get_memory_state("user1", 100).await.unwrap().unwrap();
     assert_eq!(updated.energy, 0.8);
     assert_eq!(updated.stability, 1.0); // Other fields unchanged
 }
@@ -250,11 +239,12 @@ async fn test_two_database_integration() {
     assert!(verse.is_some(), "Sample verse 1:1 should exist");
 
     // Create user progress for that verse
-    let state = MemoryState::new_for_node("user1".to_string(), "1:1".to_string());
+    let verse_id = nid::encode_verse(1, 1);
+    let state = MemoryState::new_for_node("user1".to_string(), verse_id);
     user_repo.save_memory_state(&state).await.unwrap();
 
     // Verify user.db has the state
-    let user_state = user_repo.get_memory_state("user1", "1:1").await.unwrap();
+    let user_state = user_repo.get_memory_state("user1", verse_id).await.unwrap();
     assert!(user_state.is_some());
 
     // Verify app_settings table exists (migration v2 proof)
@@ -295,8 +285,8 @@ async fn test_v2_chapter_queries() {
     let chapters = repo.get_chapters().await.unwrap();
     assert_eq!(
         chapters.len(),
-        1,
-        "Should have 1 chapter from sample data (Al-Fatihah)"
+        3,
+        "Should have 3 chapters from sample data (Al-Fatihah, Al-Baqarah, Al-Imran)"
     );
     assert_eq!(chapters[0].number, 1);
 

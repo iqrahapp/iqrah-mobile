@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// Trait for all exercise types
 /// Each exercise can generate questions, check answers, and provide hints
-pub trait Exercise: Send + Sync + std::any::Any {
+pub trait Exercise: Send + Sync + std::any::Any + std::fmt::Debug {
     /// Generate the question/prompt for this exercise
     fn generate_question(&self) -> String;
 
@@ -16,7 +16,7 @@ pub trait Exercise: Send + Sync + std::any::Any {
     fn get_hint(&self) -> Option<String>;
 
     /// Get the node ID this exercise is for
-    fn get_node_id(&self) -> &str;
+    fn get_node_id(&self) -> i64;
 
     /// Get the exercise type name
     fn get_type_name(&self) -> &'static str;
@@ -40,11 +40,13 @@ pub struct ExerciseResponse {
 }
 
 /// Enum for different exercise types (Phase 4.3)
+#[derive(Debug)]
 pub enum ExerciseType {
     Memorization(Box<dyn Exercise>),
     Translation(Box<dyn Exercise>),
     McqArToEn(Box<dyn Exercise>),
     McqEnToAr(Box<dyn Exercise>),
+    TranslatePhrase(Box<dyn Exercise>),
 }
 
 impl ExerciseType {
@@ -55,6 +57,7 @@ impl ExerciseType {
             ExerciseType::Translation(ex) => ex.as_ref(),
             ExerciseType::McqArToEn(ex) => ex.as_ref(),
             ExerciseType::McqEnToAr(ex) => ex.as_ref(),
+            ExerciseType::TranslatePhrase(ex) => ex.as_ref(),
         }
     }
 
@@ -65,6 +68,7 @@ impl ExerciseType {
             ExerciseType::Translation(_) => "translation",
             ExerciseType::McqArToEn(_) => "mcq_ar_to_en",
             ExerciseType::McqEnToAr(_) => "mcq_en_to_ar",
+            ExerciseType::TranslatePhrase(_) => "translate_phrase",
         }
     }
 }

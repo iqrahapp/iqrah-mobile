@@ -14,7 +14,7 @@ use rand::seq::SliceRandom;
 /// Tests the user's memorization of verse order in a Surah
 #[derive(Debug)]
 pub struct AyahSequenceExercise {
-    node_id: String,
+    node_id: i64,
     current_verse_text: String,
     #[allow(dead_code)] // Used in tests and for potential future features
     current_verse_key: String,
@@ -30,12 +30,18 @@ impl AyahSequenceExercise {
     /// - Current verse text
     /// - Next verse in sequence (correct answer)
     /// - Other verses from same chapter (distractors)
-    pub async fn new(verse_node_id: String, content_repo: &dyn ContentRepository) -> Result<Self> {
+    pub async fn new(verse_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(verse_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", verse_node_id))?;
+
         // Parse knowledge node
-        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&verse_node_id) {
+        let base_node_id = if let Some(kn) = KnowledgeNode::parse(&node.ukey) {
             kn.base_node_id
         } else {
-            verse_node_id.clone()
+            node.ukey.clone()
         };
 
         // Extract verse key from node ID
@@ -47,9 +53,9 @@ impl AyahSequenceExercise {
 
         // Get current verse text
         let current_verse_text = content_repo
-            .get_quran_text(&base_node_id)
+            .get_quran_text(verse_node_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", base_node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
 
         // Parse verse key to get chapter and verse number
         let parts: Vec<&str> = current_verse_key.split(':').collect();
@@ -80,12 +86,22 @@ impl AyahSequenceExercise {
             })?;
 
         let correct_next_verse_key = next_verse.key.clone();
-        let correct_next_verse_node = format!("VERSE:{}", correct_next_verse_key);
-        let correct_next_verse_text = content_repo
-            .get_quran_text(&correct_next_verse_node)
+        // We need the ID of the next verse to get its text using get_quran_text(i64)
+        // But we only have the verse key.
+        // We can construct the ukey "VERSE:key" and look it up.
+        let correct_next_verse_ukey = format!("VERSE:{}", correct_next_verse_key);
+        let next_verse_node = content_repo
+            .get_node_by_ukey(&correct_next_verse_ukey)
             .await?
             .ok_or_else(|| {
-                anyhow::anyhow!("Next verse text not found: {}", correct_next_verse_node)
+                anyhow::anyhow!("Next verse node not found: {}", correct_next_verse_ukey)
+            })?;
+
+        let correct_next_verse_text = content_repo
+            .get_quran_text(next_verse_node.id)
+            .await?
+            .ok_or_else(|| {
+                anyhow::anyhow!("Next verse text not found: {}", correct_next_verse_ukey)
             })?;
 
         // Generate distractors from same chapter (but not current or next verse)
@@ -134,11 +150,13 @@ impl AyahSequenceExercise {
 
         // Take first 3 candidates
         for verse in candidate_verses.iter().take(3) {
-            let verse_node_id = format!("VERSE:{}", verse.key);
-            if let Some(text) = content_repo.get_quran_text(&verse_node_id).await? {
-                distractors.push((verse.key.clone(), text));
-                if distractors.len() >= 3 {
-                    break;
+            let verse_ukey = format!("VERSE:{}", verse.key);
+            if let Some(node) = content_repo.get_node_by_ukey(&verse_ukey).await? {
+                if let Some(text) = content_repo.get_quran_text(node.id).await? {
+                    distractors.push((verse.key.clone(), text));
+                    if distractors.len() >= 3 {
+                        break;
+                    }
                 }
             }
         }
@@ -198,8 +216,8 @@ impl Exercise for AyahSequenceExercise {
         None
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

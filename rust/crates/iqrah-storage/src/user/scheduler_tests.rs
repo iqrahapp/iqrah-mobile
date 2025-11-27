@@ -19,7 +19,7 @@ async fn create_test_db() -> SqlitePool {
     query(
         "CREATE TABLE user_memory_states (
             user_id TEXT NOT NULL,
-            content_key TEXT NOT NULL,
+            content_key INTEGER NOT NULL,
             stability REAL NOT NULL,
             difficulty REAL NOT NULL,
             energy REAL NOT NULL,
@@ -70,65 +70,79 @@ async fn test_get_parent_energies_empty_input() {
 
 #[tokio::test]
 async fn test_get_parent_energies_single_node() {
+    use iqrah_core::domain::node_id as nid;
+
     let pool = create_test_db().await;
     let repo = SqliteUserRepository::new(pool.clone());
 
     // Insert memory state
+    let node_id = nid::encode_verse(1, 1);
     query(
         "INSERT INTO user_memory_states
         (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
-        VALUES ('user1', '1:1', 5.0, 3.0, 0.8, 1700000000000, 1700000000000, 10)",
+        VALUES ('user1', ?, 5.0, 3.0, 0.8, 1700000000000, 1700000000000, 10)",
     )
+    .bind(node_id)
     .execute(&pool)
     .await
     .unwrap();
 
     let result = repo
-        .get_parent_energies("user1", &[String::from("1:1")])
+        .get_parent_energies("user1", &[node_id])
         .await
         .expect("Should succeed");
 
     assert_eq!(result.len(), 1);
-    assert_eq!(result.get("1:1").unwrap(), &0.8);
+    assert_eq!(result.get(&node_id).unwrap(), &0.8);
 }
 
 #[tokio::test]
 async fn test_get_parent_energies_missing_node_not_in_result() {
+    use iqrah_core::domain::node_id as nid;
+
     let pool = create_test_db().await;
     let repo = SqliteUserRepository::new(pool.clone());
 
     // Insert one node
+    let node_id_1 = nid::encode_verse(1, 1);
     query(
         "INSERT INTO user_memory_states
         (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
-        VALUES ('user1', '1:1', 5.0, 3.0, 0.8, 1700000000000, 1700000000000, 10)",
+        VALUES ('user1', ?, 5.0, 3.0, 0.8, 1700000000000, 1700000000000, 10)",
     )
+    .bind(node_id_1)
     .execute(&pool)
     .await
     .unwrap();
 
     // Query for two nodes (one missing)
+    let node_id_2 = nid::encode_verse(1, 2);
+
     let result = repo
-        .get_parent_energies("user1", &[String::from("1:1"), String::from("1:2")])
+        .get_parent_energies("user1", &[node_id_1, node_id_2])
         .await
         .expect("Should succeed");
 
     assert_eq!(result.len(), 1); // Only found node in result
-    assert_eq!(result.get("1:1").unwrap(), &0.8);
-    assert!(!result.contains_key("1:2"));
+    assert_eq!(result.get(&node_id_1).unwrap(), &0.8);
+    assert!(!result.contains_key(&node_id_2));
 }
 
 #[tokio::test]
 async fn test_get_parent_energies_different_users() {
+    use iqrah_core::domain::node_id as nid;
+
     let pool = create_test_db().await;
     let repo = SqliteUserRepository::new(pool.clone());
 
     // Insert for two users
+    let node_id = nid::encode_verse(1, 1);
     query(
         "INSERT INTO user_memory_states
         (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
-        VALUES ('user1', '1:1', 5.0, 3.0, 0.8, 1700000000000, 1700000000000, 10)",
+        VALUES ('user1', ?, 5.0, 3.0, 0.8, 1700000000000, 1700000000000, 10)",
     )
+    .bind(node_id)
     .execute(&pool)
     .await
     .unwrap();
@@ -136,20 +150,21 @@ async fn test_get_parent_energies_different_users() {
     query(
         "INSERT INTO user_memory_states
         (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
-        VALUES ('user2', '1:1', 3.0, 4.0, 0.5, 1700000000000, 1700000000000, 5)",
+        VALUES ('user2', ?, 3.0, 4.0, 0.5, 1700000000000, 1700000000000, 5)",
     )
+    .bind(node_id)
     .execute(&pool)
     .await
     .unwrap();
 
     // Query for user1
     let result = repo
-        .get_parent_energies("user1", &[String::from("1:1")])
+        .get_parent_energies("user1", &[node_id])
         .await
         .expect("Should succeed");
 
     assert_eq!(result.len(), 1);
-    assert_eq!(result.get("1:1").unwrap(), &0.8); // user1's energy, not user2's
+    assert_eq!(result.get(&node_id).unwrap(), &0.8); // user1's energy, not user2's
 }
 
 #[tokio::test]
@@ -159,9 +174,11 @@ async fn test_get_parent_energies_chunking_500_nodes() {
 
     // Insert 500 nodes
     let mut node_ids = Vec::new();
+    use iqrah_core::domain::node_id as nid;
+
     for i in 1..=500 {
-        let node_id = format!("node_{}", i);
-        node_ids.push(node_id.clone());
+        let node_id = nid::encode_word(i as i64);
+        node_ids.push(node_id);
         let energy = (i as f32) / 1000.0; // 0.001 to 0.500
 
         query(
@@ -169,7 +186,7 @@ async fn test_get_parent_energies_chunking_500_nodes() {
             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
             VALUES ('user1', ?, 5.0, 3.0, ?, 1700000000000, 1700000000000, 10)",
         )
-        .bind(&node_id)
+        .bind(node_id)
         .bind(energy)
         .execute(&pool)
         .await
@@ -182,8 +199,9 @@ async fn test_get_parent_energies_chunking_500_nodes() {
         .expect("Should succeed with 500 nodes");
 
     assert_eq!(result.len(), 500);
+    assert_eq!(result.len(), 500);
     for i in 1..=500 {
-        let node_id = format!("node_{}", i);
+        let node_id = nid::encode_word(i as i64);
         let expected_energy = (i as f32) / 1000.0;
         assert!((result.get(&node_id).unwrap() - expected_energy).abs() < 0.0001);
     }
@@ -196,9 +214,11 @@ async fn test_get_parent_energies_chunking_501_nodes() {
 
     // Insert 501 nodes (tests chunking across 2 batches)
     let mut node_ids = Vec::new();
+    use iqrah_core::domain::node_id as nid;
+
     for i in 1..=501 {
-        let node_id = format!("node_{}", i);
-        node_ids.push(node_id.clone());
+        let node_id = nid::encode_word(i as i64);
+        node_ids.push(node_id);
         let energy = (i as f32) / 1000.0;
 
         query(
@@ -206,7 +226,7 @@ async fn test_get_parent_energies_chunking_501_nodes() {
             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
             VALUES ('user1', ?, 5.0, 3.0, ?, 1700000000000, 1700000000000, 10)",
         )
-        .bind(&node_id)
+        .bind(node_id)
         .bind(energy)
         .execute(&pool)
         .await
@@ -219,8 +239,9 @@ async fn test_get_parent_energies_chunking_501_nodes() {
         .expect("Should succeed with 501 nodes (2 chunks)");
 
     assert_eq!(result.len(), 501);
+    assert_eq!(result.len(), 501);
     for i in 1..=501 {
-        let node_id = format!("node_{}", i);
+        let node_id = nid::encode_word(i as i64);
         let expected_energy = (i as f32) / 1000.0;
         assert!((result.get(&node_id).unwrap() - expected_energy).abs() < 0.0001);
     }
@@ -233,9 +254,11 @@ async fn test_get_parent_energies_chunking_1000_nodes() {
 
     // Insert 1000 nodes (tests chunking across 2 batches: 500 + 500)
     let mut node_ids = Vec::new();
+    use iqrah_core::domain::node_id as nid;
+
     for i in 1..=1000 {
-        let node_id = format!("node_{}", i);
-        node_ids.push(node_id.clone());
+        let node_id = nid::encode_word(i as i64);
+        node_ids.push(node_id);
         let energy = (i as f32) / 1000.0;
 
         query(
@@ -243,7 +266,7 @@ async fn test_get_parent_energies_chunking_1000_nodes() {
             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
             VALUES ('user1', ?, 5.0, 3.0, ?, 1700000000000, 1700000000000, 10)",
         )
-        .bind(&node_id)
+        .bind(node_id)
         .bind(energy)
         .execute(&pool)
         .await
@@ -256,8 +279,9 @@ async fn test_get_parent_energies_chunking_1000_nodes() {
         .expect("Should succeed with 1000 nodes (2 chunks)");
 
     assert_eq!(result.len(), 1000);
+    assert_eq!(result.len(), 1000);
     for i in 1..=1000 {
-        let node_id = format!("node_{}", i);
+        let node_id = nid::encode_word(i as i64);
         let expected_energy = (i as f32) / 1000.0;
         assert!((result.get(&node_id).unwrap() - expected_energy).abs() < 0.0001);
     }
@@ -282,71 +306,95 @@ async fn test_get_memory_basics_empty_input() {
 
 #[tokio::test]
 async fn test_get_memory_basics_single_node() {
+    use iqrah_core::domain::node_id as nid;
+
     let pool = create_test_db().await;
     let repo = SqliteUserRepository::new(pool.clone());
 
     // Insert memory state
+    let node_id = nid::encode_verse(1, 1);
     query(
         "INSERT INTO user_memory_states
         (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
-        VALUES ('user1', '1:1', 5.0, 3.0, 0.8, 1700000000000, 1700500000000, 10)",
+        VALUES ('user1', ?, 5.0, 3.0, 0.8, 1700000000000, 1700500000000, 10)",
     )
+    .bind(node_id)
     .execute(&pool)
     .await
     .unwrap();
 
     let result = repo
-        .get_memory_basics("user1", &[String::from("1:1")])
+        .get_memory_basics("user1", &[node_id])
         .await
         .expect("Should succeed");
 
     assert_eq!(result.len(), 1);
-    let basics = result.get("1:1").unwrap();
+    let basics = result.get(&node_id).unwrap();
     assert_eq!(basics.energy, 0.8);
     assert_eq!(basics.next_due_ts, 1700500000000);
 }
 
 #[tokio::test]
 async fn test_get_memory_basics_multiple_nodes() {
+    use iqrah_core::domain::node_id as nid;
+
     let pool = create_test_db().await;
     let repo = SqliteUserRepository::new(pool.clone());
 
     // Insert multiple memory states
+    let node_id_1 = nid::encode_verse(1, 1);
+    let node_id_2 = nid::encode_verse(1, 2);
+    let node_id_3 = nid::encode_verse(1, 3);
+
     query(
         "INSERT INTO user_memory_states
         (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
-        VALUES
-        ('user1', '1:1', 5.0, 3.0, 0.8, 1700000000000, 1700500000000, 10),
-        ('user1', '1:2', 4.0, 3.5, 0.6, 1700100000000, 1700600000000, 8),
-        ('user1', '1:3', 2.0, 4.0, 0.25, 1700200000000, 1700700000000, 3)",
+        VALUES (?, ?, 5.0, 3.0, 0.8, 1700000000000, 1700500000000, 10)",
     )
+    .bind("user1")
+    .bind(node_id_1)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    query(
+        "INSERT INTO user_memory_states
+        (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
+        VALUES (?, ?, 4.0, 3.5, 0.6, 1700100000000, 1700600000000, 8)",
+    )
+    .bind("user1")
+    .bind(node_id_2)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    query(
+        "INSERT INTO user_memory_states
+        (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
+        VALUES (?, ?, 2.0, 4.0, 0.25, 1700200000000, 1700700000000, 3)",
+    )
+    .bind("user1")
+    .bind(node_id_3)
     .execute(&pool)
     .await
     .unwrap();
 
     let result = repo
-        .get_memory_basics(
-            "user1",
-            &[
-                String::from("1:1"),
-                String::from("1:2"),
-                String::from("1:3"),
-            ],
-        )
+        .get_memory_basics("user1", &[node_id_1, node_id_2, node_id_3])
         .await
         .expect("Should succeed");
 
     assert_eq!(result.len(), 3);
 
-    let basics1 = result.get("1:1").unwrap();
+    let basics1 = result.get(&node_id_1).unwrap();
     assert_eq!(basics1.energy, 0.8);
     assert_eq!(basics1.next_due_ts, 1700500000000);
 
-    let basics2 = result.get("1:2").unwrap();
+    let basics2 = result.get(&node_id_2).unwrap();
     assert_eq!(basics2.energy, 0.6);
     assert_eq!(basics2.next_due_ts, 1700600000000);
 
-    let basics3 = result.get("1:3").unwrap();
+    let basics3 = result.get(&node_id_3).unwrap();
     assert_eq!(basics3.energy, 0.25);
     assert_eq!(basics3.next_due_ts, 1700700000000);
 }
@@ -358,9 +406,11 @@ async fn test_get_memory_basics_chunking_501_nodes() {
 
     // Insert 501 nodes with different due timestamps
     let mut node_ids = Vec::new();
+    use iqrah_core::domain::node_id as nid;
+
     for i in 1..=501 {
-        let node_id = format!("node_{}", i);
-        node_ids.push(node_id.clone());
+        let node_id = nid::encode_word(i as i64);
+        node_ids.push(node_id);
         let energy = (i as f32) / 1000.0;
         let due_at = 1700000000000 + (i as i64) * 1000; // Different timestamps
 
@@ -369,7 +419,7 @@ async fn test_get_memory_basics_chunking_501_nodes() {
             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
             VALUES ('user1', ?, 5.0, 3.0, ?, 1700000000000, ?, 10)",
         )
-        .bind(&node_id)
+        .bind(node_id)
         .bind(energy)
         .bind(due_at)
         .execute(&pool)
@@ -383,8 +433,9 @@ async fn test_get_memory_basics_chunking_501_nodes() {
         .expect("Should succeed with 501 nodes (2 chunks)");
 
     assert_eq!(result.len(), 501);
+    assert_eq!(result.len(), 501);
     for i in 1..=501 {
-        let node_id = format!("node_{}", i);
+        let node_id = nid::encode_word(i as i64);
         let expected_energy = (i as f32) / 1000.0;
         let expected_due = 1700000000000 + (i as i64) * 1000;
 

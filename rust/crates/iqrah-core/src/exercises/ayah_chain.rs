@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// Tracks current position and progress through a chapter or range
 #[derive(Debug)]
 pub struct AyahChainExercise {
-    node_id: String,
+    node_id: i64,
     verses: Vec<Verse>,
     current_index: usize,
     completed_count: usize,
@@ -41,14 +41,18 @@ impl AyahChainExercise {
     ///
     /// Queries the database for all verses in the specified chapter
     /// User will type verses in sequence starting from the first verse
-    pub async fn new(
-        chapter_node_id: String,
-        content_repo: &dyn ContentRepository,
-    ) -> Result<Self> {
+    pub async fn new(chapter_node_id: i64, content_repo: &dyn ContentRepository) -> Result<Self> {
+        // Get the node to access its ukey
+        let node = content_repo
+            .get_node(chapter_node_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Node not found: {}", chapter_node_id))?;
+
         // Parse chapter number from node_id (format: "CHAPTER:n")
-        let chapter_num: i32 = chapter_node_id
+        let chapter_num: i32 = node
+            .ukey
             .strip_prefix("CHAPTER:")
-            .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID: {}", chapter_node_id))?
+            .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID: {}", node.ukey))?
             .parse()?;
 
         // Get all verses for the chapter
@@ -98,7 +102,13 @@ impl AyahChainExercise {
             ));
         }
 
-        let node_id = format!("CHAPTER:{}:{}:{}", chapter_num, start_verse, end_verse);
+        // Get chapter node ID
+        let chapter_ukey = format!("CHAPTER:{}", chapter_num);
+        let node = content_repo
+            .get_node_by_ukey(&chapter_ukey)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Chapter node not found: {}", chapter_ukey))?;
+        let node_id = node.id;
 
         Ok(Self {
             node_id,
@@ -288,8 +298,8 @@ impl Exercise for AyahChainExercise {
         })
     }
 
-    fn get_node_id(&self) -> &str {
-        &self.node_id
+    fn get_node_id(&self) -> i64 {
+        self.node_id
     }
 
     fn get_type_name(&self) -> &'static str {

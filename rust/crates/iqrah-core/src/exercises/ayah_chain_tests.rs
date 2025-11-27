@@ -69,35 +69,50 @@ impl MockContentRepo {
 
 #[async_trait]
 impl ContentRepository for MockContentRepo {
-    async fn get_node(&self, _node_id: &str) -> anyhow::Result<Option<crate::Node>> {
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<crate::Node>> {
+        // Mock node for Chapter 1
+        if node_id == 1 {
+            return Ok(Some(crate::Node {
+                id: 1,
+                ukey: "CHAPTER:1".to_string(),
+                node_type: crate::NodeType::Chapter,
+            }));
+        }
+        Ok(None)
+    }
+    async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<crate::Node>> {
+        if ukey == "CHAPTER:1" {
+            return Ok(Some(crate::Node {
+                id: 1,
+                ukey: "CHAPTER:1".to_string(),
+                node_type: crate::NodeType::Chapter,
+            }));
+        }
         Ok(None)
     }
 
-    async fn get_edges_from(&self, _source_id: &str) -> anyhow::Result<Vec<crate::Edge>> {
+    async fn get_edges_from(&self, _source_id: i64) -> anyhow::Result<Vec<crate::Edge>> {
         Ok(Vec::new())
     }
 
-    async fn get_quran_text(&self, node_id: &str) -> anyhow::Result<Option<String>> {
-        if let Some(verse_key) = node_id.strip_prefix("VERSE:") {
-            Ok(self.verses.get(verse_key).map(|v| v.text_uthmani.clone()))
-        } else {
-            Ok(None)
-        }
+    async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
+        let verse_key = format!("1:{}", node_id % 10);
+        Ok(self.verses.get(&verse_key).map(|v| v.text_uthmani.clone()))
     }
 
-    async fn get_translation(&self, _node_id: &str, _lang: &str) -> anyhow::Result<Option<String>> {
+    async fn get_translation(&self, _node_id: i64, _lang: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_metadata(&self, _node_id: &str, _key: &str) -> anyhow::Result<Option<String>> {
+    async fn get_metadata(&self, _node_id: i64, _key: &str) -> anyhow::Result<Option<String>> {
         Ok(None)
     }
 
-    async fn get_all_metadata(&self, _node_id: &str) -> anyhow::Result<HashMap<String, String>> {
+    async fn get_all_metadata(&self, _node_id: i64) -> anyhow::Result<HashMap<String, String>> {
         Ok(HashMap::new())
     }
 
-    async fn node_exists(&self, _node_id: &str) -> anyhow::Result<bool> {
+    async fn node_exists(&self, _node_id: i64) -> anyhow::Result<bool> {
         Ok(false)
     }
 
@@ -112,24 +127,13 @@ impl ContentRepository for MockContentRepo {
         Ok(Vec::new())
     }
 
-    async fn insert_nodes_batch(&self, _nodes: &[crate::ImportedNode]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn insert_edges_batch(&self, _edges: &[crate::ImportedEdge]) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    async fn get_words_in_ayahs(
-        &self,
-        _ayah_node_ids: &[String],
-    ) -> anyhow::Result<Vec<crate::Node>> {
+    async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> anyhow::Result<Vec<crate::Node>> {
         Ok(Vec::new())
     }
 
     async fn get_adjacent_words(
         &self,
-        _word_node_id: &str,
+        _word_node_id: i64,
     ) -> anyhow::Result<(Option<crate::Node>, Option<crate::Node>)> {
         Ok((None, None))
     }
@@ -304,16 +308,14 @@ impl ContentRepository for MockContentRepo {
     async fn get_scheduler_candidates(
         &self,
         _goal_id: &str,
-        _user_id: &str,
-        _now_ts: i64,
     ) -> anyhow::Result<Vec<crate::scheduler_v2::CandidateNode>> {
         Ok(vec![])
     }
 
     async fn get_prerequisite_parents(
         &self,
-        _node_ids: &[String],
-    ) -> anyhow::Result<std::collections::HashMap<String, Vec<String>>> {
+        _node_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, Vec<i64>>> {
         Ok(std::collections::HashMap::new())
     }
 
@@ -324,7 +326,7 @@ impl ContentRepository for MockContentRepo {
         Ok(None)
     }
 
-    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<String>> {
+    async fn get_nodes_for_goal(&self, _goal_id: &str) -> anyhow::Result<Vec<i64>> {
         Ok(vec![])
     }
 
@@ -362,9 +364,7 @@ impl ContentRepository for MockContentRepo {
 #[tokio::test]
 async fn test_ayah_chain_creation() {
     let repo = MockContentRepo::new();
-    let exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     let stats = exercise.get_stats();
     assert_eq!(stats.total_verses, 7); // Al-Fatihah has 7 verses
@@ -376,9 +376,7 @@ async fn test_ayah_chain_creation() {
 #[tokio::test]
 async fn test_ayah_chain_first_verse() {
     let repo = MockContentRepo::new();
-    let exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     let current = exercise.current_verse().unwrap();
     assert_eq!(current.key, "1:1");
@@ -388,9 +386,7 @@ async fn test_ayah_chain_first_verse() {
 #[tokio::test]
 async fn test_ayah_chain_correct_answer_advances() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Submit correct answer for verse 1:1
     let result = exercise.submit_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
@@ -408,9 +404,7 @@ async fn test_ayah_chain_correct_answer_advances() {
 #[tokio::test]
 async fn test_ayah_chain_incorrect_answer_breaks_chain() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Submit incorrect answer
     let result = exercise.submit_answer("wrong answer").unwrap();
@@ -428,9 +422,7 @@ async fn test_ayah_chain_incorrect_answer_breaks_chain() {
 #[tokio::test]
 async fn test_ayah_chain_normalization() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Submit answer without tashkeel - should still be correct
     // Note: ٰ (alif khanjariyyah U+0670) normalizes to regular alif,
@@ -442,9 +434,7 @@ async fn test_ayah_chain_normalization() {
 #[tokio::test]
 async fn test_ayah_chain_complete_all_verses() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Submit all 7 verses correctly
     let verses = [
@@ -474,9 +464,7 @@ async fn test_ayah_chain_complete_all_verses() {
 #[tokio::test]
 async fn test_ayah_chain_partial_completion() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Complete first 3 verses
     exercise.submit_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
@@ -496,9 +484,7 @@ async fn test_ayah_chain_partial_completion() {
 #[tokio::test]
 async fn test_ayah_chain_reset() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Complete first verse and make mistake on second
     exercise.submit_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
@@ -536,9 +522,7 @@ async fn test_ayah_chain_range() {
 #[tokio::test]
 async fn test_ayah_chain_question_format() {
     let repo = MockContentRepo::new();
-    let exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     let question = exercise.generate_question();
     assert!(question.contains("1/7")); // Progress indicator
@@ -548,9 +532,7 @@ async fn test_ayah_chain_question_format() {
 #[tokio::test]
 async fn test_ayah_chain_hint() {
     let repo = MockContentRepo::new();
-    let exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     let hint = exercise.get_hint().unwrap();
     // Updated: Now shows first word + word count for cleaner UX
@@ -561,9 +543,7 @@ async fn test_ayah_chain_hint() {
 #[tokio::test]
 async fn test_ayah_chain_check_answer_method() {
     let repo = MockContentRepo::new();
-    let exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Test Exercise trait check_answer method
     assert!(exercise.check_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"));
@@ -573,9 +553,7 @@ async fn test_ayah_chain_check_answer_method() {
 #[tokio::test]
 async fn test_ayah_chain_cannot_submit_after_complete() {
     let repo = MockContentRepo::new();
-    let mut exercise = AyahChainExercise::new("CHAPTER:1".to_string(), &repo)
-        .await
-        .unwrap();
+    let mut exercise = AyahChainExercise::new(1, &repo).await.unwrap();
 
     // Complete all verses
     let verses = vec![

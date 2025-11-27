@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chrono::Utc;
 use colored::*;
+use iqrah_core::domain::node_id as nid;
 use iqrah_core::{
     scheduler_v2::{
         blend_profile, generate_session, BanditOptimizer, ProfileName, SessionMode, UserProfile,
@@ -62,9 +63,7 @@ pub async fn generate(
 
     // Fetch candidates from content repository (returns defaults for energy/next_due_ts)
     println!("   Fetching candidates for goal...");
-    let mut candidates = content_repo
-        .get_scheduler_candidates(goal_id, user_id, now_ts)
-        .await?;
+    let mut candidates = content_repo.get_scheduler_candidates(goal_id).await?;
 
     if candidates.is_empty() {
         println!();
@@ -91,7 +90,7 @@ pub async fn generate(
 
     // Fetch memory states from user repository and merge
     println!("   Fetching user memory states...");
-    let node_ids: Vec<String> = candidates.iter().map(|c| c.id.clone()).collect();
+    let node_ids: Vec<i64> = candidates.iter().map(|c| c.id).collect();
     let memory_basics_map = user_repo.get_memory_basics(user_id, &node_ids).await?;
 
     // Merge memory states into candidates
@@ -114,7 +113,7 @@ pub async fn generate(
     println!("   Found {} prerequisite edges", parent_count);
 
     // Collect all parent IDs and fetch their energies
-    let all_parent_ids: Vec<String> = parent_map
+    let all_parent_ids: Vec<i64> = parent_map
         .values()
         .flatten()
         .cloned()
@@ -248,7 +247,7 @@ pub async fn generate(
             if let Some(candidate) = candidates.iter().find(|c| c.id == *node_id) {
                 println!(
                     "   {:<15} {:>8.2} {:>8.2} {:>8.2} {:>8.2} {:>10}",
-                    candidate.id,
+                    nid::to_ukey(candidate.id).unwrap_or_else(|| candidate.id.to_string()),
                     candidate.foundational_score,
                     candidate.influence_score,
                     candidate.difficulty_score,
@@ -261,7 +260,10 @@ pub async fn generate(
     } else {
         // Simple list
         for node_id in &session_node_ids {
-            println!("   - {}", node_id);
+            println!(
+                "   - {}",
+                nid::to_ukey(*node_id).unwrap_or_else(|| node_id.to_string())
+            );
         }
         println!();
         println!("   (Use --verbose for detailed node information)");

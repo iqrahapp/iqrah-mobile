@@ -12,11 +12,9 @@ mod tests {
 
     #[test]
     fn test_memorization_variant() {
-        let exercise = ExerciseData::Memorization {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-        };
+        let exercise = ExerciseData::Memorization { node_id: 1 };
 
-        assert_eq!(exercise.node_id(), "WORD_INSTANCE:1:1:1");
+        assert_eq!(exercise.node_id(), 1);
         assert_eq!(exercise.type_name(), "memorization");
         assert!(!exercise.is_stateful());
         assert!(exercise.requires_arabic_input());
@@ -27,12 +25,8 @@ mod tests {
     #[test]
     fn test_mcq_ar_to_en_variant() {
         let exercise = ExerciseData::McqArToEn {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-            distractor_node_ids: vec![
-                "WORD_INSTANCE:1:1:2".to_string(),
-                "WORD_INSTANCE:1:1:3".to_string(),
-                "WORD_INSTANCE:1:1:4".to_string(),
-            ],
+            node_id: 1,
+            distractor_node_ids: vec![2, 3, 4],
         };
 
         assert_eq!(exercise.type_name(), "mcq_ar_to_en");
@@ -44,11 +38,8 @@ mod tests {
     #[test]
     fn test_mcq_en_to_ar_variant() {
         let exercise = ExerciseData::McqEnToAr {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-            distractor_node_ids: vec![
-                "WORD_INSTANCE:1:1:2".to_string(),
-                "WORD_INSTANCE:1:1:3".to_string(),
-            ],
+            node_id: 1,
+            distractor_node_ids: vec![2, 3],
         };
 
         assert_eq!(exercise.type_name(), "mcq_en_to_ar");
@@ -58,9 +49,7 @@ mod tests {
 
     #[test]
     fn test_translation_variant() {
-        let exercise = ExerciseData::Translation {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-        };
+        let exercise = ExerciseData::Translation { node_id: 1 };
 
         assert_eq!(exercise.type_name(), "translation");
         assert!(exercise.requires_english_input());
@@ -70,7 +59,7 @@ mod tests {
     #[test]
     fn test_contextual_translation_variant() {
         let exercise = ExerciseData::ContextualTranslation {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
+            node_id: 1,
             verse_key: "1:1".to_string(),
         };
 
@@ -81,7 +70,7 @@ mod tests {
     #[test]
     fn test_cloze_deletion_variant() {
         let exercise = ExerciseData::ClozeDeletion {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             blank_position: 3,
         };
 
@@ -92,7 +81,7 @@ mod tests {
     #[test]
     fn test_first_letter_hint_variant() {
         let exercise = ExerciseData::FirstLetterHint {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             word_position: 2,
         };
 
@@ -103,12 +92,9 @@ mod tests {
     #[test]
     fn test_missing_word_mcq_variant() {
         let exercise = ExerciseData::MissingWordMcq {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             blank_position: 3,
-            distractor_node_ids: vec![
-                "WORD_INSTANCE:1:1:1".to_string(),
-                "WORD_INSTANCE:1:1:2".to_string(),
-            ],
+            distractor_node_ids: vec![2, 3],
         };
 
         assert_eq!(exercise.type_name(), "missing_word_mcq");
@@ -118,9 +104,9 @@ mod tests {
     #[test]
     fn test_next_word_mcq_variant() {
         let exercise = ExerciseData::NextWordMcq {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             context_position: 2,
-            distractor_node_ids: vec!["WORD_INSTANCE:1:1:1".to_string()],
+            distractor_node_ids: vec![2],
         };
 
         assert_eq!(exercise.type_name(), "next_word_mcq");
@@ -129,9 +115,7 @@ mod tests {
 
     #[test]
     fn test_full_verse_input_variant() {
-        let exercise = ExerciseData::FullVerseInput {
-            node_id: "VERSE:1:1".to_string(),
-        };
+        let exercise = ExerciseData::FullVerseInput { node_id: 1 };
 
         assert_eq!(exercise.type_name(), "full_verse_input");
         assert!(exercise.requires_arabic_input());
@@ -140,7 +124,7 @@ mod tests {
     #[test]
     fn test_ayah_chain_variant() {
         let exercise = ExerciseData::AyahChain {
-            node_id: "CHAPTER:1".to_string(),
+            node_id: 1,
             verse_keys: vec!["1:1".to_string(), "1:2".to_string(), "1:3".to_string()],
             current_index: 0,
             completed_count: 0,
@@ -154,10 +138,10 @@ mod tests {
     #[test]
     fn test_find_mistake_variant() {
         let exercise = ExerciseData::FindMistake {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             mistake_position: 3,
-            correct_word_node_id: "WORD_INSTANCE:1:1:3".to_string(),
-            incorrect_word_node_id: "WORD_INSTANCE:1:2:5".to_string(),
+            correct_word_node_id: 2,
+            incorrect_word_node_id: 3,
         };
 
         assert_eq!(exercise.type_name(), "find_mistake");
@@ -168,12 +152,8 @@ mod tests {
     #[test]
     fn test_ayah_sequence_variant() {
         let exercise = ExerciseData::AyahSequence {
-            node_id: "CHAPTER:1".to_string(),
-            correct_sequence: vec![
-                "VERSE:1:1".to_string(),
-                "VERSE:1:2".to_string(),
-                "VERSE:1:3".to_string(),
-            ],
+            node_id: 1,
+            correct_sequence: vec![2, 3, 4],
         };
 
         assert_eq!(exercise.type_name(), "ayah_sequence");
@@ -182,7 +162,7 @@ mod tests {
     #[test]
     fn test_identify_root_variant() {
         let exercise = ExerciseData::IdentifyRoot {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
+            node_id: 1,
             root: "كتب".to_string(),
         };
 
@@ -195,7 +175,7 @@ mod tests {
     #[test]
     fn test_reverse_cloze_variant() {
         let exercise = ExerciseData::ReverseCloze {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             blank_position: 3,
         };
 
@@ -206,7 +186,7 @@ mod tests {
     #[test]
     fn test_translate_phrase_variant() {
         let exercise = ExerciseData::TranslatePhrase {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             translator_id: 131,
         };
 
@@ -217,7 +197,7 @@ mod tests {
     #[test]
     fn test_pos_tagging_variant() {
         let exercise = ExerciseData::PosTagging {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
+            node_id: 1,
             correct_pos: "noun".to_string(),
             options: vec![
                 "noun".to_string(),
@@ -233,8 +213,8 @@ mod tests {
     #[test]
     fn test_cross_verse_connection_variant() {
         let exercise = ExerciseData::CrossVerseConnection {
-            node_id: "VERSE:1:1".to_string(),
-            related_verse_ids: vec!["VERSE:2:255".to_string(), "VERSE:112:1".to_string()],
+            node_id: 1,
+            related_verse_ids: vec![2, 3],
             connection_theme: "names_of_allah".to_string(),
         };
 
@@ -247,9 +227,7 @@ mod tests {
 
     #[test]
     fn test_memorization_serialization() {
-        let exercise = ExerciseData::Memorization {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-        };
+        let exercise = ExerciseData::Memorization { node_id: 1 };
 
         let json = serde_json::to_string(&exercise).unwrap();
         let deserialized: ExerciseData = serde_json::from_str(&json).unwrap();
@@ -260,11 +238,8 @@ mod tests {
     #[test]
     fn test_mcq_ar_to_en_serialization() {
         let exercise = ExerciseData::McqArToEn {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
-            distractor_node_ids: vec![
-                "WORD_INSTANCE:1:1:2".to_string(),
-                "WORD_INSTANCE:1:1:3".to_string(),
-            ],
+            node_id: 1,
+            distractor_node_ids: vec![2, 3],
         };
 
         let json = serde_json::to_string(&exercise).unwrap();
@@ -276,7 +251,7 @@ mod tests {
     #[test]
     fn test_ayah_chain_serialization() {
         let exercise = ExerciseData::AyahChain {
-            node_id: "CHAPTER:1".to_string(),
+            node_id: 1,
             verse_keys: vec!["1:1".to_string(), "1:2".to_string()],
             current_index: 0,
             completed_count: 0,
@@ -294,10 +269,10 @@ mod tests {
     #[test]
     fn test_find_mistake_serialization() {
         let exercise = ExerciseData::FindMistake {
-            node_id: "VERSE:1:1".to_string(),
+            node_id: 1,
             mistake_position: 3,
-            correct_word_node_id: "WORD_INSTANCE:1:1:3".to_string(),
-            incorrect_word_node_id: "WORD_INSTANCE:1:2:5".to_string(),
+            correct_word_node_id: 2,
+            incorrect_word_node_id: 3,
         };
 
         let json = serde_json::to_string(&exercise).unwrap();
@@ -309,7 +284,7 @@ mod tests {
     #[test]
     fn test_pos_tagging_serialization() {
         let exercise = ExerciseData::PosTagging {
-            node_id: "WORD_INSTANCE:1:1:1".to_string(),
+            node_id: 1,
             correct_pos: "noun".to_string(),
             options: vec!["noun".to_string(), "verb".to_string()],
         };
@@ -348,9 +323,7 @@ mod tests {
 
     #[test]
     fn test_answer_input_word_id() {
-        let answer = AnswerInput::WordId {
-            value: "WORD_INSTANCE:1:1:3".to_string(),
-        };
+        let answer = AnswerInput::WordId { value: 1 };
 
         let json = serde_json::to_string(&answer).unwrap();
         let deserialized: AnswerInput = serde_json::from_str(&json).unwrap();
@@ -383,7 +356,7 @@ mod tests {
     #[test]
     fn test_answer_input_sequence() {
         let answer = AnswerInput::Sequence {
-            values: vec!["1:1".to_string(), "1:2".to_string(), "1:3".to_string()],
+            values: vec![1, 2, 3],
         };
 
         let json = serde_json::to_string(&answer).unwrap();
@@ -431,80 +404,74 @@ mod tests {
     #[test]
     fn test_all_exercise_types_have_unique_type_names() {
         let exercises = vec![
-            ExerciseData::Memorization {
-                node_id: "test".to_string(),
-            },
+            ExerciseData::Memorization { node_id: 1 },
             ExerciseData::McqArToEn {
-                node_id: "test".to_string(),
+                node_id: 1,
                 distractor_node_ids: vec![],
             },
             ExerciseData::McqEnToAr {
-                node_id: "test".to_string(),
+                node_id: 1,
                 distractor_node_ids: vec![],
             },
-            ExerciseData::Translation {
-                node_id: "test".to_string(),
-            },
+            ExerciseData::Translation { node_id: 1 },
             ExerciseData::ContextualTranslation {
-                node_id: "test".to_string(),
+                node_id: 1,
                 verse_key: "1:1".to_string(),
             },
             ExerciseData::ClozeDeletion {
-                node_id: "test".to_string(),
+                node_id: 1,
                 blank_position: 1,
             },
             ExerciseData::FirstLetterHint {
-                node_id: "test".to_string(),
+                node_id: 1,
                 word_position: 1,
             },
             ExerciseData::MissingWordMcq {
-                node_id: "test".to_string(),
+                node_id: 1,
                 blank_position: 1,
                 distractor_node_ids: vec![],
             },
             ExerciseData::NextWordMcq {
-                node_id: "test".to_string(),
+                node_id: 1,
                 context_position: 1,
                 distractor_node_ids: vec![],
             },
-            ExerciseData::FullVerseInput {
-                node_id: "test".to_string(),
-            },
+            ExerciseData::FullVerseInput { node_id: 1 },
             ExerciseData::AyahChain {
-                node_id: "test".to_string(),
+                node_id: 1,
                 verse_keys: vec![],
                 current_index: 0,
                 completed_count: 0,
             },
             ExerciseData::FindMistake {
-                node_id: "test".to_string(),
+                node_id: 1,
                 mistake_position: 1,
-                correct_word_node_id: "w1".to_string(),
-                incorrect_word_node_id: "w2".to_string(),
+                correct_word_node_id: 2,
+                incorrect_word_node_id: 3,
             },
             ExerciseData::AyahSequence {
-                node_id: "test".to_string(),
+                node_id: 1,
                 correct_sequence: vec![],
             },
             ExerciseData::IdentifyRoot {
-                node_id: "test".to_string(),
+                node_id: 1,
                 root: "كتب".to_string(),
             },
             ExerciseData::ReverseCloze {
-                node_id: "test".to_string(),
+                node_id: 1,
                 blank_position: 1,
             },
             ExerciseData::TranslatePhrase {
-                node_id: "test".to_string(),
+                node_id: 1,
                 translator_id: 131,
             },
             ExerciseData::PosTagging {
-                node_id: "test".to_string(),
+                node_id: 1,
                 correct_pos: "noun".to_string(),
                 options: vec![],
             },
             ExerciseData::CrossVerseConnection {
-                node_id: "test".to_string(),
+                node_id: 1,
                 related_verse_ids: vec![],
                 connection_theme: "theme".to_string(),
             },
@@ -526,15 +493,13 @@ mod tests {
     #[test]
     fn test_stateful_exercises_identified_correctly() {
         let ayah_chain = ExerciseData::AyahChain {
-            node_id: "CHAPTER:1".to_string(),
+            node_id: 1,
             verse_keys: vec![],
             current_index: 0,
             completed_count: 0,
         };
 
-        let memorization = ExerciseData::Memorization {
-            node_id: "test".to_string(),
-        };
+        let memorization = ExerciseData::Memorization { node_id: 1 };
 
         assert!(ayah_chain.is_stateful());
         assert!(!memorization.is_stateful());
@@ -544,25 +509,25 @@ mod tests {
     fn test_mcq_exercises_identified_correctly() {
         let mcq_exercises = vec![
             ExerciseData::McqArToEn {
-                node_id: "test".to_string(),
+                node_id: 1,
                 distractor_node_ids: vec![],
             },
             ExerciseData::McqEnToAr {
-                node_id: "test".to_string(),
+                node_id: 1,
                 distractor_node_ids: vec![],
             },
             ExerciseData::MissingWordMcq {
-                node_id: "test".to_string(),
+                node_id: 1,
                 blank_position: 1,
                 distractor_node_ids: vec![],
             },
             ExerciseData::NextWordMcq {
-                node_id: "test".to_string(),
+                node_id: 1,
                 context_position: 1,
                 distractor_node_ids: vec![],
             },
             ExerciseData::PosTagging {
-                node_id: "test".to_string(),
+                node_id: 1,
                 correct_pos: "noun".to_string(),
                 options: vec![],
             },
@@ -576,9 +541,7 @@ mod tests {
             );
         }
 
-        let non_mcq = ExerciseData::Memorization {
-            node_id: "test".to_string(),
-        };
+        let non_mcq = ExerciseData::Memorization { node_id: 1 };
         assert!(!non_mcq.is_mcq());
     }
 }

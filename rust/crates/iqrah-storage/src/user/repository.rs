@@ -25,7 +25,7 @@ impl UserRepository for SqliteUserRepository {
     async fn get_memory_state(
         &self,
         user_id: &str,
-        node_id: &str,
+        node_id: i64,
     ) -> anyhow::Result<Option<MemoryState>> {
         let row = query_as::<_, MemoryStateRow>(
             "SELECT user_id, content_key, stability, difficulty, energy,
@@ -40,7 +40,7 @@ impl UserRepository for SqliteUserRepository {
 
         Ok(row.map(|r| MemoryState {
             user_id: r.user_id,
-            node_id: r.content_key, // Map content_key to node_id for domain model
+            node_id: r.content_key,
             stability: r.stability,
             difficulty: r.difficulty,
             energy: r.energy,
@@ -65,7 +65,7 @@ impl UserRepository for SqliteUserRepository {
                 review_count = excluded.review_count"
         )
         .bind(&state.user_id)
-        .bind(&state.node_id)
+        .bind(state.node_id)
         .bind(state.stability)
         .bind(state.difficulty)
         .bind(state.energy)
@@ -102,7 +102,7 @@ impl UserRepository for SqliteUserRepository {
             .into_iter()
             .map(|r| MemoryState {
                 user_id: r.user_id,
-                node_id: r.content_key, // Map content_key to node_id
+                node_id: r.content_key,
                 stability: r.stability,
                 difficulty: r.difficulty,
                 energy: r.energy,
@@ -117,7 +117,7 @@ impl UserRepository for SqliteUserRepository {
     async fn update_energy(
         &self,
         user_id: &str,
-        node_id: &str,
+        node_id: i64,
         new_energy: f64,
     ) -> anyhow::Result<()> {
         query("UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND content_key = ?")
@@ -136,7 +136,7 @@ impl UserRepository for SqliteUserRepository {
             "INSERT INTO propagation_events (source_content_key, event_timestamp)
              VALUES (?, ?)",
         )
-        .bind(&event.source_node_id)
+        .bind(event.source_node_id)
         .bind(event.event_timestamp.timestamp_millis())
         .execute(&self.pool)
         .await?;
@@ -150,7 +150,7 @@ impl UserRepository for SqliteUserRepository {
                  VALUES (?, ?, ?, ?)"
             )
             .bind(event_id)
-            .bind(&detail.target_node_id)
+            .bind(detail.target_node_id)
             .bind(detail.energy_change)
             .bind(&detail.reason)
             .execute(&self.pool)
@@ -160,7 +160,7 @@ impl UserRepository for SqliteUserRepository {
         Ok(())
     }
 
-    async fn get_session_state(&self) -> anyhow::Result<Vec<String>> {
+    async fn get_session_state(&self) -> anyhow::Result<Vec<i64>> {
         let rows = query_as::<_, SessionStateRow>(
             "SELECT content_key, session_order FROM session_state ORDER BY session_order ASC",
         )
@@ -170,12 +170,12 @@ impl UserRepository for SqliteUserRepository {
         Ok(rows.into_iter().map(|r| r.content_key).collect())
     }
 
-    async fn save_session_state(&self, node_ids: &[String]) -> anyhow::Result<()> {
+    async fn save_session_state(&self, node_ids: &[i64]) -> anyhow::Result<()> {
         // Clear existing
         self.clear_session_state().await?;
 
         // Insert new
-        for (idx, node_id) in node_ids.iter().enumerate() {
+        for (idx, &node_id) in node_ids.iter().enumerate() {
             query("INSERT INTO session_state (content_key, session_order) VALUES (?, ?)")
                 .bind(node_id)
                 .bind(idx as i64)
@@ -245,18 +245,18 @@ impl UserRepository for SqliteUserRepository {
     async fn get_parent_energies(
         &self,
         user_id: &str,
-        node_ids: &[String],
-    ) -> anyhow::Result<HashMap<String, f32>> {
-        if node_ids.is_empty() {
+        parent_ids: &[i64],
+    ) -> anyhow::Result<HashMap<i64, f32>> {
+        if parent_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let mut result: HashMap<String, f32> = HashMap::new();
+        let mut result: HashMap<i64, f32> = HashMap::new();
 
         // SQLite parameter limit is ~999, so chunk into batches of 500
         const CHUNK_SIZE: usize = 500;
 
-        for chunk in node_ids.chunks(CHUNK_SIZE) {
+        for chunk in parent_ids.chunks(CHUNK_SIZE) {
             // Build parameterized query
             let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
             let sql = format!(
@@ -286,13 +286,13 @@ impl UserRepository for SqliteUserRepository {
     async fn get_memory_basics(
         &self,
         user_id: &str,
-        node_ids: &[String],
-    ) -> anyhow::Result<HashMap<String, MemoryBasics>> {
+        node_ids: &[i64],
+    ) -> anyhow::Result<HashMap<i64, MemoryBasics>> {
         if node_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
-        let mut result: HashMap<String, MemoryBasics> = HashMap::new();
+        let mut result: HashMap<i64, MemoryBasics> = HashMap::new();
 
         // SQLite parameter limit is ~999, so chunk into batches of 500
         const CHUNK_SIZE: usize = 500;
