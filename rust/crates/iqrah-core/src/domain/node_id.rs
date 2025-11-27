@@ -84,64 +84,23 @@ pub fn encode_knowledge(base_id: i64, axis: KnowledgeAxis) -> i64 {
         KnowledgeAxis::ContextualMemorization => 5,
         KnowledgeAxis::Meaning => 6,
     };
-    // Clear the type bits of the base ID to treat it as payload
-    // let payload = base_id & !TYPE_MASK;
-    // We also need to store the base type somewhere?
-    // Actually, we can just wrap the WHOLE base_id (including its type) in the payload?
-    // But we only have 56 bits.
-    // Base IDs use:
-    // Chapter: 8 bits
-    // Verse: 24 bits
-    // Word: 32 bits (assuming word_id < 4B)
-    // WordInstance: 40 bits (8+16+8 + padding)
-    // So base IDs fit in 48 bits easily.
-    // We can store the axis in bits 48-55 (8 bits).
-    // And the base ID (including its type bits re-mapped or just lower bits) in 0-47.
 
-    // Let's use a simpler scheme for knowledge:
-    // Type: 5 (Knowledge)
-    // Axis: Bits 48-55
-    // Base ID: Bits 0-47 (This requires base ID to fit in 48 bits)
+    // Extract the base type from the high bits (56-63)
+    let base_type = (base_id >> TYPE_SHIFT) & 0xFF;
 
-    // Check if base_id fits in 48 bits?
-    // Our encoding for base types puts type in top 8 bits (56-63).
-    // So we need to strip the type from base_id and store it?
-    // Or we can just re-encode base ID components?
-    // That's complicated.
+    // We only have 4 bits for base type in the new scheme (bits 52-55),
+    // so ensure it fits. Current types are small integers (1-5).
+    debug_assert!(base_type <= 0xF, "Base type must fit in 4 bits");
 
-    // Alternative: Knowledge ID just wraps the base ID if we have space?
-    // We don't have space to wrap 64 bits in 64 bits.
-
-    // Let's assume for now we only support Knowledge on specific types that fit.
-    // But we need a generic way.
-
-    // Let's stick to the plan:
-    // Knowledge ID = (TYPE_KNOWLEDGE << 56) | (axis_id << 48) | (base_id & 0xFFFFFFFFFFFF)
-    // This assumes base_id's meaningful data is in lower 48 bits.
-    // But our encoding puts type in top 8 bits!
-    // So `encode_chapter(1)` = `1 << 56 | 1`.
-    // `base_id & 0xFFFFFFFFFFFF` would be `1`. We lose the type!
-    // We need to preserve the type of the base node.
-    // We can shift the base node's type down?
-    // Or just rely on the fact that we can reconstruct it?
-
-    // Let's change the encoding scheme slightly to use lower bits for type?
-    // No, high bits is standard.
-
-    // We can store the base type in bits 44-47 (4 bits)?
-    // And axis in 48-51?
-
-    // Let's refine:
-    // Knowledge:
-    // Bits 60-63: TYPE_KNOWLEDGE (5)
-    // Bits 56-59: Axis ID
-    // Bits 0-55: Base ID (full 56 bits?)
-    // If we use 4 bits for main type, we have 16 types. Enough.
-
-    // For now, let's just implement the basic types which are critical for compilation.
-    // Knowledge nodes are less critical for the immediate errors (mostly Verse/Word).
-
-    (TYPE_KNOWLEDGE << TYPE_SHIFT) | (axis_id << 48) | (base_id & 0xFFFFFFFFFFFF)
+    // Layout:
+    // Bits 56-63 (8): TYPE_KNOWLEDGE
+    // Bits 52-55 (4): Base Type
+    // Bits 48-51 (4): Knowledge Axis
+    // Bits 0-47 (48): Base Payload (base_id without type prefix)
+    (TYPE_KNOWLEDGE << TYPE_SHIFT)
+        | (base_type << 52)
+        | (axis_id << 48)
+        | (base_id & 0x0000FFFFFFFFFFFF)
 }
 
 // ============================================================================
@@ -239,6 +198,37 @@ pub fn parse_word_instance(id: &str) -> Result<(u8, u16, u8)> {
 }
 
 /// Parse knowledge node: "VERSE:1:1:memorization" -> ("VERSE:1:1", Memorization)
+pub fn decode_knowledge_id(id: i64) -> Option<(i64, KnowledgeAxis)> {
+    if decode_type(id) != Some(NodeType::Knowledge) {
+        return None;
+    }
+
+    // Extract components
+    // Bits 52-55: Base Type
+    let base_type = (id >> 52) & 0x0F;
+    // Bits 48-51: Knowledge Axis
+    let axis_id = (id >> 48) & 0x0F;
+    // Bits 0-47: Payload
+    let payload = id & 0x0000FFFFFFFFFFFF;
+
+    // Reconstruct base_id
+    // Original base_id had type in bits 56-63
+    let base_id = (base_type << 56) | payload;
+
+    // Map axis_id back to enum
+    let axis = match axis_id {
+        1 => KnowledgeAxis::Memorization,
+        2 => KnowledgeAxis::Translation,
+        3 => KnowledgeAxis::Tafsir,
+        4 => KnowledgeAxis::Tajweed,
+        5 => KnowledgeAxis::ContextualMemorization,
+        6 => KnowledgeAxis::Meaning,
+        _ => return None,
+    };
+
+    Some((base_id, axis))
+}
+
 pub fn parse_knowledge(id: &str) -> Result<(String, KnowledgeAxis)> {
     let parts: Vec<&str> = id.split(':').collect();
 
@@ -355,8 +345,9 @@ pub fn to_ukey(id: i64) -> Option<String> {
             Some(word_instance(ch, v, pos))
         }
         NodeType::Knowledge => {
-            // Knowledge node decoding not fully implemented yet
-            None
+            let (base_id, axis) = decode_knowledge_id(id)?;
+            let base_ukey = to_ukey(base_id)?;
+            Some(knowledge(&base_ukey, axis))
         }
         _ => None,
     }
@@ -381,8 +372,9 @@ pub fn from_ukey(ukey: &str) -> Option<i64> {
             Some(encode_word_instance(ch, v, pos))
         }
         NodeType::Knowledge => {
-            // Knowledge node encoding not fully implemented yet
-            None
+            let (base_ukey, axis) = parse_knowledge(ukey).ok()?;
+            let base_id = from_ukey(&base_ukey)?;
+            Some(encode_knowledge(base_id, axis))
         }
         _ => None,
     }
@@ -470,6 +462,46 @@ mod tests {
         let id = encode_word_instance(2, 255, 5);
         assert_eq!(decode_type(id), Some(NodeType::WordInstance));
         assert_eq!(decode_word_instance(id), Some((2, 255, 5)));
+    }
+
+    #[test]
+    fn test_encode_decode_knowledge() {
+        // 1. Create a base node (VERSE:2:255)
+        let _base_ukey = "VERSE:2:255";
+        let base_id = encode_verse(2, 255);
+        let axis = KnowledgeAxis::Translation;
+
+        // 2. Encode knowledge node
+        let k_id = encode_knowledge(base_id, axis);
+        assert_eq!(decode_type(k_id), Some(NodeType::Knowledge));
+
+        // 3. Decode components
+        let (decoded_base_id, decoded_axis) = decode_knowledge_id(k_id).unwrap();
+        assert_eq!(decoded_base_id, base_id);
+        assert!(matches!(decoded_axis, KnowledgeAxis::Translation));
+
+        // 4. Verify UKEY round trip
+        let k_ukey = to_ukey(k_id).unwrap();
+        assert_eq!(k_ukey, "VERSE:2:255:translation");
+
+        // 5. Verify parsing round trip
+        let parsed_id = from_ukey(&k_ukey).unwrap();
+        assert_eq!(parsed_id, k_id);
+    }
+
+    #[test]
+    fn test_knowledge_node_complex_base() {
+        // Test with WordInstance as base (uses more bits)
+        let base_ukey = "WORD_INSTANCE:114:6:5";
+        let base_id = encode_word_instance(114, 6, 5);
+        let axis = KnowledgeAxis::Tajweed;
+
+        let k_id = encode_knowledge(base_id, axis);
+        let (decoded_base, decoded_axis) = decode_knowledge_id(k_id).unwrap();
+
+        assert_eq!(decoded_base, base_id);
+        assert_eq!(to_ukey(decoded_base).unwrap(), base_ukey);
+        assert!(matches!(decoded_axis, KnowledgeAxis::Tajweed));
     }
 
     // Parser tests
