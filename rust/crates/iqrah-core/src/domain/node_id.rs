@@ -197,7 +197,9 @@ pub fn parse_word_instance(id: &str) -> Result<(u8, u16, u8)> {
     Ok((chapter, verse, position))
 }
 
-/// Parse knowledge node: "VERSE:1:1:memorization" -> ("VERSE:1:1", Memorization)
+/// Decode a knowledge node ID (i64) into its base ID and axis components.
+/// 
+/// Example: decode_knowledge_id(encoded_id) -> Some((base_id, KnowledgeAxis::Memorization))
 pub fn decode_knowledge_id(id: i64) -> Option<(i64, KnowledgeAxis)> {
     if decode_type(id) != Some(NodeType::Knowledge) {
         return None;
