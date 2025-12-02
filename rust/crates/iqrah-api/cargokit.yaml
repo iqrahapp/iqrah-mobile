@@ -1,0 +1,9 @@
+# Cargokit configuration for iqrah-api
+# Specifies nightly Rust toolchain for bytemuck AVX-512 support
+cargo:
+  debug:
+    toolchain: nightly
+  release:
+    toolchain: nightly
+  profile:
+    toolchain: nightly

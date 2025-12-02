@@ -1,0 +1,4 @@
+# Cargokit configuration
+# Specifies nightly Rust toolchain for bytemuck AVX-512 support
+cargo:
+  toolchain: nightly
