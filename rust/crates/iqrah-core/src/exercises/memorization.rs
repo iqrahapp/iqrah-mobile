@@ -23,11 +23,18 @@ impl MemorizationExercise {
         ukey: &str,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
+        // Resolve base ID if this is a knowledge node
+        let base_id = if let Some((bid, _)) = crate::domain::node_id::decode_knowledge_id(node_id) {
+            bid
+        } else {
+            node_id
+        };
+
         // Get the word text from the repository using the integer ID
         let word_text = content_repo
-            .get_quran_text(node_id)
+            .get_quran_text(base_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node ID: {}", node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node ID: {}", base_id))?;
 
         // Try to get verse context for hints by parsing the ukey
         let verse_context = if ukey.starts_with("WORD:") {

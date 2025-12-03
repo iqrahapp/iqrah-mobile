@@ -44,6 +44,20 @@ impl From<NodeType> for String {
     }
 }
 
+impl NodeType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NodeType::Chapter => "chapter",
+            NodeType::Verse => "verse",
+            NodeType::Word => "word",
+            NodeType::WordInstance => "word_instance",
+            NodeType::Knowledge => "knowledge",
+            NodeType::Root => "root",
+            NodeType::Lemma => "lemma",
+        }
+    }
+}
+
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s: String = (*self).into();

@@ -23,15 +23,22 @@ impl TranslationExercise {
         _ukey: &str,
         content_repo: &dyn ContentRepository,
     ) -> Result<Self> {
+        // Resolve base ID if this is a knowledge node
+        let base_id = if let Some((bid, _)) = crate::domain::node_id::decode_knowledge_id(node_id) {
+            bid
+        } else {
+            node_id
+        };
+
         // Get the word text
         let word_text = content_repo
-            .get_quran_text(node_id)
+            .get_quran_text(base_id)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", node_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", base_id))?;
 
         // Get translation (default to English for now)
         let translation = content_repo
-            .get_translation(node_id, "en")
+            .get_translation(base_id, "en")
             .await?
             .unwrap_or_else(|| "[Translation not available]".to_string());
 

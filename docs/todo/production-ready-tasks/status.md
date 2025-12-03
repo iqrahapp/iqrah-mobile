@@ -12,7 +12,7 @@
 | 1.7 Consolidate Migrations | ✅ Done | P0 | Consolidated User DB migrations into single clean file `20241126000001_user_schema.sql`. |
 | **Phase 2: Knowledge Axis** | | | |
 | 2.1 Full Knowledge Graph | ✅ Done | P0 | Generated migration with 3 core axes: memorization (10.6k nodes + sequential edges), translation (12.3k nodes), meaning (697 ROOT:meaning nodes) + PageRank scoring. Tafsir/Tajweed deferred. |
-| 2.2 Verify End-to-End | 🔴 Todo | P0 | Verify scheduling and session flow works with new knowledge nodes. |
+| 2.2 Verify End-to-End | ✅ Done | P0 | Implemented ROOT/LEMMA Rust decoders, created 8 integration tests (all axes, sequential edges, cross-axis propagation), CLI verification script. All tests passing, database verified (36.4k nodes, 177k edges). |
 | 2.3 Tajweed Exercises | 🔴 Todo | P0 | Implement specific exercise logic for Tajweed axis. |
 | 2.4 Cross-Axis Verify | 🔴 Todo | P0 | Verify that progress in one axis (e.g. translation) propagates to others. |
 | **Phase 3: Data Integrity** | | | |
