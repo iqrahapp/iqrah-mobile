@@ -7,7 +7,7 @@ use sqlx::Row;
 #[tokio::test]
 async fn test_content_db_initialization() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Verify v2 schema was created - test with verse queries instead of nodes
     let verse = repo.get_verse("test").await.unwrap();
@@ -44,7 +44,7 @@ async fn test_user_db_initialization_and_migrations() {
 async fn test_content_repository_crud() {
     // Test v2 schema CRUD operations using sample data
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Test verse queries (v2 schema)
     let verse = repo.get_verse("1:1").await.unwrap();
@@ -231,7 +231,7 @@ async fn test_two_database_integration() {
     let user_pool = init_user_db(":memory:").await.unwrap();
 
     // Create repositories
-    let content_repo = SqliteContentRepository::new(content_pool);
+    let content_repo = create_content_repository(content_pool);
     let user_repo = SqliteUserRepository::new(user_pool);
 
     // Verify content.db has v2 sample data (verse from Al-Fatihah)
@@ -264,7 +264,7 @@ async fn test_two_database_integration() {
 #[tokio::test]
 async fn test_v2_chapter_queries() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Test get_chapter with sample data (Al-Fatihah from migration)
     let chapter = repo.get_chapter(1).await.unwrap();
@@ -298,7 +298,7 @@ async fn test_v2_chapter_queries() {
 #[tokio::test]
 async fn test_v2_verse_queries() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Test get_verse with sample data
     let verse = repo.get_verse("1:1").await.unwrap();
@@ -333,7 +333,7 @@ async fn test_v2_verse_queries() {
 #[tokio::test]
 async fn test_v2_word_queries() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Test get_words_for_verse with sample data
     let words = repo.get_words_for_verse("1:1").await.unwrap();
@@ -367,7 +367,7 @@ async fn test_v2_word_queries() {
 #[tokio::test]
 async fn test_v2_language_queries() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Test get_languages
     let languages = repo.get_languages().await.unwrap();
@@ -405,7 +405,7 @@ async fn test_v2_language_queries() {
 #[tokio::test]
 async fn test_v2_translator_queries() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Test get_translators_for_language
     let translators = repo.get_translators_for_language("en").await.unwrap();
@@ -445,7 +445,7 @@ async fn test_v2_translator_queries() {
 #[tokio::test]
 async fn test_v2_translation_queries() {
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // Get Sahih International translator ID
     let sahih = repo
@@ -505,7 +505,7 @@ async fn test_v2_full_verse_retrieval() {
     // Chapter -> Verses -> Words -> Translations
 
     let pool = init_content_db(":memory:").await.unwrap();
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     // 1. Get the chapter
     let chapter = repo.get_chapter(1).await.unwrap().unwrap();

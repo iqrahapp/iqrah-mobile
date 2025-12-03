@@ -6,26 +6,29 @@ use super::models::{
 use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
-    domain::node_id as nid, ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode,
+    ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode,
     Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, InstalledPackage,
     Language, Lemma, MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
+use std::sync::Arc;
+
+use super::node_registry::NodeRegistry;
 
 pub struct SqliteContentRepository {
     pool: SqlitePool,
+    registry: Arc<NodeRegistry>,
 }
 
 impl SqliteContentRepository {
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+    pub fn new(pool: SqlitePool, registry: Arc<NodeRegistry>) -> Self {
+        Self { pool, registry }
     }
-}
 
-#[async_trait]
-impl ContentRepository for SqliteContentRepository {
-    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
+    /// Internal method: Get node by integer ID
+    /// This bypasses the registry and directly queries content tables
+    async fn get_node_by_id_internal(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
         // V2 schema: Parse node_id to determine type and query appropriate table
         use iqrah_core::domain::node_id as nid;
 
@@ -110,54 +113,71 @@ impl ContentRepository for SqliteContentRepository {
                 }))
             }
             NodeType::Knowledge => {
-                // Knowledge nodes are virtual in V2 schema, but we validate base node existence
-                // We need to decode the knowledge ID to get base ID and axis
-                // But our decode_knowledge is not fully implemented/exposed yet in the same way?
-                // Wait, I didn't implement decode_knowledge fully in node_id.rs because of complexity.
-                // But I implemented constants.
-                // Let's assume for now we don't support Knowledge nodes via get_node(i64) fully
-                // OR we implement a basic check.
-                // Since I didn't implement decode_knowledge, I'll return None for now or TODO.
-                // Actually, I should have implemented decode_knowledge.
-                // But for compilation, let's just return None for Knowledge nodes for now to unblock.
+                // Knowledge nodes are virtual in V2 schema
                 Ok(None)
             }
             _ => Ok(None), // Other types not supported yet
         }
     }
+}
+
+#[async_trait]
+impl ContentRepository for SqliteContentRepository {
+    async fn get_node(&self, node_id: i64) -> anyhow::Result<Option<Node>> {
+        // Delegate to internal method which queries content tables directly
+        self.get_node_by_id_internal(node_id).await
+    }
 
     async fn get_node_by_ukey(&self, ukey: &str) -> anyhow::Result<Option<Node>> {
         use iqrah_core::domain::node_id as nid;
 
-        // Parse ukey to get components
+        // Two-level lookup strategy:
+        // 1. Check registry for cached ukey -> id mapping
+        // 2. If not in registry, parse ukey and encode to i64
+        // 3. Query content tables with the ID
+        // 4. If node exists, register it for future fast lookups
+
+        // Step 1: Try registry first (fast path with caching)
+        if let Some(id) = self.registry.get_id(ukey).await? {
+            return self.get_node(id).await;
+        }
+
+        // Step 2: Parse ukey to determine type and encode to i64
         let node_type = match nid::node_type(ukey) {
             Ok(t) => t,
             Err(_) => return Ok(None),
         };
 
-        match node_type {
+        let (id, type_code) = match node_type {
             NodeType::Verse => {
                 let (chapter, verse) = nid::parse_verse(ukey)?;
-                let id = nid::encode_verse(chapter, verse);
-                self.get_node(id).await
+                (nid::encode_verse(chapter, verse), 1)
             }
             NodeType::Chapter => {
                 let num = nid::parse_chapter(ukey)?;
-                let id = nid::encode_chapter(num);
-                self.get_node(id).await
+                (nid::encode_chapter(num), 0)
             }
             NodeType::Word => {
                 let word_id = nid::parse_word(ukey)?;
-                let id = nid::encode_word(word_id);
-                self.get_node(id).await
+                (nid::encode_word(word_id), 2)
             }
             NodeType::WordInstance => {
                 let (ch, v, pos) = nid::parse_word_instance(ukey)?;
-                let id = nid::encode_word_instance(ch, v, pos);
-                self.get_node(id).await
+                (nid::encode_word_instance(ch, v, pos), 3)
             }
-            _ => Ok(None),
+            _ => return Ok(None),
+        };
+
+        // Step 3: Query content tables
+        let node = self.get_node(id).await?;
+
+        // Step 4: If node exists, register it in the registry for future lookups
+        if node.is_some() {
+            // Register asynchronously, ignore errors (registry is optimization, not critical)
+            let _ = self.registry.register(id, ukey.to_string(), type_code).await;
         }
+
+        Ok(node)
     }
 
     async fn get_edges_from(&self, source_id: i64) -> anyhow::Result<Vec<Edge>> {
@@ -172,25 +192,21 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(rows
             .into_iter()
-            .filter_map(|r| {
-                let source_id = nid::from_ukey(&r.source_id)?;
-                let target_id = nid::from_ukey(&r.target_id)?;
-                Some(Edge {
-                    source_id,
-                    target_id,
-                    edge_type: if r.edge_type == 0 {
-                        EdgeType::Dependency
-                    } else {
-                        EdgeType::Knowledge
-                    },
-                    distribution_type: match r.distribution_type {
-                        0 => DistributionType::Const,
-                        1 => DistributionType::Normal,
-                        _ => DistributionType::Beta,
-                    },
-                    param1: r.param1,
-                    param2: r.param2,
-                })
+            .map(|r| Edge {
+                source_id: r.source_id,
+                target_id: r.target_id,
+                edge_type: if r.edge_type == 0 {
+                    EdgeType::Dependency
+                } else {
+                    EdgeType::Knowledge
+                },
+                distribution_type: match r.distribution_type {
+                    0 => DistributionType::Const,
+                    1 => DistributionType::Normal,
+                    _ => DistributionType::Beta,
+                },
+                param1: r.param1,
+                param2: r.param2,
             })
             .collect())
     }
@@ -364,6 +380,11 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn node_exists(&self, node_id: i64) -> anyhow::Result<bool> {
+        // Fast path: Check registry first
+        if self.registry.exists_by_id(node_id).await? {
+            return Ok(true);
+        }
+
         // V2 schema: Check existence in appropriate table
         use iqrah_core::domain::node_id as nid;
 

@@ -1,9 +1,11 @@
 mod models;
+mod node_registry;
 pub mod repository;
 
 #[cfg(test)]
 mod scheduler_tests;
 
+pub use node_registry::NodeRegistry;
 pub use repository::SqliteContentRepository;
 
 use crate::error::{Result, StorageError};
@@ -44,4 +46,11 @@ pub async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
     );
 
     Ok(pool)
+}
+
+/// Create a content repository with NodeRegistry
+/// This is a convenience function that creates the necessary Arc-wrapped dependencies
+pub fn create_content_repository(pool: SqlitePool) -> SqliteContentRepository {
+    let registry = std::sync::Arc::new(NodeRegistry::new(pool.clone()));
+    SqliteContentRepository::new(pool, registry)
 }

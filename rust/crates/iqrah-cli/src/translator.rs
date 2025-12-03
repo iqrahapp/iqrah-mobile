@@ -1,6 +1,6 @@
 use anyhow::Result;
 use iqrah_core::{import_translators_from_json, ContentRepository};
-use iqrah_storage::{content::init_content_db, content::SqliteContentRepository};
+use iqrah_storage::{create_content_repository, init_content_db};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -182,7 +182,7 @@ pub async fn import_translators(metadata_file: &str, translations_base: &str) ->
     // Initialize database
     let content_pool = init_content_db(&content_db_path).await?;
     let content_repo: Arc<dyn ContentRepository> =
-        Arc::new(SqliteContentRepository::new(content_pool));
+        Arc::new(create_content_repository(content_pool));
 
     // Import translators
     let stats = import_translators_from_json(

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use iqrah_core::{import_cbor_graph_from_bytes, ContentRepository};
-use iqrah_storage::{content::init_content_db, content::SqliteContentRepository};
+use iqrah_storage::{create_content_repository, init_content_db};
 use std::fs::File;
 use std::sync::Arc;
 
@@ -19,7 +19,7 @@ pub async fn import_cbor(cbor_file: &str) -> Result<()> {
     // Initialize database
     let content_pool = init_content_db(&content_db_path).await?;
     let content_repo: Arc<dyn ContentRepository> =
-        Arc::new(SqliteContentRepository::new(content_pool));
+        Arc::new(create_content_repository(content_pool));
 
     // Open and decompress the CBOR file
     let file = File::open(cbor_file)?;

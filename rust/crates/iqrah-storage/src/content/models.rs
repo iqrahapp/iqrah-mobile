@@ -7,8 +7,8 @@ use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct EdgeRow {
-    pub source_id: String,
-    pub target_id: String,
+    pub source_id: i64,
+    pub target_id: i64,
     pub edge_type: i32,
     pub distribution_type: i32,
     pub param1: f64,

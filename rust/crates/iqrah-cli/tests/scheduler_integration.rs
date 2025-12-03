@@ -6,7 +6,7 @@ use anyhow::Result;
 use iqrah_core::domain::node_id as nid;
 use iqrah_core::{ContentRepository, UserRepository};
 use iqrah_storage::{
-    content::{init_content_db, SqliteContentRepository},
+    create_content_repository, init_content_db,
     user::{init_user_db, SqliteUserRepository},
 };
 use std::path::PathBuf;
@@ -33,7 +33,7 @@ async fn test_scheduler_with_new_user() -> Result<()> {
     let content_pool = init_content_db(content_db.to_str().unwrap()).await?;
     let user_pool = init_user_db(user_db.to_str().unwrap()).await?;
 
-    let content_repo = SqliteContentRepository::new(content_pool);
+    let content_repo = create_content_repository(content_pool);
     let user_repo = SqliteUserRepository::new(user_pool);
 
     // Verify goal exists
@@ -74,7 +74,7 @@ async fn test_scheduler_goal_data() -> Result<()> {
     let (_temp_dir, content_db, _user_db) = setup_test_databases().await?;
 
     let content_pool = init_content_db(content_db.to_str().unwrap()).await?;
-    let content_repo = SqliteContentRepository::new(content_pool);
+    let content_repo = create_content_repository(content_pool);
 
     // Verify goal metadata
     let goal = content_repo
@@ -101,7 +101,7 @@ async fn test_scheduler_node_metadata() -> Result<()> {
     let (_temp_dir, content_db, _user_db) = setup_test_databases().await?;
 
     let content_pool = init_content_db(content_db.to_str().unwrap()).await?;
-    let content_repo = SqliteContentRepository::new(content_pool);
+    let content_repo = create_content_repository(content_pool);
 
     // let now_ts = chrono::Utc::now().timestamp_millis();
 
@@ -143,7 +143,7 @@ async fn test_scheduler_prerequisite_edges() -> Result<()> {
     let (_temp_dir, content_db, _user_db) = setup_test_databases().await?;
 
     let content_pool = init_content_db(content_db.to_str().unwrap()).await?;
-    let content_repo = SqliteContentRepository::new(content_pool);
+    let content_repo = create_content_repository(content_pool);
 
     // let now_ts = chrono::Utc::now().timestamp_millis();
 
@@ -206,7 +206,7 @@ async fn test_scheduler_chunking_behavior() -> Result<()> {
     let (_temp_dir, content_db, _user_db) = setup_test_databases().await?;
 
     let content_pool = init_content_db(content_db.to_str().unwrap()).await?;
-    let content_repo = SqliteContentRepository::new(content_pool);
+    let content_repo = create_content_repository(content_pool);
 
     // let now_ts = chrono::Utc::now().timestamp_millis();
 

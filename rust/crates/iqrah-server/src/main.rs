@@ -5,8 +5,7 @@ use iqrah_core::{
     ExerciseService,
 };
 use iqrah_storage::{
-    content::{init_content_db, SqliteContentRepository},
-    user::{init_user_db, SqliteUserRepository},
+    create_content_repository, init_content_db, init_user_db, SqliteUserRepository,
 };
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
@@ -49,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Create repositories
     let content_repo: Arc<dyn ContentRepository> =
-        Arc::new(SqliteContentRepository::new(content_pool));
+        Arc::new(create_content_repository(content_pool));
     let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
     // Create services

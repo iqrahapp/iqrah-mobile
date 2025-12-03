@@ -11,7 +11,7 @@ use crate::version::{get_schema_version, is_compatible};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 
-const EXPECTED_USER_VERSION: &str = "1.0.0";
+const EXPECTED_USER_VERSION: &str = "2.0.0";
 
 /// Initialize user database with migrations
 pub async fn init_user_db(db_path: &str) -> Result<SqlitePool> {

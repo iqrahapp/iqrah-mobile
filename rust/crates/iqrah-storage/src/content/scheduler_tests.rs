@@ -86,7 +86,7 @@ async fn create_test_db() -> SqlitePool {
 #[tokio::test]
 async fn test_get_scheduler_candidates_empty_goal() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     let candidates = repo
         .get_scheduler_candidates("nonexistent_goal")
@@ -101,7 +101,7 @@ async fn test_get_scheduler_candidates_with_metadata() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Insert test data
     let node_id = nid::encode_verse(1, 1);
@@ -168,7 +168,7 @@ async fn test_get_scheduler_candidates_missing_metadata_defaults_to_zero() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Insert node without metadata
     let node_id = nid::encode_verse(1, 2);
@@ -205,7 +205,7 @@ async fn test_get_scheduler_candidates_missing_metadata_defaults_to_zero() {
 #[tokio::test]
 async fn test_get_prerequisite_parents_empty_input() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     let result = repo
         .get_prerequisite_parents(&[])
@@ -220,7 +220,7 @@ async fn test_get_prerequisite_parents_single_node() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Create prerequisite relationship: 1:1 -> 1:2 (1:1 is prerequisite for 1:2)
     let target_id = nid::encode_verse(1, 2);
@@ -246,7 +246,7 @@ async fn test_get_prerequisite_parents_multiple_parents() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Create multiple prerequisites for 1:3
     let target_id = nid::encode_verse(1, 3);
@@ -282,7 +282,7 @@ async fn test_get_prerequisite_parents_multiple_parents() {
 #[tokio::test]
 async fn test_get_prerequisite_parents_chunking_500_nodes() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Create 500 nodes with prerequisites
     let mut node_ids = Vec::new();
@@ -318,7 +318,7 @@ async fn test_get_prerequisite_parents_chunking_500_nodes() {
 #[tokio::test]
 async fn test_get_prerequisite_parents_chunking_501_nodes() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Create 501 nodes (tests chunking across 2 batches)
     let mut node_ids = Vec::new();
@@ -360,7 +360,7 @@ async fn test_get_prerequisite_parents_chunking_501_nodes() {
 #[tokio::test]
 async fn test_get_prerequisite_parents_chunking_1000_nodes() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Create 1000 nodes (tests chunking across 2 batches: 500 + 500)
     let mut node_ids = Vec::new();
@@ -397,7 +397,7 @@ async fn test_get_prerequisite_parents_ignores_non_prerequisite_edges() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     // Create prerequisite edge (type 0) and other edge types
     let target_id = nid::encode_verse(1, 2);
@@ -432,7 +432,7 @@ async fn test_get_prerequisite_parents_ignores_non_prerequisite_edges() {
 #[tokio::test]
 async fn test_get_goal_exists() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     query("INSERT INTO goals (goal_id, goal_type, goal_group, label, description) VALUES ('memorization:surah-1', 'surah', 'memorization', 'Memorize Al-Fatihah', 'Master all verses')")
         .execute(&pool)
@@ -455,7 +455,7 @@ async fn test_get_goal_exists() {
 #[tokio::test]
 async fn test_get_goal_not_found() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     let goal = repo.get_goal("nonexistent").await.expect("Should succeed");
 
@@ -467,7 +467,7 @@ async fn test_get_nodes_for_goal() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool.clone());
+    let repo = create_content_repository(pool.clone());
 
     query("INSERT INTO goals (goal_id, goal_type, goal_group, label) VALUES ('test_goal', 'surah', 'memorization', 'Test Goal')")
         .execute(&pool)
@@ -512,7 +512,7 @@ async fn test_get_nodes_for_goal() {
 #[tokio::test]
 async fn test_get_nodes_for_goal_empty() {
     let pool = create_test_db().await;
-    let repo = SqliteContentRepository::new(pool);
+    let repo = create_content_repository(pool);
 
     let nodes = repo
         .get_nodes_for_goal("nonexistent")
