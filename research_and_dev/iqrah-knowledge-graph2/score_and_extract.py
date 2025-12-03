@@ -3,154 +3,379 @@
 Score knowledge graph and extract migration data.
 This script:
 1. Loads the generated knowledge graph
-2. Applies PageRank scoring to compute foundational/influence scores
-3. Extracts verse data with scores
-4. Generates SQL migration
+2. Applies PageRank scoring
+3. Loads offline Quran data for metadata
+4. Generates a complete SQL migration file with:
+   - Nodes (Content + Knowledge) with Integer IDs
+   - Content Metadata (Chapters, Verses, Words)
+   - Edges (Knowledge + Dependency)
+   - Node Metadata (Scores)
+   - Goals
 """
 
 import sys
+import json
+from pathlib import Path
 sys.path.insert(0, 'src')
 
 import networkx as nx
 from iqrah.graph.scoring import KnowledgeGraphScoring
+from iqrah.graph.identifiers import NodeIdEncoder as NIE, NodeIdentifierParser as NIP, NodeType
+from iqrah.quran_offline.loader import load_quran_offline
 from loguru import logger
+import hashlib
 
-def extract_verse_data_with_scores(graph):
-    """Extract verse nodes with their computed scores."""
-    verses = []
 
-    for node_id, data in graph.nodes(data=True):
-        node_type = data.get('type', '')
+NODE_TYPE_KNOWLEDGE = 5
+NODE_TYPE_ROOT = 6
+NODE_TYPE_LEMMA = 7
 
-        # Only process verse knowledge nodes (VERSE:X:Y:memorization)
-        if not node_id.startswith('VERSE:'):
-            continue
+# Type shift constant (must match Rust implementation)
+TYPE_SHIFT = 56
 
-        # Extract verse key from node ID
-        parts = node_id.split(':')
-        if len(parts) < 3:
-            continue
+def _stable_hash(text: str) -> int:
+    """
+    Generate a stable 48-bit hash from text for ROOT/LEMMA encoding.
+    Uses first 6 bytes of SHA256 for stability across runs.
+    """
+    hash_obj = hashlib.sha256(text.encode('utf-8'))
+    hash_bytes = hash_obj.digest()[:6]  # First 6 bytes = 48 bits
+    return int.from_bytes(hash_bytes, byteorder='big')
 
-        # Check if this is a verse node (not a knowledge node like "VERSE:1:1:memorization")
-        if len(parts) == 3 and parts[2] == '':
-            # This is a base verse node (VERSE:1:1:)
-            verse_key = f"{parts[1]}:{parts[2][:-1] if parts[2].endswith(':') else parts[2]}"
-            if not verse_key or ':' not in verse_key:
-                verse_key = f"{parts[1]}:{parts[0].split(':')[-1]}"
-                continue
-        elif len(parts) == 4:
-            # This might be a knowledge node (VERSE:1:1:memorization)
-            verse_key = f"{parts[1]}:{parts[2]}"
+def encode_root(root_text: str) -> int:
+    """Encode a ROOT node with TEXT identifier to integer ID."""
+    return (NODE_TYPE_ROOT << TYPE_SHIFT) | _stable_hash(root_text)
+
+def encode_lemma(lemma_text: str) -> int:
+    """Encode a LEMMA node with TEXT identifier to integer ID."""
+    return (NODE_TYPE_LEMMA << TYPE_SHIFT) | _stable_hash(lemma_text)
+
+def get_node_integer_id(ukey: str) -> int:
+    """Calculate the integer ID for a node ukey using NodeIdEncoder."""
+    try:
+        # Check for knowledge node first
+        parts = ukey.split(':')
+        if len(parts) > 2:
+            last = parts[-1]
+            if last in ["memorization", "translation", "tafsir", "tajweed", "contextual_memorization", "meaning"]:
+                # It's a knowledge node
+                base_ukey = ":".join(parts[:-1])
+                axis = last
+                base_id = get_node_integer_id(base_ukey)
+                return NIE.encode_knowledge(base_id, axis)
+
+        # Parse standard nodes
+        node_type, value = NIP.parse(ukey)
+
+        if node_type == NodeType.CHAPTER:
+            return NIE.encode_chapter(int(value))
+
+        elif node_type == NodeType.VERSE:
+            chapter, verse = map(int, value.split(':'))
+            return NIE.encode_verse(chapter, verse)
+
+        elif node_type == NodeType.WORD_INSTANCE:
+            chapter, verse, position = map(int, value.split(':'))
+            return NIE.encode_word_instance(chapter, verse, position)
+
+        elif node_type == NodeType.WORD:
+            # Assuming value is the word_id
+            return NIE.encode_word(int(value))
+
+        elif node_type == NodeType.ROOT:
+            # ROOT:رحم → encode_root("رحم")
+            return encode_root(value)
+
+        elif node_type == NodeType.LEMMA:
+            # LEMMA:ال → encode_lemma("ال")
+            return encode_lemma(value)
+
         else:
-            continue
+            raise ValueError(f"Unsupported node type: {node_type}")
 
-        # For base verse nodes (dependency graph nodes)
-        if len(parts) == 3:
-            verse_key = f"{parts[1]}:{parts[2].rstrip(':')}"
+    except Exception as e:
+        # logger.error(f"Failed to encode ID for {ukey}: {e}")
+        raise e
 
-        chapter_num = int(parts[1])
+def generate_sql_migration(graph, quran):
+    """Generate the complete SQL migration content."""
+
+    lines = []
+    lines.append("-- ============================================================================")
+    lines.append("-- Knowledge Graph Migration (Chapters 1-3)")
+    lines.append("-- Generated by score_and_extract.py")
+    lines.append("-- ============================================================================")
+    lines.append("")
+
+    # 1. Collect all nodes and compute IDs
+    logger.info("Collecting nodes and computing IDs...")
+    nodes_data = [] # (id, ukey, type_int)
+
+    # We need to ensure we have all content nodes (Chapters, Verses, Words)
+    # even if they are not explicitly in the graph (though they should be).
+    # And we need to add the Knowledge nodes from the graph.
+
+    seen_ukeys = set()
+
+    # Helper to add node
+    def add_node(ukey, type_int):
+        if ukey in seen_ukeys:
+            return
         try:
-            verse_num = int(parts[2].rstrip(':'))
-        except:
+            nid = get_node_integer_id(ukey)
+            nodes_data.append((nid, ukey, type_int))
+            seen_ukeys.add(ukey)
+        except Exception as e:
+            logger.warning(f"Skipping invalid node {ukey}: {e}")
+
+    # Add content nodes from Quran object (Chapters 1-3)
+    # We limit to chapters present in the graph to avoid over-generating if graph is partial
+    graph_chapters = set()
+    for node in graph.nodes:
+        if node.startswith("CHAPTER:"):
+            graph_chapters.add(int(node.split(":")[1]))
+
+    logger.info(f"Processing chapters: {sorted(graph_chapters)}")
+
+    for chapter in quran.chapters:
+        if chapter.id not in graph_chapters:
             continue
 
-        # Get scores (default to 0.5 if not present)
-        foundational_score = data.get('foundational_score', 0.5)
-        influence_score = data.get('influence_score', 0.5)
+        # Add Chapter Node
+        add_node(f"CHAPTER:{chapter.id}", 1) # 1 = TYPE_CHAPTER
 
-        # Calculate a simple difficulty score based on chapter position
-        # Early verses are easier, later verses harder (rough heuristic)
-        difficulty_score = min(0.95, 0.3 + (chapter_num - 1) * 0.05 + verse_num * 0.001)
+        for verse in chapter.verses:
+            # Add Verse Node
+            add_node(f"VERSE:{verse.verse_key}", 2) # 2 = TYPE_VERSE
 
-        # Calculate quran_order
-        quran_order = chapter_num * 1000000 + verse_num * 1000
+            for word in verse.words:
+                # Add Word Instance Node
+                # Format: WORD_INSTANCE:ch:v:pos
+                ukey = f"WORD_INSTANCE:{verse.verse_key}:{word.position}"
+                add_node(ukey, 4) # 4 = TYPE_WORD_INSTANCE
 
-        verses.append({
-            'verse_key': verse_key,
-            'foundational_score': foundational_score,
-            'influence_score': influence_score,
-            'difficulty_score': difficulty_score,
-            'quran_order': quran_order,
-        })
+    # Add ROOT and LEMMA base nodes from Graph
+    for node in graph.nodes:
+        if node.startswith("ROOT:"):
+            # Extract just the root text (everything after "ROOT:")
+            if ":meaning" not in node:  # Skip knowledge nodes, they're handled below
+                add_node(node, NODE_TYPE_ROOT)
+        elif node.startswith("LEMMA:"):
+            # Extract just the lemma text (everything after "LEMMA:")
+            if ":translation" not in node:  # Skip knowledge nodes
+                add_node(node, NODE_TYPE_LEMMA)
 
-    # Remove duplicates by verse_key
-    seen = set()
-    unique_verses = []
-    for verse in verses:
-        if verse['verse_key'] not in seen:
-            seen.add(verse['verse_key'])
-            unique_verses.append(verse)
+    # Add Knowledge Nodes from Graph
+    for node in graph.nodes:
+        if ":memorization" in node or ":translation" in node or \
+           ":tafsir" in node or ":tajweed" in node or \
+           ":contextual_memorization" in node or ":meaning" in node:
+               add_node(node, 5) # 5 = TYPE_KNOWLEDGE
 
-    # Sort by quran_order
-    unique_verses.sort(key=lambda x: x['quran_order'])
-    return unique_verses
+    # Sort nodes by ID for consistent output
+    nodes_data.sort(key=lambda x: x[0])
 
-def generate_sequential_prerequisites(verses):
-    """Generate sequential prerequisite edges (verse i+1 depends on verse i within chapters)."""
-    edges = []
+    # GENERATE SQL: NODES
+    lines.append("-- 1. Populate Nodes Registry")
+    chunk_size = 1000
+    for i in range(0, len(nodes_data), chunk_size):
+        chunk = nodes_data[i:i+chunk_size]
+        values = []
+        for nid, ukey, ntype in chunk:
+            values.append(f"({nid}, '{ukey}', {ntype})")
 
-    # Group by chapter
-    by_chapter = {}
-    for verse in verses:
-        chapter = verse['verse_key'].split(':')[0]
-        if chapter not in by_chapter:
-            by_chapter[chapter] = []
-        by_chapter[chapter].append(verse)
+        lines.append("INSERT OR IGNORE INTO nodes (id, ukey, node_type) VALUES")
+        lines.append(",\n".join(values) + ";")
+    lines.append("")
 
-    # Create sequential dependencies within each chapter
-    for chapter, chapter_verses in by_chapter.items():
-        # Sort by verse number
-        chapter_verses.sort(key=lambda v: int(v['verse_key'].split(':')[1]))
+    # GENERATE SQL: CHAPTERS
+    lines.append("-- 2. Populate Chapters Metadata")
+    chapter_values = []
+    for chapter in quran.chapters:
+        if chapter.id not in graph_chapters:
+            continue
+        # Escape strings
+        name_simple = chapter.name_simple.replace("'", "''")
+        name_arabic = chapter.name_arabic.replace("'", "''")
+        name_trans = chapter.translated_name.name.replace("'", "''")
+        place = chapter.revelation_place
 
-        # Each verse depends on the previous verse
-        for i in range(1, len(chapter_verses)):
-            edges.append({
-                'prerequisite_id': chapter_verses[i-1]['verse_key'],
-                'dependent_id': chapter_verses[i]['verse_key'],
-            })
+        chapter_values.append(
+            f"({chapter.id}, '{name_arabic}', '{name_simple}', '{name_trans}', "
+            f"'{place}', {chapter.revelation_order}, {1 if chapter.bismillah_pre else 0}, "
+            f"{chapter.verses_count}, 1, 1)" # Page info is placeholder
+        )
 
-    return edges
+    for i in range(0, len(chapter_values), chunk_size):
+        chunk = chapter_values[i:i+chunk_size]
+        lines.append("INSERT OR IGNORE INTO chapters (chapter_number, name_arabic, name_transliteration, name_translation, revelation_place, revelation_order, bismillah_pre, verse_count, page_start, page_end) VALUES")
+        lines.append(",\n".join(chunk) + ";")
+    lines.append("")
 
-def generate_sql_migration(verses, edges):
-    """Generate SQL INSERT statements."""
-    print("-- Generated knowledge graph data for scheduler v2 testing")
-    print(f"-- Chapters 1-3: {len(verses)} verses with PageRank scoring")
-    print("")
+    # GENERATE SQL: VERSES
+    lines.append("-- 3. Populate Verses Metadata")
+    verse_values = []
+    for chapter in quran.chapters:
+        if chapter.id not in graph_chapters:
+            continue
+        for verse in chapter.verses:
+            verse_values.append(
+                f"('{verse.verse_key}', {chapter.id}, {verse.verse_number}, "
+                f"{verse.juz_number}, {verse.hizb_number}, {verse.rub_el_hizb_number}, "
+                f"{verse.page_number}, {verse.manzil_number}, {len(verse.words)})"
+            )
 
-    # Generate node_metadata inserts
-    print("-- Node metadata (foundational, influence, difficulty scores + quran_order)")
-    print("INSERT OR IGNORE INTO node_metadata (node_id, key, value) VALUES")
+    # Split into chunks to avoid SQL limits
+    for i in range(0, len(verse_values), chunk_size):
+        chunk = verse_values[i:i+chunk_size]
+        lines.append("INSERT OR IGNORE INTO verses (verse_key, chapter_number, verse_number, juz, hizb, rub_el_hizb, page, manzil, word_count) VALUES")
+        lines.append(",\n".join(chunk) + ";")
+    lines.append("")
 
-    metadata_rows = []
-    for verse in verses:
-        verse_key = verse['verse_key']
-        metadata_rows.append(f"    ('{verse_key}', 'foundational_score', {verse['foundational_score']:.4f})")
-        metadata_rows.append(f"    ('{verse_key}', 'influence_score', {verse['influence_score']:.4f})")
-        metadata_rows.append(f"    ('{verse_key}', 'difficulty_score', {verse['difficulty_score']:.4f})")
-        metadata_rows.append(f"    ('{verse_key}', 'quran_order', {verse['quran_order']})")
+    # GENERATE SQL: WORDS
+    lines.append("-- 4. Populate Words Metadata")
+    word_values = []
+    for chapter in quran.chapters:
+        if chapter.id not in graph_chapters:
+            continue
+        for verse in chapter.verses:
+            for word in verse.words:
+                # Use WORD_INSTANCE ID as word_id
+                wid = NIE.encode_word_instance(chapter.id, verse.verse_number, word.position)
+                letter_count = len(word.text_uthmani) if word.text_uthmani else 0
+                word_values.append(
+                    f"({wid}, '{verse.verse_key}', {word.position}, {letter_count})"
+                )
 
-    print(",\n".join(metadata_rows) + ";")
-    print("")
+    for i in range(0, len(word_values), chunk_size):
+        chunk = word_values[i:i+chunk_size]
+        lines.append("INSERT OR IGNORE INTO words (word_id, verse_key, position, letter_count) VALUES")
+        lines.append(",\n".join(chunk) + ";")
+    lines.append("")
 
-    # Generate prerequisite edges
-    print("-- Sequential prerequisite edges (verse i+1 depends on verse i)")
-    if edges:
-        print("INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2) VALUES")
-        # edge_type=0 for Dependency, distribution_type=0 for Const
-        edge_rows = [f"    ('{edge['prerequisite_id']}', '{edge['dependent_id']}', 0, 0, 0.0, 0.0)" for edge in edges]
-        print(",\n".join(edge_rows) + ";")
-    else:
-        print("-- No prerequisite edges")
+    # GENERATE SQL: EDGES
+    lines.append("-- 5. Populate Edges")
+    logger.info("Generating edges...")
+    edge_values = []
 
-    print("")
-    print(f"-- Summary: {len(verses)} verses, {len(edges)} prerequisite edges")
+    for u, v, data in graph.edges(data=True):
+        if u not in seen_ukeys or v not in seen_ukeys:
+            continue
+
+        src_id = get_node_integer_id(u)
+        tgt_id = get_node_integer_id(v)
+
+        edge_type = 1 if data.get('type') == 'knowledge' else 0 # 1=Knowledge, 0=Dependency
+
+        # Distribution
+        dist_type = 0 # 0=Const, 1=Normal, 2=Beta
+        p1 = 0.0
+        p2 = 0.0
+
+        dist = data.get('dist')
+        if dist == 'normal':
+            dist_type = 1
+            p1 = data.get('m', 0.0)
+            p2 = data.get('s', 0.0)
+        elif dist == 'beta':
+            dist_type = 2
+            p1 = data.get('a', 0.0)
+            p2 = data.get('b', 0.0)
+        elif dist == 'auto':
+            # Handle auto/const
+            dist_type = 0
+            p1 = data.get('weight', 1.0)
+
+        edge_values.append(
+            f"({src_id}, {tgt_id}, {edge_type}, {dist_type}, {p1:.4f}, {p2:.4f})"
+        )
+
+    for i in range(0, len(edge_values), chunk_size):
+        chunk = edge_values[i:i+chunk_size]
+        lines.append("INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2) VALUES")
+        lines.append(",\n".join(chunk) + ";")
+    lines.append("")
+
+    # GENERATE SQL: NODE METADATA (SCORES)
+    lines.append("-- 6. Populate Node Metadata (Scores)")
+    logger.info("Generating node metadata...")
+    meta_values = []
+
+    for node, data in graph.nodes(data=True):
+        if node not in seen_ukeys:
+            continue
+
+        nid = get_node_integer_id(node)
+
+        # Scores
+        if 'foundational_score' in data:
+            meta_values.append(f"({nid}, 'foundational_score', {data['foundational_score']:.4f})")
+        if 'influence_score' in data:
+            meta_values.append(f"({nid}, 'influence_score', {data['influence_score']:.4f})")
+
+        # Difficulty (heuristic if not present)
+        diff = data.get('difficulty_score', 0.5)
+        meta_values.append(f"({nid}, 'difficulty_score', {diff:.4f})")
+
+        # Quran Order (for sorting)
+        # Only for Verse nodes? Or all?
+        # Let's add it for Verse nodes
+        if node.startswith("VERSE:") and len(node.split(":")) == 3:
+             # VERSE:ch:v
+             try:
+                 _, ch, v = node.split(":")
+                 order = int(ch) * 1000 + int(v)
+                 meta_values.append(f"({nid}, 'quran_order', {order})")
+             except:
+                 pass
+
+    for i in range(0, len(meta_values), chunk_size):
+        chunk = meta_values[i:i+chunk_size]
+        lines.append("INSERT OR IGNORE INTO node_metadata (node_id, key, value) VALUES")
+        lines.append(",\n".join(chunk) + ";")
+    lines.append("")
+
+    # GENERATE SQL: GOALS
+    lines.append("-- 7. Populate Goals")
+    lines.append("INSERT OR IGNORE INTO goals (goal_id, goal_type, goal_group, label, description) VALUES")
+    lines.append("('memorization:chapters-1-3', 'custom', 'memorization', 'Memorize Chapters 1-3', 'Master Al-Fatihah, Al-Baqarah, and Al-Imran'),")
+    lines.append("('translation:chapters-1-3', 'custom', 'translation', 'Understand Chapters 1-3', 'Learn meanings of Al-Fatihah, Al-Baqarah, and Al-Imran'),")
+    lines.append("('meaning:chapters-1-3', 'custom', 'meaning', 'Learn Root Meanings', 'Understand Arabic root meanings in Chapters 1-3');")
+    lines.append("")
+
+    lines.append("-- 8. Populate Node Goals")
+    goal_values = []
+
+    # Link memorization nodes to memorization goal
+    # Link translation nodes to translation goal
+    for node in graph.nodes:
+        if node not in seen_ukeys:
+            continue
+
+        nid = get_node_integer_id(node)
+
+        if ":memorization" in node and node.startswith("VERSE:"):
+            goal_values.append(f"('memorization:chapters-1-3', {nid}, 1)")
+        elif ":translation" in node and node.startswith("VERSE:"):
+            goal_values.append(f"('translation:chapters-1-3', {nid}, 1)")
+        elif ":meaning" in node and node.startswith("ROOT:"):
+            goal_values.append(f"('meaning:chapters-1-3', {nid}, 1)")
+
+    for i in range(0, len(goal_values), chunk_size):
+        chunk = goal_values[i:i+chunk_size]
+        lines.append("INSERT OR IGNORE INTO node_goals (goal_id, node_id, priority) VALUES")
+        lines.append(",\n".join(chunk) + ";")
+    lines.append("")
+
+    return "\n".join(lines)
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python score_and_extract.py <graphml_file>")
+        print("Usage: python score_and_extract.py <graphml_file> [output_sql_file]")
         sys.exit(1)
 
     graphml_file = sys.argv[1]
+    output_file = sys.argv[2] if len(sys.argv) > 2 else "migration.sql"
 
     # Load graph
     logger.info(f"Loading graph from {graphml_file}...")
@@ -163,32 +388,27 @@ def main():
     try:
         scoring.calculate_scores(
             alpha=0.85,
-            max_iter=100000,
+            max_iter=100, # Reduced for speed in dev
             personalize_foundational=True,
             personalize_influence=True,
         )
         logger.success("Scoring complete!")
     except Exception as e:
         logger.warning(f"Scoring failed: {e}")
-        logger.info("Continuing with default scores (0.5)...")
 
-    # Extract verse data
-    logger.info("Extracting verse data with scores...")
-    verses = extract_verse_data_with_scores(graph)
-    logger.info(f"Found {len(verses)} unique verses")
-
-    if not verses:
-        logger.error("No verses found! Check graph structure.")
-        sys.exit(1)
-
-    # Generate sequential prerequisites
-    logger.info("Generating sequential prerequisite edges...")
-    edges = generate_sequential_prerequisites(verses)
-    logger.info(f"Generated {len(edges)} prerequisite edges")
+    # Load Offline Quran Data
+    logger.info("Loading offline Quran data...")
+    quran = load_quran_offline(words=True)
 
     # Generate SQL
     logger.info("Generating SQL migration...")
-    generate_sql_migration(verses, edges)
+    sql_content = generate_sql_migration(graph, quran)
+
+    # Save
+    with open(output_file, "w") as f:
+        f.write(sql_content)
+
+    logger.success(f"Migration saved to {output_file}")
 
 if __name__ == '__main__':
     main()

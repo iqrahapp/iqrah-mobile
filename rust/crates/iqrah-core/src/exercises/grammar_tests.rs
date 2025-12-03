@@ -15,7 +15,7 @@ mod tests {
     struct MockContentRepo {
         words_text: HashMap<i64, String>,         // node_id -> text
         words: HashMap<String, Vec<crate::Word>>, // verse_key -> words
-        morphology: HashMap<i32, Vec<crate::MorphologySegment>>, // word_id -> segments
+        morphology: HashMap<i64, Vec<crate::MorphologySegment>>, // word_id -> segments
         roots: HashMap<String, crate::Root>,      // root_id -> root
     }
 
@@ -376,7 +376,7 @@ mod tests {
             Ok(self.words.get(verse_key).cloned().unwrap_or_default())
         }
 
-        async fn get_word(&self, word_id: i32) -> anyhow::Result<Option<Word>> {
+        async fn get_word(&self, word_id: i64) -> anyhow::Result<Option<Word>> {
             // Search through all verses to find the word
             for word_list in self.words.values() {
                 if let Some(word) = word_list.iter().find(|w| w.id == word_id) {
@@ -425,7 +425,7 @@ mod tests {
 
         async fn get_word_translation(
             &self,
-            _word_id: i32,
+            _word_id: i64,
             _translator_id: i32,
         ) -> anyhow::Result<Option<String>> {
             Ok(None)
@@ -509,7 +509,7 @@ mod tests {
 
         async fn get_morphology_for_word(
             &self,
-            word_id: i32,
+            word_id: i64,
         ) -> anyhow::Result<Vec<crate::MorphologySegment>> {
             Ok(self.morphology.get(&word_id).cloned().unwrap_or_default())
         }
@@ -562,8 +562,8 @@ mod tests {
 
         async fn get_words_batch(
             &self,
-            word_ids: &[i32],
-        ) -> anyhow::Result<std::collections::HashMap<i32, crate::Word>> {
+            word_ids: &[i64],
+        ) -> anyhow::Result<std::collections::HashMap<i64, crate::Word>> {
             let mut result = std::collections::HashMap::new();
             for &id in word_ids {
                 if let Some(word) = self.get_word(id).await? {

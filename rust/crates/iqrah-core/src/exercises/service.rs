@@ -63,7 +63,9 @@ impl ExerciseService {
         // Set HF_HOME if cache directory is provided (important for mobile)
         if let Some(dir) = cache_dir {
             tracing::info!("Setting model cache directory (HF_HOME): {}", dir);
-            std::env::set_var("HF_HOME", dir);
+            unsafe {
+                std::env::set_var("HF_HOME", dir);
+            }
         } else {
             tracing::warn!(
                 "No cache directory provided. Using system default. \
@@ -432,7 +434,7 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn get_word(&self, _word_id: i32) -> Result<Option<crate::Word>> {
+        async fn get_word(&self, _word_id: i64) -> Result<Option<crate::Word>> {
             Ok(None)
         }
 
@@ -449,7 +451,7 @@ mod tests {
             Ok(result)
         }
 
-        async fn get_words_batch(&self, word_ids: &[i32]) -> Result<HashMap<i32, crate::Word>> {
+        async fn get_words_batch(&self, word_ids: &[i64]) -> Result<HashMap<i64, crate::Word>> {
             let mut result = HashMap::new();
             for &id in word_ids {
                 if let Some(word) = self.get_word(id).await? {
@@ -492,7 +494,7 @@ mod tests {
 
         async fn get_word_translation(
             &self,
-            _word_id: i32,
+            _word_id: i64,
             _translator_id: i32,
         ) -> Result<Option<String>> {
             Ok(None)
@@ -573,7 +575,7 @@ mod tests {
 
         async fn get_morphology_for_word(
             &self,
-            _word_id: i32,
+            _word_id: i64,
         ) -> Result<Vec<crate::MorphologySegment>> {
             Ok(vec![])
         }
@@ -734,7 +736,7 @@ mod tests {
 
     /// Enhanced mock repository with more test data for V2 tests
     struct MockContentRepoV2 {
-        words: HashMap<i32, crate::Word>,
+        words: HashMap<i64, crate::Word>,
         verses: HashMap<String, crate::Verse>,
         chapters: HashMap<i32, crate::Chapter>,
     }
@@ -888,7 +890,7 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn get_word(&self, word_id: i32) -> Result<Option<crate::Word>> {
+        async fn get_word(&self, word_id: i64) -> Result<Option<crate::Word>> {
             Ok(self.words.get(&word_id).cloned())
         }
 
@@ -905,7 +907,7 @@ mod tests {
             Ok(result)
         }
 
-        async fn get_words_batch(&self, word_ids: &[i32]) -> Result<HashMap<i32, crate::Word>> {
+        async fn get_words_batch(&self, word_ids: &[i64]) -> Result<HashMap<i64, crate::Word>> {
             let mut result = HashMap::new();
             for &id in word_ids {
                 if let Some(word) = self.get_word(id).await? {
@@ -948,7 +950,7 @@ mod tests {
 
         async fn get_word_translation(
             &self,
-            _word_id: i32,
+            _word_id: i64,
             _translator_id: i32,
         ) -> Result<Option<String>> {
             Ok(None)
@@ -1029,7 +1031,7 @@ mod tests {
 
         async fn get_morphology_for_word(
             &self,
-            _word_id: i32,
+            _word_id: i64,
         ) -> Result<Vec<crate::MorphologySegment>> {
             Ok(vec![])
         }

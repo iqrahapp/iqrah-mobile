@@ -1,14 +1,14 @@
 use super::models::{
     CandidateNodeRow, ChapterRow, ContentPackageRow, EdgeRow, GoalRow, InstalledPackageRow,
     LanguageRow, LemmaRow, MorphologySegmentRow, NodeGoalRow, PrerequisiteRow, RootRow,
-    TranslatorRow, VerseRow, VerseTranslationRow, WordRow, WordTranslationRow,
+    TranslatorRow, VerseRow, VerseTranslationRow, WordRow,
 };
 use async_trait::async_trait;
 use chrono::DateTime;
 use iqrah_core::{
-    ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode,
-    Chapter, ContentPackage, ContentRepository, DistributionType, Edge, EdgeType, InstalledPackage,
-    Language, Lemma, MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
+    ports::content_repository::SchedulerGoal, scheduler_v2::CandidateNode, Chapter, ContentPackage,
+    ContentRepository, DistributionType, Edge, EdgeType, InstalledPackage, Language, Lemma,
+    MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
 };
 use sqlx::{query, query_as, SqlitePool};
 use std::collections::HashMap;
@@ -174,7 +174,10 @@ impl ContentRepository for SqliteContentRepository {
         // Step 4: If node exists, register it in the registry for future lookups
         if node.is_some() {
             // Register asynchronously, ignore errors (registry is optimization, not critical)
-            let _ = self.registry.register(id, ukey.to_string(), type_code).await;
+            let _ = self
+                .registry
+                .register(id, ukey.to_string(), type_code)
+                .await;
         }
 
         Ok(node)
@@ -212,58 +215,27 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>> {
-        // V2 schema: Query text from verses or words tables
-        use iqrah_core::domain::node_id as nid;
+        // Default to uthmani script for backwards compatibility
+        self.get_script_content(node_id, "uthmani").await
+    }
 
-        // Detect type first
-        let node_type = match nid::decode_type(node_id) {
-            Some(t) => t,
-            None => return Ok(None),
-        };
+    async fn get_script_content(
+        &self,
+        node_id: i64,
+        script_slug: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let row = query_as::<_, (String,)>(
+            "SELECT sc.text_content
+             FROM script_contents sc
+             JOIN script_resources sr ON sc.resource_id = sr.resource_id
+             WHERE sc.node_id = ? AND sr.slug = ?",
+        )
+        .bind(node_id)
+        .bind(script_slug)
+        .fetch_optional(&self.pool)
+        .await?;
 
-        match node_type {
-            NodeType::Verse => {
-                let (chapter, verse) = nid::decode_verse(node_id)
-                    .ok_or_else(|| anyhow::anyhow!("Invalid verse ID"))?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let row =
-                    query_as::<_, (String,)>("SELECT text_uthmani FROM verses WHERE verse_key = ?")
-                        .bind(&verse_key)
-                        .fetch_optional(&self.pool)
-                        .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            NodeType::Word => {
-                let word_id =
-                    nid::decode_word(node_id).ok_or_else(|| anyhow::anyhow!("Invalid word ID"))?;
-
-                let row =
-                    query_as::<_, (String,)>("SELECT text_uthmani FROM words WHERE word_id = ?")
-                        .bind(word_id)
-                        .fetch_optional(&self.pool)
-                        .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            NodeType::WordInstance => {
-                let (chapter, verse, position) = nid::decode_word_instance(node_id)
-                    .ok_or_else(|| anyhow::anyhow!("Invalid word instance ID"))?;
-                let verse_key = format!("{}:{}", chapter, verse);
-
-                let row = query_as::<_, (String,)>(
-                    "SELECT text_uthmani FROM words WHERE verse_key = ? AND position = ?",
-                )
-                .bind(&verse_key)
-                .bind(position)
-                .fetch_optional(&self.pool)
-                .await?;
-
-                Ok(row.map(|(text,)| text))
-            }
-            _ => Ok(None),
-        }
+        Ok(row.map(|(text,)| text))
     }
 
     async fn get_translation(&self, node_id: i64, lang: &str) -> anyhow::Result<Option<String>> {
@@ -676,13 +648,17 @@ impl ContentRepository for SqliteContentRepository {
         let row = query_as::<_, ChapterRow>(
             "SELECT chapter_number, name_arabic, name_transliteration, name_translation,
                     revelation_place, revelation_order, bismillah_pre, verse_count,
-                    page_start, page_end, created_at
+                    page_start, page_end
              FROM chapters
              WHERE chapter_number = ?",
         )
         .bind(chapter_number)
         .fetch_optional(&self.pool)
         .await?;
+
+        if let Some(ref r) = row {
+            tracing::info!("ChapterRow: {:?}", r);
+        }
 
         Ok(row.map(|r| Chapter {
             number: r.chapter_number,
@@ -720,11 +696,18 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_verse(&self, verse_key: &str) -> anyhow::Result<Option<Verse>> {
         let row = query_as::<_, VerseRow>(
-            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple,
-                    juz, hizb, rub_el_hizb, page, manzil, ruku, sajdah_type, sajdah_number,
-                    letter_count, word_count, created_at
-             FROM verses
-             WHERE verse_key = ?",
+            "SELECT v.verse_key, v.chapter_number, v.verse_number,
+                    sc_uth.text_content as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    v.juz, v.hizb, v.rub_el_hizb, v.page, v.manzil, v.ruku, v.sajdah_type, v.sajdah_number,
+                    v.letter_count, v.word_count, v.created_at
+             FROM verses v
+             JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
+             WHERE v.verse_key = ?",
         )
         .bind(verse_key)
         .fetch_optional(&self.pool)
@@ -743,12 +726,19 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_verses_for_chapter(&self, chapter_number: i32) -> anyhow::Result<Vec<Verse>> {
         let rows = query_as::<_, VerseRow>(
-            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple,
-                    juz, hizb, rub_el_hizb, page, manzil, ruku, sajdah_type, sajdah_number,
-                    letter_count, word_count, created_at
-             FROM verses
-             WHERE chapter_number = ?
-             ORDER BY verse_number",
+            "SELECT v.verse_key, v.chapter_number, v.verse_number,
+                    sc_uth.text_content as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    v.juz, v.hizb, v.rub_el_hizb, v.page, v.manzil, v.ruku, v.sajdah_type, v.sajdah_number,
+                    v.letter_count, v.word_count, v.created_at
+             FROM verses v
+             JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
+             WHERE v.chapter_number = ?
+             ORDER BY v.verse_number",
         )
         .bind(chapter_number)
         .fetch_all(&self.pool)
@@ -770,11 +760,21 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_words_for_verse(&self, verse_key: &str) -> anyhow::Result<Vec<Word>> {
         let rows = query_as::<_, WordRow>(
-            "SELECT word_id, verse_key, position, text_uthmani, text_simple, transliteration,
-                    letter_count, created_at
-             FROM words
-             WHERE verse_key = ?
-             ORDER BY position",
+            "SELECT w.word_id, w.verse_key, w.position,
+                    sc_uth.text_content as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    sc_tr.text_content as transliteration,
+                    w.letter_count, w.created_at
+             FROM words w
+             JOIN nodes n ON n.ukey = 'WORD:' || w.word_id
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
+             LEFT JOIN script_resources sr_tr ON sr_tr.slug = 'transliteration'
+             LEFT JOIN script_contents sc_tr ON sc_tr.node_id = n.id AND sc_tr.resource_id = sr_tr.resource_id
+             WHERE w.verse_key = ?
+             ORDER BY w.position",
         )
         .bind(verse_key)
         .fetch_all(&self.pool)
@@ -793,12 +793,22 @@ impl ContentRepository for SqliteContentRepository {
             .collect())
     }
 
-    async fn get_word(&self, word_id: i32) -> anyhow::Result<Option<Word>> {
+    async fn get_word(&self, word_id: i64) -> anyhow::Result<Option<Word>> {
         let row = query_as::<_, WordRow>(
-            "SELECT word_id, verse_key, position, text_uthmani, text_simple, transliteration,
-                    letter_count, created_at
-             FROM words
-             WHERE word_id = ?",
+            "SELECT w.word_id, w.verse_key, w.position,
+                    sc_uth.text_content as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    sc_tr.text_content as transliteration,
+                    w.letter_count, w.created_at
+             FROM words w
+             JOIN nodes n ON n.ukey = 'WORD:' || w.word_id
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
+             LEFT JOIN script_resources sr_tr ON sr_tr.slug = 'transliteration'
+             LEFT JOIN script_contents sc_tr ON sc_tr.node_id = n.id AND sc_tr.resource_id = sr_tr.resource_id
+             WHERE w.word_id = ?",
         )
         .bind(word_id)
         .fetch_optional(&self.pool)
@@ -827,8 +837,8 @@ impl ContentRepository for SqliteContentRepository {
             .into_iter()
             .map(|r| Language {
                 code: r.language_code,
-                english_name: r.english_name,
-                native_name: r.native_name,
+                english_name: r.english_name.clone(),
+                native_name: r.native_name.unwrap_or(r.english_name),
                 direction: r.direction,
             })
             .collect())
@@ -846,8 +856,8 @@ impl ContentRepository for SqliteContentRepository {
 
         Ok(row.map(|r| Language {
             code: r.language_code,
-            english_name: r.english_name,
-            native_name: r.native_name,
+            english_name: r.english_name.clone(),
+            native_name: r.native_name.unwrap_or(r.english_name),
             direction: r.direction,
         }))
     }
@@ -945,20 +955,18 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_word_translation(
         &self,
-        word_id: i32,
+        word_id: i64,
         translator_id: i32,
     ) -> anyhow::Result<Option<String>> {
-        let row = query_as::<_, WordTranslationRow>(
-            "SELECT word_id, translator_id, translation, created_at
-             FROM word_translations
-             WHERE word_id = ? AND translator_id = ?",
+        let row = query_as::<_, (String,)>(
+            "SELECT translation FROM word_translations WHERE word_id = ? AND translator_id = ?",
         )
         .bind(word_id)
         .bind(translator_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| r.translation))
+        Ok(row.map(|(text,)| text))
     }
 
     async fn insert_translator(
@@ -1245,7 +1253,7 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_morphology_for_word(
         &self,
-        word_id: i32,
+        word_id: i64,
     ) -> anyhow::Result<Vec<MorphologySegment>> {
         let rows = query_as::<_, MorphologySegmentRow>(
             "SELECT segment_id, word_id, position, lemma_id, root_id, pos_tag
@@ -1434,10 +1442,17 @@ impl ContentRepository for SqliteContentRepository {
         // Build placeholders for IN clause
         let placeholders = vec!["?"; verse_keys.len()].join(", ");
         let query_str = format!(
-            "SELECT verse_key, chapter_number, verse_number, text_uthmani, text_simple,
-                    juz, page
-             FROM verses
-             WHERE verse_key IN ({})",
+            "SELECT v.verse_key, v.chapter_number, v.verse_number,
+                    sc_uth.text_content as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    v.juz, v.page
+             FROM verses v
+             JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
+             WHERE v.verse_key IN ({})",
             placeholders
         );
 
@@ -1467,38 +1482,49 @@ impl ContentRepository for SqliteContentRepository {
         Ok(result)
     }
 
-    async fn get_words_batch(&self, word_ids: &[i32]) -> anyhow::Result<HashMap<i32, Word>> {
+    async fn get_words_batch(&self, word_ids: &[i64]) -> anyhow::Result<HashMap<i64, Word>> {
         if word_ids.is_empty() {
             return Ok(HashMap::new());
         }
 
-        // Build placeholders for IN clause
-        let placeholders = vec!["?"; word_ids.len()].join(", ");
+        // Create placeholders for IN clause
+        let placeholders: Vec<String> = word_ids.iter().map(|_| "?".to_string()).collect();
         let query_str = format!(
-            "SELECT word_id, verse_key, position, text_uthmani, text_simple, transliteration
-             FROM words
-             WHERE word_id IN ({})",
-            placeholders
+            "SELECT w.word_id, w.verse_key, w.position,
+                    sc_uth.text_content as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    sc_tr.text_content as transliteration,
+                    w.letter_count, w.created_at
+             FROM words w
+             JOIN nodes n ON n.ukey = 'WORD:' || w.word_id
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
+             LEFT JOIN script_resources sr_tr ON sr_tr.slug = 'transliteration'
+             LEFT JOIN script_contents sc_tr ON sc_tr.node_id = n.id AND sc_tr.resource_id = sr_tr.resource_id
+             WHERE w.word_id IN ({})",
+            placeholders.join(",")
         );
 
-        let mut query = sqlx::query_as::<_, WordRow>(&query_str);
+        let mut query_builder = query_as::<_, WordRow>(&query_str);
         for id in word_ids {
-            query = query.bind(id);
+            query_builder = query_builder.bind(id);
         }
 
-        let rows = query.fetch_all(&self.pool).await?;
+        let rows = query_builder.fetch_all(&self.pool).await?;
 
         let mut result = HashMap::new();
-        for row in rows {
+        for r in rows {
             result.insert(
-                row.word_id,
+                r.word_id,
                 Word {
-                    id: row.word_id,
-                    verse_key: row.verse_key,
-                    position: row.position,
-                    text_uthmani: row.text_uthmani,
-                    text_simple: row.text_simple,
-                    transliteration: row.transliteration,
+                    id: r.word_id,
+                    verse_key: r.verse_key,
+                    position: r.position,
+                    text_uthmani: r.text_uthmani,
+                    text_simple: r.text_simple,
+                    transliteration: r.transliteration,
                 },
             );
         }

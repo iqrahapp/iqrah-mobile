@@ -1,10 +1,10 @@
 use iqrah_core::domain::node_id as nid;
 use iqrah_core::{ContentRepository, NodeType};
-use iqrah_storage::{init_content_db, SqliteContentRepository};
+use iqrah_storage::{create_content_repository, init_test_content_db};
 
 #[tokio::test]
 async fn test_get_node_refactor() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool.clone());
 
     // Test Verse Node
@@ -56,7 +56,7 @@ async fn test_get_node_refactor() {
 
 #[tokio::test]
 async fn test_node_exists_refactor() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     assert!(repo.node_exists(nid::encode_verse(1, 1)).await.unwrap());
@@ -67,7 +67,7 @@ async fn test_node_exists_refactor() {
 
 #[tokio::test]
 async fn test_get_quran_text_refactor() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     let text = repo.get_quran_text(nid::encode_verse(1, 1)).await.unwrap();
@@ -77,7 +77,7 @@ async fn test_get_quran_text_refactor() {
 
 #[tokio::test]
 async fn test_get_translation_refactor() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     let text = repo

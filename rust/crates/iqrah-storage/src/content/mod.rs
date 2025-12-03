@@ -5,6 +5,9 @@ pub mod repository;
 #[cfg(test)]
 mod scheduler_tests;
 
+// Expose test_data module for tests
+pub mod test_data;
+
 pub use node_registry::NodeRegistry;
 pub use repository::SqliteContentRepository;
 
@@ -13,9 +16,8 @@ use crate::version::{get_schema_version, is_compatible};
 use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 
-const EXPECTED_CONTENT_VERSION: &str = "2.0.0";
+const EXPECTED_CONTENT_VERSION: &str = "2.1.0";
 
-/// Initialize content database
 /// Initialize content database
 pub async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
     // FK constraints enabled - all migrations properly handle foreign key references
@@ -45,6 +47,13 @@ pub async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
         EXPECTED_CONTENT_VERSION
     );
 
+    Ok(pool)
+}
+
+/// Initialize content database with test data
+pub async fn init_test_content_db(db_path: &str) -> Result<SqlitePool> {
+    let pool = init_content_db(db_path).await?;
+    test_data::seed_sample_data(&pool).await?;
     Ok(pool)
 }
 

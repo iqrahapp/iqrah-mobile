@@ -1,12 +1,14 @@
 use chrono::Utc;
 use iqrah_core::domain::node_id as nid;
 use iqrah_core::{ContentRepository, MemoryState, UserRepository};
-use iqrah_storage::{init_content_db, init_user_db, SqliteContentRepository, SqliteUserRepository};
+use iqrah_storage::{
+    create_content_repository, init_test_content_db, init_user_db, SqliteUserRepository,
+};
 use sqlx::Row;
 
 #[tokio::test]
 async fn test_content_db_initialization() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Verify v2 schema was created - test with verse queries instead of nodes
@@ -26,24 +28,27 @@ async fn test_user_db_initialization_and_migrations() {
     let pool = init_user_db(":memory:").await.unwrap();
 
     // Check that migrations ran successfully
-    let row = sqlx::query("SELECT value FROM app_settings WHERE key = 'schema_version'")
+    let row = sqlx::query("SELECT version FROM schema_version")
         .fetch_optional(&pool)
         .await
         .unwrap();
 
     assert!(
         row.is_some(),
-        "Migration v2 should have created app_settings table"
+        "Migration v2 should have created schema_version table"
     );
 
-    let version: String = row.unwrap().get("value");
-    assert_eq!(version, "2", "Schema version should be 2 after migrations");
+    let version: String = row.unwrap().get("version");
+    assert_eq!(
+        version, "2.0.0",
+        "Schema version should be 2.0.0 after migrations"
+    );
 }
 
 #[tokio::test]
 async fn test_content_repository_crud() {
     // Test v2 schema CRUD operations using sample data
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Test verse queries (v2 schema)
@@ -227,7 +232,7 @@ async fn test_two_database_integration() {
     // This test demonstrates the two-database architecture working together with v2 schema
 
     // Initialize both databases
-    let content_pool = init_content_db(":memory:").await.unwrap();
+    let content_pool = init_test_content_db(":memory:").await.unwrap();
     let user_pool = init_user_db(":memory:").await.unwrap();
 
     // Create repositories
@@ -247,9 +252,9 @@ async fn test_two_database_integration() {
     let user_state = user_repo.get_memory_state("user1", verse_id).await.unwrap();
     assert!(user_state.is_some());
 
-    // Verify app_settings table exists (migration v2 proof)
+    // Verify schema_version table exists (migration v2 proof)
     let pool = init_user_db(":memory:").await.unwrap();
-    let row = sqlx::query("SELECT value FROM app_settings WHERE key = 'schema_version'")
+    let row = sqlx::query("SELECT version FROM schema_version")
         .fetch_optional(&pool)
         .await
         .unwrap();
@@ -263,7 +268,7 @@ async fn test_two_database_integration() {
 
 #[tokio::test]
 async fn test_v2_chapter_queries() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Test get_chapter with sample data (Al-Fatihah from migration)
@@ -297,7 +302,7 @@ async fn test_v2_chapter_queries() {
 
 #[tokio::test]
 async fn test_v2_verse_queries() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Test get_verse with sample data
@@ -332,7 +337,7 @@ async fn test_v2_verse_queries() {
 
 #[tokio::test]
 async fn test_v2_word_queries() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Test get_words_for_verse with sample data
@@ -366,7 +371,7 @@ async fn test_v2_word_queries() {
 
 #[tokio::test]
 async fn test_v2_language_queries() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Test get_languages
@@ -404,7 +409,7 @@ async fn test_v2_language_queries() {
 
 #[tokio::test]
 async fn test_v2_translator_queries() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Test get_translators_for_language
@@ -443,8 +448,23 @@ async fn test_v2_translator_queries() {
 }
 
 #[tokio::test]
+async fn test_script_content_variants() {
+    let pool = init_test_content_db(":memory:").await.unwrap();
+    let repo = create_content_repository(pool);
+    let verse_id = nid::encode_verse(1, 1);
+
+    let uthmani = repo.get_script_content(verse_id, "uthmani").await.unwrap();
+    assert!(uthmani.is_some());
+    assert!(uthmani.unwrap().contains("بِسْمِ"));
+
+    let simple = repo.get_script_content(verse_id, "simple").await.unwrap();
+    assert!(simple.is_some());
+    assert!(simple.unwrap().contains("بسم الله"));
+}
+
+#[tokio::test]
 async fn test_v2_translation_queries() {
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // Get Sahih International translator ID
@@ -504,7 +524,7 @@ async fn test_v2_full_verse_retrieval() {
     // This test demonstrates the complete v2 query flow:
     // Chapter -> Verses -> Words -> Translations
 
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
     let repo = create_content_repository(pool);
 
     // 1. Get the chapter
@@ -561,7 +581,7 @@ async fn test_v2_full_verse_retrieval() {
 #[tokio::test]
 async fn test_v2_schema_version_validation() {
     // Test that schema version is enforced
-    let pool = init_content_db(":memory:").await.unwrap();
+    let pool = init_test_content_db(":memory:").await.unwrap();
 
     // Verify schema version is 2.0.0
     let version: String = sqlx::query_scalar("SELECT version FROM schema_version")
@@ -569,7 +589,7 @@ async fn test_v2_schema_version_validation() {
         .await
         .unwrap();
     assert_eq!(
-        version, "2.0.0",
-        "Schema version should be 2.0.0 for v2 database"
+        version, "2.1.0",
+        "Schema version should be 2.1.0 for v2 database"
     );
 }

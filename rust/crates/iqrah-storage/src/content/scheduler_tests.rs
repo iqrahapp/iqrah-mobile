@@ -5,7 +5,8 @@
 /// - get_prerequisite_parents: Chunking strategy with various sizes (0, 1, 500, 501, 1000+)
 /// - get_goal: Goal retrieval
 /// - get_nodes_for_goal: Node listing
-use super::repository::SqliteContentRepository;
+use crate::create_content_repository;
+
 use iqrah_core::ContentRepository;
 use sqlx::{query, SqlitePool};
 

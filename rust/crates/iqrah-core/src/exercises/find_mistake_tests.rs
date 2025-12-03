@@ -65,7 +65,7 @@ impl MockContentRepo {
             let mut word_list = Vec::new();
             for (i, word_text) in words.iter().enumerate() {
                 word_list.push(Word {
-                    id: (i + 1) as i32,
+                    id: (i + 1) as i64,
                     verse_key: verse_key.to_string(),
                     position: (i + 1) as i32,
                     text_uthmani: word_text.to_string(),
@@ -187,7 +187,7 @@ impl ContentRepository for MockContentRepo {
         Ok(self.words.get(verse_key).cloned().unwrap_or_default())
     }
 
-    async fn get_word(&self, _word_id: i32) -> anyhow::Result<Option<crate::Word>> {
+    async fn get_word(&self, _word_id: i64) -> anyhow::Result<Option<crate::Word>> {
         Ok(None)
     }
 
@@ -230,7 +230,7 @@ impl ContentRepository for MockContentRepo {
 
     async fn get_word_translation(
         &self,
-        _word_id: i32,
+        _word_id: i64,
         _translator_id: i32,
     ) -> anyhow::Result<Option<String>> {
         Ok(None)
@@ -314,7 +314,7 @@ impl ContentRepository for MockContentRepo {
 
     async fn get_morphology_for_word(
         &self,
-        _word_id: i32,
+        _word_id: i64,
     ) -> anyhow::Result<Vec<crate::MorphologySegment>> {
         Ok(Vec::new())
     }
@@ -367,8 +367,8 @@ impl ContentRepository for MockContentRepo {
 
     async fn get_words_batch(
         &self,
-        word_ids: &[i32],
-    ) -> anyhow::Result<std::collections::HashMap<i32, crate::Word>> {
+        word_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, crate::Word>> {
         let mut result = std::collections::HashMap::new();
         for &id in word_ids {
             if let Some(word) = self.get_word(id).await? {

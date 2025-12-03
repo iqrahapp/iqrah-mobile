@@ -21,6 +21,20 @@ pub trait ContentRepository: Send + Sync {
     /// Get Quranic text (Arabic) for a node
     async fn get_quran_text(&self, node_id: i64) -> anyhow::Result<Option<String>>;
 
+    /// Get script content for a node for a specific script slug (e.g., "uthmani", "simple").
+    /// Default implementation falls back to `get_quran_text` for "uthmani" and returns None otherwise.
+    async fn get_script_content(
+        &self,
+        node_id: i64,
+        script_slug: &str,
+    ) -> anyhow::Result<Option<String>> {
+        if script_slug == "uthmani" {
+            self.get_quran_text(node_id).await
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Get translation for a node in a specific language
     async fn get_translation(&self, node_id: i64, lang: &str) -> anyhow::Result<Option<String>>;
 
@@ -69,7 +83,7 @@ pub trait ContentRepository: Send + Sync {
     async fn get_words_for_verse(&self, verse_key: &str) -> anyhow::Result<Vec<Word>>;
 
     /// Get a specific word by ID
-    async fn get_word(&self, word_id: i32) -> anyhow::Result<Option<Word>>;
+    async fn get_word(&self, word_id: i64) -> anyhow::Result<Option<Word>>;
 
     /// Get all available languages
     async fn get_languages(&self) -> anyhow::Result<Vec<Language>>;
@@ -99,7 +113,7 @@ pub trait ContentRepository: Send + Sync {
     /// Get word translation for a specific translator
     async fn get_word_translation(
         &self,
-        word_id: i32,
+        word_id: i64,
         translator_id: i32,
     ) -> anyhow::Result<Option<String>>;
 
@@ -175,7 +189,7 @@ pub trait ContentRepository: Send + Sync {
     // ========================================================================
 
     /// Get morphology segments for a word
-    async fn get_morphology_for_word(&self, word_id: i32)
+    async fn get_morphology_for_word(&self, word_id: i64)
         -> anyhow::Result<Vec<MorphologySegment>>;
 
     /// Get a root by its ID
@@ -249,7 +263,7 @@ pub trait ContentRepository: Send + Sync {
     ///
     /// # Returns
     /// HashMap mapping word_id -> Word
-    async fn get_words_batch(&self, word_ids: &[i32]) -> anyhow::Result<HashMap<i32, Word>>;
+    async fn get_words_batch(&self, word_ids: &[i64]) -> anyhow::Result<HashMap<i64, Word>>;
 }
 
 /// Represents a learning goal for the scheduler

@@ -34,8 +34,6 @@ pub struct ChapterRow {
     pub verse_count: i32,
     pub page_start: Option<i32>,
     pub page_end: Option<i32>,
-    #[allow(dead_code)]
-    pub created_at: i64,
 }
 
 #[allow(dead_code)]
@@ -63,7 +61,7 @@ pub struct VerseRow {
 #[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
 pub struct WordRow {
-    pub word_id: i32,
+    pub word_id: i64,
     pub verse_key: String,
     pub position: i32,
     pub text_uthmani: String,
@@ -76,47 +74,42 @@ pub struct WordRow {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
+pub struct WordTranslationRow {
+    pub word_id: i64,
+    pub translator_id: i32,
+    pub translation: String,
+    #[allow(dead_code)]
+    pub created_at: i64,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, FromRow)]
+pub struct MorphologySegmentRow {
+    pub segment_id: i32,
+    pub word_id: i64,
+    pub position: i32,
+    pub lemma_id: Option<String>,
+    pub root_id: Option<String>,
+    pub pos_tag: Option<String>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, FromRow)]
 pub struct LanguageRow {
     pub language_code: String,
     pub english_name: String,
-    pub native_name: String,
+    pub native_name: Option<String>,
     pub direction: String,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
-pub struct TranslatorRow {
-    pub translator_id: i32,
-    pub slug: String,
-    pub full_name: String,
-    pub language_code: String,
+pub struct LemmaRow {
+    pub lemma_id: String,
+    pub arabic: String,
+    pub transliteration: Option<String>,
+    pub root_id: Option<String>,
     pub description: Option<String>,
-    pub copyright_holder: Option<String>,
-    pub license: Option<String>,
-    pub website: Option<String>,
-    pub version: String,
-    pub package_id: Option<String>,
-    #[allow(dead_code)]
-    pub created_at: i64,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, FromRow)]
-pub struct VerseTranslationRow {
-    pub verse_key: String,
-    pub translator_id: i32,
-    pub translation: String,
-    pub footnotes: Option<String>,
-    #[allow(dead_code)]
-    pub created_at: i64,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, FromRow)]
-pub struct WordTranslationRow {
-    pub word_id: i32,
-    pub translator_id: i32,
-    pub translation: String,
     #[allow(dead_code)]
     pub created_at: i64,
 }
@@ -135,25 +128,30 @@ pub struct RootRow {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
-pub struct LemmaRow {
-    pub lemma_id: String,
-    pub arabic: String,
-    pub transliteration: Option<String>,
-    pub root_id: Option<String>,
+pub struct TranslatorRow {
+    pub translator_id: i32,
+    pub slug: String,
+    pub full_name: String,
+    pub language_code: String,
     pub description: Option<String>,
+    pub copyright_holder: Option<String>,
+    pub license: Option<String>,
+    pub website: Option<String>,
+    pub version: Option<String>,
+    pub package_id: Option<String>,
     #[allow(dead_code)]
     pub created_at: i64,
 }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
-pub struct MorphologySegmentRow {
-    pub segment_id: i32,
-    pub word_id: i32,
-    pub position: i32,
-    pub lemma_id: Option<String>,
-    pub root_id: Option<String>,
-    pub pos_tag: Option<String>,
+pub struct VerseTranslationRow {
+    pub verse_key: String,
+    pub translator_id: i32,
+    pub translation: String,
+    pub footnotes: Option<String>,
+    #[allow(dead_code)]
+    pub created_at: i64,
 }
 
 // ============================================================================

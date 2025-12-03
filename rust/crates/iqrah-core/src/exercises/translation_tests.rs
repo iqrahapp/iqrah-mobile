@@ -13,7 +13,7 @@ use std::collections::HashMap;
 struct MockContentRepo {
     words_text: HashMap<i64, String>,        // node_id -> text
     words: HashMap<String, Vec<Word>>,       // verse_key -> words
-    word_translations: HashMap<i32, String>, // word_id -> translation
+    word_translations: HashMap<i64, String>, // word_id -> translation
     verses: HashMap<i32, Vec<Verse>>,        // chapter_num -> verses
 }
 
@@ -315,7 +315,7 @@ impl ContentRepository for MockContentRepo {
         Ok(self.words.get(verse_key).cloned().unwrap_or_default())
     }
 
-    async fn get_word(&self, _word_id: i32) -> anyhow::Result<Option<Word>> {
+    async fn get_word(&self, _word_id: i64) -> anyhow::Result<Option<Word>> {
         Ok(None)
     }
 
@@ -358,7 +358,7 @@ impl ContentRepository for MockContentRepo {
 
     async fn get_word_translation(
         &self,
-        word_id: i32,
+        word_id: i64,
         _translator_id: i32,
     ) -> anyhow::Result<Option<String>> {
         Ok(self.word_translations.get(&word_id).cloned())
@@ -442,7 +442,7 @@ impl ContentRepository for MockContentRepo {
 
     async fn get_morphology_for_word(
         &self,
-        _word_id: i32,
+        _word_id: i64,
     ) -> anyhow::Result<Vec<crate::MorphologySegment>> {
         Ok(vec![])
     }
@@ -495,8 +495,8 @@ impl ContentRepository for MockContentRepo {
 
     async fn get_words_batch(
         &self,
-        word_ids: &[i32],
-    ) -> anyhow::Result<std::collections::HashMap<i32, crate::Word>> {
+        word_ids: &[i64],
+    ) -> anyhow::Result<std::collections::HashMap<i64, crate::Word>> {
         let mut result = std::collections::HashMap::new();
         for &id in word_ids {
             if let Some(word) = self.get_word(id).await? {

@@ -399,7 +399,7 @@ mod tests {
         async fn get_words_for_verse(&self, _verse_key: &str) -> Result<Vec<crate::Word>> {
             Ok(vec![])
         }
-        async fn get_word(&self, _word_id: i32) -> Result<Option<crate::Word>> {
+        async fn get_word(&self, _word_id: i64) -> Result<Option<crate::Word>> {
             Ok(None)
         }
         async fn get_verses_batch(
@@ -414,7 +414,7 @@ mod tests {
             }
             Ok(result)
         }
-        async fn get_words_batch(&self, word_ids: &[i32]) -> Result<HashMap<i32, crate::Word>> {
+        async fn get_words_batch(&self, word_ids: &[i64]) -> Result<HashMap<i64, crate::Word>> {
             let mut result = HashMap::new();
             for &id in word_ids {
                 if let Some(word) = self.get_word(id).await? {
@@ -450,7 +450,7 @@ mod tests {
         }
         async fn get_word_translation(
             &self,
-            _word_id: i32,
+            _word_id: i64,
             _translator_id: i32,
         ) -> Result<Option<String>> {
             Ok(None)
@@ -484,7 +484,7 @@ mod tests {
 
         async fn get_morphology_for_word(
             &self,
-            _word_id: i32,
+            _word_id: i64,
         ) -> Result<Vec<crate::MorphologySegment>> {
             Ok(vec![])
         }

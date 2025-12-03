@@ -329,7 +329,7 @@ pub struct Verse {
 /// Represents a word instance within a verse
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Word {
-    pub id: i32,
+    pub id: i64,
     pub verse_key: String,
     pub position: i32,
     pub text_uthmani: String,
@@ -553,7 +553,7 @@ pub struct Lemma {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MorphologySegment {
     pub segment_id: i32,
-    pub word_id: i32,
+    pub word_id: i64,
     pub position: i32,
     pub lemma_id: Option<String>,
     pub root_id: Option<String>,

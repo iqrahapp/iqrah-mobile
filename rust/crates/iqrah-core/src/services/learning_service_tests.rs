@@ -141,7 +141,7 @@ mod tests {
             Ok(vec![])
         }
 
-        async fn get_word(&self, _word_id: i32) -> anyhow::Result<Option<crate::Word>> {
+        async fn get_word(&self, _word_id: i64) -> anyhow::Result<Option<crate::Word>> {
             Ok(None)
         }
 
@@ -184,7 +184,7 @@ mod tests {
 
         async fn get_word_translation(
             &self,
-            _word_id: i32,
+            _word_id: i64,
             _translator_id: i32,
         ) -> anyhow::Result<Option<String>> {
             Ok(None)
@@ -268,7 +268,7 @@ mod tests {
 
         async fn get_morphology_for_word(
             &self,
-            _word_id: i32,
+            _word_id: i64,
         ) -> anyhow::Result<Vec<crate::MorphologySegment>> {
             Ok(vec![])
         }
@@ -321,8 +321,8 @@ mod tests {
 
         async fn get_words_batch(
             &self,
-            word_ids: &[i32],
-        ) -> anyhow::Result<std::collections::HashMap<i32, crate::Word>> {
+            word_ids: &[i64],
+        ) -> anyhow::Result<std::collections::HashMap<i64, crate::Word>> {
             let mut result = std::collections::HashMap::new();
             for &id in word_ids {
                 if let Some(word) = self.get_word(id).await? {

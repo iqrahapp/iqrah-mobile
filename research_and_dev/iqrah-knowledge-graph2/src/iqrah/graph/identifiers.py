@@ -232,5 +232,83 @@ class NodeIdentifierParser:
         return value
 
 
+
+class NodeIdEncoder:
+    """
+    Encodes node IDs into 64-bit integers matching the Rust implementation.
+    See: rust/crates/iqrah-core/src/domain/node_id.rs
+    """
+
+    TYPE_SHIFT = 56
+    TYPE_MASK = 0xFF << TYPE_SHIFT
+
+    TYPE_CHAPTER = 1
+    TYPE_VERSE = 2
+    TYPE_WORD = 3
+    TYPE_WORD_INSTANCE = 4
+    TYPE_KNOWLEDGE = 5
+
+    @staticmethod
+    def encode_chapter(num: int) -> int:
+        return (NodeIdEncoder.TYPE_CHAPTER << NodeIdEncoder.TYPE_SHIFT) | num
+
+    @staticmethod
+    def encode_verse(chapter: int, verse: int) -> int:
+        return (
+            (NodeIdEncoder.TYPE_VERSE << NodeIdEncoder.TYPE_SHIFT)
+            | (chapter << 16)
+            | verse
+        )
+
+    @staticmethod
+    def encode_word(word_id: int) -> int:
+        return (NodeIdEncoder.TYPE_WORD << NodeIdEncoder.TYPE_SHIFT) | word_id
+
+    @staticmethod
+    def encode_word_instance(chapter: int, verse: int, position: int) -> int:
+        return (
+            (NodeIdEncoder.TYPE_WORD_INSTANCE << NodeIdEncoder.TYPE_SHIFT)
+            | (chapter << 32)
+            | (verse << 16)
+            | position
+        )
+
+    @staticmethod
+    def encode_knowledge(base_id: int, axis: "KnowledgeAxis") -> int:
+        # Map axis to ID
+        axis_map = {
+            "memorization": 1,
+            "translation": 2,
+            "tafsir": 3,
+            "tajweed": 4,
+            "contextual_memorization": 5,
+            "meaning": 6,
+        }
+
+        # Handle both enum and string input
+        axis_name = axis.value if hasattr(axis, "value") else str(axis)
+        axis_id = axis_map.get(axis_name)
+        if axis_id is None:
+            raise ValueError(f"Unknown axis: {axis}")
+
+        # Extract base type from high bits (56-63)
+        base_type = (base_id >> NodeIdEncoder.TYPE_SHIFT) & 0xFF
+
+        # Layout:
+        # Bits 56-63 (8): TYPE_KNOWLEDGE
+        # Bits 52-55 (4): Base Type
+        # Bits 48-51 (4): Knowledge Axis
+        # Bits 0-47 (48): Base Payload (base_id without type prefix)
+
+        payload = base_id & 0x0000FFFFFFFFFFFF
+
+        return (
+            (NodeIdEncoder.TYPE_KNOWLEDGE << NodeIdEncoder.TYPE_SHIFT)
+            | (base_type << 52)
+            | (axis_id << 48)
+            | payload
+        )
+
 NIP = NodeIdentifierParser
 NIG = NodeIdentifierGenerator
+NIE = NodeIdEncoder

@@ -140,6 +140,39 @@ def main():
                     std_scale=0.15,
                 )
 
+    # Add ayah-to-ayah memorization edges (within chapter)
+    logger.info("Adding ayah-to-ayah memorization edges...")
+    for chapter_id in tqdm(chapters, desc="Ayah-to-ayah edges", disable=args.no_progress):
+        chapter = quran[NIP.get_chapter_key(chapter_id)]
+
+        for i in range(len(chapter.verses) - 1):
+            current_verse = chapter.verses[i]
+            next_verse = chapter.verses[i + 1]
+
+            current_id = NIG.for_verse(current_verse)
+            next_id = NIG.for_verse(next_verse)
+
+            # Sequential verse memorization edge
+            edge_manager.add_knowledge_edge(
+                f"{current_id}:memorization",
+                f"{next_id}:memorization",
+                Distribution.beta(alpha=3, beta=1.5),  # Strong sequential dependency
+            )
+
+    # Add surah-to-surah memorization edges
+    logger.info("Adding surah-to-surah memorization edges...")
+    chapter_list = sorted(chapters)
+    for i in range(len(chapter_list) - 1):
+        current_chapter = chapter_list[i]
+        next_chapter = chapter_list[i + 1]
+
+        # Sequential chapter memorization edge
+        edge_manager.add_knowledge_edge(
+            f"{current_chapter}:memorization",
+            f"{next_chapter}:memorization",
+            Distribution.beta(alpha=2, beta=2),  # Moderate sequential dependency
+        )
+
     # Add translation edges
     logger.info("Adding translation edges...")
     for chapter_id in tqdm(chapters, desc="Translation edges", disable=args.no_progress):
