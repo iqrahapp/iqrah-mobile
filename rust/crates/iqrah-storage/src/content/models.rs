@@ -26,7 +26,9 @@ pub struct EdgeRow {
 pub struct ChapterRow {
     pub chapter_number: i32,
     pub name_arabic: String,
-    pub name_transliteration: String,
+    #[sqlx(rename = "name_transliterated")]
+    pub name_transliteration: Option<String>,
+    #[sqlx(rename = "name_complex")]
     pub name_translation: String,
     pub revelation_place: Option<String>,
     pub revelation_order: Option<i32>,
