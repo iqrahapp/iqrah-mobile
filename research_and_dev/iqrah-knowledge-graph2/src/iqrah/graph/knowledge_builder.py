@@ -191,6 +191,17 @@ class KnowledgeGraphBuilder:
                     )
                     self.stats["edges_created"] += window_edges
 
+            # Sequential verse memorization
+            verse_nodes = [NIG.for_verse(v) for v in chapter.verses]
+            if verse_nodes:
+                verse_edges = self.edge_manager.add_gaussian_window_edges(
+                    [f"{v}:memorization" for v in verse_nodes],
+                    window_size=1, # Connect to immediate neighbors
+                    base_weight=0.7, # Stronger connection for verses
+                    std_scale=0.1
+                )
+                self.stats["edges_created"] += verse_edges
+
         edges_created = self.stats["edges_created"] - edges_before
         logger.info(f"Created {edges_created} memorization edges")
         return edges_created
