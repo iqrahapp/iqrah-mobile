@@ -707,9 +707,9 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_chapter(&self, chapter_number: i32) -> anyhow::Result<Option<Chapter>> {
         let row = query_as::<_, ChapterRow>(
-            "SELECT chapter_number, name_arabic, name_transliteration, name_translation,
-                    revelation_place, revelation_order, bismillah_pre, verse_count,
-                    page_start, page_end
+            "SELECT chapter_number, name_arabic, name_transliterated, name_complex,
+                    revelation_place, revelation_order, bismillah_pre, verses_count as verse_count,
+                    NULL as page_start, NULL as page_end
              FROM chapters
              WHERE chapter_number = ?",
         )
@@ -724,7 +724,7 @@ impl ContentRepository for SqliteContentRepository {
         Ok(row.map(|r| Chapter {
             number: r.chapter_number,
             name_arabic: r.name_arabic,
-            name_transliteration: r.name_transliteration,
+            name_transliteration: r.name_transliteration.unwrap_or_default(),
             name_translation: r.name_translation,
             revelation_place: r.revelation_place,
             verse_count: r.verse_count,
@@ -733,9 +733,9 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_chapters(&self) -> anyhow::Result<Vec<Chapter>> {
         let rows = query_as::<_, ChapterRow>(
-            "SELECT chapter_number, name_arabic, name_transliteration, name_translation,
-                    revelation_place, revelation_order, bismillah_pre, verse_count,
-                    page_start, page_end, created_at
+            "SELECT chapter_number, name_arabic, name_transliterated, name_complex,
+                    revelation_place, revelation_order, bismillah_pre, verses_count as verse_count,
+                    NULL as page_start, NULL as page_end, created_at
              FROM chapters
              ORDER BY chapter_number",
         )
@@ -747,7 +747,7 @@ impl ContentRepository for SqliteContentRepository {
             .map(|r| Chapter {
                 number: r.chapter_number,
                 name_arabic: r.name_arabic,
-                name_transliteration: r.name_transliteration,
+                name_transliteration: r.name_transliteration.unwrap_or_default(),
                 name_translation: r.name_translation,
                 revelation_place: r.revelation_place,
                 verse_count: r.verse_count,
@@ -758,16 +758,13 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_verse(&self, verse_key: &str) -> anyhow::Result<Option<Verse>> {
         let row = query_as::<_, VerseRow>(
             "SELECT v.verse_key, v.chapter_number, v.verse_number,
-                    sc_uth.text_content as text_uthmani,
-                    sc_sim.text_content as text_simple,
-                    v.juz, v.hizb, v.rub_el_hizb, v.page, v.manzil, v.ruku, v.sajdah_type, v.sajdah_number,
-                    v.letter_count, v.word_count, v.created_at
+                    v.text_uthmani,
+                    NULL as text_simple,
+                    v.juz_number as juz, v.hizb_number as hizb, v.rub_number as rub_el_hizb,
+                    v.page_number as page, v.manzil_number as manzil, v.ruku_number as ruku,
+                    v.sajdah_type, v.sajdah_number,
+                    NULL as letter_count, v.words_count as word_count, 0 as created_at
              FROM verses v
-             JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
-             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
-             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
-             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
-             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
              WHERE v.verse_key = ?",
         )
         .bind(verse_key)
@@ -788,16 +785,13 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_verses_for_chapter(&self, chapter_number: i32) -> anyhow::Result<Vec<Verse>> {
         let rows = query_as::<_, VerseRow>(
             "SELECT v.verse_key, v.chapter_number, v.verse_number,
-                    sc_uth.text_content as text_uthmani,
-                    sc_sim.text_content as text_simple,
-                    v.juz, v.hizb, v.rub_el_hizb, v.page, v.manzil, v.ruku, v.sajdah_type, v.sajdah_number,
-                    v.letter_count, v.word_count, v.created_at
+                    v.text_uthmani,
+                    NULL as text_simple,
+                    v.juz_number as juz, v.hizb_number as hizb, v.rub_number as rub_el_hizb,
+                    v.page_number as page, v.manzil_number as manzil, v.ruku_number as ruku,
+                    v.sajdah_type, v.sajdah_number,
+                    NULL as letter_count, v.words_count as word_count, 0 as created_at
              FROM verses v
-             JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
-             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
-             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
-             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
-             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
              WHERE v.chapter_number = ?
              ORDER BY v.verse_number",
         )
