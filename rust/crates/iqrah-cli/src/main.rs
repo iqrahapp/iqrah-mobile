@@ -8,6 +8,7 @@ mod integrity;
 mod package;
 mod schedule;
 mod translator;
+mod verify_update;
 
 /// Iqrah CLI - Development and testing tool for the Iqrah learning system
 #[derive(Parser)]
@@ -75,6 +76,21 @@ enum Commands {
         /// Verbose output
         #[arg(long, short)]
         verbose: bool,
+    },
+    /// Verify content.db update compatibility with user progress
+    VerifyUpdate {
+        /// Path to old content.db
+        #[arg(long)]
+        old_db: String,
+        /// Path to new content.db
+        #[arg(long)]
+        new_db: String,
+        /// Path to user.db (default: data/user.db)
+        #[arg(long, default_value = "data/user.db")]
+        user_db: String,
+        /// User ID to check (default: "default")
+        #[arg(long, default_value = "default")]
+        user_id: String,
     },
 }
 
@@ -370,6 +386,17 @@ async fn main() -> Result<()> {
         }
         Commands::CheckIntegrity { verbose } => {
             integrity::check_integrity(verbose).await?;
+        }
+        Commands::VerifyUpdate {
+            old_db,
+            new_db,
+            user_db,
+            user_id,
+        } => {
+            let result = verify_update::verify_update(&old_db, &new_db, &user_db, &user_id).await?;
+            if !result.missing_nodes.is_empty() {
+                std::process::exit(1); // Non-zero exit for CI integration
+            }
         }
     }
 
