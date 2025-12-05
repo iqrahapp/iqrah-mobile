@@ -242,3 +242,42 @@ CREATE TABLE experimental_edges (
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     PRIMARY KEY (source_ukey, target_ukey, experiment_name)
 ) STRICT, WITHOUT ROWID;
+
+-- ============================================================================
+-- PACKAGE MANAGEMENT (Downloadable content packages)
+-- ============================================================================
+
+-- Available packages in the catalog
+CREATE TABLE content_packages (
+    package_id TEXT PRIMARY KEY,  -- e.g., 'translation-en-arberry-v1'
+    package_type TEXT NOT NULL CHECK (package_type IN (
+        'verse_translation',
+        'word_translation',
+        'text_variant',
+        'verse_recitation',
+        'word_audio',
+        'transliteration'
+    )),
+    name TEXT NOT NULL,                    -- "The Koran Interpreted (A.J. Arberry)"
+    language_code TEXT,
+    author TEXT,                           -- "A.J. Arberry"
+    version TEXT NOT NULL,                 -- "1.0"
+    description TEXT,
+    file_size INTEGER,                     -- Bytes (for download progress)
+    download_url TEXT,                     -- CDN URL
+    checksum TEXT,                         -- SHA256 for integrity
+    license TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER,
+    FOREIGN KEY (language_code) REFERENCES languages(language_code)
+) STRICT;
+
+CREATE INDEX idx_content_packages_type_lang ON content_packages(package_type, language_code);
+
+-- Installed packages on this device
+CREATE TABLE installed_packages (
+    package_id TEXT PRIMARY KEY,
+    installed_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    FOREIGN KEY (package_id) REFERENCES content_packages(package_id) ON DELETE CASCADE
+) STRICT;
