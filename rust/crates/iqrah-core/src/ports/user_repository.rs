@@ -55,6 +55,34 @@ pub trait UserRepository: Send + Sync {
     async fn set_setting(&self, key: &str, value: &str) -> anyhow::Result<()>;
 
     // ========================================================================
+    // Atomic Review Saving (Task 3.1: Transaction Wrapping)
+    // ========================================================================
+
+    /// Atomically save a review with energy propagation
+    ///
+    /// This method wraps all database operations in a single transaction:
+    /// 1. Save the updated memory state
+    /// 2. Update energies for all propagation targets
+    /// 3. Log the propagation event
+    ///
+    /// If any operation fails, all changes are rolled back.
+    ///
+    /// # Arguments
+    /// * `state` - The memory state to save
+    /// * `energy_updates` - Vec of (node_id, new_energy) pairs to update
+    /// * `propagation_event` - Optional propagation event to log
+    ///
+    /// # Returns
+    /// Ok(()) if all operations succeed, Err if any fail (with rollback)
+    async fn save_review_atomic(
+        &self,
+        user_id: &str,
+        state: &MemoryState,
+        energy_updates: Vec<(i64, f64)>,
+        propagation_event: Option<&PropagationEvent>,
+    ) -> anyhow::Result<()>;
+
+    // ========================================================================
     // Scheduler v2.0 Methods
     // ========================================================================
 

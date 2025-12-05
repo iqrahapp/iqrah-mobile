@@ -455,6 +455,30 @@ mod tests {
         ) -> anyhow::Result<()> {
             Ok(())
         }
+
+        async fn save_review_atomic(
+            &self,
+            _user_id: &str,
+            state: &MemoryState,
+            energy_updates: Vec<(i64, f64)>,
+            propagation_event: Option<&PropagationEvent>,
+        ) -> anyhow::Result<()> {
+            // Simulate atomic operation by doing all updates
+            self.save_memory_state(state).await?;
+
+            for (node_id, new_energy) in energy_updates {
+                let mut states = self.states.lock().unwrap();
+                if let Some(s) = states.get_mut(&node_id) {
+                    s.energy = new_energy;
+                }
+            }
+
+            if let Some(event) = propagation_event {
+                self.log_propagation(event).await?;
+            }
+
+            Ok(())
+        }
     }
 
     #[tokio::test]

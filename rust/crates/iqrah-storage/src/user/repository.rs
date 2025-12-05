@@ -7,7 +7,7 @@ use iqrah_core::{
     scheduler_v2::{BanditArmState, MemoryBasics},
     MemoryState, PropagationEvent, UserRepository,
 };
-use sqlx::{query, query_as, SqlitePool};
+use sqlx::{query, query_as, Sqlite, SqlitePool, Transaction};
 use std::collections::HashMap;
 
 pub struct SqliteUserRepository {
@@ -17,6 +17,111 @@ pub struct SqliteUserRepository {
 impl SqliteUserRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
+    }
+
+    /// Get the underlying pool for transaction creation
+    pub fn pool(&self) -> &SqlitePool {
+        &self.pool
+    }
+
+    // ========================================================================
+    // Transaction-aware methods (for atomic operations)
+    // ========================================================================
+
+    /// Save memory state within an existing transaction
+    pub async fn save_memory_state_in_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        state: &MemoryState,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO user_memory_states
+             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, content_key) DO UPDATE SET
+                stability = excluded.stability,
+                difficulty = excluded.difficulty,
+                energy = excluded.energy,
+                last_reviewed = excluded.last_reviewed,
+                due_at = excluded.due_at,
+                review_count = excluded.review_count",
+        )
+        .bind(&state.user_id)
+        .bind(state.node_id)
+        .bind(state.stability)
+        .bind(state.difficulty)
+        .bind(state.energy)
+        .bind(state.last_reviewed.timestamp_millis())
+        .bind(state.due_at.timestamp_millis())
+        .bind(state.review_count as i64)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update energy within an existing transaction
+    pub async fn update_energy_in_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        user_id: &str,
+        node_id: i64,
+        new_energy: f64,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE user_memory_states SET energy = ? WHERE user_id = ? AND content_key = ?",
+        )
+        .bind(new_energy)
+        .bind(user_id)
+        .bind(node_id)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Log propagation within an existing transaction
+    pub async fn log_propagation_in_tx(
+        tx: &mut Transaction<'_, Sqlite>,
+        event: &PropagationEvent,
+    ) -> anyhow::Result<()> {
+        // Insert event
+        let result = sqlx::query(
+            "INSERT INTO propagation_events (source_content_key, event_timestamp)
+             VALUES (?, ?)",
+        )
+        .bind(event.source_node_id)
+        .bind(event.event_timestamp.timestamp_millis())
+        .execute(&mut **tx)
+        .await?;
+
+        let event_id = result.last_insert_rowid();
+
+        // Insert details
+        for detail in &event.details {
+            sqlx::query(
+                "INSERT INTO propagation_details (event_id, target_content_key, energy_change, reason)
+                 VALUES (?, ?, ?, ?)",
+            )
+            .bind(event_id)
+            .bind(detail.target_node_id)
+            .bind(detail.energy_change)
+            .bind(&detail.reason)
+            .execute(&mut **tx)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    /// Get all unique node IDs from user memory states (for integrity checking)
+    pub async fn get_all_node_ids(&self, user_id: &str) -> anyhow::Result<Vec<i64>> {
+        let rows = query_as::<_, (i64,)>(
+            "SELECT DISTINCT content_key FROM user_memory_states WHERE user_id = ?",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|(id,)| id).collect())
     }
 }
 
@@ -234,6 +339,40 @@ impl UserRepository for SqliteUserRepository {
         .bind(value)
         .execute(&self.pool)
         .await?;
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Task 3.1: Atomic Review Saving (Transaction Wrapping)
+    // ========================================================================
+
+    async fn save_review_atomic(
+        &self,
+        user_id: &str,
+        state: &MemoryState,
+        energy_updates: Vec<(i64, f64)>,
+        propagation_event: Option<&PropagationEvent>,
+    ) -> anyhow::Result<()> {
+        // Begin transaction
+        let mut tx = self.pool.begin().await?;
+
+        // 1. Save the updated memory state
+        Self::save_memory_state_in_tx(&mut tx, state).await?;
+
+        // 2. Apply energy updates to target nodes
+        for (node_id, new_energy) in energy_updates {
+            Self::update_energy_in_tx(&mut tx, user_id, node_id, new_energy).await?;
+        }
+
+        // 3. Log propagation event if provided
+        if let Some(event) = propagation_event {
+            Self::log_propagation_in_tx(&mut tx, event).await?;
+        }
+
+        // Commit transaction - if any step failed, we would have returned early
+        // and the transaction would auto-rollback on drop
+        tx.commit().await?;
 
         Ok(())
     }

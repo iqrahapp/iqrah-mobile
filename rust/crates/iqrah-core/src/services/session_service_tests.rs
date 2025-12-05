@@ -457,6 +457,16 @@ mod tests {
         ) -> anyhow::Result<()> {
             Ok(())
         }
+
+        async fn save_review_atomic(
+            &self,
+            _user_id: &str,
+            _state: &MemoryState,
+            _energy_updates: Vec<(i64, f64)>,
+            _propagation_event: Option<&crate::PropagationEvent>,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
     }
 
     #[tokio::test]

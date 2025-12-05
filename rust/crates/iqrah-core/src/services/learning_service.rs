@@ -23,20 +23,29 @@ impl LearningService {
         }
     }
 
-    /// Process a single review and update memory state
+    /// Process a single review and update memory state atomically
+    /// All database changes are wrapped in a transaction - either all succeed or all rollback
     pub async fn process_review(
         &self,
         user_id: &str,
         node_id: i64,
         grade: ReviewGrade,
     ) -> Result<MemoryState> {
-        // 1. Get or create current memory state
-        let current_state = self.get_or_create_state(user_id, node_id).await?;
+        // Task 3.2: Validate node exists in content.db before processing
+        if !self.content_repo.node_exists(node_id).await? {
+            return Err(anyhow::anyhow!(
+                "Invalid node reference: node {} does not exist in content database",
+                node_id
+            ));
+        }
 
-        // 2. Calculate FSRS update
+        // 1. Get current memory state (read-only, outside transaction)
+        let current_state = self.get_or_create_initial_state(user_id, node_id).await?;
+
+        // 2. Calculate FSRS update (pure computation)
         let new_state = self.update_fsrs_state(current_state.clone(), grade)?;
 
-        // 3. Calculate energy delta
+        // 3. Calculate energy delta (pure computation)
         let energy_delta = calculate_energy_delta(grade, current_state.energy);
         let new_energy = (current_state.energy + energy_delta).clamp(0.0, 1.0);
 
@@ -46,27 +55,40 @@ impl LearningService {
             ..new_state
         };
 
-        // 5. Save the updated state
-        self.user_repo.save_memory_state(&final_state).await?;
+        // 5. Prepare propagation data (read from content.db, outside transaction)
+        let (energy_updates, propagation_event) = if energy_delta.abs() > 0.0001 {
+            self.prepare_propagation(user_id, node_id, energy_delta)
+                .await?
+        } else {
+            (vec![], None)
+        };
 
-        // 6. Propagate energy if significant change
-        if energy_delta.abs() > 0.0001 {
-            self.propagate_energy(user_id, node_id, energy_delta)
-                .await?;
-        }
+        // ====================================================================
+        // Task 3.1: ATOMIC TRANSACTION - All writes via save_review_atomic
+        // ====================================================================
+        self.user_repo
+            .save_review_atomic(
+                user_id,
+                &final_state,
+                energy_updates,
+                propagation_event.as_ref(),
+            )
+            .await?;
 
         Ok(final_state)
     }
 
-    /// Get memory state or create a new one
-    async fn get_or_create_state(&self, user_id: &str, node_id: i64) -> Result<MemoryState> {
+    /// Get memory state or prepare initial state for a new node
+    async fn get_or_create_initial_state(
+        &self,
+        user_id: &str,
+        node_id: i64,
+    ) -> Result<MemoryState> {
         match self.user_repo.get_memory_state(user_id, node_id).await? {
             Some(state) => Ok(state),
             None => {
-                // Lazy creation - only create state on first review
-                let state = MemoryState::new_for_node(user_id.to_string(), node_id);
-                self.user_repo.save_memory_state(&state).await?;
-                Ok(state)
+                // Return a new state - it will be saved in the transaction
+                Ok(MemoryState::new_for_node(user_id.to_string(), node_id))
             }
         }
     }
@@ -119,15 +141,18 @@ impl LearningService {
         })
     }
 
-    /// Propagate energy changes through the knowledge graph
-    async fn propagate_energy(&self, user_id: &str, source_node_id: i64, delta: f64) -> Result<()> {
+    /// Prepare propagation data (reads only, to be applied in transaction)
+    /// Returns: Vec of (target_node_id, new_energy) updates and optional propagation event
+    async fn prepare_propagation(
+        &self,
+        user_id: &str,
+        source_node_id: i64,
+        delta: f64,
+    ) -> Result<(Vec<(i64, f64)>, Option<PropagationEvent>)> {
         // Get edges from this node
         let edges = self.content_repo.get_edges_from(source_node_id).await?;
 
-        if edges.is_empty() {
-            return Ok(());
-        }
-
+        let mut updates = Vec::new();
         let mut details = Vec::new();
 
         for edge in edges {
@@ -144,11 +169,9 @@ impl LearningService {
                 .get_memory_state(user_id, edge.target_id)
                 .await?
             {
-                // Update target energy
+                // Calculate new energy
                 let new_energy = (target_state.energy + propagated_delta).clamp(0.0, 1.0);
-                self.user_repo
-                    .update_energy(user_id, edge.target_id, new_energy)
-                    .await?;
+                updates.push((edge.target_id, new_energy));
 
                 details.push(PropagationDetail {
                     target_node_id: edge.target_id,
@@ -158,18 +181,17 @@ impl LearningService {
             }
         }
 
-        // Log propagation event
-        if !details.is_empty() {
-            let event = PropagationEvent {
-                source_node_id,
-                event_timestamp: Utc::now(),
-                details,
-            };
-
-            self.user_repo.log_propagation(&event).await?;
+        if details.is_empty() {
+            return Ok((updates, None));
         }
 
-        Ok(())
+        let event = PropagationEvent {
+            source_node_id,
+            event_timestamp: Utc::now(),
+            details,
+        };
+
+        Ok((updates, Some(event)))
     }
 
     /// Calculate how much energy propagates through an edge

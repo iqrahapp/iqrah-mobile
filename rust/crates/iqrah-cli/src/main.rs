@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 mod debug;
 mod exercise;
 mod import;
+mod integrity;
 mod package;
 mod schedule;
 mod translator;
@@ -66,6 +67,12 @@ enum Commands {
         #[arg(long)]
         enable_bandit: bool,
         /// Verbose output (show detailed node information and profile weights)
+        #[arg(long, short)]
+        verbose: bool,
+    },
+    /// Check database integrity (find orphaned user records)
+    CheckIntegrity {
+        /// Verbose output
         #[arg(long, short)]
         verbose: bool,
     },
@@ -360,6 +367,9 @@ async fn main() -> Result<()> {
                 verbose,
             )
             .await?;
+        }
+        Commands::CheckIntegrity { verbose } => {
+            integrity::check_integrity(verbose).await?;
         }
     }
 
