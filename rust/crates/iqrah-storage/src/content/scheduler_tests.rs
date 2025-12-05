@@ -394,13 +394,13 @@ async fn test_get_prerequisite_parents_chunking_1000_nodes() {
 }
 
 #[tokio::test]
-async fn test_get_prerequisite_parents_ignores_non_prerequisite_edges() {
+async fn test_get_prerequisite_parents_includes_knowledge_edges() {
     use iqrah_core::domain::node_id as nid;
 
     let pool = create_test_db().await;
     let repo = create_content_repository(pool.clone());
 
-    // Create prerequisite edge (type 0) and other edge types
+    // Create prerequisite edge (type 0) and knowledge edge (type 1)
     let target_id = nid::encode_verse(1, 2);
     let source_id = nid::encode_verse(1, 1);
     let source_id_3 = nid::encode_verse(1, 3);
@@ -426,8 +426,9 @@ async fn test_get_prerequisite_parents_ignores_non_prerequisite_edges() {
 
     assert_eq!(result.len(), 1);
     let parents = result.get(&target_id).unwrap();
-    assert_eq!(parents.len(), 1);
-    assert_eq!(parents[0], source_id); // Only prerequisite edge
+    assert_eq!(parents.len(), 2);
+    assert!(parents.contains(&source_id));
+    assert!(parents.contains(&source_id_3));
 }
 
 #[tokio::test]

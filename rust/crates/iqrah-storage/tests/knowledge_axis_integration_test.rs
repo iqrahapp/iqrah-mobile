@@ -88,7 +88,10 @@ async fn test_sequential_memorization_edges() {
     // Note: The generated graph uses Normal distribution for sequential edges,
     // not Beta as previously specified. We verify existence and distribution type.
     if let Some(edge) = edge {
-        assert!(matches!(edge.distribution_type, iqrah_core::DistributionType::Normal));
+        assert!(matches!(
+            edge.distribution_type,
+            iqrah_core::DistributionType::Normal
+        ));
         // Ensure reasonable parameters
         assert!(edge.param1 > 0.0, "Param1 should be positive");
     } else {

@@ -102,11 +102,12 @@ cd rust
 cargo run --bin iqrah-cli -- init
 
 # --- VERIFICATION QUERIES ---
+# Count nodes by type using knowledge_nodes table
+sqlite3 ~/.local/share/iqrah/content.db "SELECT COUNT(*) FROM knowledge_nodes WHERE axis = 0"
+# Expected: ~493 (0 = Memorization)
 
-# Query physical knowledge nodes for the memorization axis
-sqlite3 ~/.local/share/iqrah/content.db \
-    "SELECT COUNT(*) FROM knowledge_nodes WHERE axis = 0"
-# Should return > 400 (0 is the enum for Memorization)
+sqlite3 ~/.local/share/iqrah/content.db "SELECT COUNT(*) FROM knowledge_nodes WHERE axis = 1"
+# Expected: ~493 (1 = Translation)
 
 # Query edges using INTEGER IDs
 sqlite3 ~/.local/share/iqrah/content.db \

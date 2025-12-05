@@ -44,12 +44,11 @@ impl NodeRegistry {
         }
 
         // Query database
-        let result = sqlx::query_as::<_, (i64, String)>(
-            "SELECT id, ukey FROM nodes WHERE ukey = ?"
-        )
-        .bind(ukey)
-        .fetch_optional(&self.pool)
-        .await?;
+        let result =
+            sqlx::query_as::<_, (i64, String)>("SELECT id, ukey FROM nodes WHERE ukey = ?")
+                .bind(ukey)
+                .fetch_optional(&self.pool)
+                .await?;
 
         if let Some((id, fetched_ukey)) = result {
             // Update both caches
@@ -75,12 +74,10 @@ impl NodeRegistry {
         }
 
         // Query database
-        let result = sqlx::query_as::<_, (i64, String)>(
-            "SELECT id, ukey FROM nodes WHERE id = ?"
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let result = sqlx::query_as::<_, (i64, String)>("SELECT id, ukey FROM nodes WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         if let Some((fetched_id, ukey)) = result {
             // Update both caches
@@ -106,14 +103,12 @@ impl NodeRegistry {
 
     /// Register a new node in the registry (inserts into database and cache)
     pub async fn register(&self, id: i64, ukey: String, node_type: i32) -> anyhow::Result<()> {
-        sqlx::query(
-            "INSERT OR IGNORE INTO nodes (id, ukey, node_type) VALUES (?, ?, ?)"
-        )
-        .bind(id)
-        .bind(&ukey)
-        .bind(node_type)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("INSERT OR IGNORE INTO nodes (id, ukey, node_type) VALUES (?, ?, ?)")
+            .bind(id)
+            .bind(&ukey)
+            .bind(node_type)
+            .execute(&self.pool)
+            .await?;
 
         // Update caches
         let mut ukey_cache = self.ukey_cache.write().await;
@@ -154,7 +149,7 @@ mod tests {
                 id INTEGER PRIMARY KEY,
                 ukey TEXT NOT NULL UNIQUE,
                 node_type INTEGER NOT NULL
-            )"
+            )",
         )
         .execute(&pool)
         .await

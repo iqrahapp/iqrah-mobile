@@ -230,3 +230,15 @@ CREATE TABLE edges (
     FOREIGN KEY (source_id) REFERENCES nodes(id) ON DELETE CASCADE,
     FOREIGN KEY (target_id) REFERENCES nodes(id) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;
+
+-- Experimental edges table for R&D experiments
+-- Python can write experimental edge types here, Rust can read them back
+CREATE TABLE experimental_edges (
+    source_ukey TEXT NOT NULL,
+    target_ukey TEXT NOT NULL,
+    edge_type TEXT NOT NULL,
+    weight REAL NOT NULL DEFAULT 1.0,
+    experiment_name TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    PRIMARY KEY (source_ukey, target_ukey, experiment_name)
+) STRICT, WITHOUT ROWID;

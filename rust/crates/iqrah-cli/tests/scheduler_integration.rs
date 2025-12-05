@@ -4,9 +4,9 @@
 /// including database initialization, session generation, and output.
 use anyhow::Result;
 use iqrah_core::domain::node_id as nid;
-use iqrah_core::{ContentRepository, UserRepository};
+use iqrah_core::{ContentRepository, KnowledgeAxis, UserRepository};
 use iqrah_storage::{
-    create_content_repository, init_content_db,
+    create_content_repository, init_content_db, init_test_content_db,
     user::{init_user_db, SqliteUserRepository},
 };
 use std::path::PathBuf;
@@ -19,7 +19,8 @@ async fn setup_test_databases() -> Result<(TempDir, PathBuf, PathBuf)> {
     let user_db_path = temp_dir.path().join("user.db");
 
     // Initialize databases (migrations will run automatically)
-    let _content_pool = init_content_db(content_db_path.to_str().unwrap()).await?;
+    // Use init_test_content_db to seed sample data required for tests
+    let _content_pool = init_test_content_db(content_db_path.to_str().unwrap()).await?;
     let _user_pool = init_user_db(user_db_path.to_str().unwrap()).await?;
 
     Ok((temp_dir, content_db_path, user_db_path))
@@ -111,7 +112,7 @@ async fn test_scheduler_node_metadata() -> Result<()> {
         .await?;
 
     // Verify first verse (Al-Fatihah 1:1) has high scores
-    let verse_1_1_id = nid::encode_verse(1, 1);
+    let verse_1_1_id = nid::encode_knowledge(nid::encode_verse(1, 1), KnowledgeAxis::Memorization);
     let verse_1_1 = candidates
         .iter()
         .find(|c| c.id == verse_1_1_id)
@@ -158,8 +159,8 @@ async fn test_scheduler_prerequisite_edges() -> Result<()> {
 
     // Verify sequential prerequisites exist
     // 1:2 should have 1:1 as prerequisite
-    let verse_1_2_id = nid::encode_verse(1, 2);
-    let verse_1_1_id = nid::encode_verse(1, 1);
+    let verse_1_2_id = nid::encode_knowledge(nid::encode_verse(1, 2), KnowledgeAxis::Memorization);
+    let verse_1_1_id = nid::encode_knowledge(nid::encode_verse(1, 1), KnowledgeAxis::Memorization);
 
     let prereqs_1_2 = prerequisites.get(&verse_1_2_id);
     assert!(prereqs_1_2.is_some(), "1:2 should have prerequisites");

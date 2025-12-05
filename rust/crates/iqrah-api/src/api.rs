@@ -4,7 +4,9 @@ use iqrah_core::domain::node_id as nid;
 pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
 use iqrah_core::{import_cbor_graph_from_bytes, ReviewGrade};
 pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
-use iqrah_storage::{create_content_repository, init_content_db, init_user_db, SqliteUserRepository};
+use iqrah_storage::{
+    create_content_repository, init_content_db, init_user_db, SqliteUserRepository,
+};
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -190,7 +192,7 @@ pub async fn get_verse(verse_key: String) -> Result<Option<VerseDto>> {
 /// Get word content
 pub async fn get_word(word_id: i32) -> Result<Option<WordDto>> {
     let app = app();
-    let word = app.content_repo.get_word(word_id).await?;
+    let word = app.content_repo.get_word(word_id as i64).await?;
     Ok(word.map(|w| w.into()))
 }
 
@@ -214,7 +216,7 @@ pub async fn get_word_translation(word_id: i32, translator_id: i32) -> Result<Op
     // If get_word_translation is not in ContentRepository, we might need to add it.
     // Let's check ContentRepository first.
     app.content_repo
-        .get_word_translation(word_id, translator_id)
+        .get_word_translation(word_id as i64, translator_id)
         .await
 }
 
@@ -798,8 +800,8 @@ pub struct WordDto {
 
 impl From<iqrah_core::Word> for WordDto {
     fn from(word: iqrah_core::Word) -> Self {
-        Self {
-            id: word.id,
+        WordDto {
+            id: word.id as i32,
             text_uthmani: word.text_uthmani,
             verse_key: word.verse_key,
             position: word.position,

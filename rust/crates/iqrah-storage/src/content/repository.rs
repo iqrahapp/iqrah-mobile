@@ -124,8 +124,7 @@ impl SqliteContentRepository {
                     ukey,
                     node_type: nid::decode_type(node_id).unwrap_or(NodeType::Knowledge),
                 }))
-            }
-            _ => Ok(None), // Other types not supported yet
+            } // _ => Ok(None), // All types handled
         }
     }
 }
@@ -186,8 +185,7 @@ impl ContentRepository for SqliteContentRepository {
                     ukey: ukey.to_string(),
                     node_type: nid::decode_type(id).unwrap_or(NodeType::Knowledge),
                 }));
-            }
-            _ => return Ok(None),
+            } // _ => return Ok(None),
         };
 
         // Step 3: Query content tables
@@ -317,7 +315,7 @@ impl ContentRepository for SqliteContentRepository {
                 let verse_key = format!("{}:{}", chapter, verse);
 
                 let row = query_as::<_, (String,)>(
-                    "SELECT text_translation FROM verse_translations WHERE verse_key = ? AND translator_id = ?",
+                    "SELECT translation FROM verse_translations WHERE verse_key = ? AND translator_id = ?",
                 )
                 .bind(verse_key)
                 .bind(translator_id)
@@ -338,7 +336,7 @@ impl ContentRepository for SqliteContentRepository {
                 let word_id =
                     nid::decode_word(node_id).ok_or_else(|| anyhow::anyhow!("Invalid word ID"))?;
                 let row = query_as::<_, (String,)>(
-                    "SELECT text_translation FROM word_translations WHERE word_id = ? AND translator_id = ?",
+                    "SELECT translation FROM word_translations WHERE word_id = ? AND translator_id = ?",
                 )
                 .bind(word_id)
                 .bind(translator_id)
@@ -707,19 +705,15 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_chapter(&self, chapter_number: i32) -> anyhow::Result<Option<Chapter>> {
         let row = query_as::<_, ChapterRow>(
-            "SELECT chapter_number, name_arabic, name_transliterated, name_complex,
-                    revelation_place, revelation_order, bismillah_pre, verses_count as verse_count,
-                    NULL as page_start, NULL as page_end
+            "SELECT chapter_number, name_arabic, name_transliteration as name_transliterated, name_translation as name_complex,
+                    revelation_place, revelation_order, bismillah_pre, verse_count as verse_count,
+                    page_start, page_end
              FROM chapters
              WHERE chapter_number = ?",
         )
         .bind(chapter_number)
         .fetch_optional(&self.pool)
         .await?;
-
-        if let Some(ref r) = row {
-            tracing::info!("ChapterRow: {:?}", r);
-        }
 
         Ok(row.map(|r| Chapter {
             number: r.chapter_number,
@@ -733,9 +727,9 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn get_chapters(&self) -> anyhow::Result<Vec<Chapter>> {
         let rows = query_as::<_, ChapterRow>(
-            "SELECT chapter_number, name_arabic, name_transliterated, name_complex,
-                    revelation_place, revelation_order, bismillah_pre, verses_count as verse_count,
-                    NULL as page_start, NULL as page_end, created_at
+            "SELECT chapter_number, name_arabic, name_transliteration as name_transliterated, name_translation as name_complex,
+                    revelation_place, revelation_order, bismillah_pre, verse_count as verse_count,
+                    page_start, page_end, created_at
              FROM chapters
              ORDER BY chapter_number",
         )
@@ -758,13 +752,18 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_verse(&self, verse_key: &str) -> anyhow::Result<Option<Verse>> {
         let row = query_as::<_, VerseRow>(
             "SELECT v.verse_key, v.chapter_number, v.verse_number,
-                    v.text_uthmani,
-                    NULL as text_simple,
-                    v.juz_number as juz, v.hizb_number as hizb, v.rub_number as rub_el_hizb,
-                    v.page_number as page, v.manzil_number as manzil, v.ruku_number as ruku,
+                    COALESCE(sc_uth.text_content, '') as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    v.juz as juz, v.hizb as hizb, v.rub_el_hizb as rub_el_hizb,
+                    v.page as page, v.manzil as manzil, v.ruku as ruku,
                     v.sajdah_type, v.sajdah_number,
-                    NULL as letter_count, v.words_count as word_count, 0 as created_at
+                    v.letter_count as letter_count, v.word_count as word_count, 0 as created_at
              FROM verses v
+             LEFT JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
              WHERE v.verse_key = ?",
         )
         .bind(verse_key)
@@ -785,13 +784,18 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_verses_for_chapter(&self, chapter_number: i32) -> anyhow::Result<Vec<Verse>> {
         let rows = query_as::<_, VerseRow>(
             "SELECT v.verse_key, v.chapter_number, v.verse_number,
-                    v.text_uthmani,
-                    NULL as text_simple,
-                    v.juz_number as juz, v.hizb_number as hizb, v.rub_number as rub_el_hizb,
-                    v.page_number as page, v.manzil_number as manzil, v.ruku_number as ruku,
+                    COALESCE(sc_uth.text_content, '') as text_uthmani,
+                    sc_sim.text_content as text_simple,
+                    v.juz as juz, v.hizb as hizb, v.rub_el_hizb as rub_el_hizb,
+                    v.page as page, v.manzil as manzil, v.ruku as ruku,
                     v.sajdah_type, v.sajdah_number,
-                    NULL as letter_count, v.words_count as word_count, 0 as created_at
+                    v.letter_count as letter_count, v.word_count as word_count, 0 as created_at
              FROM verses v
+             LEFT JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
+             LEFT JOIN script_contents sc_sim ON sc_sim.node_id = n.id AND sc_sim.resource_id = sr_sim.resource_id
              WHERE v.chapter_number = ?
              ORDER BY v.verse_number",
         )
@@ -1433,7 +1437,7 @@ impl ContentRepository for SqliteContentRepository {
             let sql = format!(
                 "SELECT target_id AS node_id, source_id AS parent_id
                  FROM edges
-                 WHERE edge_type = 0 AND target_id IN ({})",
+                 WHERE edge_type IN (0, 1) AND target_id IN ({})",
                 placeholders
             );
 

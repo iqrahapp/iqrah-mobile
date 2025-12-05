@@ -126,6 +126,40 @@ pub async fn seed_sample_data(pool: &SqlitePool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // Step 4b: Create Knowledge Axis Nodes (memorization, translation)
+    // Knowledge node type = 5, axis encoding: memorization=1, translation=2, meaning=3
+    // ID encoding: (5 << 56) | (axis << 48) | (chapter << 16) | verse
+    sqlx::query(
+        "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
+            SELECT (CAST(5 AS INTEGER) << 56) | (CAST(2 AS INTEGER) << 52) | (CAST(1 AS INTEGER) << 48) | (chapter_number << 16) | verse_number,
+                'VERSE:' || verse_key || ':memorization',
+                5
+            FROM verses
+            WHERE chapter_number <= 3",
+    )
+    .execute(pool)
+    .await?;
+
+    // Step 4c: Create Sequential Knowledge Edges (with Normal distribution)
+    // Edge from verse N to verse N+1 within same chapter (memorization axis)
+    // distribution_type: 0=Const, 1=Normal, 2=Beta
+    sqlx::query(
+        "INSERT OR IGNORE INTO edges (source_id, target_id, edge_type, distribution_type, param1, param2)
+            SELECT
+                (CAST(5 AS INTEGER) << 56) | (CAST(2 AS INTEGER) << 52) | (CAST(1 AS INTEGER) << 48) | (curr.chapter_number << 16) | curr.verse_number AS source_id,
+                (CAST(5 AS INTEGER) << 56) | (CAST(2 AS INTEGER) << 52) | (CAST(1 AS INTEGER) << 48) | (next.chapter_number << 16) | next.verse_number AS target_id,
+                0 AS edge_type,  -- Dependency edge (was Knowledge edge)
+                1 AS distribution_type,  -- Normal distribution
+                1.0 AS param1,  -- weight/mean
+                0.1 AS param2   -- variance
+            FROM verses curr
+            JOIN verses next ON curr.chapter_number = next.chapter_number
+                            AND next.verse_number = curr.verse_number + 1
+            WHERE curr.chapter_number <= 3",
+    )
+    .execute(pool)
+    .await?;
+
     // Step 5: Insert Script Resources
     let uthmani_id = sqlx::query_scalar::<_, i64>(
         "INSERT INTO script_resources (slug, name, type, direction, description)
@@ -311,7 +345,8 @@ pub async fn seed_sample_data(pool: &SqlitePool) -> Result<()> {
         "INSERT OR IGNORE INTO node_goals (goal_id, node_id, priority)
             SELECT 'memorization:chapters-1-3', id, 1001000
             FROM nodes
-            WHERE ukey LIKE 'VERSE:1:%' OR ukey LIKE 'VERSE:2:%' OR ukey LIKE 'VERSE:3:%'",
+            WHERE (ukey LIKE 'VERSE:1:%' OR ukey LIKE 'VERSE:2:%' OR ukey LIKE 'VERSE:3:%')
+            AND ukey LIKE '%:memorization'",
     )
     .execute(pool)
     .await?;
@@ -325,7 +360,15 @@ pub async fn seed_sample_data(pool: &SqlitePool) -> Result<()> {
             END
             FROM nodes n
             JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key
-            WHERE n.ukey LIKE 'VERSE:%'
+            WHERE n.ukey LIKE 'VERSE:%' AND n.node_type = 2
+            UNION ALL
+            SELECT n.id, 'foundational_score',
+            CASE WHEN v.chapter_number = 1 AND v.verse_number = 1 THEN 0.85
+                ELSE 0.1 + (CAST(v.chapter_number AS REAL) * 0.01) + (CAST(v.verse_number AS REAL) * 0.001)
+            END
+            FROM nodes n
+            JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key || ':memorization'
+            WHERE n.node_type = 5
             UNION ALL
             SELECT n.id, 'influence_score',
             CASE WHEN v.chapter_number = 1 AND v.verse_number = 1 THEN 0.90
@@ -333,17 +376,35 @@ pub async fn seed_sample_data(pool: &SqlitePool) -> Result<()> {
             END
             FROM nodes n
             JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key
-            WHERE n.ukey LIKE 'VERSE:%'
+            WHERE n.ukey LIKE 'VERSE:%' AND n.node_type = 2
+            UNION ALL
+            SELECT n.id, 'influence_score',
+            CASE WHEN v.chapter_number = 1 AND v.verse_number = 1 THEN 0.90
+                ELSE 0.1 + (CAST(v.chapter_number AS REAL) * 0.01) + (CAST(v.verse_number AS REAL) * 0.001)
+            END
+            FROM nodes n
+            JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key || ':memorization'
+            WHERE n.node_type = 5
             UNION ALL
             SELECT n.id, 'difficulty_score', 0.3 + (CAST(v.verse_number AS REAL) * 0.001)
             FROM nodes n
             JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key
-            WHERE n.ukey LIKE 'VERSE:%'
+            WHERE n.ukey LIKE 'VERSE:%' AND n.node_type = 2
+            UNION ALL
+            SELECT n.id, 'difficulty_score', 0.3 + (CAST(v.verse_number AS REAL) * 0.001)
+            FROM nodes n
+            JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key || ':memorization'
+            WHERE n.node_type = 5
             UNION ALL
             SELECT n.id, 'quran_order', CAST(v.chapter_number AS INTEGER) * 1000 + CAST(v.verse_number AS INTEGER)
             FROM nodes n
             JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key
-            WHERE n.ukey LIKE 'VERSE:%'"
+            WHERE n.ukey LIKE 'VERSE:%' AND n.node_type = 2
+            UNION ALL
+            SELECT n.id, 'quran_order', CAST(v.chapter_number AS INTEGER) * 1000 + CAST(v.verse_number AS INTEGER)
+            FROM nodes n
+            JOIN verses v ON n.ukey = 'VERSE:' || v.verse_key || ':memorization'
+            WHERE n.node_type = 5"
     )
     .execute(pool)
     .await?;

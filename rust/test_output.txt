@@ -1,0 +1,48 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s
+     Running tests/integration_tests.rs (target/debug/deps/integration_tests-32e2fb581e21096b)
+
+running 18 tests
+test test_user_db_initialization_and_migrations ... ok
+test test_user_repository_stats ... ok
+test test_user_repository_session_state ... ok
+test test_user_repository_memory_states ... ok
+test test_user_repository_get_due_states ... ok
+test test_update_energy ... ok
+test test_v2_translator_queries ... ok
+test test_content_repository_crud ... ok
+test test_v2_language_queries ... ok
+test test_script_content_variants ... ok
+test test_two_database_integration ... ok
+test test_v2_verse_queries ... ok
+test test_v2_chapter_queries ... FAILED
+test test_v2_schema_version_validation ... ok
+test test_v2_full_verse_retrieval ... FAILED
+test test_v2_word_queries ... ok
+test test_v2_translation_queries ... ok
+test test_content_db_initialization ... ok
+
+failures:
+
+---- test_v2_chapter_queries stdout ----
+
+thread 'test_v2_chapter_queries' (409592) panicked at crates/iqrah-storage/tests/integration_tests.rs:283:5:
+assertion `left == right` failed
+  left: "Al-Fatihah"
+ right: "الفاتحة"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_v2_full_verse_retrieval stdout ----
+
+thread 'test_v2_full_verse_retrieval' (409593) panicked at crates/iqrah-storage/tests/integration_tests.rs:538:5:
+assertion `left == right` failed
+  left: "Al-Fatihah"
+ right: "الفاتحة"
+
+
+failures:
+    test_v2_chapter_queries
+    test_v2_full_verse_retrieval
+
+test result: FAILED. 16 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.89s
+
+error: test failed, to rerun pass `-p iqrah-storage --test integration_tests`
