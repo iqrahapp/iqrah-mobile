@@ -3,6 +3,7 @@
 
 use super::memorization::MemorizationExercise;
 use super::types::Exercise;
+use crate::domain::node_id;
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
 
@@ -43,7 +44,7 @@ impl FullVerseInputExercise {
         };
 
         // Parse node_id to get verse_key
-        // Format: "VERSE:chapter:verse"
+        // Format: PREFIX_VERSE + "chapter:verse" (e.g., "VERSE:1:1")
         let parts: Vec<&str> = base_node_id.split(':').collect();
         if parts.len() != 3 {
             return Err(anyhow::anyhow!(
@@ -63,7 +64,7 @@ impl FullVerseInputExercise {
             .ok_or_else(|| anyhow::anyhow!("Verse text not found: {}", verse_node_id))?;
 
         // Get chapter name
-        let chapter_ukey = format!("CHAPTER:{}", chapter_num);
+        let chapter_ukey = node_id::chapter(chapter_num as u8);
         let chapter_node = content_repo
             .get_node_by_ukey(&chapter_ukey)
             .await?

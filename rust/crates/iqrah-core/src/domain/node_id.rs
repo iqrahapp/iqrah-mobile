@@ -20,6 +20,23 @@ const TYPE_ROOT: i64 = 6;
 const TYPE_LEMMA: i64 = 7;
 
 // ============================================================================
+// PREFIX CONSTANTS (for starts_with / strip_prefix checks)
+// ============================================================================
+
+/// Prefix for chapter node IDs: "CHAPTER:"
+pub const PREFIX_CHAPTER: &str = "CHAPTER:";
+/// Prefix for verse node IDs: "VERSE:"
+pub const PREFIX_VERSE: &str = "VERSE:";
+/// Prefix for word node IDs: "WORD:"
+pub const PREFIX_WORD: &str = "WORD:";
+/// Prefix for word instance node IDs: "WORD_INSTANCE:"
+pub const PREFIX_WORD_INSTANCE: &str = "WORD_INSTANCE:";
+/// Prefix for root node IDs: "ROOT:"
+pub const PREFIX_ROOT: &str = "ROOT:";
+/// Prefix for lemma node IDs: "LEMMA:"
+pub const PREFIX_LEMMA: &str = "LEMMA:";
+
+// ============================================================================
 // BUILDER FUNCTIONS (Infallible)
 // ============================================================================
 
@@ -62,6 +79,22 @@ pub fn root(text: &str) -> String {
 /// Build a lemma node ID: "LEMMA:ال"
 pub fn lemma(text: &str) -> String {
     format!("LEMMA:{}", text)
+}
+
+/// Build verse ukey from key string: "1:1" -> "VERSE:1:1"
+pub fn verse_from_key(verse_key: &str) -> String {
+    format!("{}{}", PREFIX_VERSE, verse_key)
+}
+
+/// Build a chapter range node ID: "CHAPTER:1:1:7" (for verse ranges within a chapter)
+pub fn chapter_range(chapter: u8, start_verse: u16, end_verse: u16) -> String {
+    debug_assert!((1..=114).contains(&chapter), "Chapter must be 1-114");
+    debug_assert!(start_verse >= 1, "Start verse must be >= 1");
+    debug_assert!(end_verse >= start_verse, "End verse must be >= start verse");
+    format!(
+        "{}{}:{}:{}",
+        PREFIX_CHAPTER, chapter, start_verse, end_verse
+    )
 }
 
 // ============================================================================

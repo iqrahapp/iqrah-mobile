@@ -2,6 +2,7 @@
 // Exercise 20: Translate Phrase (Text Input) - Type English translation for Arabic phrase/verse
 
 use super::types::Exercise;
+use crate::domain::node_id::{PREFIX_VERSE, PREFIX_WORD_INSTANCE};
 use crate::ContentRepository;
 use anyhow::Result;
 
@@ -39,7 +40,7 @@ impl TranslatePhraseExercise {
             .ok_or_else(|| anyhow::anyhow!("Arabic text not found: {}", node_id))?;
 
         // Determine verse_key and get translation
-        let (verse_key, correct_translation) = if ukey.starts_with("VERSE:") {
+        let (verse_key, correct_translation) = if ukey.starts_with(PREFIX_VERSE) {
             // Verse-level exercise
             let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() != 3 {
@@ -51,7 +52,7 @@ impl TranslatePhraseExercise {
                 .await?
                 .ok_or_else(|| anyhow::anyhow!("Verse translation not found for: {}", vk))?;
             (Some(vk), translation)
-        } else if ukey.starts_with("WORD_INSTANCE:") {
+        } else if ukey.starts_with(PREFIX_WORD_INSTANCE) {
             // Word-level exercise (phrase)
             let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() != 4 {

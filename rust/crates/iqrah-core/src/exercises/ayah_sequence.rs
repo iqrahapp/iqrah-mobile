@@ -2,6 +2,7 @@
 // Exercise 4: Ayah Sequence (MCQ) - "Which verse comes next?"
 
 use super::types::Exercise;
+use crate::domain::node_id::{self, PREFIX_VERSE};
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
 use rand::seq::SliceRandom;
@@ -47,7 +48,7 @@ impl AyahSequenceExercise {
         // Extract verse key from node ID
         // Format: "VERSE:chapter:verse"
         let current_verse_key = base_node_id
-            .strip_prefix("VERSE:")
+            .strip_prefix(PREFIX_VERSE)
             .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", base_node_id))?
             .to_string();
 
@@ -89,7 +90,7 @@ impl AyahSequenceExercise {
         // We need the ID of the next verse to get its text using get_quran_text(i64)
         // But we only have the verse key.
         // We can construct the ukey "VERSE:key" and look it up.
-        let correct_next_verse_ukey = format!("VERSE:{}", correct_next_verse_key);
+        let correct_next_verse_ukey = node_id::verse_from_key(&correct_next_verse_key);
         let next_verse_node = content_repo
             .get_node_by_ukey(&correct_next_verse_ukey)
             .await?
@@ -150,7 +151,7 @@ impl AyahSequenceExercise {
 
         // Take first 3 candidates
         for verse in candidate_verses.iter().take(3) {
-            let verse_ukey = format!("VERSE:{}", verse.key);
+            let verse_ukey = node_id::verse_from_key(&verse.key);
             if let Some(node) = content_repo.get_node_by_ukey(&verse_ukey).await? {
                 if let Some(text) = content_repo.get_quran_text(node.id).await? {
                     distractors.push((verse.key.clone(), text));

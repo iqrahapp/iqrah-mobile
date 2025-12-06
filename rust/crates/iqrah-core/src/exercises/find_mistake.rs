@@ -2,6 +2,7 @@
 // Exercise 11: Find the Mistake - Verse with one subtle word substitution
 
 use super::types::Exercise;
+use crate::domain::node_id::PREFIX_VERSE;
 use crate::{ContentRepository, Word};
 use anyhow::Result;
 use rand::seq::SliceRandom;
@@ -42,10 +43,10 @@ impl FindMistakeExercise {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Node not found: {}", verse_node_id))?;
 
-        // Parse verse_key from node_id (format: "VERSE:chapter:verse")
+        // Parse verse_key from node_id (format: PREFIX_VERSE + "chapter:verse")
         let verse_key = node
             .ukey
-            .strip_prefix("VERSE:")
+            .strip_prefix(PREFIX_VERSE)
             .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
             .to_string();
 

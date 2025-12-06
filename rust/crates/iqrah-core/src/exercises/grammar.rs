@@ -43,7 +43,7 @@ impl IdentifyRootExercise {
             .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", word_node_id))?;
 
         // Parse node_id to get verse_key and position
-        // Format: "WORD_INSTANCE:chapter:verse:position"
+        // Format: PREFIX_WORD_INSTANCE + "chapter:verse:position" (e.g., "WORD_INSTANCE:1:1:3")
         let parts: Vec<&str> = base_ukey.split(':').collect();
         if parts.len() != 4 {
             return Err(anyhow::anyhow!(

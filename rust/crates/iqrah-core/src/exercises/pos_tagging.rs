@@ -2,6 +2,7 @@
 // Exercise 22: Part of Speech Tagging - Identify word as Noun/Verb/Particle
 
 use super::types::Exercise;
+use crate::domain::node_id;
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
 use rand::seq::SliceRandom;
@@ -44,7 +45,7 @@ impl PosTaggingExercise {
         };
 
         // Parse node_id to get verse_key and word position
-        // Format: "WORD_INSTANCE:chapter:verse:position"
+        // Format: PREFIX_WORD_INSTANCE + "chapter:verse:position" (e.g., "WORD_INSTANCE:1:1:3")
         let parts: Vec<&str> = base_node_id.split(':').collect();
         if parts.len() != 4 {
             return Err(anyhow::anyhow!(
@@ -87,7 +88,7 @@ impl PosTaggingExercise {
             .ok_or_else(|| anyhow::anyhow!("No POS tag found for word ID {}", word.id))?;
 
         // Get verse context
-        let verse_ukey = format!("VERSE:{}", verse_key);
+        let verse_ukey = node_id::verse_from_key(&verse_key);
         let verse_node = content_repo
             .get_node_by_ukey(&verse_ukey)
             .await?

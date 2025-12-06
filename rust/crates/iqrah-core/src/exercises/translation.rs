@@ -2,6 +2,7 @@
 // Translation exercises: "What does this mean?"
 
 use super::types::Exercise;
+use crate::domain::node_id;
 use crate::semantic::grader::{SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
@@ -151,7 +152,7 @@ impl ContextualTranslationExercise {
             .ok_or_else(|| anyhow::anyhow!("Word text not found for node: {}", word_node_id))?;
 
         // Parse node_id to get verse_key
-        // Format: "WORD_INSTANCE:chapter:verse:position"
+        // Format: PREFIX_WORD_INSTANCE + "chapter:verse:position" (e.g., "WORD_INSTANCE:1:1:3")
         let parts: Vec<&str> = base_ukey.split(':').collect();
         if parts.len() != 4 {
             return Err(anyhow::anyhow!(
@@ -165,7 +166,7 @@ impl ContextualTranslationExercise {
         let verse_key = format!("{}:{}", chapter, verse_num);
 
         // Get verse text for context
-        let verse_node_ukey = format!("VERSE:{}", verse_key);
+        let verse_node_ukey = node_id::verse_from_key(&verse_key);
         let verse_node = content_repo
             .get_node_by_ukey(&verse_node_ukey)
             .await?

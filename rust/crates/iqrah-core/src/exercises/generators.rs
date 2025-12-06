@@ -8,6 +8,7 @@
 // 4. Full text is fetched later during question generation
 
 use super::exercise_data::ExerciseData;
+use crate::domain::node_id::{self, PREFIX_CHAPTER, PREFIX_VERSE};
 use crate::{ContentRepository, KnowledgeNode, Node};
 use anyhow::Result;
 use rand::seq::SliceRandom;
@@ -50,7 +51,7 @@ pub async fn generate_mcq_ar_to_en(
     };
 
     // Parse ukey to extract verse location
-    // Format: "WORD_INSTANCE:chapter:verse:position"
+    // Format: PREFIX_WORD_INSTANCE + "chapter:verse:position" (e.g., "WORD_INSTANCE:1:1:3")
     let parts: Vec<&str> = base_ukey.split(':').collect();
     if parts.len() != 4 {
         return Err(anyhow::anyhow!("Invalid word ukey format: {}", base_ukey));
@@ -68,7 +69,8 @@ pub async fn generate_mcq_ar_to_en(
     let mut distractor_nodes: Vec<Node> = Vec::new();
 
     for word in words.iter().filter(|w| w.position != position) {
-        let distractor_ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, word.position);
+        let distractor_ukey =
+            node_id::word_instance(chapter as u8, verse as u16, word.position as u8);
         if let Some(node) = content_repo.get_node_by_ukey(&distractor_ukey).await? {
             distractor_nodes.push(node);
         }
@@ -82,7 +84,7 @@ pub async fn generate_mcq_ar_to_en(
         {
             for word in next_words.iter().take(3 - distractor_nodes.len()) {
                 let distractor_ukey =
-                    format!("WORD_INSTANCE:{}:{}:{}", chapter, verse + 1, word.position);
+                    node_id::word_instance(chapter as u8, (verse + 1) as u16, word.position as u8);
                 if let Some(node) = content_repo.get_node_by_ukey(&distractor_ukey).await? {
                     distractor_nodes.push(node);
                 }
@@ -130,7 +132,8 @@ pub async fn generate_mcq_en_to_ar(
 
     let mut distractor_nodes: Vec<Node> = Vec::new();
     for word in words.iter().filter(|w| w.position != position) {
-        let distractor_ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, word.position);
+        let distractor_ukey =
+            node_id::word_instance(chapter as u8, verse as u16, word.position as u8);
         if let Some(node) = content_repo.get_node_by_ukey(&distractor_ukey).await? {
             distractor_nodes.push(node);
         }
@@ -205,7 +208,7 @@ pub async fn generate_cloze_deletion(
     // Parse verse_key from node_id
     let verse_key = node
         .ukey
-        .strip_prefix("VERSE:")
+        .strip_prefix(PREFIX_VERSE)
         .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
@@ -245,7 +248,7 @@ pub async fn generate_first_letter_hint(
 
     let verse_key = node
         .ukey
-        .strip_prefix("VERSE:")
+        .strip_prefix(PREFIX_VERSE)
         .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
@@ -278,7 +281,7 @@ pub async fn generate_missing_word_mcq(
 
     let verse_key = node
         .ukey
-        .strip_prefix("VERSE:")
+        .strip_prefix(PREFIX_VERSE)
         .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
@@ -300,7 +303,7 @@ pub async fn generate_missing_word_mcq(
 
     let mut distractor_nodes: Vec<Node> = Vec::new();
     for w in words.iter().filter(|w| w.position != blank_position) {
-        let ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position);
+        let ukey = node_id::word_instance(chapter as u8, verse as u16, w.position as u8);
         if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
             distractor_nodes.push(node);
         }
@@ -331,7 +334,7 @@ pub async fn generate_next_word_mcq(
 
     let verse_key = node
         .ukey
-        .strip_prefix("VERSE:")
+        .strip_prefix(PREFIX_VERSE)
         .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 
@@ -354,7 +357,7 @@ pub async fn generate_next_word_mcq(
 
     let mut distractor_nodes: Vec<Node> = Vec::new();
     for w in words.iter().filter(|w| w.position != context_position + 1) {
-        let ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position);
+        let ukey = node_id::word_instance(chapter as u8, verse as u16, w.position as u8);
         if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
             distractor_nodes.push(node);
         }
@@ -394,7 +397,7 @@ pub async fn generate_ayah_chain(
 ) -> Result<ExerciseData> {
     // Parse chapter number
     let chapter_num: i32 = ukey
-        .strip_prefix("CHAPTER:")
+        .strip_prefix(PREFIX_CHAPTER)
         .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID: {}", ukey))?
         .parse()?;
 
@@ -442,7 +445,7 @@ pub async fn generate_ayah_chain_range(
         ));
     }
 
-    let ukey = format!("CHAPTER:{}:{}:{}", chapter_num, start_verse, end_verse);
+    let ukey = node_id::chapter_range(chapter_num as u8, start_verse as u16, end_verse as u16);
     let node = content_repo
         .get_node_by_ukey(&ukey)
         .await?
@@ -467,7 +470,7 @@ pub async fn generate_find_mistake(
     content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
     let verse_key = ukey
-        .strip_prefix("VERSE:")
+        .strip_prefix(PREFIX_VERSE)
         .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", ukey))?
         .to_string();
 
@@ -501,9 +504,10 @@ pub async fn generate_find_mistake(
         .find(|w| w.position == mistake_position)
         .ok_or_else(|| anyhow::anyhow!("Word not found at position {}", mistake_position))?;
 
-    let correct_word_ukey = format!(
-        "WORD_INSTANCE:{}:{}:{}",
-        chapter_num, verse_num, correct_word.position
+    let correct_word_ukey = node_id::word_instance(
+        chapter_num as u8,
+        verse_num as u16,
+        correct_word.position as u8,
     );
     let correct_word_node = content_repo
         .get_node_by_ukey(&correct_word_ukey)
@@ -521,7 +525,11 @@ pub async fn generate_find_mistake(
             for word in other_words {
                 if word.text_uthmani != correct_word.text_uthmani {
                     let parts: Vec<&str> = verse.key.split(':').collect();
-                    let ukey = format!("WORD_INSTANCE:{}:{}:{}", parts[0], parts[1], word.position);
+                    let ukey = node_id::word_instance(
+                        parts[0].parse().unwrap_or(1),
+                        parts[1].parse().unwrap_or(1),
+                        word.position as u8,
+                    );
                     if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
                         candidate_nodes.push(node);
                     }
@@ -561,11 +569,11 @@ pub async fn generate_ayah_sequence(
         .ok_or_else(|| anyhow::anyhow!("Node not found: {}", node_id))?;
 
     // Can be chapter-level or verse-level (word sequence)
-    if node.ukey.starts_with("CHAPTER:") {
+    if node.ukey.starts_with(PREFIX_CHAPTER) {
         // Sequence of verses
         let chapter_num: i32 = node
             .ukey
-            .strip_prefix("CHAPTER:")
+            .strip_prefix(PREFIX_CHAPTER)
             .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID"))?
             .parse()?;
 
@@ -574,7 +582,7 @@ pub async fn generate_ayah_sequence(
         // For now, take first 5 verses
         let mut correct_sequence: Vec<i64> = Vec::new();
         for v in verses.iter().take(5) {
-            let ukey = format!("VERSE:{}", v.key);
+            let ukey = node_id::verse_from_key(&v.key);
             if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
                 correct_sequence.push(node.id);
             }
@@ -588,11 +596,11 @@ pub async fn generate_ayah_sequence(
             node_id,
             correct_sequence,
         })
-    } else if node.ukey.starts_with("VERSE:") {
+    } else if node.ukey.starts_with(PREFIX_VERSE) {
         // Sequence of words within a verse
         let verse_key = node
             .ukey
-            .strip_prefix("VERSE:")
+            .strip_prefix(PREFIX_VERSE)
             .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID"))?;
 
         let words = content_repo.get_words_for_verse(verse_key).await?;
@@ -603,7 +611,7 @@ pub async fn generate_ayah_sequence(
 
         let mut correct_sequence: Vec<i64> = Vec::new();
         for w in words {
-            let ukey = format!("WORD_INSTANCE:{}:{}:{}", chapter, verse, w.position);
+            let ukey = node_id::word_instance(chapter as u8, verse as u16, w.position as u8);
             if let Some(node) = content_repo.get_node_by_ukey(&ukey).await? {
                 correct_sequence.push(node.id);
             }
@@ -704,7 +712,7 @@ pub async fn generate_reverse_cloze(
 
     let verse_key = node
         .ukey
-        .strip_prefix("VERSE:")
+        .strip_prefix(PREFIX_VERSE)
         .ok_or_else(|| anyhow::anyhow!("Invalid verse node ID: {}", node.ukey))?
         .to_string();
 

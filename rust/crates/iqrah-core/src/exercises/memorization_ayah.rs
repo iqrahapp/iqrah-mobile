@@ -85,7 +85,7 @@ impl MemorizationAyahExercise {
         let mut words = Vec::new();
         for edge in edges {
             let target_ukey = nid::to_ukey(edge.target_id).unwrap_or_default();
-            if target_ukey.starts_with("WORD:") {
+            if target_ukey.starts_with(nid::PREFIX_WORD) {
                 let word_text = content_repo
                     .get_quran_text(edge.target_id)
                     .await?

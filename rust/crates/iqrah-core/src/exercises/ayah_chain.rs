@@ -3,6 +3,7 @@
 
 use super::memorization::MemorizationExercise;
 use super::types::Exercise;
+use crate::domain::node_id::{self, PREFIX_CHAPTER};
 use crate::{ContentRepository, Verse};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -48,10 +49,10 @@ impl AyahChainExercise {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Node not found: {}", chapter_node_id))?;
 
-        // Parse chapter number from node_id (format: "CHAPTER:n")
+        // Parse chapter number from node_id (format: PREFIX_CHAPTER + "n", e.g., "CHAPTER:1")
         let chapter_num: i32 = node
             .ukey
-            .strip_prefix("CHAPTER:")
+            .strip_prefix(PREFIX_CHAPTER)
             .ok_or_else(|| anyhow::anyhow!("Invalid chapter node ID: {}", node.ukey))?
             .parse()?;
 
@@ -103,7 +104,7 @@ impl AyahChainExercise {
         }
 
         // Get chapter node ID
-        let chapter_ukey = format!("CHAPTER:{}", chapter_num);
+        let chapter_ukey = node_id::chapter(chapter_num as u8);
         let node = content_repo
             .get_node_by_ukey(&chapter_ukey)
             .await?

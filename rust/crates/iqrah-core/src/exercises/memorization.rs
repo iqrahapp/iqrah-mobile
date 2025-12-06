@@ -2,6 +2,7 @@
 // Memorization exercises for Quranic learning
 
 use super::types::Exercise;
+use crate::domain::node_id::{self, PREFIX_VERSE, PREFIX_WORD};
 use crate::semantic::grader::{SemanticGradeLabel, SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
@@ -37,10 +38,11 @@ impl MemorizationExercise {
             .ok_or_else(|| anyhow::anyhow!("Word text not found for node ID: {}", base_id))?;
 
         // Try to get verse context for hints by parsing the ukey
-        let verse_context = if ukey.starts_with("WORD:") {
+        let verse_context = if ukey.starts_with(PREFIX_WORD) {
             let parts: Vec<&str> = ukey.split(':').collect();
             if parts.len() >= 3 {
-                let verse_ukey = format!("VERSE:{}:{}", parts[1], parts[2]);
+                let verse_ukey =
+                    node_id::verse(parts[1].parse().unwrap_or(1), parts[2].parse().unwrap_or(1));
                 // To get the verse text, we'd need to look up its i64 ID first.
                 // This is a simplification for now. A more robust solution might involve
                 // a `get_node_by_ukey` call to get the verse's i64 ID.
@@ -231,7 +233,7 @@ impl NextWordMcqExercise {
 
         // Extract verse key from node ID (e.g., "VERSE:1:1" -> "1:1")
         let verse_key = base_node_id
-            .strip_prefix("VERSE:")
+            .strip_prefix(PREFIX_VERSE)
             .unwrap_or(&base_node_id)
             .to_string();
 

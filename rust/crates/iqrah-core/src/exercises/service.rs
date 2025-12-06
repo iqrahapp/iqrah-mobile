@@ -8,6 +8,7 @@ use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
 use super::translation::{ContextualTranslationExercise, TranslationExercise};
 use super::types::{Exercise, ExerciseResponse, ExerciseType};
+use crate::domain::node_id::{PREFIX_CHAPTER, PREFIX_VERSE, PREFIX_WORD, PREFIX_WORD_INSTANCE};
 use crate::semantic::grader::{SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::semantic::SemanticEmbedder;
 use crate::{ContentRepository, KnowledgeAxis, KnowledgeNode};
@@ -162,13 +163,13 @@ impl ExerciseService {
     /// - Exercise variety (randomization)
     pub async fn generate_exercise_v2(&self, node_id: i64, ukey: &str) -> Result<ExerciseData> {
         // Route based on node type prefix
-        if ukey.starts_with("WORD:") || ukey.starts_with("WORD_INSTANCE:") {
+        if ukey.starts_with(PREFIX_WORD) || ukey.starts_with(PREFIX_WORD_INSTANCE) {
             // Word-level exercises
             generators::generate_memorization(node_id, ukey, &*self.content_repo).await
-        } else if ukey.starts_with("VERSE:") {
+        } else if ukey.starts_with(PREFIX_VERSE) {
             // Verse-level exercises
             generators::generate_full_verse_input(node_id, ukey, &*self.content_repo).await
-        } else if ukey.starts_with("CHAPTER:") {
+        } else if ukey.starts_with(PREFIX_CHAPTER) {
             // Chapter-level exercises
             generators::generate_ayah_chain(node_id, ukey, &*self.content_repo).await
         } else {
