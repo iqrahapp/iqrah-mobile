@@ -227,14 +227,244 @@ impl Exercise for AyahSequenceExercise {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_placeholder() {
-        // Ayah sequence tests require full database setup
-        // See ayah_sequence_tests.rs for comprehensive tests
+    use super::*;
+    use crate::testing::MockContentRepository;
+    use crate::{Node, NodeType, Verse};
+    use mockall::predicate::*;
+
+    /// Helper function to create mock with Al-Fatihah data for ayah sequence tests
+    fn create_mock_for_ayah_sequence() -> MockContentRepository {
+        let mut mock = MockContentRepository::new();
+
+        // Setup get_node for verse lookups (node IDs 11-17 for verses 1:1-1:7)
+        mock.expect_get_node().returning(|node_id| {
+            let verse_num = (node_id - 10) as i32;
+            if verse_num >= 1 && verse_num <= 7 {
+                Ok(Some(Node {
+                    id: node_id,
+                    ukey: format!("VERSE:1:{}", verse_num),
+                    node_type: NodeType::Verse,
+                }))
+            } else {
+                Ok(None)
+            }
+        });
+
+        // Setup get_node_by_ukey
+        mock.expect_get_node_by_ukey().returning(|ukey| {
+            if ukey.starts_with("VERSE:1:") {
+                let verse_num: i64 = ukey.strip_prefix("VERSE:1:").unwrap().parse().unwrap();
+                Ok(Some(Node {
+                    id: 10 + verse_num,
+                    ukey: ukey.to_string(),
+                    node_type: NodeType::Verse,
+                }))
+            } else {
+                Ok(None)
+            }
+        });
+
+        // Setup get_quran_text
+        mock.expect_get_quran_text().returning(|node_id| {
+            let texts = [
+                (11, "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"),
+                (12, "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ"),
+                (13, "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"),
+                (14, "مَٰلِكِ يَوْمِ ٱلدِّينِ"),
+                (15, "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ"),
+                (16, "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ"),
+                (17, "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ"),
+            ];
+            for (id, text) in texts {
+                if node_id == id {
+                    return Ok(Some(text.to_string()));
+                }
+            }
+            Ok(None)
+        });
+
+        // Setup get_verses_for_chapter
+        mock.expect_get_verses_for_chapter()
+            .with(eq(1_i32))
+            .returning(|_| {
+                Ok(vec![
+                    Verse {
+                        key: "1:1".to_string(),
+                        chapter_number: 1,
+                        verse_number: 1,
+                        text_uthmani: "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:2".to_string(),
+                        chapter_number: 1,
+                        verse_number: 2,
+                        text_uthmani: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:3".to_string(),
+                        chapter_number: 1,
+                        verse_number: 3,
+                        text_uthmani: "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:4".to_string(),
+                        chapter_number: 1,
+                        verse_number: 4,
+                        text_uthmani: "مَٰلِكِ يَوْمِ ٱلدِّينِ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:5".to_string(),
+                        chapter_number: 1,
+                        verse_number: 5,
+                        text_uthmani: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:6".to_string(),
+                        chapter_number: 1,
+                        verse_number: 6,
+                        text_uthmani: "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:7".to_string(),
+                        chapter_number: 1,
+                        verse_number: 7,
+                        text_uthmani: "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ"
+                            .to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                ])
+            });
+
+        mock
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_basic() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        assert_eq!(exercise.get_node_id(), 11);
+        assert_eq!(exercise.get_type_name(), "ayah_sequence");
+
+        let question = exercise.generate_question();
+        assert!(question.contains("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"));
+        assert!(question.contains("Which verse comes next"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_finds_correct_next_verse() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        assert_eq!(exercise.get_correct_verse_key(), "1:2");
+        assert!(exercise.correct_next_verse_text.contains("ٱلْحَمْدُ لِلَّهِ"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_has_four_options() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        assert_eq!(exercise.get_options().len(), 4);
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_options_contain_correct() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        let correct_key = exercise.get_correct_verse_key();
+        let options = exercise.get_options();
+        let correct_in_options = options.iter().any(|(key, _)| key == correct_key);
+        assert!(correct_in_options, "Correct answer must be in options");
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_check_answer_by_key() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        assert!(exercise.check_answer("1:2"));
+        assert!(!exercise.check_answer("1:3"));
+        assert!(!exercise.check_answer("1:1"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_check_answer_by_text() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        assert!(exercise.check_answer("ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ"));
+        assert!(!exercise.check_answer("ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_hint() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        let hint = exercise.get_hint();
+        assert!(hint.is_some());
+        assert!(hint.unwrap().contains("2"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_middle_verse() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(13, &mock).await.unwrap();
+
+        assert_eq!(exercise.get_correct_verse_key(), "1:4");
+        assert!(exercise.check_answer("1:4"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_last_verse_fails() {
+        let mock = create_mock_for_ayah_sequence();
+        let result = AyahSequenceExercise::new(17, &mock).await;
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No next verse found"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_sequence_distractors_are_different() {
+        let mock = create_mock_for_ayah_sequence();
+        let exercise = AyahSequenceExercise::new(11, &mock).await.unwrap();
+
+        let options = exercise.get_options();
+        let correct_key = exercise.get_correct_verse_key();
+
+        // Verify all options are unique
+        let mut keys: Vec<&String> = options.iter().map(|(k, _)| k).collect();
+        keys.sort();
+        keys.dedup();
+        assert_eq!(keys.len(), 4, "All 4 options should be unique");
+
+        // Verify exactly one option is the correct answer
+        let correct_count = options.iter().filter(|(k, _)| k == correct_key).count();
+        assert_eq!(correct_count, 1, "Exactly one option should be correct");
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "ayah_sequence_tests.rs"]
-mod ayah_sequence_tests;

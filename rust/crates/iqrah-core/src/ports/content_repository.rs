@@ -5,6 +5,7 @@ use crate::domain::{
 use async_trait::async_trait;
 use std::collections::HashMap;
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait ContentRepository: Send + Sync {
     // ========================================================================
@@ -120,27 +121,29 @@ pub trait ContentRepository: Send + Sync {
     // ===== Import/Insert Methods =====
 
     /// Insert a new translator
+    /// Note: Uses Option<String> for mockall compatibility
     #[allow(clippy::too_many_arguments)]
     async fn insert_translator(
         &self,
         slug: &str,
         full_name: &str,
         language_code: &str,
-        description: Option<&str>,
-        copyright_holder: Option<&str>,
-        license: Option<&str>,
-        website: Option<&str>,
-        version: Option<&str>,
-        package_id: Option<&str>, // Link to content package (None for built-in translators)
+        description: Option<String>,
+        copyright_holder: Option<String>,
+        license: Option<String>,
+        website: Option<String>,
+        version: Option<String>,
+        package_id: Option<String>, // Link to content package (None for built-in translators)
     ) -> anyhow::Result<i32>;
 
     /// Insert or update a verse translation
+    /// Note: Uses Option<String> for mockall compatibility
     async fn insert_verse_translation(
         &self,
         verse_key: &str,
         translator_id: i32,
         translation: &str,
-        footnotes: Option<&str>,
+        footnotes: Option<String>,
     ) -> anyhow::Result<()>;
 
     // ========================================================================
@@ -151,7 +154,7 @@ pub trait ContentRepository: Send + Sync {
     async fn get_available_packages(
         &self,
         package_type: Option<PackageType>,
-        language_code: Option<&str>,
+        language_code: Option<String>,
     ) -> anyhow::Result<Vec<ContentPackage>>;
 
     /// Get a specific package by ID

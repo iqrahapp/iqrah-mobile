@@ -21,10 +21,7 @@ mod exercise_data;
 mod generators;
 mod validator;
 
-// Comprehensive tests for enum-based architecture
-#[cfg(test)]
-#[path = "enum_tests.rs"]
-mod enum_tests;
+// Tests are now inline in exercise_data.rs
 
 pub use ayah_chain::{AyahChainExercise, AyahChainStats};
 pub use ayah_sequence::AyahSequenceExercise;

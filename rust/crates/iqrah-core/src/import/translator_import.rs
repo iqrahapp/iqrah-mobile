@@ -137,11 +137,11 @@ async fn import_single_translator(
                 &metadata.slug,
                 &metadata.full_name,
                 &metadata.language_code,
-                metadata.description.as_deref(),
-                metadata.copyright_holder.as_deref(),
-                metadata.license.as_deref(),
-                metadata.website.as_deref(),
-                metadata.version.as_deref(),
+                metadata.description.clone(),
+                metadata.copyright_holder.clone(),
+                metadata.license.clone(),
+                metadata.website.clone(),
+                metadata.version.clone(),
                 None, // package_id - built-in translators don't belong to packages
             )
             .await?
@@ -174,7 +174,7 @@ async fn import_single_translator(
 
         // Insert translation
         content_repo
-            .insert_verse_translation(&verse_key, translator_id, &main_text, footnotes.as_deref())
+            .insert_verse_translation(&verse_key, translator_id, &main_text, footnotes)
             .await?;
 
         imported_count += 1;

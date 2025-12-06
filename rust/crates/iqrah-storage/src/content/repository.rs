@@ -1033,12 +1033,12 @@ impl ContentRepository for SqliteContentRepository {
         slug: &str,
         full_name: &str,
         language_code: &str,
-        description: Option<&str>,
-        copyright_holder: Option<&str>,
-        license: Option<&str>,
-        website: Option<&str>,
-        version: Option<&str>,
-        package_id: Option<&str>,
+        description: Option<String>,
+        copyright_holder: Option<String>,
+        license: Option<String>,
+        website: Option<String>,
+        version: Option<String>,
+        package_id: Option<String>,
     ) -> anyhow::Result<i32> {
         let result = query(
             "INSERT INTO translators (slug, full_name, language_code, description, copyright_holder, license, website, version, package_id)
@@ -1064,7 +1064,7 @@ impl ContentRepository for SqliteContentRepository {
         verse_key: &str,
         translator_id: i32,
         translation: &str,
-        footnotes: Option<&str>,
+        footnotes: Option<String>,
     ) -> anyhow::Result<()> {
         query(
             "INSERT INTO verse_translations (verse_key, translator_id, translation, footnotes)
@@ -1090,7 +1090,7 @@ impl ContentRepository for SqliteContentRepository {
     async fn get_available_packages(
         &self,
         package_type: Option<PackageType>,
-        language_code: Option<&str>,
+        language_code: Option<String>,
     ) -> anyhow::Result<Vec<ContentPackage>> {
         let mut sql = String::from(
             "SELECT package_id, package_type, name, language_code, author, version, description, \

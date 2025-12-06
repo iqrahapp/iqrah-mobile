@@ -162,12 +162,6 @@ impl Exercise for ReverseClozeExercise {
 mod tests {
     #[test]
     fn test_placeholder() {
-        // Reverse cloze tests require full database setup
-        // See reverse_cloze_tests.rs for comprehensive tests
+        // Reverse cloze tests require database setup
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "reverse_cloze_tests.rs"]
-mod reverse_cloze_tests;

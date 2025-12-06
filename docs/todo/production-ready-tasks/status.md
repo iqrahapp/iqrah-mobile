@@ -12,7 +12,7 @@
 | 4.1 Translator UI | 🟢 Done | P1 | UI for selecting active translators. |
 | 4.2 Package Design | 🟢 Done | P1 | Design for downloading content packages. |
 | **Phase 5: Hardening** | | | |
-| 5.1 Error Handling | 🔴 Todo | P2 | Audit and improve error handling/logging. |
+| 5.1 Error Handling | 🟢 Done | P2 | Audit and improve error handling/logging. |
 
 ## Completed (Archived)
 

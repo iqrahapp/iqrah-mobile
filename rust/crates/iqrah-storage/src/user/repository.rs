@@ -352,7 +352,7 @@ impl UserRepository for SqliteUserRepository {
         user_id: &str,
         state: &MemoryState,
         energy_updates: Vec<(i64, f64)>,
-        propagation_event: Option<&PropagationEvent>,
+        propagation_event: Option<PropagationEvent>,
     ) -> anyhow::Result<()> {
         // Begin transaction
         let mut tx = self.pool.begin().await?;
@@ -366,7 +366,7 @@ impl UserRepository for SqliteUserRepository {
         }
 
         // 3. Log propagation event if provided
-        if let Some(event) = propagation_event {
+        if let Some(ref event) = propagation_event {
             Self::log_propagation_in_tx(&mut tx, event).await?;
         }
 

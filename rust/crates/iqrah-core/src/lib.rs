@@ -7,6 +7,9 @@ pub mod scheduler_v2;
 pub mod semantic;
 pub mod services;
 
+#[cfg(test)]
+pub mod testing;
+
 // Re-export commonly used types
 pub use domain::{
     // V2 Domain Models

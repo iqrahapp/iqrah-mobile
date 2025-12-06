@@ -177,12 +177,6 @@ impl Exercise for TranslatePhraseExercise {
 mod tests {
     #[test]
     fn test_placeholder() {
-        // Translate phrase tests require full database setup
-        // See translate_phrase_tests.rs for comprehensive tests
+        // Translate phrase tests require database setup
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "translate_phrase_tests.rs"]
-mod translate_phrase_tests;

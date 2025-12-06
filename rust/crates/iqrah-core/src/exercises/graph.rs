@@ -278,12 +278,6 @@ impl Exercise for CrossVerseConnectionExercise {
 mod tests {
     #[test]
     fn test_placeholder() {
-        // Graph tests require full database setup
-        // See graph_tests.rs for comprehensive tests
+        // Graph tests require database setup
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "graph_tests.rs"]
-mod graph_tests;

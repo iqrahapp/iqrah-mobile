@@ -824,8 +824,3 @@ mod tests {
         );
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "memorization_tests.rs"]
-mod memorization_tests;

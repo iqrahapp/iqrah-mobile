@@ -5,6 +5,7 @@ use crate::{
 use anyhow::Result;
 use chrono::Utc;
 use std::sync::Arc;
+use tracing::{info, instrument};
 
 /// Learning service handles review processing and FSRS scheduling
 pub struct LearningService {
@@ -25,12 +26,14 @@ impl LearningService {
 
     /// Process a single review and update memory state atomically
     /// All database changes are wrapped in a transaction - either all succeed or all rollback
+    #[instrument(skip(self), fields(user_id, node_id, grade = ?grade))]
     pub async fn process_review(
         &self,
         user_id: &str,
         node_id: i64,
         grade: ReviewGrade,
     ) -> Result<MemoryState> {
+        info!("Processing review");
         // Task 3.2: Validate node exists in content.db before processing
         if !self.content_repo.node_exists(node_id).await? {
             return Err(anyhow::anyhow!(
@@ -67,12 +70,7 @@ impl LearningService {
         // Task 3.1: ATOMIC TRANSACTION - All writes via save_review_atomic
         // ====================================================================
         self.user_repo
-            .save_review_atomic(
-                user_id,
-                &final_state,
-                energy_updates,
-                propagation_event.as_ref(),
-            )
+            .save_review_atomic(user_id, &final_state, energy_updates, propagation_event)
             .await?;
 
         Ok(final_state)
@@ -225,4 +223,309 @@ fn calculate_energy_delta(grade: ReviewGrade, current_energy: f64) -> f64 {
 
     // Diminishing returns as energy approaches 1.0
     base_delta * (1.0 - current_energy)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{MockContentRepository, MockUserRepository};
+    use crate::{DistributionType, Edge, EdgeType, MemoryState, Node, NodeType, ReviewGrade};
+    use chrono::Utc;
+    use mockall::predicate::*;
+    use std::sync::Arc;
+
+    /// Helper to create a mock ContentRepository with basic node/edge setup
+    fn create_content_mock() -> MockContentRepository {
+        let mut mock = MockContentRepository::new();
+
+        // Setup node_exists for nodes 1 and 2
+        mock.expect_node_exists()
+            .with(eq(1_i64))
+            .returning(|_| Ok(true));
+        mock.expect_node_exists()
+            .with(eq(2_i64))
+            .returning(|_| Ok(true));
+
+        // Setup get_node for nodes 1 and 2
+        mock.expect_get_node().with(eq(1_i64)).returning(|_| {
+            Ok(Some(Node {
+                id: 1,
+                ukey: "word_1".to_string(),
+                node_type: NodeType::WordInstance,
+            }))
+        });
+        mock.expect_get_node().with(eq(2_i64)).returning(|_| {
+            Ok(Some(Node {
+                id: 2,
+                ukey: "word_2".to_string(),
+                node_type: NodeType::WordInstance,
+            }))
+        });
+
+        // Setup get_edges_from for node 1 -> node 2
+        mock.expect_get_edges_from().with(eq(1_i64)).returning(|_| {
+            Ok(vec![Edge {
+                source_id: 1,
+                target_id: 2,
+                edge_type: EdgeType::Knowledge,
+                distribution_type: DistributionType::Const,
+                param1: 0.5,
+                param2: 0.0,
+            }])
+        });
+        mock.expect_get_edges_from()
+            .with(eq(2_i64))
+            .returning(|_| Ok(vec![]));
+
+        mock
+    }
+
+    /// Helper to create a mock UserRepository that tracks state
+    fn create_user_mock_for_new_state() -> MockUserRepository {
+        let mut mock = MockUserRepository::new();
+
+        // No existing state for node 1
+        mock.expect_get_memory_state().returning(|_, _| Ok(None));
+
+        // Allow saving state
+        mock.expect_save_memory_state().returning(|_| Ok(()));
+
+        // Allow update_energy for propagation
+        mock.expect_update_energy().returning(|_, _, _| Ok(()));
+
+        // Allow logging propagation
+        mock.expect_log_propagation().returning(|_| Ok(()));
+
+        // Allow save_review_atomic
+        mock.expect_save_review_atomic()
+            .returning(|_, _, _, _| Ok(()));
+
+        mock
+    }
+
+    #[tokio::test]
+    async fn test_process_review_creates_new_state() {
+        // Arrange
+        let content_repo = Arc::new(create_content_mock());
+        let user_repo = Arc::new(create_user_mock_for_new_state());
+        let service = LearningService::new(content_repo, user_repo);
+
+        // Act
+        let result = service.process_review("user1", 1, ReviewGrade::Good).await;
+
+        // Assert
+        assert!(result.is_ok());
+        let state = result.unwrap();
+        assert_eq!(state.user_id, "user1");
+        assert_eq!(state.node_id, 1);
+        assert_eq!(state.review_count, 1);
+        assert!(state.energy > 0.0); // Energy should have increased
+    }
+
+    #[tokio::test]
+    async fn test_process_review_increases_energy_on_good_grade() {
+        // Arrange
+        let content_repo = Arc::new(create_content_mock());
+
+        let mut user_mock = MockUserRepository::new();
+
+        // Return existing state with initial energy
+        let initial_energy = 0.5;
+        user_mock
+            .expect_get_memory_state()
+            .returning(move |_, node_id| {
+                if node_id == 1 {
+                    Ok(Some(MemoryState {
+                        user_id: "user1".to_string(),
+                        node_id: 1,
+                        stability: 1.0,
+                        difficulty: 5.0,
+                        energy: initial_energy,
+                        last_reviewed: Utc::now(),
+                        due_at: Utc::now(),
+                        review_count: 1,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            });
+
+        user_mock
+            .expect_save_review_atomic()
+            .returning(|_, _, _, _| Ok(()));
+        user_mock.expect_update_energy().returning(|_, _, _| Ok(()));
+        user_mock.expect_log_propagation().returning(|_| Ok(()));
+
+        let user_repo = Arc::new(user_mock);
+        let service = LearningService::new(content_repo, user_repo);
+
+        // Act
+        let result = service.process_review("user1", 1, ReviewGrade::Good).await;
+
+        // Assert
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        assert!(
+            new_state.energy > initial_energy,
+            "Energy should increase: {} -> {}",
+            initial_energy,
+            new_state.energy
+        );
+        assert_eq!(new_state.review_count, 2);
+    }
+
+    #[tokio::test]
+    async fn test_process_review_decreases_energy_on_again_grade() {
+        // Arrange
+        let content_repo = Arc::new(create_content_mock());
+
+        let mut user_mock = MockUserRepository::new();
+
+        // Return existing state with high energy
+        let initial_energy = 0.8;
+        user_mock
+            .expect_get_memory_state()
+            .returning(move |_, node_id| {
+                if node_id == 1 {
+                    Ok(Some(MemoryState {
+                        user_id: "user1".to_string(),
+                        node_id: 1,
+                        stability: 10.0,
+                        difficulty: 5.0,
+                        energy: initial_energy,
+                        last_reviewed: Utc::now(),
+                        due_at: Utc::now(),
+                        review_count: 5,
+                    }))
+                } else {
+                    Ok(None)
+                }
+            });
+
+        user_mock
+            .expect_save_review_atomic()
+            .returning(|_, _, _, _| Ok(()));
+        user_mock.expect_update_energy().returning(|_, _, _| Ok(()));
+        user_mock.expect_log_propagation().returning(|_| Ok(()));
+
+        let user_repo = Arc::new(user_mock);
+        let service = LearningService::new(content_repo, user_repo);
+
+        // Act
+        let result = service.process_review("user1", 1, ReviewGrade::Again).await;
+
+        // Assert
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        assert!(
+            new_state.energy < initial_energy,
+            "Energy should decrease: {} -> {}",
+            initial_energy,
+            new_state.energy
+        );
+        assert_eq!(new_state.review_count, 6);
+    }
+
+    #[tokio::test]
+    async fn test_energy_propagation_occurs() {
+        // Arrange
+        let content_repo = Arc::new(create_content_mock());
+
+        let mut user_mock = MockUserRepository::new();
+
+        // Return states for both nodes
+        user_mock.expect_get_memory_state().returning(|_, node_id| {
+            if node_id == 1 {
+                Ok(Some(MemoryState {
+                    user_id: "user1".to_string(),
+                    node_id: 1,
+                    stability: 1.0,
+                    difficulty: 5.0,
+                    energy: 0.3,
+                    last_reviewed: Utc::now(),
+                    due_at: Utc::now(),
+                    review_count: 1,
+                }))
+            } else if node_id == 2 {
+                Ok(Some(MemoryState {
+                    user_id: "user1".to_string(),
+                    node_id: 2,
+                    stability: 1.0,
+                    difficulty: 5.0,
+                    energy: 0.2,
+                    last_reviewed: Utc::now(),
+                    due_at: Utc::now(),
+                    review_count: 0,
+                }))
+            } else {
+                Ok(None)
+            }
+        });
+
+        // Track that save_review_atomic was called with propagation event
+        user_mock
+            .expect_save_review_atomic()
+            .withf(|_, _, energy_updates, propagation_event| {
+                // Verify energy propagation occurred
+                !energy_updates.is_empty() || propagation_event.is_some()
+            })
+            .returning(|_, _, _, _| Ok(()));
+
+        user_mock.expect_update_energy().returning(|_, _, _| Ok(()));
+        user_mock.expect_log_propagation().returning(|_| Ok(()));
+
+        let user_repo = Arc::new(user_mock);
+        let service = LearningService::new(content_repo, user_repo);
+
+        // Act - this should succeed and trigger propagation
+        let result = service.process_review("user1", 1, ReviewGrade::Good).await;
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_energy_bounded_between_0_and_1() {
+        // Arrange
+        let content_repo = Arc::new(create_content_mock());
+
+        let mut user_mock = MockUserRepository::new();
+
+        // Return state with very high energy
+        user_mock.expect_get_memory_state().returning(|_, node_id| {
+            if node_id == 1 {
+                Ok(Some(MemoryState {
+                    user_id: "user1".to_string(),
+                    node_id: 1,
+                    stability: 50.0,
+                    difficulty: 2.0,
+                    energy: 0.99,
+                    last_reviewed: Utc::now(),
+                    due_at: Utc::now(),
+                    review_count: 20,
+                }))
+            } else {
+                Ok(None)
+            }
+        });
+
+        user_mock
+            .expect_save_review_atomic()
+            .returning(|_, _, _, _| Ok(()));
+        user_mock.expect_update_energy().returning(|_, _, _| Ok(()));
+        user_mock.expect_log_propagation().returning(|_| Ok(()));
+
+        let user_repo = Arc::new(user_mock);
+        let service = LearningService::new(content_repo, user_repo);
+
+        // Act
+        let result = service
+            .process_review("user1", 1, ReviewGrade::Easy)
+            .await
+            .unwrap();
+
+        // Assert - energy should be capped at 1.0
+        assert!(result.energy <= 1.0, "Energy should not exceed 1.0");
+        assert!(result.energy >= 0.0, "Energy should not be negative");
+    }
 }

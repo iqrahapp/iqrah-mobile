@@ -2,6 +2,7 @@ use crate::domain::{MemoryState, PropagationEvent};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait UserRepository: Send + Sync {
     /// Get memory state for a node
@@ -70,7 +71,7 @@ pub trait UserRepository: Send + Sync {
     /// # Arguments
     /// * `state` - The memory state to save
     /// * `energy_updates` - Vec of (node_id, new_energy) pairs to update
-    /// * `propagation_event` - Optional propagation event to log
+    /// * `propagation_event` - Optional propagation event to log (owned for mockall)
     ///
     /// # Returns
     /// Ok(()) if all operations succeed, Err if any fail (with rollback)
@@ -79,7 +80,7 @@ pub trait UserRepository: Send + Sync {
         user_id: &str,
         state: &MemoryState,
         energy_updates: Vec<(i64, f64)>,
-        propagation_event: Option<&PropagationEvent>,
+        propagation_event: Option<PropagationEvent>,
     ) -> anyhow::Result<()>;
 
     // ========================================================================

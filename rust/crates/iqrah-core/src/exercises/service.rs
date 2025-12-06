@@ -505,12 +505,12 @@ mod tests {
             _slug: &str,
             _full_name: &str,
             _language_code: &str,
-            _description: Option<&str>,
-            _copyright_holder: Option<&str>,
-            _license: Option<&str>,
-            _website: Option<&str>,
-            _version: Option<&str>,
-            _package_id: Option<&str>,
+            _description: Option<String>,
+            _copyright_holder: Option<String>,
+            _license: Option<String>,
+            _website: Option<String>,
+            _version: Option<String>,
+            _package_id: Option<String>,
         ) -> Result<i32> {
             Ok(1)
         }
@@ -520,7 +520,7 @@ mod tests {
             _verse_key: &str,
             _translator_id: i32,
             _translation: &str,
-            _footnotes: Option<&str>,
+            _footnotes: Option<String>,
         ) -> Result<()> {
             Ok(())
         }
@@ -528,7 +528,7 @@ mod tests {
         async fn get_available_packages(
             &self,
             _package_type: Option<crate::PackageType>,
-            _language_code: Option<&str>,
+            _language_code: Option<String>,
         ) -> Result<Vec<crate::ContentPackage>> {
             Ok(vec![])
         }
@@ -961,12 +961,12 @@ mod tests {
             _slug: &str,
             _full_name: &str,
             _language_code: &str,
-            _description: Option<&str>,
-            _copyright_holder: Option<&str>,
-            _license: Option<&str>,
-            _website: Option<&str>,
-            _version: Option<&str>,
-            _package_id: Option<&str>,
+            _description: Option<String>,
+            _copyright_holder: Option<String>,
+            _license: Option<String>,
+            _website: Option<String>,
+            _version: Option<String>,
+            _package_id: Option<String>,
         ) -> Result<i32> {
             Ok(1)
         }
@@ -976,7 +976,7 @@ mod tests {
             _verse_key: &str,
             _translator_id: i32,
             _translation: &str,
-            _footnotes: Option<&str>,
+            _footnotes: Option<String>,
         ) -> Result<()> {
             Ok(())
         }
@@ -984,7 +984,7 @@ mod tests {
         async fn get_available_packages(
             &self,
             _package_type: Option<crate::PackageType>,
-            _language_code: Option<&str>,
+            _language_code: Option<String>,
         ) -> Result<Vec<crate::ContentPackage>> {
             Ok(vec![])
         }

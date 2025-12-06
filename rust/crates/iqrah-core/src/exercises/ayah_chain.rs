@@ -309,14 +309,320 @@ impl Exercise for AyahChainExercise {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_placeholder() {
-        // Ayah chain tests require full database setup
-        // See ayah_chain_tests.rs for comprehensive tests
+    use super::*;
+    use crate::testing::MockContentRepository;
+    use crate::{Node, NodeType};
+    use mockall::predicate::*;
+
+    /// Helper function to create a mock with Al-Fatihah data
+    fn create_mock_with_fatihah() -> MockContentRepository {
+        let mut mock = MockContentRepository::new();
+
+        // Setup get_node for chapter lookup
+        mock.expect_get_node().with(eq(1_i64)).returning(|_| {
+            Ok(Some(Node {
+                id: 1,
+                ukey: "CHAPTER:1".to_string(),
+                node_type: NodeType::Chapter,
+            }))
+        });
+
+        // Setup get_node_by_ukey for chapter lookup
+        mock.expect_get_node_by_ukey()
+            .with(eq("CHAPTER:1"))
+            .returning(|_| {
+                Ok(Some(Node {
+                    id: 1,
+                    ukey: "CHAPTER:1".to_string(),
+                    node_type: NodeType::Chapter,
+                }))
+            });
+
+        // Setup get_verses_for_chapter with Al-Fatihah verses
+        mock.expect_get_verses_for_chapter()
+            .with(eq(1_i32))
+            .returning(|_| {
+                Ok(vec![
+                    Verse {
+                        key: "1:1".to_string(),
+                        chapter_number: 1,
+                        verse_number: 1,
+                        text_uthmani: "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:2".to_string(),
+                        chapter_number: 1,
+                        verse_number: 2,
+                        text_uthmani: "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:3".to_string(),
+                        chapter_number: 1,
+                        verse_number: 3,
+                        text_uthmani: "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:4".to_string(),
+                        chapter_number: 1,
+                        verse_number: 4,
+                        text_uthmani: "مَٰلِكِ يَوْمِ ٱلدِّينِ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:5".to_string(),
+                        chapter_number: 1,
+                        verse_number: 5,
+                        text_uthmani: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:6".to_string(),
+                        chapter_number: 1,
+                        verse_number: 6,
+                        text_uthmani: "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ".to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                    Verse {
+                        key: "1:7".to_string(),
+                        chapter_number: 1,
+                        verse_number: 7,
+                        text_uthmani: "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ"
+                            .to_string(),
+                        text_simple: None,
+                        juz: 1,
+                        page: 1,
+                    },
+                ])
+            });
+
+        mock
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_creation() {
+        let mock = create_mock_with_fatihah();
+        let exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.total_verses, 7); // Al-Fatihah has 7 verses
+        assert_eq!(stats.completed_count, 0);
+        assert!(!stats.is_complete);
+        assert!(!stats.mistake_made);
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_first_verse() {
+        let mock = create_mock_with_fatihah();
+        let exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        let current = exercise.current_verse().unwrap();
+        assert_eq!(current.key, "1:1");
+        assert_eq!(current.text_uthmani, "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ");
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_correct_answer_advances() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Submit correct answer for verse 1:1
+        let result = exercise.submit_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
+        assert!(result); // Correct answer
+
+        // Should advance to verse 1:2
+        let current = exercise.current_verse().unwrap();
+        assert_eq!(current.key, "1:2");
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.completed_count, 1);
+        assert!(!stats.is_complete);
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_incorrect_answer_breaks_chain() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Submit incorrect answer
+        let result = exercise.submit_answer("wrong answer").unwrap();
+        assert!(!result); // Incorrect answer
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.completed_count, 0);
+        assert!(stats.mistake_made);
+        assert!(!stats.is_complete);
+
+        // Chain is broken, no current verse
+        assert!(exercise.current_verse().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_normalization() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Submit answer without tashkeel - should still be correct
+        let result = exercise.submit_answer("بسم الله الرحمان الرحيم").unwrap();
+        assert!(result); // Should be correct due to normalization
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_complete_all_verses() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Submit all 7 verses correctly
+        let verses = [
+            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+            "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ",
+            "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+            "مَٰلِكِ يَوْمِ ٱلدِّينِ",
+            "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",
+            "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ",
+            "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ",
+        ];
+
+        for verse in &verses {
+            let result = exercise.submit_answer(verse).unwrap();
+            assert!(result);
+        }
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.completed_count, 7);
+        assert!(stats.is_complete);
+        assert!(!stats.mistake_made);
+
+        // No current verse after completion
+        assert!(exercise.current_verse().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_partial_completion() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Complete first 3 verses
+        exercise.submit_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
+        exercise.submit_answer("ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ").unwrap();
+        exercise.submit_answer("ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
+
+        // Make a mistake on verse 4
+        let result = exercise.submit_answer("wrong").unwrap();
+        assert!(!result);
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.completed_count, 3);
+        assert!(stats.mistake_made);
+        assert!(!stats.is_complete);
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_reset() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Complete first verse and make mistake on second
+        exercise.submit_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ").unwrap();
+        exercise.submit_answer("wrong").unwrap();
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.completed_count, 1);
+        assert!(stats.mistake_made);
+
+        // Reset
+        exercise.reset();
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.completed_count, 0);
+        assert!(!stats.mistake_made);
+        assert!(!stats.is_complete);
+
+        // Should be back to verse 1:1
+        let current = exercise.current_verse().unwrap();
+        assert_eq!(current.key, "1:1");
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_range() {
+        let mock = create_mock_with_fatihah();
+        let exercise = AyahChainExercise::new_range(1, 1, 3, &mock).await.unwrap();
+
+        let stats = exercise.get_stats();
+        assert_eq!(stats.total_verses, 3); // Only verses 1-3
+
+        let current = exercise.current_verse().unwrap();
+        assert_eq!(current.key, "1:1");
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_question_format() {
+        let mock = create_mock_with_fatihah();
+        let exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        let question = exercise.generate_question();
+        assert!(question.contains("1/7")); // Progress indicator
+        assert!(question.contains("1:1")); // Verse reference
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_hint() {
+        let mock = create_mock_with_fatihah();
+        let exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        let hint = exercise.get_hint().unwrap();
+        // Shows first word + word count
+        assert!(hint.contains("بِسْمِ")); // First word
+        assert!(hint.contains("4 words total")); // Word count (verse 1:1 has 4 words)
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_check_answer_method() {
+        let mock = create_mock_with_fatihah();
+        let exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Test Exercise trait check_answer method
+        assert!(exercise.check_answer("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"));
+        assert!(!exercise.check_answer("wrong answer"));
+    }
+
+    #[tokio::test]
+    async fn test_ayah_chain_cannot_submit_after_complete() {
+        let mock = create_mock_with_fatihah();
+        let mut exercise = AyahChainExercise::new(1, &mock).await.unwrap();
+
+        // Complete all verses
+        let verses = vec![
+            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+            "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ",
+            "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+            "مَٰلِكِ يَوْمِ ٱلدِّينِ",
+            "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",
+            "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ",
+            "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ",
+        ];
+
+        for verse in &verses {
+            exercise.submit_answer(verse).unwrap();
+        }
+
+        // Try to submit another answer
+        let result = exercise.submit_answer("anything");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("already complete"));
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "ayah_chain_tests.rs"]
-mod ayah_chain_tests;

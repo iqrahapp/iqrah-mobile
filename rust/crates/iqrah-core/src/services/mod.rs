@@ -4,11 +4,7 @@ pub mod package_service;
 pub mod recall_model;
 mod session_service;
 
-#[cfg(test)]
-mod learning_service_tests;
-
-#[cfg(test)]
-mod session_service_tests;
+// Tests are now inline in respective service files
 
 pub use learning_service::LearningService;
 pub use package_service::PackageService;

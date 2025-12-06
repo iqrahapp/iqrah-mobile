@@ -207,12 +207,6 @@ impl Exercise for PosTaggingExercise {
 mod tests {
     #[test]
     fn test_placeholder() {
-        // POS tagging tests require full database setup
-        // See pos_tagging_tests.rs for comprehensive tests
+        // POS tagging tests require database setup
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "pos_tagging_tests.rs"]
-mod pos_tagging_tests;

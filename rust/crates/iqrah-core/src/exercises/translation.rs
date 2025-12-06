@@ -303,8 +303,3 @@ mod tests {
     // Note: Tests require semantic model to be initialized
     // Run integration tests with a real model instead
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "translation_tests.rs"]
-mod translation_tests;

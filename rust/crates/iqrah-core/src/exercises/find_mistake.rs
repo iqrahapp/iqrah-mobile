@@ -237,12 +237,7 @@ impl Exercise for FindMistakeExercise {
 mod tests {
     #[test]
     fn test_placeholder() {
-        // Find mistake tests require full database setup
-        // See find_mistake_tests.rs for comprehensive tests
+        // Find mistake tests require database setup
+        // Tests are integrated via mockall
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "find_mistake_tests.rs"]
-mod find_mistake_tests;

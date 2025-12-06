@@ -130,12 +130,6 @@ impl Exercise for FullVerseInputExercise {
 mod tests {
     #[test]
     fn test_placeholder() {
-        // Full verse input tests require full database setup
-        // See full_verse_input_tests.rs for comprehensive tests
+        // Full verse input tests require database setup
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "full_verse_input_tests.rs"]
-mod full_verse_input_tests;

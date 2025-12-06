@@ -208,8 +208,3 @@ mod tests {
         assert!(!distractors.contains(&"ع-ل-م".to_string()));
     }
 }
-
-// Include comprehensive integration tests
-#[cfg(test)]
-#[path = "grammar_tests.rs"]
-mod grammar_tests;

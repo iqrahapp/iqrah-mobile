@@ -22,7 +22,7 @@ impl PackageService {
     pub async fn get_available_packages(
         &self,
         package_type: Option<PackageType>,
-        language_code: Option<&str>,
+        language_code: Option<String>,
     ) -> Result<Vec<ContentPackage>> {
         self.content_repo
             .get_available_packages(package_type, language_code)
@@ -155,12 +155,12 @@ impl PackageService {
                 ),
                 &package.name,
                 package.language_code.as_ref().unwrap_or(&"en".to_string()),
-                package.description.as_deref(),
-                package.author.as_deref(),
-                package.license.as_deref(),
+                package.description.clone(),
+                package.author.clone(),
+                package.license.clone(),
                 None, // website
-                Some(&package.version),
-                Some(&package.package_id), // Link translator to this package
+                Some(package.version.clone()),
+                Some(package.package_id.clone()), // Link translator to this package
             )
             .await?;
 
@@ -259,7 +259,7 @@ mod tests {
         async fn get_available_packages(
             &self,
             package_type: Option<PackageType>,
-            language_code: Option<&str>,
+            language_code: Option<String>,
         ) -> Result<Vec<ContentPackage>> {
             let packages = self.packages.lock().unwrap();
             let filtered: Vec<ContentPackage> = packages
@@ -267,6 +267,7 @@ mod tests {
                 .filter(|p| {
                     let type_match = package_type.as_ref().is_none_or(|t| &p.package_type == t);
                     let lang_match = language_code
+                        .as_ref()
                         .is_none_or(|l| p.language_code.as_ref().is_some_and(|code| code == l));
                     type_match && lang_match
                 })
@@ -313,17 +314,17 @@ mod tests {
             slug: &str,
             _full_name: &str,
             _language_code: &str,
-            _description: Option<&str>,
-            _copyright_holder: Option<&str>,
-            _license: Option<&str>,
-            _website: Option<&str>,
-            _version: Option<&str>,
-            package_id: Option<&str>,
+            _description: Option<String>,
+            _copyright_holder: Option<String>,
+            _license: Option<String>,
+            _website: Option<String>,
+            _version: Option<String>,
+            package_id: Option<String>,
         ) -> Result<i32> {
             let translator_id = (self.translators.lock().unwrap().len() + 1) as i32;
             self.translators.lock().unwrap().push((
                 slug.to_string(),
-                package_id.unwrap_or("").to_string(),
+                package_id.unwrap_or_default(),
                 translator_id,
             ));
             Ok(translator_id)
@@ -334,7 +335,7 @@ mod tests {
             verse_key: &str,
             translator_id: i32,
             translation: &str,
-            _footnotes: Option<&str>,
+            _footnotes: Option<String>,
         ) -> Result<()> {
             self.verse_translations.lock().unwrap().push((
                 verse_key.to_string(),
@@ -559,7 +560,7 @@ mod tests {
 
         // Test filter by language
         let packages = service
-            .get_available_packages(None, Some("en"))
+            .get_available_packages(None, Some("en".to_string()))
             .await
             .unwrap();
         assert_eq!(packages.len(), 1);
