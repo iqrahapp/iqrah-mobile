@@ -4,8 +4,11 @@ members = [
     "crates/iqrah-storage",
     "crates/iqrah-api",
     "crates/iqrah-cli",
-    "crates/iqrah-server", "crates/iqrah-gen",
+    "crates/iqrah-server",
+    "crates/iqrah-gen",
+    "crates/iqrah-iss",
 ]
+
 resolver = "2"
 
 # Shared workspace dependencies

@@ -3,6 +3,10 @@ name = "iqrah-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+# Enables testing module for external crates (mock repositories)
+testing = ["mockall"]
+
 [dependencies]
 anyhow = { workspace = true }
 thiserror = { workspace = true }
@@ -30,6 +34,9 @@ serde_path_to_error = "0.1"
 reqwest = "0.12"
 sha2 = "0.10"
 sqlx = { workspace = true }
+
+# Testing utilities (optional, enabled by "testing" feature)
+mockall = { version = "0.13", optional = true }
 
 [dev-dependencies]
 mockall = "0.13"

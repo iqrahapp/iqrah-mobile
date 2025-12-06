@@ -2,7 +2,7 @@ use crate::domain::{MemoryState, PropagationEvent};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 #[async_trait]
 pub trait UserRepository: Send + Sync {
     /// Get memory state for a node

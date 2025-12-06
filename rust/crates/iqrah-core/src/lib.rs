@@ -7,7 +7,8 @@ pub mod scheduler_v2;
 pub mod semantic;
 pub mod services;
 
-#[cfg(test)]
+// Testing utilities - available when running tests OR when "testing" feature is enabled
+#[cfg(any(test, feature = "testing"))]
 pub mod testing;
 
 // Re-export commonly used types

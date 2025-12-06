@@ -5,7 +5,7 @@ use crate::domain::{
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
 #[async_trait]
 pub trait ContentRepository: Send + Sync {
     // ========================================================================

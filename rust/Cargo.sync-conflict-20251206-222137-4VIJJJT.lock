@@ -2939,21 +2939,16 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
- "clap",
- "indicatif",
  "iqrah-core",
  "iqrah-storage",
  "rand 0.8.5",
  "rand_distr 0.4.3",
  "serde",
- "serde_json",
  "serde_yaml",
- "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tokio-test",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
