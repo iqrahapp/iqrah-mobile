@@ -212,7 +212,7 @@ async fn handle_start_exercise(
     // Initialize exercise-specific state
     let initial_state = if exercise_type == "MemorizationAyah" {
         // For Memorization mode, we need to get all words in the verse
-        match initialize_memorization_state(&node_id, app_state).await {
+        match initialize_memorization_state(user_id, &node_id, app_state).await {
             Ok(state) => state,
             Err(e) => {
                 return vec![Event::Error {
@@ -248,51 +248,23 @@ async fn handle_start_exercise(
 
 /// Initialize state for Memorization mode
 async fn initialize_memorization_state(
+    user_id: &str,
     verse_node_id: &str,
     app_state: &AppState,
 ) -> anyhow::Result<serde_json::Value> {
-    // Get all word children of this verse
-    // Get all word children of this verse
-    let verse_id =
-        nid::from_ukey(verse_node_id).ok_or_else(|| anyhow::anyhow!("Invalid verse ID"))?;
-    let edges = app_state.content_repo.get_edges_from(verse_id).await?;
+    use iqrah_core::MemorizationAyahExercise;
 
-    // Get the word nodes and their current energies
-    let mut words = Vec::new();
-    for edge in edges {
-        let target_ukey = nid::to_ukey(edge.target_id).unwrap_or_default();
-        if target_ukey.starts_with("WORD:") {
-            let _word_node = app_state
-                .content_repo
-                .get_node(edge.target_id)
-                .await?
-                .ok_or_else(|| anyhow::anyhow!("Word node not found: {}", target_ukey))?;
+    // Create exercise using iqrah-core
+    let exercise = MemorizationAyahExercise::new(
+        user_id,
+        verse_node_id,
+        app_state.content_repo.as_ref(),
+        app_state.user_repo.as_ref(),
+    )
+    .await?;
 
-            let word_text = app_state
-                .content_repo
-                .get_quran_text(edge.target_id)
-                .await?
-                .unwrap_or_default();
-
-            // Get current energy from user state (default to 0.0)
-            let memory_state = app_state
-                .user_repo
-                .get_memory_state("test_user", edge.target_id)
-                .await?;
-            let energy = memory_state.map(|s| s.energy).unwrap_or(0.0);
-
-            words.push(json!({
-                "node_id": target_ukey,
-                "text": word_text,
-                "energy": energy,
-            }));
-        }
-    }
-
-    Ok(json!({
-        "verse_node_id": verse_node_id,
-        "words": words,
-    }))
+    // Return the state as JSON
+    Ok(exercise.state().to_json())
 }
 
 /// Submit an answer for a generic exercise
@@ -464,89 +436,29 @@ async fn handle_start_echo_recall(
     app_state: &AppState,
     sessions: SessionMap,
 ) -> Vec<Event> {
-    use iqrah_core::{services::energy_service, EchoRecallState, EchoRecallWord};
+    use iqrah_core::EchoRecallExercise;
 
     let session_id = Uuid::new_v4();
 
-    // Get all words in the specified ayahs
-    let ayah_ids: Vec<i64> = ayah_node_ids
-        .iter()
-        .filter_map(|id| nid::from_ukey(id))
-        .collect();
-
-    let words = match app_state.content_repo.get_words_in_ayahs(&ayah_ids).await {
-        Ok(w) => w,
+    // Create the exercise using iqrah-core
+    let exercise = match EchoRecallExercise::new(
+        user_id,
+        ayah_node_ids.clone(),
+        app_state.content_repo.as_ref(),
+        app_state.user_repo.as_ref(),
+    )
+    .await
+    {
+        Ok(e) => e,
         Err(e) => {
             return vec![Event::Error {
-                message: format!("Failed to get words: {}", e),
+                message: format!("Failed to create Echo Recall exercise: {}", e),
             }];
         }
     };
 
-    if words.is_empty() {
-        return vec![Event::Error {
-            message: "No words found in specified ayahs".to_string(),
-        }];
-    }
-
-    // Build a map of word_id -> energy for efficient lookup
-    let mut energy_map = HashMap::new();
-    for word in &words {
-        let memory_state = app_state
-            .user_repo
-            .get_memory_state(user_id, word.id)
-            .await
-            .ok()
-            .flatten();
-        let energy = memory_state.map(|s| s.energy).unwrap_or(0.0);
-        energy_map.insert(word.id, energy);
-    }
-
-    // Calculate visibility for each word with context
-    let mut echo_recall_words = Vec::new();
-    for (i, word) in words.iter().enumerate() {
-        let word_text = app_state
-            .content_repo
-            .get_quran_text(word.id)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or_default();
-
-        let energy = *energy_map.get(&word.id).unwrap_or(&0.0);
-
-        // Get neighbor energies
-        let prev_energy = if i > 0 {
-            energy_map.get(&words[i - 1].id).copied()
-        } else {
-            None
-        };
-
-        let next_energy = if i < words.len() - 1 {
-            energy_map.get(&words[i + 1].id).copied()
-        } else {
-            None
-        };
-
-        // Calculate context-aware visibility
-        let visibility =
-            energy_service::map_energy_to_visibility(energy, &word_text, prev_energy, next_energy);
-
-        echo_recall_words.push(EchoRecallWord {
-            node_id: nid::to_ukey(word.id).unwrap_or_default(),
-            text: word_text,
-            visibility,
-            energy,
-        });
-    }
-
-    // Create the state
-    let state = EchoRecallState {
-        words: echo_recall_words,
-    };
-
-    // Serialize to JSON
-    let initial_state = match serde_json::to_value(&state) {
+    // Serialize the state
+    let initial_state = match serde_json::to_value(exercise.state()) {
         Ok(v) => v,
         Err(e) => {
             return vec![Event::Error {
@@ -581,10 +493,7 @@ async fn handle_submit_echo_recall(
     _app_state: &AppState,
     sessions: SessionMap,
 ) -> Vec<Event> {
-    use iqrah_core::{
-        services::{energy_service, recall_model},
-        EchoRecallState,
-    };
+    use iqrah_core::{EchoRecallExercise, EchoRecallState};
 
     let mut sessions_lock = sessions.write().await;
     let session = match sessions_lock.get_mut(&session_id) {
@@ -603,8 +512,8 @@ async fn handle_submit_echo_recall(
         }];
     }
 
-    // Deserialize current state
-    let mut state: EchoRecallState = match serde_json::from_value(session.state.clone()) {
+    // Deserialize and create exercise from state
+    let state: EchoRecallState = match serde_json::from_value(session.state.clone()) {
         Ok(s) => s,
         Err(e) => {
             return vec![Event::Error {
@@ -613,59 +522,19 @@ async fn handle_submit_echo_recall(
         }
     };
 
-    // Find the word index
-    let word_index = match state.words.iter().position(|w| w.node_id == word_node_id) {
-        Some(i) => i,
-        None => {
-            return vec![Event::Error {
-                message: format!("Word not found in session: {}", word_node_id),
-            }];
-        }
-    };
+    // Get ayah IDs from session node_id (they were joined with ",")
+    let ayah_node_ids: Vec<String> = session.node_id.split(',').map(|s| s.to_string()).collect();
+    let mut exercise = EchoRecallExercise::from_state(&session.user_id, ayah_node_ids, state);
 
-    // Calculate energy change based on recall time
-    let energy_delta = recall_model::calculate_energy_change(recall_time_ms);
-
-    // Update the target word's energy
-    state.words[word_index].energy =
-        (state.words[word_index].energy + energy_delta).clamp(0.0, 1.0);
-
-    // Recalculate visibility for the target word and its neighbors
-    // Use a HashSet to deduplicate indices (important for single-word sessions)
-    let mut indices_to_update = std::collections::HashSet::new();
-    if word_index > 0 {
-        indices_to_update.insert(word_index - 1);
-    }
-    indices_to_update.insert(word_index);
-    if word_index + 1 < state.words.len() {
-        indices_to_update.insert(word_index + 1);
-    }
-
-    for &i in &indices_to_update {
-        let prev_energy = if i > 0 {
-            Some(state.words[i - 1].energy)
-        } else {
-            None
-        };
-
-        let next_energy = if i < state.words.len() - 1 {
-            Some(state.words[i + 1].energy)
-        } else {
-            None
-        };
-
-        let visibility = energy_service::map_energy_to_visibility(
-            state.words[i].energy,
-            &state.words[i].text,
-            prev_energy,
-            next_energy,
-        );
-
-        state.words[i].visibility = visibility;
+    // Submit the recall using the core exercise logic
+    if let Err(e) = exercise.submit_recall(&word_node_id, recall_time_ms) {
+        return vec![Event::Error {
+            message: e.to_string(),
+        }];
     }
 
     // Serialize updated state
-    let new_state = match serde_json::to_value(&state) {
+    let new_state = match serde_json::to_value(exercise.state()) {
         Ok(v) => v,
         Err(e) => {
             return vec![Event::Error {

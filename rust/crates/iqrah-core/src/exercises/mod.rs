@@ -3,12 +3,14 @@
 
 mod ayah_chain;
 mod ayah_sequence;
+mod echo_recall;
 mod find_mistake;
 mod full_verse_input;
 mod grammar;
 mod graph;
 mod mcq;
 mod memorization;
+mod memorization_ayah;
 mod pos_tagging;
 mod reverse_cloze;
 mod service;
@@ -25,6 +27,7 @@ mod validator;
 
 pub use ayah_chain::{AyahChainExercise, AyahChainStats};
 pub use ayah_sequence::AyahSequenceExercise;
+pub use echo_recall::EchoRecallExercise;
 pub use find_mistake::FindMistakeExercise;
 pub use full_verse_input::FullVerseInputExercise;
 pub use grammar::IdentifyRootExercise;
@@ -33,6 +36,9 @@ pub use mcq::{McqExercise, McqType};
 pub use memorization::{
     ClozeDeletionExercise, FirstLetterHintExercise, MemorizationExercise, MissingWordMcqExercise,
     NextWordDifficulty, NextWordMcqExercise,
+};
+pub use memorization_ayah::{
+    MemorizationAction, MemorizationAyahExercise, MemorizationAyahState, MemorizationWord,
 };
 pub use pos_tagging::PosTaggingExercise;
 pub use reverse_cloze::ReverseClozeExercise;

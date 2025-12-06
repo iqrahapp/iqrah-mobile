@@ -63,10 +63,11 @@ pub use scheduler_v2::{
 
 pub use exercises::{
     AyahChainExercise, AyahChainStats, AyahSequenceExercise, ClozeDeletionExercise,
-    CrossVerseConnectionExercise, ExerciseResponse, ExerciseService, FindMistakeExercise,
-    FirstLetterHintExercise, FullVerseInputExercise, IdentifyRootExercise, McqExercise,
-    MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise, PosTaggingExercise,
-    ReverseClozeExercise, TranslatePhraseExercise,
+    CrossVerseConnectionExercise, EchoRecallExercise, ExerciseResponse, ExerciseService,
+    FindMistakeExercise, FirstLetterHintExercise, FullVerseInputExercise, IdentifyRootExercise,
+    McqExercise, MemorizationAction, MemorizationAyahExercise, MemorizationAyahState,
+    MemorizationWord, MissingWordMcqExercise, NextWordDifficulty, NextWordMcqExercise,
+    PosTaggingExercise, ReverseClozeExercise, TranslatePhraseExercise,
 };
 
 pub use semantic::{
