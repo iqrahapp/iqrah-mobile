@@ -2,6 +2,7 @@
 //!
 //! Supports loading scenarios from YAML files for reproducible experiments.
 
+use crate::baselines::SchedulerVariant;
 use crate::brain::StudentParams;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -119,6 +120,10 @@ pub struct Scenario {
     /// Number of students to simulate (for batch runs)
     #[serde(default = "default_student_count")]
     pub student_count: usize,
+
+    /// Scheduler variant to use
+    #[serde(default)]
+    pub scheduler: SchedulerVariant,
 }
 
 fn default_student_count() -> usize {
@@ -137,6 +142,7 @@ impl Scenario {
             session_size: 5,
             enable_bandit: false,
             student_count: 1,
+            scheduler: SchedulerVariant::IqrahDefault,
         }
     }
 
@@ -151,6 +157,7 @@ impl Scenario {
             session_size: 10,
             enable_bandit: true,
             student_count: 1,
+            scheduler: SchedulerVariant::IqrahDefault,
         }
     }
 
@@ -165,6 +172,7 @@ impl Scenario {
             session_size: 5,
             enable_bandit: true,
             student_count: 1,
+            scheduler: SchedulerVariant::IqrahDefault,
         }
     }
 
@@ -179,7 +187,16 @@ impl Scenario {
             session_size: 20,
             enable_bandit: true,
             student_count: 1,
+            scheduler: SchedulerVariant::IqrahDefault,
         }
+    }
+
+    /// Create a copy with a different scheduler variant.
+    pub fn with_scheduler(&self, scheduler: SchedulerVariant) -> Self {
+        let mut clone = self.clone();
+        clone.scheduler = scheduler;
+        clone.name = format!("{}_{}", self.name, scheduler.name());
+        clone
     }
 }
 

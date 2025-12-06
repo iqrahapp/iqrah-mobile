@@ -3,6 +3,9 @@
 //! The Simulator runs virtual students through the real Iqrah scheduling pipeline.
 //! ISS **orchestrates** the simulation; `iqrah-core` **decides** what to schedule.
 
+use crate::baselines::{
+    FixedSrsBaseline, PageOrderBaseline, RandomBaseline, SchedulerVariant, SessionGenerator,
+};
 use crate::brain::{PriorKnowledgeConfig, StudentBrain};
 use crate::config::{Scenario, SimulationConfig};
 use crate::in_memory_repo::InMemoryUserRepository;
@@ -22,8 +25,35 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, info, instrument, warn};
 
-/// Average time per exercise item in seconds.
-const SECONDS_PER_ITEM: f64 = 30.0;
+/// Estimate exercise time based on item properties.
+///
+/// Base times:
+/// - New items (review_count == 0): ~50 seconds
+/// - Review items: ~20 seconds
+///
+/// Modifiers:
+/// - Difficulty: higher difficulty = more time
+/// - Reading fluency: lower fluency = more time
+fn estimate_exercise_time(
+    stability: f64,
+    difficulty: f64,
+    is_new: bool,
+    _reading_fluency: f64, // Placeholder for future use
+) -> f64 {
+    let base_secs = if is_new { 50.0 } else { 20.0 };
+
+    // Difficulty modifier: D=1 -> 1.0x, D=10 -> 1.9x
+    let diff_mult = 1.0 + (difficulty - 1.0).max(0.0) * 0.1;
+
+    // Stability modifier: very low stability = uncertain, needs more time
+    let stab_mult = if stability < 1.0 {
+        1.2 // Low stability = review needed soon, takes more effort
+    } else {
+        1.0
+    };
+
+    (base_secs * diff_mult * stab_mult).clamp(10.0, 120.0)
+}
 
 /// Convert a verse key (e.g., "1:1") to a node ID.
 /// Uses a simple encoding: chapter * 1000 + verse
@@ -35,6 +65,60 @@ fn verse_key_to_node_id(key: &str) -> i64 {
         chapter * 1000 + verse
     } else {
         0
+    }
+}
+
+/// Baseline session state for non-Iqrah schedulers.
+enum BaselineState {
+    /// No baseline - use Iqrah scheduler
+    None,
+    /// Page-order baseline
+    PageOrder(PageOrderBaseline),
+    /// Fixed-SRS baseline
+    FixedSrs(FixedSrsBaseline),
+    /// Random baseline
+    Random(RandomBaseline),
+}
+
+impl BaselineState {
+    /// Create baseline state from scheduler variant.
+    fn new(variant: SchedulerVariant, seed: u64) -> Self {
+        match variant {
+            SchedulerVariant::IqrahDefault => Self::None,
+            SchedulerVariant::BaselinePageOrder => Self::PageOrder(PageOrderBaseline::new()),
+            SchedulerVariant::BaselineFixedSrs => Self::FixedSrs(FixedSrsBaseline::new()),
+            SchedulerVariant::BaselineRandom => Self::Random(RandomBaseline::new(seed)),
+        }
+    }
+
+    /// Generate session using baseline logic.
+    fn generate_session(
+        &mut self,
+        goal_items: &[i64],
+        memory_states: &HashMap<i64, MemoryState>,
+        session_size: usize,
+        current_day: u32,
+    ) -> Option<Vec<i64>> {
+        let now = chrono::Utc::now();
+        match self {
+            Self::None => None, // Use Iqrah scheduler
+            Self::PageOrder(b) => {
+                Some(b.generate_session(goal_items, memory_states, session_size, current_day, now))
+            }
+            Self::FixedSrs(b) => {
+                Some(b.generate_session(goal_items, memory_states, session_size, current_day, now))
+            }
+            Self::Random(b) => {
+                Some(b.generate_session(goal_items, memory_states, session_size, current_day, now))
+            }
+        }
+    }
+
+    /// Record a review result for FixedSRS baseline.
+    fn record_review(&mut self, node_id: i64, current_day: u32, success: bool) {
+        if let Self::FixedSrs(b) = self {
+            b.record_review(node_id, current_day, success);
+        }
     }
 }
 
@@ -109,6 +193,9 @@ impl Simulator {
         let mut introduction_order: HashMap<i64, usize> = HashMap::new();
         let mut intro_index = 1usize;
 
+        // 8b. Create baseline state based on scheduler variant
+        let mut baseline_state = BaselineState::new(scenario.scheduler, scheduler_seed);
+
         // 9. Main simulation loop
         for day in 0..scenario.target_days {
             if brain.has_given_up() {
@@ -138,6 +225,7 @@ impl Simulator {
                     day,
                     &mut introduction_order,
                     &mut intro_index,
+                    &mut baseline_state,
                 )
                 .await
                 .context("Failed to simulate day")?;
@@ -197,53 +285,69 @@ impl Simulator {
         day: u32,
         introduction_order: &mut HashMap<i64, usize>,
         intro_index: &mut usize,
+        baseline_state: &mut BaselineState,
     ) -> Result<f64> {
         let now = Utc::now() + Duration::days(day as i64);
         let now_ts = now.timestamp_millis();
 
-        // 1. Get candidates for scheduling
-        let candidates = self
-            .get_candidates(user_id, goal_items, user_repo, now_ts)
-            .await?;
+        // 1. Generate session - branch based on scheduler variant
+        let session_items = if let Some(baseline_session) = {
+            // Get memory states for baseline session generation
+            let memory_states = user_repo.get_all_states_for_user(user_id);
+            baseline_state.generate_session(goal_items, &memory_states, scenario.session_size, day)
+        } {
+            // Use baseline-generated session
+            baseline_session
+        } else {
+            // Use real Iqrah scheduler
 
-        if candidates.is_empty() {
+            // Get candidates for scheduling
+            let candidates = self
+                .get_candidates(user_id, goal_items, user_repo, now_ts)
+                .await?;
+
+            if candidates.is_empty() {
+                return Ok(0.0);
+            }
+
+            // Get parent energies (for prerequisite gate)
+            let all_parent_ids: Vec<i64> = candidates.iter().map(|c| c.id).collect();
+            let parent_energies = user_repo
+                .get_parent_energies(user_id, &all_parent_ids)
+                .await?;
+
+            // Get parent map (prerequisites)
+            let parent_map = self
+                .content_repo
+                .get_prerequisite_parents(&all_parent_ids)
+                .await?;
+
+            // Get user profile (via bandit if enabled)
+            let profile = if scenario.enable_bandit {
+                self.select_profile_via_bandit(user_id, &scenario.goal_id, user_repo, scheduler_rng)
+                    .await?
+            } else {
+                UserProfile::balanced()
+            };
+
+            // Generate session using REAL scheduler
+            generate_session(
+                candidates,
+                parent_map,
+                parent_energies,
+                &profile,
+                scenario.session_size,
+                now_ts,
+                SessionMode::MixedLearning,
+            )
+        };
+
+        if session_items.is_empty() {
             return Ok(0.0);
         }
 
-        // 2. Get parent energies (for prerequisite gate)
-        let all_parent_ids: Vec<i64> = candidates.iter().map(|c| c.id).collect();
-        let parent_energies = user_repo
-            .get_parent_energies(user_id, &all_parent_ids)
-            .await?;
-
-        // 3. Get parent map (prerequisites)
-        let parent_map = self
-            .content_repo
-            .get_prerequisite_parents(&all_parent_ids)
-            .await?;
-
-        // 4. Get user profile (via bandit if enabled)
-        let profile = if scenario.enable_bandit {
-            self.select_profile_via_bandit(user_id, &scenario.goal_id, user_repo, scheduler_rng)
-                .await?
-        } else {
-            UserProfile::balanced()
-        };
-
-        // 5. Generate session using REAL scheduler
-        let session_items = generate_session(
-            candidates,
-            parent_map,
-            parent_energies,
-            &profile,
-            scenario.session_size,
-            now_ts,
-            SessionMode::MixedLearning,
-        );
-
-        // 6. Process each item in the session
+        // 2. Process each item in the session
         let mut minutes_spent = 0.0;
-        let mut last_difficulty = 1.0f64;
 
         for node_id in session_items {
             // Track first introduction
@@ -278,9 +382,15 @@ impl Simulator {
                 .await
                 .context("Failed to process review")?;
 
-            // Update time tracking
-            minutes_spent += SECONDS_PER_ITEM / 60.0;
-            last_difficulty = state.difficulty;
+            // Update time tracking using estimate_exercise_time
+            let exercise_secs = estimate_exercise_time(
+                state.stability,
+                state.difficulty,
+                state.review_count == 0,
+                1.0, // Default reading fluency
+            );
+            minutes_spent += exercise_secs / 60.0;
+            let last_difficulty = state.difficulty;
 
             // Check early quit
             if brain.should_quit_early(minutes_spent, last_difficulty) {
