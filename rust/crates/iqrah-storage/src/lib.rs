@@ -5,8 +5,8 @@ pub mod user;
 pub mod version;
 
 pub use content::{
-    create_content_repository, init_content_db, init_test_content_db, NodeRegistry,
-    SqliteContentRepository,
+    create_content_repository, init_content_db, init_test_content_db, open_content_db_readonly,
+    NodeRegistry, SqliteContentRepository,
 };
 
 pub use error::{Result, StorageError};

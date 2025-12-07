@@ -1,0 +1,24 @@
+# Realistic Juz 'Amma scenario for dedicated students
+# 180 days at 40min/day is achievable (~0.8 min/verse)
+name: juz_amma_dedicated_180d
+goal_id: "juz:30"
+target_days: 180
+daily_minutes: 40.0
+student_params:
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 350
+  forgetting_rate_mult: 0.9
+  spacing_sensitivity: 1.2
+  item_variability: 0.05
+  fatigue_onset_minutes: 45.0
+  fatigue_decay_rate: 0.01
+  difficulty_sensitivity: 0.1
+  known_surah_ids: [1, 2, 3, 4, 5, 112, 113, 114]
+  vocab_known_pct: 0.25
+  overdue_sensitivity: 0.3
+  momentum_sensitivity: 0.3
+session_size: 15
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default

@@ -377,6 +377,22 @@ impl UserRepository for SqliteUserRepository {
         Ok(())
     }
 
+    async fn save_memory_states_batch(&self, states: &[MemoryState]) -> anyhow::Result<()> {
+        if states.is_empty() {
+            return Ok(());
+        }
+
+        // Use a transaction for atomicity and better performance
+        let mut tx = self.pool.begin().await?;
+
+        for state in states {
+            Self::save_memory_state_in_tx(&mut tx, state).await?;
+        }
+
+        tx.commit().await?;
+        Ok(())
+    }
+
     // ========================================================================
     // Scheduler v2.0 Methods
     // ========================================================================

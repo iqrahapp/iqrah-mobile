@@ -18,7 +18,29 @@ use std::str::FromStr;
 
 const EXPECTED_CONTENT_VERSION: &str = "2.1.0";
 
-/// Initialize content database
+/// Open content database in read-only mode (no migrations).
+///
+/// Use this for tools that only need to read content (like ISS simulations).
+/// The database must already exist and have compatible schema.
+pub async fn open_content_db_readonly(db_path: &str) -> Result<SqlitePool> {
+    let options = SqliteConnectOptions::from_str(db_path)?
+        .create_if_missing(false)
+        .read_only(true)
+        .foreign_keys(true);
+
+    let pool = SqlitePool::connect_with(options).await?;
+
+    // Verify schema version compatibility (skip migrations)
+    let db_version = get_schema_version(&pool)
+        .await
+        .unwrap_or_else(|_| "unknown".to_string());
+
+    tracing::info!("Content DB opened (read-only): schema v{}", db_version);
+
+    Ok(pool)
+}
+
+/// Initialize content database (runs migrations, creates if missing).
 pub async fn init_content_db(db_path: &str) -> Result<SqlitePool> {
     // FK constraints enabled - all migrations properly handle foreign key references
     let options = SqliteConnectOptions::from_str(db_path)?

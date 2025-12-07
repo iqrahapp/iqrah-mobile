@@ -2,6 +2,7 @@ pub mod cbor_import;
 pub mod domain;
 pub mod exercises;
 pub mod import;
+pub mod initial_placement;
 pub mod ports;
 pub mod scheduler_v2;
 pub mod semantic;
@@ -78,3 +79,8 @@ pub use semantic::{
 pub use cbor_import::import_cbor_graph_from_bytes;
 
 pub use import::{import_translators_from_json, TranslatorImportStats, TranslatorMetadata};
+
+pub use initial_placement::{
+    ArabicLevel, InitialPlacementConfig, InitialPlacementService, InitialPlacementSummary,
+    IntakeAnswers, SurahSelfReport,
+};

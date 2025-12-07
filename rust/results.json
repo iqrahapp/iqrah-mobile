@@ -1,0 +1,125 @@
+{
+  "scenario": "single_student_30_days",
+  "goal_id": "surah:1",
+  "target_days": 30,
+  "base_seed": 42,
+  "variants": [
+    {
+      "variant": "iqrah_default",
+      "students": 50,
+      "metrics": {
+        "final_score_mean": 0.6359999999999997,
+        "final_score_std": 0.0414481706931791,
+        "final_score_median": 0.6428571428571429,
+        "retention_per_minute_mean": 0.48052713516678297,
+        "retention_per_minute_std": 0.15338511367870045,
+        "coverage_pct_mean": 0.6800000000000003,
+        "coverage_pct_std": 0.20724085346589555,
+        "plan_faithfulness_mean": 1.0,
+        "days_to_mastery_mean": null,
+        "days_to_mastery_count": 0,
+        "gave_up_fraction": 0.0,
+        "total_students": 50,
+        "coverage_t_mean": 0.6800000000000003,
+        "mean_r_t_mean": 0.811741088107261,
+        "rpm_t_mean": 0.48052713516678297,
+        "rpm_short_mean": null,
+        "coverage_acq_mean": 0.6800000000000003,
+        "mean_r_acq_mean": 0.8786171646015702
+      },
+      "ci_stats": {
+        "final_score": {
+          "mean": 0.6359999999999997,
+          "std": 0.0414481706931791,
+          "ci_lower": 0.6245111532345493,
+          "ci_upper": 0.64748884676545,
+          "n": 50
+        },
+        "retention_per_minute": {
+          "mean": 0.48052713516678297,
+          "std": 0.15338511367870045,
+          "ci_lower": 0.4380109507927938,
+          "ci_upper": 0.5230433195407722,
+          "n": 50
+        },
+        "coverage_pct": {
+          "mean": 0.6800000000000003,
+          "std": 0.20724085346589555,
+          "ci_lower": 0.6225557661727483,
+          "ci_upper": 0.7374442338272522,
+          "n": 50
+        },
+        "plan_faithfulness": {
+          "mean": 1.0,
+          "std": 0.0,
+          "ci_lower": 1.0,
+          "ci_upper": 1.0,
+          "n": 50
+        }
+      }
+    },
+    {
+      "variant": "baseline_random",
+      "students": 50,
+      "metrics": {
+        "final_score_mean": 0.5756471906370411,
+        "final_score_std": 0.03964986155685526,
+        "final_score_median": 0.5723908496322356,
+        "retention_per_minute_mean": 0.08737923607625218,
+        "retention_per_minute_std": 0.008699463100228889,
+        "coverage_pct_mean": 0.9942857142857143,
+        "coverage_pct_std": 0.02827838053173677,
+        "plan_faithfulness_mean": 0.2899999999999999,
+        "days_to_mastery_mean": null,
+        "days_to_mastery_count": 0,
+        "gave_up_fraction": 0.0,
+        "total_students": 50,
+        "coverage_t_mean": 0.9942857142857143,
+        "mean_r_t_mean": 0.9957235606480772,
+        "rpm_t_mean": 0.08737923607625218,
+        "rpm_short_mean": null,
+        "coverage_acq_mean": 0.9971428571428572,
+        "mean_r_acq_mean": 0.9979092041485639
+      },
+      "ci_stats": {
+        "final_score": {
+          "mean": 0.5756471906370411,
+          "std": 0.03964986155685526,
+          "ci_lower": 0.5646568097328967,
+          "ci_upper": 0.5866375715411855,
+          "n": 50
+        },
+        "retention_per_minute": {
+          "mean": 0.08737923607625218,
+          "std": 0.008699463100228889,
+          "ci_lower": 0.08496786793071742,
+          "ci_upper": 0.08979060422178695,
+          "n": 50
+        },
+        "coverage_pct": {
+          "mean": 0.9942857142857143,
+          "std": 0.02827838053173677,
+          "ci_lower": 0.9864473471088082,
+          "ci_upper": 1.0021240814626204,
+          "n": 50
+        },
+        "plan_faithfulness": {
+          "mean": 0.2899999999999999,
+          "std": 0.1744629410054083,
+          "ci_lower": 0.2416413399689362,
+          "ci_upper": 0.33835866003106363,
+          "n": 50
+        }
+      }
+    }
+  ],
+  "significance_results": [
+    {
+      "variant_a": "iqrah_default",
+      "variant_b": "baseline_random",
+      "metric": "final_score",
+      "p_value": 3.923701859167441e-11,
+      "a_greater": true
+    }
+  ]
+}

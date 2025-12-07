@@ -5,10 +5,12 @@
 
 use crate::baselines::SchedulerVariant;
 use crate::config::{Scenario, SimulationConfig};
+use crate::debug_stats::{RunDebugReport, StudentDebugSummary, VariantDebugReport};
 use crate::metrics::SimulationMetrics;
 use crate::simulator::Simulator;
 
 use anyhow::Result;
+use chrono::Utc;
 use iqrah_core::ports::ContentRepository;
 use serde::Serialize;
 use std::sync::Arc;
@@ -47,6 +49,14 @@ pub struct AggregatedMetrics {
 
     /// Total students simulated
     pub total_students: usize,
+
+    // === New outcome metrics ===
+    pub coverage_t_mean: f64,
+    pub mean_r_t_mean: f64,
+    pub rpm_t_mean: f64,
+    pub rpm_short_mean: Option<f64>,
+    pub coverage_acq_mean: f64,
+    pub mean_r_acq_mean: f64,
 }
 
 impl AggregatedMetrics {
@@ -96,6 +106,30 @@ impl AggregatedMetrics {
         let gave_up_count = metrics.iter().filter(|m| m.gave_up).count();
         let gave_up_fraction = gave_up_count as f64 / n_f64;
 
+        // New outcome metrics
+        let coverage_t_sum: f64 = metrics.iter().map(|m| m.coverage_t).sum();
+        let coverage_t_mean = coverage_t_sum / n_f64;
+
+        let mean_r_t_sum: f64 = metrics.iter().map(|m| m.mean_r_t).sum();
+        let mean_r_t_mean = mean_r_t_sum / n_f64;
+
+        let rpm_t_sum: f64 = metrics.iter().map(|m| m.rpm_t).sum();
+        let rpm_t_mean = rpm_t_sum / n_f64;
+
+        let rpm_short_count = metrics.iter().filter(|m| m.rpm_short.is_some()).count();
+        let rpm_short_mean = if rpm_short_count > 0 {
+            let sum: f64 = metrics.iter().filter_map(|m| m.rpm_short).sum();
+            Some(sum / rpm_short_count as f64)
+        } else {
+            None
+        };
+
+        let coverage_acq_sum: f64 = metrics.iter().map(|m| m.coverage_acq).sum();
+        let coverage_acq_mean = coverage_acq_sum / n_f64;
+
+        let mean_r_acq_sum: f64 = metrics.iter().map(|m| m.mean_r_acq).sum();
+        let mean_r_acq_mean = mean_r_acq_sum / n_f64;
+
         Self {
             final_score_mean,
             final_score_std,
@@ -109,6 +143,12 @@ impl AggregatedMetrics {
             days_to_mastery_count,
             gave_up_fraction,
             total_students: n,
+            coverage_t_mean,
+            mean_r_t_mean,
+            rpm_t_mean,
+            rpm_short_mean,
+            coverage_acq_mean,
+            mean_r_acq_mean,
         }
     }
 
@@ -127,6 +167,12 @@ impl AggregatedMetrics {
             days_to_mastery_count: 0,
             gave_up_fraction: 0.0,
             total_students: 0,
+            coverage_t_mean: 0.0,
+            mean_r_t_mean: 0.0,
+            rpm_t_mean: 0.0,
+            rpm_short_mean: None,
+            coverage_acq_mean: 0.0,
+            mean_r_acq_mean: 0.0,
         }
     }
 }
@@ -143,6 +189,26 @@ pub struct VariantResult {
     /// Individual student metrics (optional, for detailed analysis)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub individual_metrics: Vec<MetricsSummary>,
+
+    // v0.5 additions
+    /// Timeline / learning curve data (per-day aggregates)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub timeline: Vec<crate::stats::TimelinePoint>,
+    /// Difficulty bucket metrics (easy/medium/hard)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub difficulty_buckets: Vec<crate::stats::DifficultyBucketMetrics>,
+    /// Confidence interval stats for key metrics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ci_stats: Option<ConfidenceIntervalStats>,
+}
+
+/// Confidence interval statistics for key metrics (v0.5).
+#[derive(Debug, Clone, Serialize)]
+pub struct ConfidenceIntervalStats {
+    pub final_score: crate::stats::MetricStats,
+    pub retention_per_minute: crate::stats::MetricStats,
+    pub coverage_pct: crate::stats::MetricStats,
+    pub plan_faithfulness: crate::stats::MetricStats,
 }
 
 /// Summary of individual student metrics for JSON output.
@@ -169,6 +235,9 @@ pub struct ComparisonResults {
     pub base_seed: u64,
     /// Results for each variant
     pub variants: Vec<VariantResult>,
+    /// Statistical significance results between variant pairs (v0.5)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub significance_results: Vec<crate::stats::SignificanceResult>,
 }
 
 /// Run comparison across multiple scheduler variants.
@@ -188,7 +257,7 @@ pub async fn run_comparison(
     base_seed: u64,
     expected_rpm: f64,
     include_individual: bool,
-) -> Result<ComparisonResults> {
+) -> Result<(ComparisonResults, Option<RunDebugReport>)> {
     info!(
         "Running comparison: {} variants × {} students",
         variants.len(),
@@ -196,6 +265,8 @@ pub async fn run_comparison(
     );
 
     let mut variant_results = Vec::with_capacity(variants.len());
+    let mut all_variant_scores: Vec<(String, Vec<f64>)> = Vec::with_capacity(variants.len());
+    let mut variant_reports = Vec::new(); // for debug stats
 
     for &variant in variants {
         info!("Running variant: {}", variant.name());
@@ -208,6 +279,7 @@ pub async fn run_comparison(
             scenarios: vec![scenario.clone()],
             base_seed,
             expected_rpm,
+            debug_stats: true, // Force debug stats for comparison to get full reports
             ..Default::default()
         };
 
@@ -217,10 +289,11 @@ pub async fn run_comparison(
         // Run simulations
         let mut all_metrics = Vec::with_capacity(students_per_variant);
         let mut individual_summaries = Vec::new();
+        let mut variant_debug_summaries = Vec::new();
 
         for i in 0..students_per_variant {
             match simulator.simulate_student(&scenario, i).await {
-                Ok(metrics) => {
+                Ok((metrics, summary)) => {
                     if include_individual {
                         individual_summaries.push(MetricsSummary {
                             student_index: i,
@@ -232,6 +305,9 @@ pub async fn run_comparison(
                         });
                     }
                     all_metrics.push(metrics);
+                    if let Some(s) = summary {
+                        variant_debug_summaries.push(s);
+                    }
                 }
                 Err(e) => {
                     warn!("Simulation failed for student {}: {}", i, e);
@@ -239,32 +315,102 @@ pub async fn run_comparison(
             }
         }
 
+        // Compute debug stats for variant if summaries exist
+        if !variant_debug_summaries.is_empty() {
+            let report = VariantDebugReport::from_summaries(
+                &variant.name().to_string(),
+                &variant_debug_summaries,
+            );
+            variant_reports.push(report);
+        }
+
         // Aggregate metrics
         let aggregated =
             AggregatedMetrics::compute(&all_metrics, scenario.target_days, expected_rpm);
+
+        // Compute CI stats if there are enough students
+        let ci_stats = if all_metrics.len() >= 2 {
+            let final_scores: Vec<f64> = all_metrics
+                .iter()
+                .map(|m| m.final_score(scenario.target_days, expected_rpm))
+                .collect();
+            let rpms: Vec<f64> = all_metrics.iter().map(|m| m.retention_per_minute).collect();
+            let coverages: Vec<f64> = all_metrics.iter().map(|m| m.coverage_pct).collect();
+            let faithfulness: Vec<f64> = all_metrics.iter().map(|m| m.plan_faithfulness).collect();
+
+            Some(ConfidenceIntervalStats {
+                final_score: crate::stats::MetricStats::from_values(&final_scores),
+                retention_per_minute: crate::stats::MetricStats::from_values(&rpms),
+                coverage_pct: crate::stats::MetricStats::from_values(&coverages),
+                plan_faithfulness: crate::stats::MetricStats::from_values(&faithfulness),
+            })
+        } else {
+            None
+        };
+
+        // Store raw final scores for significance testing later
+        let final_scores_for_sig: Vec<f64> = all_metrics
+            .iter()
+            .map(|m| m.final_score(scenario.target_days, expected_rpm))
+            .collect();
+        all_variant_scores.push((variant.name().to_string(), final_scores_for_sig));
 
         variant_results.push(VariantResult {
             variant: variant.name().to_string(),
             students: all_metrics.len(),
             metrics: aggregated,
             individual_metrics: individual_summaries,
+            // v0.5 fields - timeline/difficulty_buckets filled on demand
+            timeline: vec![],
+            difficulty_buckets: vec![],
+            ci_stats,
         });
-
-        info!(
-            "Variant {} complete: score={:.3}, coverage={:.1}%",
-            variant.name(),
-            variant_results.last().unwrap().metrics.final_score_mean,
-            variant_results.last().unwrap().metrics.coverage_pct_mean * 100.0
-        );
     }
 
-    Ok(ComparisonResults {
-        scenario: base_scenario.name.clone(),
-        goal_id: base_scenario.goal_id.clone(),
-        target_days: base_scenario.target_days,
-        base_seed,
-        variants: variant_results,
-    })
+    let debug_report = if !variant_reports.is_empty() {
+        Some(RunDebugReport {
+            scenario_name: base_scenario.name.clone(),
+            timestamp: Utc::now(),
+            variants: variant_reports,
+        })
+    } else {
+        None
+    };
+
+    // Calculate significance results
+    let mut significance_results = Vec::new();
+    if all_variant_scores.len() >= 2 {
+        for i in 0..all_variant_scores.len() {
+            for j in (i + 1)..all_variant_scores.len() {
+                let (name_a, scores_a) = &all_variant_scores[i];
+                let (name_b, scores_b) = &all_variant_scores[j];
+
+                let p_value = crate::stats::welchs_t_test(scores_a, scores_b);
+                let mean_a = scores_a.iter().sum::<f64>() / scores_a.len().max(1) as f64;
+                let mean_b = scores_b.iter().sum::<f64>() / scores_b.len().max(1) as f64;
+
+                significance_results.push(crate::stats::SignificanceResult {
+                    variant_a: name_a.clone(),
+                    variant_b: name_b.clone(),
+                    metric: "final_score".to_string(),
+                    p_value,
+                    a_greater: mean_a > mean_b,
+                });
+            }
+        }
+    }
+
+    Ok((
+        ComparisonResults {
+            scenario: base_scenario.name.clone(),
+            goal_id: base_scenario.goal_id.clone(),
+            target_days: base_scenario.target_days,
+            base_seed,
+            variants: variant_results,
+            significance_results,
+        },
+        debug_report,
+    ))
 }
 
 /// Compute standard deviation.
@@ -314,6 +460,14 @@ mod tests {
             gave_up: false,
             goal_item_count: 10,
             items_mastered: 8,
+            coverage_t: 0.8,
+            mean_r_t: 0.9,
+            items_good_t: 8,
+            rpm_t: 0.08,
+            items_good_short: None,
+            rpm_short: None,
+            coverage_acq: 0.8,
+            mean_r_acq: 0.9,
         };
         let agg = AggregatedMetrics::compute(&[m], 30, 0.1);
 

@@ -83,6 +83,18 @@ pub trait UserRepository: Send + Sync {
         propagation_event: Option<PropagationEvent>,
     ) -> anyhow::Result<()>;
 
+    /// Batch save multiple memory states atomically.
+    ///
+    /// Used for initial placement and bulk imports where many states
+    /// need to be written efficiently.
+    ///
+    /// # Arguments
+    /// * `states` - Memory states to save (all for the same user)
+    ///
+    /// # Returns
+    /// Ok(()) if all states saved successfully
+    async fn save_memory_states_batch(&self, states: &[MemoryState]) -> anyhow::Result<()>;
+
     // ========================================================================
     // Scheduler v2.0 Methods
     // ========================================================================

@@ -224,6 +224,32 @@ pub struct SimulationMetrics {
 
     /// Number of items that reached mastery
     pub items_mastered: usize,
+
+    // === New outcome metrics at T_eval ===
+    /// Fraction of items with R(T_eval) >= 0.9 at evaluation horizon
+    pub coverage_t: f64,
+
+    /// Mean retrievability across all goal items at T_eval
+    pub mean_r_t: f64,
+
+    /// Number of items with R(T_eval) >= 0.9
+    pub items_good_t: usize,
+
+    /// Items good at T / total_minutes (efficiency)
+    pub rpm_t: f64,
+
+    /// For long scenarios: items with R(T_short) >= 0.9 where T_short = min(90, target_days)
+    pub items_good_short: Option<usize>,
+
+    /// For long scenarios: items_good_short / total_minutes
+    pub rpm_short: Option<f64>,
+
+    // === Acquisition metrics (T_acq = 14) ===
+    /// Fraction of items with Stability >= min(14, T)
+    pub coverage_acq: f64,
+
+    /// Mean retrievability at T_acq
+    pub mean_r_acq: f64,
 }
 
 impl SimulationMetrics {
@@ -307,6 +333,85 @@ impl SimulationMetrics {
 
         let faithfulness = plan_faithfulness(plan_priorities, introduction_order);
 
+        // === New outcome metrics at T_eval ===
+
+        // Compute R_eval for each item and aggregate metrics
+        let r_evals: Vec<f64> = goal_items
+            .iter()
+            .map(|&nid| {
+                stabilities
+                    .get(&nid)
+                    .map(|&s| retrievability(s, horizon_days))
+                    .unwrap_or(0.0)
+            })
+            .collect();
+
+        let items_good_t = r_evals.iter().filter(|&&r| r >= 0.9).count();
+        let coverage_t = if !goal_items.is_empty() {
+            items_good_t as f64 / goal_items.len() as f64
+        } else {
+            0.0
+        };
+        let mean_r_t = if !r_evals.is_empty() {
+            r_evals.iter().sum::<f64>() / r_evals.len() as f64
+        } else {
+            0.0
+        };
+        let rpm_t = if total_minutes > 0.0 {
+            items_good_t as f64 / total_minutes
+        } else {
+            0.0
+        };
+
+        // === Acquisition metrics (T_acq = min(14, horizon)) ===
+        let t_acq = horizon_days.min(14.0);
+        let items_acq = goal_items
+            .iter()
+            .filter(|&&nid| stabilities.get(&nid).map(|&s| s >= t_acq).unwrap_or(false))
+            .count();
+        let coverage_acq = if !goal_items.is_empty() {
+            (items_acq as f64 / goal_items.len() as f64).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+
+        let r_acq_vals: Vec<f64> = goal_items
+            .iter()
+            .map(|&nid| {
+                stabilities
+                    .get(&nid)
+                    .map(|&s| retrievability(s, t_acq))
+                    .unwrap_or(0.0)
+            })
+            .collect();
+        let mean_r_acq = if !r_acq_vals.is_empty() {
+            r_acq_vals.iter().sum::<f64>() / r_acq_vals.len() as f64
+        } else {
+            0.0
+        };
+
+        // For long scenarios (target >= 180 days), also compute short-term metrics
+        let (items_good_short, rpm_short) = if horizon_days >= 180.0 {
+            let t_short = 90.0_f64.min(horizon_days);
+            let items_short = goal_items
+                .iter()
+                .filter(|&&nid| {
+                    stabilities
+                        .get(&nid)
+                        .map(|&s| retrievability(s, t_short) >= 0.9)
+                        .unwrap_or(false)
+                })
+                .count();
+            let rpm = if total_minutes > 0.0 {
+                items_short as f64 / total_minutes
+            } else {
+                0.0
+            };
+            (Some(items_short), Some(rpm))
+        } else {
+            (None, None)
+        };
+
         Self {
             retention_per_minute,
             days_to_mastery: None, // TODO: Implement daily snapshot tracking
@@ -317,6 +422,14 @@ impl SimulationMetrics {
             gave_up,
             goal_item_count: goal_items.len(),
             items_mastered,
+            coverage_t,
+            mean_r_t,
+            items_good_t,
+            rpm_t,
+            items_good_short,
+            rpm_short,
+            coverage_acq,
+            mean_r_acq,
         }
     }
 }
@@ -333,6 +446,14 @@ impl Default for SimulationMetrics {
             gave_up: false,
             goal_item_count: 0,
             items_mastered: 0,
+            coverage_t: 0.0,
+            mean_r_t: 0.0,
+            items_good_t: 0,
+            rpm_t: 0.0,
+            items_good_short: None,
+            rpm_short: None,
+            coverage_acq: 0.0,
+            mean_r_acq: 0.0,
         }
     }
 }
@@ -442,6 +563,14 @@ mod tests {
             gave_up: false,
             goal_item_count: 100,
             items_mastered: 80,
+            coverage_t: 0.8,
+            mean_r_t: 0.85,
+            items_good_t: 80,
+            rpm_t: 0.08,
+            items_good_short: None,
+            rpm_short: None,
+            coverage_acq: 0.8,
+            mean_r_acq: 0.85,
         };
 
         // r_norm = 0.5, mastery_term = 0.5, cov = 0.8, faith = 1.0

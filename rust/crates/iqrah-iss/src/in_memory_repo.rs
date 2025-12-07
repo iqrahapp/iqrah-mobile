@@ -208,6 +208,14 @@ impl UserRepository for InMemoryUserRepository {
         Ok(())
     }
 
+    async fn save_memory_states_batch(&self, states: &[MemoryState]) -> Result<()> {
+        let mut mem_states = self.memory_states.write().unwrap();
+        for state in states {
+            mem_states.insert((state.user_id.clone(), state.node_id), state.clone());
+        }
+        Ok(())
+    }
+
     async fn get_parent_energies(
         &self,
         user_id: &str,

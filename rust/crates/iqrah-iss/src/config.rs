@@ -3,7 +3,7 @@
 //! Supports loading scenarios from YAML files for reproducible experiments.
 
 use crate::baselines::SchedulerVariant;
-use crate::brain::StudentParams;
+use crate::brain::{StudentParams, StudentParamsSelector};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -31,8 +31,18 @@ pub struct SimulationConfig {
     pub expected_rpm: f64,
 
     /// Target mastery fraction for days_to_mastery metric
+    /// Target mastery fraction for days_to_mastery metric
     #[serde(default = "default_mastery_target")]
     pub mastery_target: f64,
+
+    /// Collect detailed debug statistics (default: false)
+    #[serde(default)]
+    pub debug_stats: bool,
+
+    /// Window in days for "almost due" items to be included in candidate pool (default: 2)
+    /// Set to 0 to disable almost-due inclusion (original behavior)
+    #[serde(default = "default_almost_due_window")]
+    pub almost_due_window_days: u32,
 }
 
 fn default_expected_rpm() -> f64 {
@@ -41,6 +51,10 @@ fn default_expected_rpm() -> f64 {
 
 fn default_mastery_target() -> f64 {
     0.8 // 80% of items mastered
+}
+
+fn default_almost_due_window() -> u32 {
+    2 // Include items due within 2 days as candidates
 }
 
 impl SimulationConfig {
@@ -76,6 +90,8 @@ impl SimulationConfig {
             scheduler_seed_offset: 1_000_000,
             expected_rpm: 0.1,
             mastery_target: 0.8,
+            debug_stats: false,
+            almost_due_window_days: 2,
         }
     }
 }
@@ -88,6 +104,8 @@ impl Default for SimulationConfig {
             scheduler_seed_offset: 1_000_000,
             expected_rpm: 0.1,
             mastery_target: 0.8,
+            debug_stats: false,
+            almost_due_window_days: 2,
         }
     }
 }
@@ -107,8 +125,15 @@ pub struct Scenario {
     /// Daily time budget in minutes
     pub daily_minutes: f64,
 
-    /// Student cognitive parameters
+    /// Fixed student cognitive parameters (for backward compatibility)
+    /// If student_params_selector is set, this is ignored.
+    #[serde(default)]
     pub student_params: StudentParams,
+
+    /// Optional: selector for heterogeneous student populations
+    /// If not set, uses student_params for all students.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub student_params_selector: Option<StudentParamsSelector>,
 
     /// Number of items per session
     pub session_size: usize,
@@ -139,6 +164,7 @@ impl Scenario {
             target_days: 5,
             daily_minutes: 10.0,
             student_params: StudentParams::default(),
+            student_params_selector: None,
             session_size: 5,
             enable_bandit: false,
             student_count: 1,
@@ -154,6 +180,7 @@ impl Scenario {
             target_days: 30,
             daily_minutes: 30.0,
             student_params: StudentParams::default(),
+            student_params_selector: None,
             session_size: 10,
             enable_bandit: true,
             student_count: 1,
@@ -169,6 +196,7 @@ impl Scenario {
             target_days: 30,
             daily_minutes: 15.0,
             student_params: StudentParams::casual_learner(),
+            student_params_selector: None,
             session_size: 5,
             enable_bandit: true,
             student_count: 1,
@@ -184,6 +212,7 @@ impl Scenario {
             target_days: 90,
             daily_minutes: 60.0,
             student_params: StudentParams::dedicated_student(),
+            student_params_selector: None,
             session_size: 20,
             enable_bandit: true,
             student_count: 1,
@@ -197,6 +226,17 @@ impl Scenario {
         clone.scheduler = scheduler;
         clone.name = format!("{}_{}", self.name, scheduler.name());
         clone
+    }
+
+    /// Get student parameters for a specific student index.
+    ///
+    /// If student_params_selector is set, samples from it;
+    /// otherwise uses the fixed student_params.
+    pub fn get_student_params(&self, student_index: usize, base_seed: u64) -> StudentParams {
+        match &self.student_params_selector {
+            Some(selector) => selector.sample_for_student(student_index, base_seed),
+            None => self.student_params.clone(),
+        }
     }
 }
 

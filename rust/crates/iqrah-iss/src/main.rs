@@ -9,7 +9,7 @@ use iqrah_core::ContentRepository;
 use iqrah_iss::{
     run_comparison, Scenario, SchedulerVariant, SimulationConfig, SimulationMetrics, Simulator,
 };
-use iqrah_storage::{create_content_repository, init_content_db};
+use iqrah_storage::{create_content_repository, open_content_db_readonly};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{info, warn, Level};
@@ -45,12 +45,12 @@ enum Commands {
         seed: u64,
 
         /// Number of days to simulate
-        #[arg(short, long, default_value = "30")]
-        days: u32,
+        #[arg(short, long)]
+        days: Option<u32>,
 
         /// Goal ID (e.g., "surah:1", "juz:30")
-        #[arg(short, long, default_value = "surah:1")]
-        goal: String,
+        #[arg(short, long)]
+        goal: Option<String>,
     },
 
     /// Run batch simulation with multiple students
@@ -68,12 +68,12 @@ enum Commands {
         seed: u64,
 
         /// Number of days to simulate
-        #[arg(short, long, default_value = "30")]
-        days: u32,
+        #[arg(short, long)]
+        days: Option<u32>,
 
         /// Goal ID
-        #[arg(short, long, default_value = "surah:1")]
-        goal: String,
+        #[arg(short, long)]
+        goal: Option<String>,
 
         /// Output JSON file for results
         #[arg(short, long)]
@@ -87,8 +87,16 @@ enum Commands {
         output: PathBuf,
     },
 
+    /// List available scenario presets
+    ListPresets,
+
     /// Compare multiple scheduler variants
     Compare {
+        /// Scenario name or preset (alternative to --scenario)
+        /// Built-in: juz_amma_casual, juz_amma_dedicated, etc.
+        #[arg(long)]
+        preset: Option<String>,
+
         /// Scenario name or preset
         #[arg(short, long, default_value = "default")]
         scenario: String,
@@ -112,12 +120,12 @@ enum Commands {
         seed: u64,
 
         /// Number of days to simulate
-        #[arg(short, long, default_value = "30")]
-        days: u32,
+        #[arg(short, long)]
+        days: Option<u32>,
 
         /// Goal ID
-        #[arg(short, long, default_value = "surah:1")]
-        goal: String,
+        #[arg(short, long)]
+        goal: Option<String>,
 
         /// Output JSON file for results
         #[arg(short, long)]
@@ -150,10 +158,10 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .context("Failed to set tracing subscriber")?;
 
-    // Load content database
+    // Load content database (read-only, no migrations)
     info!("Loading content database from {:?}", cli.content_db);
     let db_path = cli.content_db.to_str().context("Invalid database path")?;
-    let pool = init_content_db(db_path)
+    let pool = open_content_db_readonly(db_path)
         .await
         .context("Failed to open content.db")?;
     let content_repo: Arc<dyn ContentRepository> = Arc::new(create_content_repository(pool));
@@ -165,7 +173,7 @@ async fn main() -> Result<()> {
             days,
             goal,
         } => {
-            run_single(content_repo, &scenario, seed, days, &goal).await?;
+            run_single(content_repo, &scenario, seed, days, goal.as_deref()).await?;
         }
         Commands::Batch {
             scenario,
@@ -175,12 +183,25 @@ async fn main() -> Result<()> {
             goal,
             output,
         } => {
-            run_batch(content_repo, &scenario, count, seed, days, &goal, output).await?;
+            run_batch(
+                content_repo,
+                &scenario,
+                count,
+                seed,
+                days,
+                goal.as_deref(),
+                output,
+            )
+            .await?;
         }
         Commands::GenConfig { output } => {
             generate_config(&output)?;
         }
+        Commands::ListPresets => {
+            list_presets();
+        }
         Commands::Compare {
+            preset,
             scenario,
             variants,
             students,
@@ -190,14 +211,17 @@ async fn main() -> Result<()> {
             output,
             include_individual,
         } => {
+            // Determine which scenario to use
+            let scenario_name = preset.as_ref().unwrap_or(&scenario);
+
             run_compare(
                 content_repo,
-                &scenario,
+                scenario_name,
                 &variants,
                 students,
                 seed,
                 days,
-                &goal,
+                goal.as_deref(),
                 output,
                 include_individual,
             )
@@ -212,8 +236,8 @@ async fn run_single(
     content_repo: Arc<dyn ContentRepository>,
     scenario_name: &str,
     seed: u64,
-    days: u32,
-    goal: &str,
+    days: Option<u32>,
+    goal: Option<&str>,
 ) -> Result<()> {
     let scenario = create_scenario(scenario_name, days, goal);
     let config = SimulationConfig {
@@ -226,11 +250,11 @@ async fn run_single(
 
     info!("Running single student simulation");
     info!("  Scenario: {}", scenario.name);
-    info!("  Goal: {}", goal);
-    info!("  Days: {}", days);
+    info!("  Goal: {}", scenario.goal_id);
+    info!("  Days: {}", scenario.target_days);
     info!("  Seed: {}", seed);
 
-    let metrics = simulator
+    let (metrics, _debug) = simulator
         .simulate_student(&scenario, 0)
         .await
         .context("Simulation failed")?;
@@ -245,8 +269,8 @@ async fn run_batch(
     scenario_name: &str,
     count: usize,
     seed: u64,
-    days: u32,
-    goal: &str,
+    days: Option<u32>,
+    goal: Option<&str>,
     output: Option<PathBuf>,
 ) -> Result<()> {
     let scenario = create_scenario(scenario_name, days, goal);
@@ -261,8 +285,8 @@ async fn run_batch(
     info!("Running batch simulation");
     info!("  Scenario: {}", scenario.name);
     info!("  Students: {}", count);
-    info!("  Goal: {}", goal);
-    info!("  Days: {}", days);
+    info!("  Goal: {}", scenario.goal_id);
+    info!("  Days: {}", scenario.target_days);
     info!("  Seed: {}", seed);
 
     let pb = ProgressBar::new(count as u64);
@@ -277,7 +301,7 @@ async fn run_batch(
     let mut all_metrics: Vec<SimulationMetrics> = Vec::with_capacity(count);
 
     for i in 0..count {
-        let metrics = simulator
+        let (metrics, _debug) = simulator
             .simulate_student(&scenario, i)
             .await
             .context(format!("Simulation failed for student {}", i))?;
@@ -308,14 +332,34 @@ async fn run_batch(
     Ok(())
 }
 
-fn create_scenario(name: &str, days: u32, goal: &str) -> Scenario {
+fn create_scenario(name: &str, days: Option<u32>, goal: Option<&str>) -> Scenario {
+    // First try to load from YAML preset file
+    let yaml_path = format!("crates/iqrah-iss/configs/scenarios/{}.yaml", name);
+    if let Ok(contents) = std::fs::read_to_string(&yaml_path) {
+        if let Ok(mut scenario) = serde_yaml::from_str::<Scenario>(&contents) {
+            // CLI arguments override YAML only if provided
+            if let Some(d) = days {
+                scenario.target_days = d;
+            }
+            if let Some(g) = goal {
+                scenario.goal_id = g.to_string();
+            }
+            info!(
+                "Loaded scenario '{}' from {} (goal={}, days={})",
+                scenario.name, yaml_path, scenario.goal_id, scenario.target_days
+            );
+            return scenario;
+        }
+    }
+
+    // Fall back to built-in archetypes
     let mut scenario = match name {
-        "casual" => Scenario::casual_learner(),
-        "dedicated" => Scenario::dedicated_student(),
+        "casual" | "juz_amma_casual" => Scenario::casual_learner(),
+        "dedicated" | "juz_amma_dedicated" => Scenario::dedicated_student(),
         _ => Scenario::default(),
     };
-    scenario.target_days = days;
-    scenario.goal_id = goal.to_string();
+    scenario.target_days = days.unwrap_or(30);
+    scenario.goal_id = goal.unwrap_or("surah:1").to_string();
     scenario
 }
 
@@ -387,6 +431,28 @@ fn generate_config(output: &PathBuf) -> Result<()> {
     Ok(())
 }
 
+fn list_presets() {
+    println!("=== Available Scenario Presets ===\n");
+    println!("Use with: --preset <name> or load YAML from configs/scenarios/\n");
+
+    println!("Built-in archetypes:");
+    println!("  casual        - Casual learner (high skip prob, shorter sessions)");
+    println!("  dedicated     - Dedicated student (low skip prob, longer sessions)");
+    println!("  default       - Default balanced params");
+    println!();
+
+    println!("YAML preset files (in configs/scenarios/):");
+    println!("  juz_amma_casual.yaml        - Juz 30 / 1 year / casual learner");
+    println!("  juz_amma_dedicated.yaml     - Juz 30 / 6 months / dedicated student");
+    println!("  surah_baqarah_dedicated.yaml - Surah 2 / 1 year / dedicated");
+    println!("  heterogeneous_juz30.yaml    - Heterogeneous population example");
+    println!();
+
+    println!("To use a preset YAML file:");
+    println!("  iqrah-iss batch --scenario configs/scenarios/juz_amma_casual.yaml");
+    println!("  iqrah-iss compare --preset juz_amma_dedicated -V iqrah_default,random");
+}
+
 #[derive(serde::Serialize)]
 struct BatchResults {
     scenario: String,
@@ -402,6 +468,8 @@ struct MetricsSummary {
     items_mastered: usize,
     goal_item_count: usize,
     coverage_pct: f64,
+    coverage_acq: f64,
+    mean_r_acq: f64,
     retention_per_minute: f64,
     plan_faithfulness: f64,
     gave_up: bool,
@@ -416,6 +484,8 @@ impl From<&SimulationMetrics> for MetricsSummary {
             items_mastered: m.items_mastered,
             goal_item_count: m.goal_item_count,
             coverage_pct: m.coverage_pct,
+            coverage_acq: m.coverage_acq,
+            mean_r_acq: m.mean_r_acq,
             retention_per_minute: m.retention_per_minute,
             plan_faithfulness: m.plan_faithfulness,
             gave_up: m.gave_up,
@@ -431,8 +501,8 @@ async fn run_compare(
     variant_names: &[String],
     students: usize,
     seed: u64,
-    days: u32,
-    goal: &str,
+    days: Option<u32>,
+    goal: Option<&str>,
     output: Option<PathBuf>,
     include_individual: bool,
 ) -> Result<()> {
@@ -459,8 +529,8 @@ async fn run_compare(
     info!("  Variants: {:?}", variant_names);
     info!("  Students per variant: {}", students);
     info!("  Scenario: {}", base_scenario.name);
-    info!("  Goal: {}", goal);
-    info!("  Days: {}", days);
+    info!("  Goal: {}", base_scenario.goal_id);
+    info!("  Days: {}", base_scenario.target_days);
     info!("  Seed: {}", seed);
 
     println!("\n=== Scheduler Comparison ===");
@@ -469,12 +539,12 @@ async fn run_compare(
         variants.iter().map(|v| v.name()).collect::<Vec<_>>()
     );
     println!("Students per variant: {}", students);
-    println!("Goal: {}", goal);
-    println!("Days: {}", days);
+    println!("Goal: {}", base_scenario.goal_id);
+    println!("Days: {}", base_scenario.target_days);
     println!();
 
     // Run comparison
-    let results = run_comparison(
+    let (results, debug_report) = run_comparison(
         content_repo,
         &base_scenario,
         &variants,
@@ -488,10 +558,20 @@ async fn run_compare(
     // Print results
     println!("\n=== Results ===\n");
     println!(
-        "{:<20} {:>10} {:>10} {:>10} {:>10} {:>10}",
-        "Variant", "Score", "Coverage%", "RPM", "GaveUp%", "Mastery"
+        "{:<20} {:>8} {:>10} {:>10} {:>10} {:>10} | {:>10} {:>8} {:>10} | {:>10} {:>8}",
+        "Variant",
+        "Score",
+        "Coverage%",
+        "RPM",
+        "GaveUp%",
+        "Mastery",
+        "Cov(T)",
+        "R(T)",
+        "RPM(T)",
+        "Cov(Acq)",
+        "R(Acq)"
     );
-    println!("{}", "-".repeat(72));
+    println!("{}", "-".repeat(135));
 
     for variant in &results.variants {
         let m = &variant.metrics;
@@ -501,13 +581,18 @@ async fn run_compare(
             .unwrap_or_else(|| "-".to_string());
 
         println!(
-            "{:<20} {:>10.3} {:>10.1} {:>10.4} {:>10.1} {:>10}",
+            "{:<20} {:>8.3} {:>10.1} {:>10.4} {:>10.1} {:>10} | {:>10.1} {:>8.2} {:>10.4} | {:>10.1} {:>8.2}",
             variant.variant,
             m.final_score_mean,
             m.coverage_pct_mean * 100.0,
             m.retention_per_minute_mean,
             m.gave_up_fraction * 100.0,
-            mastery_str
+            mastery_str,
+            m.coverage_t_mean * 100.0,
+            m.mean_r_t_mean,
+            m.rpm_t_mean,
+            m.coverage_acq_mean * 100.0,
+            m.mean_r_acq_mean
         );
     }
     println!("{}", "-".repeat(72));
@@ -517,6 +602,20 @@ async fn run_compare(
         let json = serde_json::to_string_pretty(&results)?;
         std::fs::write(&output_path, json)?;
         println!("\nResults saved to {:?}", output_path);
+
+        if let Some(report) = debug_report {
+            let debug_path = if let Some(stem) = output_path.file_stem() {
+                let mut p = output_path.clone();
+                p.set_file_name(format!("{}_debug.json", stem.to_string_lossy()));
+                p
+            } else {
+                output_path.with_extension("debug.json")
+            };
+
+            let debug_json = serde_json::to_string_pretty(&report)?;
+            std::fs::write(&debug_path, debug_json)?;
+            println!("Debug report saved to {:?}", debug_path);
+        }
     }
 
     Ok(())

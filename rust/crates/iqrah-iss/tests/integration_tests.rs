@@ -94,7 +94,27 @@ fn create_test_content_repo() -> MockContentRepository {
         }
     });
 
-    // Mock node_exists
+    // Mock get_node_by_ukey for verse nodes (IPS requires this)
+    mock.expect_get_node_by_ukey().returning(|ukey| {
+        // Parse verse key like "1:1" -> return node with id = chapter*1000 + verse
+        let parts: Vec<&str> = ukey.split(':').collect();
+        if parts.len() == 2 {
+            if let (Ok(chapter), Ok(verse)) = (parts[0].parse::<i64>(), parts[1].parse::<i64>()) {
+                let node_id = chapter * 1000 + verse;
+                return Ok(Some(iqrah_core::domain::Node {
+                    id: node_id,
+                    ukey: ukey.to_string(),
+                    node_type: iqrah_core::domain::NodeType::Verse,
+                }));
+            }
+        }
+        Ok(None)
+    });
+
+    // Mock get_words_for_verse - return empty (IPS still calls this for vocab)
+    mock.expect_get_words_for_verse().returning(|_| Ok(vec![]));
+
+    // Mock node_exists (required by simulation loop)
     mock.expect_node_exists().returning(|_| Ok(true));
 
     // Mock get_edges_from (for propagation)
@@ -114,7 +134,7 @@ async fn test_simulator_completes_without_panic() {
 
     assert!(result.is_ok(), "Simulation should complete without panic");
 
-    let metrics = result.unwrap();
+    let (metrics, _debug) = result.unwrap();
     assert!(metrics.total_days > 0 || metrics.gave_up);
     assert!(metrics.total_minutes >= 0.0);
     assert!(metrics.coverage_pct >= 0.0 && metrics.coverage_pct <= 1.0);
@@ -127,7 +147,7 @@ async fn test_simulator_produces_reasonable_metrics() {
     let simulator = Simulator::new(content_repo, config.clone());
 
     let scenario = Scenario::minimal_test();
-    let metrics = simulator.simulate_student(&scenario, 0).await.unwrap();
+    let (metrics, _debug) = simulator.simulate_student(&scenario, 0).await.unwrap();
 
     // Check that metrics are finite
     assert!(metrics.retention_per_minute.is_finite());
@@ -150,8 +170,8 @@ async fn test_different_seeds_produce_different_results() {
     let simulator1 = Simulator::new(content_repo1, config.clone());
     let simulator2 = Simulator::new(content_repo2, config);
 
-    let metrics1 = simulator1.simulate_student(&scenario, 0).await.unwrap();
-    let metrics2 = simulator2.simulate_student(&scenario, 1).await.unwrap();
+    let (metrics1, _) = simulator1.simulate_student(&scenario, 0).await.unwrap();
+    let (metrics2, _) = simulator2.simulate_student(&scenario, 1).await.unwrap();
 
     // Different seeds should produce different results
     // (this is probabilistic, so we just verify they run without panic)
@@ -167,13 +187,13 @@ async fn test_dedicated_student_performs_better() {
 
     // Run with casual learner
     let casual = Scenario::casual_learner();
-    let casual_metrics = simulator.simulate_student(&casual, 0).await.unwrap();
+    let (casual_metrics, _) = simulator.simulate_student(&casual, 0).await.unwrap();
 
     // Run with dedicated student (same seed for fair comparison)
     let content_repo2 = Arc::new(create_test_content_repo());
     let simulator2 = Simulator::new(content_repo2, config);
     let dedicated = Scenario::dedicated_student();
-    let dedicated_metrics = simulator2.simulate_student(&dedicated, 0).await.unwrap();
+    let (dedicated_metrics, _) = simulator2.simulate_student(&dedicated, 0).await.unwrap();
 
     // Dedicated student should generally have higher coverage or retention
     // (this is probabilistic, so we just verify the simulation runs)

@@ -1,0 +1,17 @@
+name: "surah_fatiha_dedicated"
+goal_id: "surah:1"
+target_days: 60
+daily_minutes: 15.0
+session_size: 20
+student_count: 30
+scheduler: "IqrahDefault"
+student_params:
+  skip_day_prob: 0.05
+  early_quit_prob: 0.01
+  persistence_threshold: 350
+  overdue_sensitivity: 0.3
+  momentum_sensitivity: 0.4
+  difficulty_sensitivity: 0.3
+  spacing_sensitivity: 1.0
+  forgetting_rate_mult: 1.0
+  fatigue_onset_minutes: 30.0

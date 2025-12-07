@@ -26,12 +26,26 @@ impl LearningService {
 
     /// Process a single review and update memory state atomically
     /// All database changes are wrapped in a transaction - either all succeed or all rollback
+    /// Process a single review and update memory state atomically (using current time)
     #[instrument(skip(self), fields(user_id, node_id, grade = ?grade))]
     pub async fn process_review(
         &self,
         user_id: &str,
         node_id: i64,
         grade: ReviewGrade,
+    ) -> Result<MemoryState> {
+        self.process_review_at(user_id, node_id, grade, Utc::now())
+            .await
+    }
+
+    /// Process a single review at a specific timestamp
+    #[instrument(skip(self), fields(user_id, node_id, grade = ?grade, timestamp = ?timestamp))]
+    pub async fn process_review_at(
+        &self,
+        user_id: &str,
+        node_id: i64,
+        grade: ReviewGrade,
+        timestamp: chrono::DateTime<Utc>,
     ) -> Result<MemoryState> {
         info!("Processing review");
         // Task 3.2: Validate node exists in content.db before processing
@@ -43,10 +57,14 @@ impl LearningService {
         }
 
         // 1. Get current memory state (read-only, outside transaction)
-        let current_state = self.get_or_create_initial_state(user_id, node_id).await?;
+        // 1. Get current memory state (read-only, outside transaction)
+        let current_state = self
+            .get_or_create_initial_state(user_id, node_id, timestamp)
+            .await?;
 
         // 2. Calculate FSRS update (pure computation)
-        let new_state = self.update_fsrs_state(current_state.clone(), grade)?;
+        // 2. Calculate FSRS update (pure computation)
+        let new_state = self.update_fsrs_state(current_state.clone(), grade, timestamp)?;
 
         // 3. Calculate energy delta (pure computation)
         let energy_delta = calculate_energy_delta(grade, current_state.energy);
@@ -81,28 +99,38 @@ impl LearningService {
         &self,
         user_id: &str,
         node_id: i64,
+        now: chrono::DateTime<Utc>,
     ) -> Result<MemoryState> {
         match self.user_repo.get_memory_state(user_id, node_id).await? {
             Some(state) => Ok(state),
             None => {
                 // Return a new state - it will be saved in the transaction
-                Ok(MemoryState::new_for_node(user_id.to_string(), node_id))
+                let mut state = MemoryState::new_for_node(user_id.to_string(), node_id);
+                state.last_reviewed = now;
+                state.due_at = now;
+                Ok(state)
             }
         }
     }
 
     /// Update FSRS scheduling parameters
-    fn update_fsrs_state(&self, current: MemoryState, grade: ReviewGrade) -> Result<MemoryState> {
+    fn update_fsrs_state(
+        &self,
+        current: MemoryState,
+        grade: ReviewGrade,
+        now: chrono::DateTime<Utc>,
+    ) -> Result<MemoryState> {
         use fsrs::{MemoryState as FSRSMemory, FSRS};
 
         let fsrs = FSRS::new(Some(&[]))?;
-        let now = Utc::now();
         let optimal_retention = 0.8f32;
 
-        // Calculate elapsed days since last review
-        let elapsed_days = ((now.timestamp_millis() - current.last_reviewed.timestamp_millis())
+        // Calculate elapsed days since last review using float + round()
+        // This fixes a bug where truncating to u32 caused same-day reviews to have elapsed=0
+        let elapsed_days_f64 = (now.timestamp_millis() - current.last_reviewed.timestamp_millis())
             as f64
-            / (24.0 * 60.0 * 60.0 * 1000.0)) as u32;
+            / (24.0 * 60.0 * 60.0 * 1000.0);
+        let elapsed_days = elapsed_days_f64.round() as u32;
 
         // Create FSRS memory state (cast to f32)
         let memory_state = FSRSMemory {
@@ -110,8 +138,13 @@ impl LearningService {
             difficulty: current.difficulty as f32,
         };
 
-        // Get next states (wrap in Some for new items)
-        let next_states = fsrs.next_states(Some(memory_state), optimal_retention, elapsed_days)?;
+        // Get next states (pass None for new items)
+        let initial_state = if current.review_count == 0 {
+            None
+        } else {
+            Some(memory_state)
+        };
+        let next_states = fsrs.next_states(initial_state, optimal_retention, elapsed_days)?;
 
         // Select the appropriate state based on grade
         let selected_state = match grade {
@@ -120,6 +153,18 @@ impl LearningService {
             ReviewGrade::Good => next_states.good,
             ReviewGrade::Easy => next_states.easy,
         };
+
+        // Log FSRS scheduling decision for debugging
+        tracing::debug!(
+            node_id = current.node_id,
+            grade = ?grade,
+            elapsed_days_f64 = elapsed_days_f64,
+            elapsed_days_rounded = elapsed_days,
+            prev_stability = current.stability,
+            next_stability = selected_state.memory.stability as f64,
+            interval_days = selected_state.interval,
+            "FSRS scheduling decision"
+        );
 
         // Calculate due date from interval
         let due_at = now

@@ -1,0 +1,22 @@
+name: surah_fatiha_short
+goal_id: "surah:1"
+target_days: 60
+daily_minutes: 10.0
+student_params:
+  skip_day_prob: 0.15
+  early_quit_prob: 0.05
+  persistence_threshold: 120
+  forgetting_rate_mult: 1.2
+  spacing_sensitivity: 0.8
+  item_variability: 0.15
+  fatigue_onset_minutes: 15.0
+  fatigue_decay_rate: 0.04
+  difficulty_sensitivity: 0.5
+  known_surah_ids: [1]
+  vocab_known_pct: 0.1
+  overdue_sensitivity: 0.4
+  momentum_sensitivity: 0.5
+session_size: 5
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default

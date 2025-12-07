@@ -1,0 +1,54 @@
+# Heterogeneous population example - students vary in ability
+name: heterogeneous_population_juz30
+goal_id: "juz:30"
+target_days: 180
+daily_minutes: 30.0
+student_params:
+  # Base params (used as fallback if selector not present)
+  skip_day_prob: 0.15
+  early_quit_prob: 0.08
+  persistence_threshold: 12
+  forgetting_rate_mult: 1.0
+  spacing_sensitivity: 1.0
+  item_variability: 0.1
+  fatigue_onset_minutes: 25.0
+  fatigue_decay_rate: 0.02
+  difficulty_sensitivity: 0.25
+  known_surah_ids: [1]
+  vocab_known_pct: 0.15
+
+# Optional: heterogeneous sampling (per-student variation)
+student_params_selector:
+  mode: distribution
+  base:
+    skip_day_prob: 0.15
+    early_quit_prob: 0.08
+    persistence_threshold: 12
+    forgetting_rate_mult: 1.0
+    spacing_sensitivity: 1.0
+    item_variability: 0.1
+    fatigue_onset_minutes: 25.0
+    fatigue_decay_rate: 0.02
+    difficulty_sensitivity: 0.25
+    known_surah_ids: [1]
+    vocab_known_pct: 0.15
+  variation:
+    skip_day_prob:
+      uniform:
+        min: 0.05
+        max: 0.30
+    forgetting_rate_mult:
+      normal:
+        mean: 1.0
+        stddev: 0.2
+        min: 0.6
+        max: 1.5
+    vocab_known_pct:
+      uniform:
+        min: 0.0
+        max: 0.4
+
+session_size: 12
+enable_bandit: true
+student_count: 100
+scheduler: iqrah_default

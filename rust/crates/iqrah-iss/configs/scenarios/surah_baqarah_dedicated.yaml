@@ -1,0 +1,20 @@
+name: surah_baqarah_dedicated
+goal_id: "surah:2"
+target_days: 365
+daily_minutes: 60.0
+student_params:
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 20
+  forgetting_rate_mult: 0.85
+  spacing_sensitivity: 1.2
+  item_variability: 0.05
+  fatigue_onset_minutes: 50.0
+  fatigue_decay_rate: 0.01
+  difficulty_sensitivity: 0.1
+  known_surah_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  vocab_known_pct: 0.35
+session_size: 20
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default
