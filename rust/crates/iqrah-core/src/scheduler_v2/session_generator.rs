@@ -256,7 +256,14 @@ fn compose_mixed_learning_session(
     }
 
     // Calculate targets using configurable percentages
-    let target_new = (session_size as f32 * config.pct_new).round() as usize;
+    // For new items: use max of (percentage * session_size) and min_new_per_session
+    // This guarantees coverage of unseen items even with small percentage
+    let pct_new_slots = (session_size as f32 * config.pct_new).round() as usize;
+    let available_new = new.len();
+    let target_new = pct_new_slots
+        .max(config.min_new_per_session)
+        .min(available_new);
+
     let target_almost_mastered =
         (session_size as f32 * config.pct_almost_mastered).round() as usize;
     let target_almost_there = (session_size as f32 * config.pct_almost_there).round() as usize;

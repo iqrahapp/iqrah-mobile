@@ -627,38 +627,24 @@ impl Simulator {
         user_id: &str,
         goal_items: &[i64],
         user_repo: &Arc<InMemoryUserRepository>,
-        now_ts: i64,
+        _now_ts: i64,
     ) -> Result<Vec<CandidateNode>> {
         let mut candidates = Vec::new();
 
         // Get memory basics for all goal items
         let memory_basics = user_repo.get_memory_basics(user_id, goal_items).await?;
 
-        // Calculate almost-due window in milliseconds (configurable)
-        let almost_due_window_ms = self.config.almost_due_window_days as i64 * 24 * 60 * 60 * 1000;
-
+        // Include ALL goal items as candidates.
+        // The session generator will prioritize based on mastery band (new, struggling, etc.)
+        // This ensures plan coverage - all items get a chance to be scheduled.
+        // FSRS is still respected for interval calculation, but we don't filter candidates
+        // based on due dates. This allows early re-review of items scheduled far away.
         for &node_id in goal_items {
             let (energy, next_due_ts) = memory_basics
                 .get(&node_id)
                 .map(|m| (m.energy, m.next_due_ts))
-                .unwrap_or((0.0, 0)); // New items have 0 energy and are always due
+                .unwrap_or((0.0, 0)); // New items have 0 energy
 
-            // Include items if:
-            // 1. New (energy == 0 or next_due_ts == 0) - always include
-            // 2. Due or overdue (next_due_ts <= now_ts)
-            // 3. Almost due (within configured window of due date)
-            let is_new = energy == 0.0 || next_due_ts == 0;
-            let is_due_or_overdue = next_due_ts <= now_ts;
-            let is_almost_due = almost_due_window_ms > 0
-                && next_due_ts > 0
-                && next_due_ts <= now_ts + almost_due_window_ms;
-
-            if !is_new && !is_due_or_overdue && !is_almost_due {
-                continue; // Not eligible for scheduling
-            }
-
-            // Try to get metadata from content repo
-            // TODO: Use get_scheduler_candidates for full metadata
             let candidate = CandidateNode {
                 id: node_id,
                 foundational_score: 0.5, // Default

@@ -57,6 +57,9 @@ pub struct AggregatedMetrics {
     pub rpm_short_mean: Option<f64>,
     pub coverage_acq_mean: f64,
     pub mean_r_acq_mean: f64,
+
+    /// Mean number of items never reviewed across students
+    pub items_never_reviewed_mean: f64,
 }
 
 impl AggregatedMetrics {
@@ -130,6 +133,10 @@ impl AggregatedMetrics {
         let mean_r_acq_sum: f64 = metrics.iter().map(|m| m.mean_r_acq).sum();
         let mean_r_acq_mean = mean_r_acq_sum / n_f64;
 
+        let items_never_reviewed_sum: f64 =
+            metrics.iter().map(|m| m.items_never_reviewed as f64).sum();
+        let items_never_reviewed_mean = items_never_reviewed_sum / n_f64;
+
         Self {
             final_score_mean,
             final_score_std,
@@ -149,6 +156,7 @@ impl AggregatedMetrics {
             rpm_short_mean,
             coverage_acq_mean,
             mean_r_acq_mean,
+            items_never_reviewed_mean,
         }
     }
 
@@ -173,6 +181,7 @@ impl AggregatedMetrics {
             rpm_short_mean: None,
             coverage_acq_mean: 0.0,
             mean_r_acq_mean: 0.0,
+            items_never_reviewed_mean: 0.0,
         }
     }
 }
@@ -468,6 +477,7 @@ mod tests {
             rpm_short: None,
             coverage_acq: 0.8,
             mean_r_acq: 0.9,
+            items_never_reviewed: 0,
         };
         let agg = AggregatedMetrics::compute(&[m], 30, 0.1);
 

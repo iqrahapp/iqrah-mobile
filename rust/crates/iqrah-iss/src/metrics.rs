@@ -250,6 +250,9 @@ pub struct SimulationMetrics {
 
     /// Mean retrievability at T_acq
     pub mean_r_acq: f64,
+
+    /// Number of goal items that were never reviewed (0 reviews)
+    pub items_never_reviewed: usize,
 }
 
 impl SimulationMetrics {
@@ -412,6 +415,9 @@ impl SimulationMetrics {
             (None, None)
         };
 
+        // Items never reviewed = goal items not in introduction_order
+        let items_never_reviewed = goal_items.len().saturating_sub(introduction_order.len());
+
         Self {
             retention_per_minute,
             days_to_mastery: None, // TODO: Implement daily snapshot tracking
@@ -430,6 +436,7 @@ impl SimulationMetrics {
             rpm_short,
             coverage_acq,
             mean_r_acq,
+            items_never_reviewed,
         }
     }
 }
@@ -454,6 +461,7 @@ impl Default for SimulationMetrics {
             rpm_short: None,
             coverage_acq: 0.0,
             mean_r_acq: 0.0,
+            items_never_reviewed: 0,
         }
     }
 }
@@ -571,6 +579,7 @@ mod tests {
             rpm_short: None,
             coverage_acq: 0.8,
             mean_r_acq: 0.85,
+            items_never_reviewed: 0,
         };
 
         // r_norm = 0.5, mastery_term = 0.5, cov = 0.8, faith = 1.0

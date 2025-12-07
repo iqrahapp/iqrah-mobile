@@ -54,7 +54,7 @@ fn default_mastery_target() -> f64 {
 }
 
 fn default_almost_due_window() -> u32 {
-    2 // Include items due within 2 days as candidates
+    2 // Include items due within 2 days as candidates (legacy, now all items included)
 }
 
 impl SimulationConfig {
