@@ -99,6 +99,18 @@ impl MasteryBand {
 ///
 /// # Returns
 /// * Vec of node_ids to include in the session
+///
+/// # FSRS Overlay Architecture
+///
+/// The session generation follows a layered approach:
+/// 1. **Graph/Energy Brain**: Uses prerequisite gate, priority scoring based on
+///    energy, foundational/influence scores, and urgency (days_overdue).
+/// 2. **FSRS Overlay**: Due items (next_due_ts <= now_ts) get hard priority.
+///    They are guaranteed to be in the session (up to session_size).
+/// 3. **Band Composition**: Remaining slots filled by mastery band proportions.
+///
+/// This ensures FSRS-scheduled reviews are never silently dropped while still
+/// allowing the graph-based scheduler to prioritize among non-due items.
 pub fn generate_session(
     candidates: Vec<CandidateNode>,
     parent_map: HashMap<i64, Vec<i64>>,
@@ -133,7 +145,7 @@ pub fn generate_session(
     }
 
     // Step 3: Calculate readiness, days_overdue, and priority score for each node
-    let mut scored_nodes: Vec<(InMemNode, f32, f32, f64)> = nodes
+    let scored_nodes: Vec<(InMemNode, f32, f32, f64)> = nodes
         .into_iter()
         .map(|node| {
             let readiness = calculate_readiness(&node.parent_ids, &parent_energies);
@@ -144,34 +156,92 @@ pub fn generate_session(
         })
         .collect();
 
-    // Step 4: Sort by (score DESC, quran_order ASC)
-    scored_nodes.sort_by(|a, b| {
+    // Step 4: Apply FSRS overlay - separate due from non-due items
+    // Due items get hard priority in session assembly
+    let mut due_nodes: Vec<(InMemNode, f32, f32, f64)> = Vec::new();
+    let mut other_nodes: Vec<(InMemNode, f32, f32, f64)> = Vec::new();
+
+    for item in scored_nodes {
+        let is_due = item.0.data.next_due_ts > 0 && item.0.data.next_due_ts <= now_ts;
+        if is_due {
+            due_nodes.push(item);
+        } else {
+            other_nodes.push(item);
+        }
+    }
+
+    // Sort each group by score DESC, quran_order ASC
+    let sort_fn = |a: &(InMemNode, f32, f32, f64), b: &(InMemNode, f32, f32, f64)| {
         let score_cmp = b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal);
         if score_cmp == std::cmp::Ordering::Equal {
-            // Tie-breaker: earlier quran_order first
             a.0.data.quran_order.cmp(&b.0.data.quran_order)
         } else {
             score_cmp
         }
-    });
+    };
+    due_nodes.sort_by(sort_fn);
+    other_nodes.sort_by(sort_fn);
 
-    // Step 5: Take top K = 3 * session_size (or all if fewer)
-    let k = (session_size * 3).min(scored_nodes.len());
-    let top_nodes: Vec<InMemNode> = scored_nodes
-        .into_iter()
-        .take(k)
-        .map(|(node, _, _, _)| node)
-        .collect();
+    // Step 5: FSRS overlay - due items get hard priority
+    // Strategy: Pre-allocate slots for due items, then fill remaining with band composition
+    let due_ids: Vec<i64> = due_nodes.iter().map(|(n, _, _, _)| n.data.id).collect();
+    let due_count_for_session = due_ids.len().min(session_size);
 
-    // Step 6: Compose session based on mode
-    match mode {
-        SessionMode::Revision => compose_revision_session(top_nodes, session_size),
-        SessionMode::MixedLearning => {
-            let default_config = SessionMixConfig::default();
-            let config = mix_config.unwrap_or(&default_config);
-            compose_mixed_learning_session(top_nodes, session_size, config)
+    // If we have more due items than session_size, use band composition on just due items
+    // Otherwise, seed session with due items and compose remaining slots from other items
+    let session = if due_nodes.len() >= session_size {
+        // All slots go to due items - compose from due_nodes only
+        let k = (session_size * 3).min(due_nodes.len());
+        let top_due: Vec<InMemNode> = due_nodes
+            .into_iter()
+            .take(k)
+            .map(|(n, _, _, _)| n)
+            .collect();
+
+        match mode {
+            SessionMode::Revision => compose_revision_session(top_due, session_size),
+            SessionMode::MixedLearning => {
+                let default_config = SessionMixConfig::default();
+                let config = mix_config.unwrap_or(&default_config);
+                compose_mixed_learning_session(top_due, session_size, config)
+            }
         }
-    }
+    } else {
+        // Pre-allocate due items, then fill remaining slots
+        let remaining_slots = session_size.saturating_sub(due_count_for_session);
+
+        // Take top other_nodes for remaining slots
+        let k_other = (remaining_slots * 3).min(other_nodes.len());
+        let other_for_composition: Vec<InMemNode> = other_nodes
+            .into_iter()
+            .take(k_other)
+            .map(|(n, _, _, _)| n)
+            .collect();
+
+        // Compose the remaining slots from other_nodes
+        let other_session = if remaining_slots > 0 && !other_for_composition.is_empty() {
+            match mode {
+                SessionMode::Revision => {
+                    compose_revision_session(other_for_composition, remaining_slots)
+                }
+                SessionMode::MixedLearning => {
+                    let default_config = SessionMixConfig::default();
+                    let config = mix_config.unwrap_or(&default_config);
+                    compose_mixed_learning_session(other_for_composition, remaining_slots, config)
+                }
+            }
+        } else {
+            Vec::new()
+        };
+
+        // Final session: due items first (hard priority), then composed other items
+        let mut final_session: Vec<i64> = due_ids.into_iter().take(due_count_for_session).collect();
+        final_session.extend(other_session);
+        final_session.truncate(session_size);
+        final_session
+    };
+
+    session
 }
 
 // ============================================================================
@@ -454,5 +524,137 @@ mod tests {
         assert!(session.contains(&3));
         assert!(session.contains(&4));
         assert!(session.contains(&5));
+    }
+
+    // =========================================================================
+    // FSRS OVERLAY TESTS
+    // =========================================================================
+
+    #[test]
+    fn test_fsrs_overlay_due_items_always_included() {
+        // Test that due items (next_due_ts <= now_ts) are always in the session
+        // even if their raw priority scores are lower than non-due items.
+        let now_ts = 1_000_000_000i64; // 1 billion ms
+
+        let candidates = vec![
+            // Two due items with low scores (low foundational)
+            make_candidate(1, 0.2, 0.1, 0.3, 0.3, now_ts - 100, 1000), // due
+            make_candidate(2, 0.2, 0.1, 0.3, 0.3, now_ts - 50, 2000),  // due
+            // Three non-due items with high scores
+            make_candidate(3, 0.9, 0.9, 0.3, 0.5, now_ts + 100_000, 3000), // not due
+            make_candidate(4, 0.9, 0.9, 0.3, 0.5, now_ts + 200_000, 4000), // not due
+            make_candidate(5, 0.9, 0.9, 0.3, 0.5, now_ts + 300_000, 5000), // not due
+        ];
+
+        let session = generate_session(
+            candidates,
+            HashMap::new(),
+            HashMap::new(),
+            &UserProfile::balanced(),
+            3, // Only 3 slots
+            now_ts,
+            SessionMode::MixedLearning,
+            None,
+        );
+
+        // Due items 1 and 2 MUST be in the session, regardless of their lower scores
+        assert!(
+            session.contains(&1),
+            "Due item 1 should be in session, got: {:?}",
+            session
+        );
+        assert!(
+            session.contains(&2),
+            "Due item 2 should be in session, got: {:?}",
+            session
+        );
+        assert_eq!(session.len(), 3);
+    }
+
+    #[test]
+    fn test_fsrs_overlay_many_due_items_caps_at_session_size() {
+        // When due_nodes.len() > session_size, only top session_size due items used
+        let now_ts = 1_000_000_000i64;
+
+        let candidates = vec![
+            make_candidate(1, 0.5, 0.5, 0.3, 0.3, now_ts - 100, 1000), // due
+            make_candidate(2, 0.5, 0.5, 0.3, 0.3, now_ts - 50, 2000),  // due
+            make_candidate(3, 0.5, 0.5, 0.3, 0.3, now_ts - 25, 3000),  // due
+            make_candidate(4, 0.5, 0.5, 0.3, 0.3, now_ts - 10, 4000),  // due
+            make_candidate(5, 0.9, 0.9, 0.3, 0.5, now_ts + 100_000, 5000), // not due
+        ];
+
+        let session = generate_session(
+            candidates,
+            HashMap::new(),
+            HashMap::new(),
+            &UserProfile::balanced(),
+            3, // Only 3 slots, but 4 due items
+            now_ts,
+            SessionMode::MixedLearning,
+            None,
+        );
+
+        // Session should be exactly 3 items, all from due items
+        assert_eq!(session.len(), 3);
+
+        // Count how many due items are in session
+        let due_in_session = [1, 2, 3, 4]
+            .iter()
+            .filter(|id| session.contains(id))
+            .count();
+        assert_eq!(
+            due_in_session, 3,
+            "All 3 slots should be due items, got: {:?}",
+            session
+        );
+
+        // Non-due item 5 should NOT be in session
+        assert!(
+            !session.contains(&5),
+            "Non-due item should not be in session when we have enough due items"
+        );
+    }
+
+    #[test]
+    fn test_fsrs_overlay_preserves_band_composition_for_non_due() {
+        // When there are few due items, remaining slots use band composition
+        let now_ts = 1_000_000_000i64;
+
+        let candidates = vec![
+            // 1 due item
+            make_candidate(1, 0.5, 0.5, 0.3, 0.3, now_ts - 100, 1000), // due
+            // Non-due items across different mastery bands
+            make_candidate(10, 0.5, 0.5, 0.3, 0.0, now_ts + 100_000, 10000), // new
+            make_candidate(11, 0.5, 0.5, 0.3, 0.15, now_ts + 100_000, 11000), // really struggling
+            make_candidate(12, 0.5, 0.5, 0.3, 0.35, now_ts + 100_000, 12000), // struggling
+            make_candidate(13, 0.5, 0.5, 0.3, 0.55, now_ts + 100_000, 13000), // almost there
+            make_candidate(14, 0.5, 0.5, 0.3, 0.85, now_ts + 100_000, 14000), // almost mastered
+        ];
+
+        let session = generate_session(
+            candidates,
+            HashMap::new(),
+            HashMap::new(),
+            &UserProfile::balanced(),
+            5,
+            now_ts,
+            SessionMode::MixedLearning,
+            None,
+        );
+
+        // Due item 1 must be included
+        assert!(
+            session.contains(&1),
+            "Due item must be in session, got: {:?}",
+            session
+        );
+        assert_eq!(session.len(), 5);
+
+        // Remaining 4 slots should come from the band composition
+        // We don't test exact composition (that's tested elsewhere), just that
+        // the session has non-due items filling remaining slots
+        let non_due_count = session.iter().filter(|&&id| id != 1).count();
+        assert_eq!(non_due_count, 4, "Should have 4 non-due items");
     }
 }

@@ -622,28 +622,56 @@ impl Simulator {
     }
 
     /// Get candidate nodes for scheduling.
+    ///
+    /// Candidate selection strategy:
+    /// - **Small plans (≤ 20 items)**: All items are candidates for coverage guarantee
+    /// - **Large plans**: Filter by new/due/almost-due for efficiency
+    ///
+    /// For small plans, including all items ensures plan coverage without the 10x
+    /// review counts that would occur in large plans. The session generator's
+    /// FSRS overlay and band composition handle prioritization.
     async fn get_candidates(
         &self,
         user_id: &str,
         goal_items: &[i64],
         user_repo: &Arc<InMemoryUserRepository>,
-        _now_ts: i64,
+        now_ts: i64,
     ) -> Result<Vec<CandidateNode>> {
         let mut candidates = Vec::new();
 
         // Get memory basics for all goal items
         let memory_basics = user_repo.get_memory_basics(user_id, goal_items).await?;
 
-        // Include ALL goal items as candidates.
-        // The session generator will prioritize based on mastery band (new, struggling, etc.)
-        // This ensures plan coverage - all items get a chance to be scheduled.
-        // FSRS is still respected for interval calculation, but we don't filter candidates
-        // based on due dates. This allows early re-review of items scheduled far away.
+        // For small plans (≤ 20 items), include all items as candidates
+        // This ensures coverage without the 10x review explosion seen in large plans
+        const SMALL_PLAN_THRESHOLD: usize = 20;
+        let include_all = goal_items.len() <= SMALL_PLAN_THRESHOLD;
+
+        // Calculate almost-due window in milliseconds
+        let almost_due_window_ms = self.config.almost_due_window_days as i64 * 24 * 60 * 60 * 1000;
+
         for &node_id in goal_items {
             let (energy, next_due_ts) = memory_basics
                 .get(&node_id)
                 .map(|m| (m.energy, m.next_due_ts))
                 .unwrap_or((0.0, 0)); // New items have 0 energy
+
+            // For large plans, apply candidate filtering
+            if !include_all {
+                // Candidate eligibility:
+                // 1. New items (never reviewed): always eligible
+                // 2. Due or overdue: always eligible
+                // 3. Almost due (within window): eligible for proactive review
+                let is_new = energy == 0.0 || next_due_ts == 0;
+                let is_due_or_overdue = next_due_ts > 0 && next_due_ts <= now_ts;
+                let is_almost_due = almost_due_window_ms > 0
+                    && next_due_ts > now_ts
+                    && next_due_ts <= now_ts + almost_due_window_ms;
+
+                if !is_new && !is_due_or_overdue && !is_almost_due {
+                    continue; // Not eligible for scheduling this session
+                }
+            }
 
             let candidate = CandidateNode {
                 id: node_id,
