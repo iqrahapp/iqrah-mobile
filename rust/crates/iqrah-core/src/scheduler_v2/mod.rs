@@ -46,5 +46,6 @@ pub use scoring::{
 };
 pub use session_generator::{generate_session, SessionMode};
 pub use types::{
-    CandidateNode, InMemNode, MemoryBasics, ParentEnergyMap, UserProfile, MASTERY_THRESHOLD,
+    CandidateNode, InMemNode, MemoryBasics, ParentEnergyMap, SessionMixConfig, UserProfile,
+    MASTERY_THRESHOLD,
 };

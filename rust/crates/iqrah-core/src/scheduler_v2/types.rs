@@ -13,6 +13,52 @@ use std::collections::HashMap;
 pub const MASTERY_THRESHOLD: f32 = 0.3;
 
 // ============================================================================
+// SESSION MIX CONFIG
+// ============================================================================
+
+/// Configuration for mastery-band percentages in MixedLearning mode.
+/// Percentages must sum to 1.0 (100%).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SessionMixConfig {
+    /// Fraction of session for new items (energy == 0)
+    pub pct_new: f32,
+    /// Fraction for almost-mastered items (energy > 0.7)
+    pub pct_almost_mastered: f32,
+    /// Fraction for almost-there items (energy 0.4-0.7)
+    pub pct_almost_there: f32,
+    /// Fraction for struggling items (energy 0.2-0.4)
+    pub pct_struggling: f32,
+    /// Fraction for really-struggling items (energy 0-0.2)
+    pub pct_really_struggling: f32,
+}
+
+impl Default for SessionMixConfig {
+    /// Default configuration: 10% new, 10% almost mastered, 50% almost there,
+    /// 20% struggling, 10% really struggling.
+    fn default() -> Self {
+        Self {
+            pct_new: 0.10,
+            pct_almost_mastered: 0.10,
+            pct_almost_there: 0.50,
+            pct_struggling: 0.20,
+            pct_really_struggling: 0.10,
+        }
+    }
+}
+
+impl SessionMixConfig {
+    /// Validate that percentages sum to approximately 1.0.
+    pub fn validate(&self) -> bool {
+        let sum = self.pct_new
+            + self.pct_almost_mastered
+            + self.pct_almost_there
+            + self.pct_struggling
+            + self.pct_really_struggling;
+        (sum - 1.0).abs() < 0.01
+    }
+}
+
+// ============================================================================
 // USER PROFILE
 // ============================================================================
 

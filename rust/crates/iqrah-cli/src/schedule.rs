@@ -201,6 +201,7 @@ pub async fn generate(
         session_size,
         now_ts,
         session_mode,
+        None, // Use default mix config
     );
 
     // Display results

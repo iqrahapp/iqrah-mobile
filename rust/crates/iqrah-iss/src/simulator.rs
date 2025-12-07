@@ -420,6 +420,7 @@ impl Simulator {
                 scenario.session_size,
                 now_ts,
                 SessionMode::MixedLearning,
+                None, // Use default mix config
             )
         };
 

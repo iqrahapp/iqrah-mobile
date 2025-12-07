@@ -6,7 +6,8 @@
 /// - Difficulty-based composition with fallback
 use crate::scheduler_v2::{
     calculate_days_overdue, calculate_priority_score, calculate_readiness,
-    count_unsatisfied_parents, CandidateNode, InMemNode, ParentEnergyMap, UserProfile,
+    count_unsatisfied_parents, CandidateNode, InMemNode, ParentEnergyMap, SessionMixConfig,
+    UserProfile,
 };
 use std::collections::HashMap;
 
@@ -22,7 +23,7 @@ pub enum SessionMode {
     Revision,
 
     /// Mixed learning mode: Mix of new and due content.
-    /// Composition: Mix by mastery bands (10% new, 10% almost mastered, 50% almost there, 20% struggling, 10% really struggling).
+    /// Composition: Mix by mastery bands (configurable, default 10/10/50/20/10).
     MixedLearning,
 }
 
@@ -94,6 +95,7 @@ impl MasteryBand {
 /// * `session_size` - Desired number of items in session
 /// * `now_ts` - Current timestamp in MILLISECONDS
 /// * `mode` - Session mode (Revision or MixedLearning)
+/// * `mix_config` - Optional session mix config (for MixedLearning mode)
 ///
 /// # Returns
 /// * Vec of node_ids to include in the session
@@ -105,6 +107,7 @@ pub fn generate_session(
     session_size: usize,
     now_ts: i64,
     mode: SessionMode,
+    mix_config: Option<&SessionMixConfig>,
 ) -> Vec<i64> {
     if candidates.is_empty() || session_size == 0 {
         return Vec::new();
@@ -163,7 +166,11 @@ pub fn generate_session(
     // Step 6: Compose session based on mode
     match mode {
         SessionMode::Revision => compose_revision_session(top_nodes, session_size),
-        SessionMode::MixedLearning => compose_mixed_learning_session(top_nodes, session_size),
+        SessionMode::MixedLearning => {
+            let default_config = SessionMixConfig::default();
+            let config = mix_config.unwrap_or(&default_config);
+            compose_mixed_learning_session(top_nodes, session_size, config)
+        }
     }
 }
 
@@ -225,8 +232,12 @@ fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i
 // MIXED LEARNING MODE COMPOSITION
 // ============================================================================
 
-/// Composes a mixed learning session using mastery bands (10/10/50/20/10).
-fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i64> {
+/// Composes a mixed learning session using configurable mastery bands.
+fn compose_mixed_learning_session(
+    nodes: Vec<InMemNode>,
+    session_size: usize,
+    config: &SessionMixConfig,
+) -> Vec<i64> {
     // Bucket by mastery band
     let mut new = Vec::new();
     let mut really_struggling = Vec::new();
@@ -244,11 +255,12 @@ fn compose_mixed_learning_session(nodes: Vec<InMemNode>, session_size: usize) ->
         }
     }
 
-    // Calculate targets (10/10/50/20/10)
-    let target_new = (session_size as f32 * 0.10).round() as usize;
-    let target_almost_mastered = (session_size as f32 * 0.10).round() as usize;
-    let target_almost_there = (session_size as f32 * 0.50).round() as usize;
-    let target_struggling = (session_size as f32 * 0.20).round() as usize;
+    // Calculate targets using configurable percentages
+    let target_new = (session_size as f32 * config.pct_new).round() as usize;
+    let target_almost_mastered =
+        (session_size as f32 * config.pct_almost_mastered).round() as usize;
+    let target_almost_there = (session_size as f32 * config.pct_almost_there).round() as usize;
+    let target_struggling = (session_size as f32 * config.pct_struggling).round() as usize;
     let target_really_struggling = session_size.saturating_sub(
         target_new + target_almost_mastered + target_almost_there + target_struggling,
     );
@@ -336,6 +348,7 @@ mod tests {
             10,
             0,
             SessionMode::MixedLearning,
+            None,
         );
         assert!(session.is_empty());
     }
@@ -368,6 +381,7 @@ mod tests {
             10,
             0,
             SessionMode::MixedLearning,
+            None,
         );
 
         // A and B have no parents -> eligible
@@ -398,6 +412,7 @@ mod tests {
             6,
             0,
             SessionMode::Revision,
+            None,
         );
 
         assert_eq!(session.len(), 6);
@@ -423,6 +438,7 @@ mod tests {
             5,
             0,
             SessionMode::MixedLearning,
+            None,
         );
 
         assert_eq!(session.len(), 5);

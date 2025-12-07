@@ -126,11 +126,13 @@ impl LearningService {
         let optimal_retention = 0.8f32;
 
         // Calculate elapsed days since last review using float + round()
-        // This fixes a bug where truncating to u32 caused same-day reviews to have elapsed=0
+        // FSRS assumes at least 1 day between reviews. Same-day reviews (elapsed < 0.5)
+        // would round to 0, causing FSRS to treat the item as "just learned" and produce
+        // very long intervals (15-30 days). We enforce minimum 1 day to prevent this.
         let elapsed_days_f64 = (now.timestamp_millis() - current.last_reviewed.timestamp_millis())
             as f64
             / (24.0 * 60.0 * 60.0 * 1000.0);
-        let elapsed_days = elapsed_days_f64.round() as u32;
+        let elapsed_days = elapsed_days_f64.round().max(1.0) as u32;
 
         // Create FSRS memory state (cast to f32)
         let memory_state = FSRSMemory {
