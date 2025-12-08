@@ -113,12 +113,8 @@ pub fn calculate_priority_score(
     // Urgency factor: logarithmic growth with days overdue
     let urgency_factor = 1.0 + (profile.w_urgency * (1.0 + days_overdue.max(0.0)).ln());
 
-    // Fairness term (spec §6, equations 206-217)
+    // Fairness term (spec §6.4, equations 206-217)
     // Pressures scheduler to cover underserved items and maintain balanced exposure
-    //
-    // Key insight: Due items get urgency MULTIPLIER (up to 3-4x for very overdue).
-    // New items need a STRONGER boost to compete and ensure coverage.
-    // We use a "coverage multiplier" that decays as items get reviewed.
     const TARGET_REVIEWS: u32 = 7; // Items need ~7 reviews for stable long-term memory
     const TARGET_RECALL: f32 = 0.7;
 
@@ -128,12 +124,17 @@ pub fn calculate_priority_score(
     // Additive fairness component (for fine-grained ranking among similar items)
     let fairness_additive = profile.w_fairness * (review_deficit + recall_deficit);
 
-    // Coverage multiplier: new/under-reviewed items get a strong boost
-    // Decays from ~10x (brand new) to 1x (at TARGET_REVIEWS)
-    // This ensures new items can compete with highly overdue items (which get 3-4x urgency)
-    // The 10x max is calibrated to beat urgency_factor for items 20+ days overdue
-    let coverage_multiplier = if node.data.review_count < TARGET_REVIEWS {
-        1.0 + (9.0 * (1.0 - node.data.review_count as f32 / TARGET_REVIEWS as f32))
+    // Coverage factor (spec §6.6, invariant S3)
+    // Provides multiplicative boost to under-reviewed items
+    //
+    // CONSTRAINTS (per spec):
+    // - Bounded: 1.0 ≤ coverage_factor ≤ 1.0 + C_MAX
+    // - Monotone decreasing: as review_count increases, coverage_factor decreases
+    // - FSRS-independent: depends ONLY on review_count, NOT on due-ness/stability
+    const C_MAX: f32 = 9.0; // Maximum boost (10x at zero reviews)
+
+    let coverage_factor = if node.data.review_count < TARGET_REVIEWS {
+        1.0 + (C_MAX * (1.0 - node.data.review_count as f32 / TARGET_REVIEWS as f32))
     } else {
         1.0
     };
@@ -144,8 +145,8 @@ pub fn calculate_priority_score(
         + profile.w_influence * node.data.influence_score
         + fairness_additive;
 
-    // Final score applies both urgency (for due items) and coverage (for new items)
-    let final_score = urgency_factor * coverage_multiplier * learning_potential;
+    // Final score (spec §6.7): applies urgency, coverage, and learning potential
+    let final_score = urgency_factor * coverage_factor * learning_potential;
 
     // Return (score, negative_quran_order) for sorting
     // Higher score first, then earlier Qur'an order
