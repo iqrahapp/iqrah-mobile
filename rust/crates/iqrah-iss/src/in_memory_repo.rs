@@ -88,6 +88,62 @@ impl InMemoryUserRepository {
         let mut states = self.memory_states.write().unwrap();
         states.insert((state.user_id.clone(), state.node_id), state);
     }
+
+    // =========================================================================
+    // Synchronous batch methods for ISS performance optimization
+    // These bypass async overhead for in-memory operations
+    // =========================================================================
+
+    /// Get all memory states for specified nodes (synchronous batch).
+    /// This is O(n) with a single lock acquisition instead of O(n) async calls.
+    pub fn get_memory_states_batch_sync(
+        &self,
+        user_id: &str,
+        node_ids: &[i64],
+    ) -> HashMap<i64, MemoryState> {
+        let states = self.memory_states.read().unwrap();
+        let mut result = HashMap::with_capacity(node_ids.len());
+        for &node_id in node_ids {
+            if let Some(state) = states.get(&(user_id.to_string(), node_id)) {
+                result.insert(node_id, state.clone());
+            }
+        }
+        result
+    }
+
+    /// Get memory basics for all nodes in one batch (synchronous).
+    pub fn get_memory_basics_sync(
+        &self,
+        user_id: &str,
+        node_ids: &[i64],
+    ) -> HashMap<i64, MemoryBasics> {
+        let states = self.memory_states.read().unwrap();
+        let mut result = HashMap::with_capacity(node_ids.len());
+        for &node_id in node_ids {
+            if let Some(state) = states.get(&(user_id.to_string(), node_id)) {
+                result.insert(
+                    node_id,
+                    MemoryBasics {
+                        energy: state.energy as f32,
+                        next_due_ts: state.due_at.timestamp_millis(),
+                    },
+                );
+            }
+        }
+        result
+    }
+
+    /// Save memory state (synchronous).
+    pub fn save_memory_state_sync(&self, state: &MemoryState) {
+        let mut states = self.memory_states.write().unwrap();
+        states.insert((state.user_id.clone(), state.node_id), state.clone());
+    }
+
+    /// Get single memory state (synchronous).
+    pub fn get_memory_state_sync(&self, user_id: &str, node_id: i64) -> Option<MemoryState> {
+        let states = self.memory_states.read().unwrap();
+        states.get(&(user_id.to_string(), node_id)).cloned()
+    }
 }
 
 impl Default for InMemoryUserRepository {

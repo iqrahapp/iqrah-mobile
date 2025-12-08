@@ -26,7 +26,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, instrument, warn};
 
 /// Estimate exercise time based on item properties.
 ///
@@ -184,12 +184,14 @@ impl Simulator {
         Arc<InMemoryUserRepository>,
         Option<StudentDebugSummary>,
     )> {
-        info!("Starting simulation");
+        debug!("Starting simulation");
 
         // 1. Create student-specific RNG seed
         let student_seed = self.config.student_seed(student_index);
         let scheduler_seed = self.config.scheduler_seed();
-        let start_time = Utc::now();
+        // Use deterministic start time for reproducible results (parallel-safe)
+        // Epoch: 2024-01-01 00:00:00 UTC
+        let start_time = chrono::DateTime::from_timestamp(1704067200, 0).unwrap_or_else(Utc::now);
 
         // 2. Create student brain with params (supports heterogeneous populations)
         let student_params = scenario.get_student_params(student_index, self.config.base_seed);
@@ -217,7 +219,7 @@ impl Simulator {
             debug!("No goal items found for goal_id: {}", scenario.goal_id);
             return Ok((SimulationMetrics::default(), user_repo, None));
         }
-        info!("Goal has {} items", goal_items.len());
+        debug!("Goal has {} items", goal_items.len());
 
         // 7b. Compute dynamic almost_due_window for this plan
         // For large plans, widening the window keeps recently-introduced items in the candidate pool
@@ -226,7 +228,7 @@ impl Simulator {
             scenario.target_days,
             scenario.session_size,
         );
-        info!(
+        debug!(
             "Dynamic almost_due_window: {} days (plan: {} items, {} days, session: {})",
             dynamic_window,
             goal_items.len(),
@@ -252,7 +254,7 @@ impl Simulator {
         // 9. Main simulation loop
         for day in 0..scenario.target_days {
             if brain.has_given_up() {
-                info!("Student gave up at day {}", day);
+                debug!("Student gave up at day {}", day);
                 if let Some(acc) = debug_accumulator.as_mut() {
                     acc.give_up = true;
                     acc.day_of_give_up = Some(day);
@@ -331,7 +333,7 @@ impl Simulator {
             &introduction_order,
         );
 
-        info!(
+        debug!(
             "Simulation complete: {} days, {:.1} min, {}/{} mastered",
             metrics.total_days,
             metrics.total_minutes,
@@ -402,16 +404,14 @@ impl Simulator {
         } else {
             // Use real Iqrah scheduler
 
-            // Get candidates for scheduling
-            let candidates = self
-                .get_candidates(
-                    user_id,
-                    goal_items,
-                    user_repo,
-                    now_ts,
-                    almost_due_window_days,
-                )
-                .await?;
+            // Get candidates for scheduling (sync batch operation)
+            let candidates = self.get_candidates(
+                user_id,
+                goal_items,
+                user_repo,
+                now_ts,
+                almost_due_window_days,
+            )?;
 
             debug!("Got {} candidates for {}", candidates.len(), user_id);
 
@@ -459,7 +459,7 @@ impl Simulator {
                     mix_config.pct_really_struggling = 0.02;
                 }
 
-                info!(
+                debug!(
                     "Computed min_new_per_session: {}, pct_new: {}",
                     mix_config.min_new_per_session, mix_config.pct_new
                 );
@@ -502,10 +502,9 @@ impl Simulator {
                 idx
             });
 
-            // Get current memory state
+            // Get current memory state (sync - no async overhead)
             let state = user_repo
-                .get_memory_state(user_id, node_id)
-                .await?
+                .get_memory_state_sync(user_id, node_id)
                 .unwrap_or_else(|| MemoryState::new_for_node(user_id.to_string(), node_id));
 
             // Compute elapsed days since last review
@@ -548,10 +547,10 @@ impl Simulator {
                 .await
                 .context("Failed to process review")?;
 
-            // Record stability for debug instrumentation
+            // Record stability for debug instrumentation (sync)
             if let Some(acc) = accumulator {
                 // Get updated state after the review
-                if let Some(new_state) = user_repo.get_memory_state(user_id, node_id).await? {
+                if let Some(new_state) = user_repo.get_memory_state_sync(user_id, node_id) {
                     acc.record_stability(new_state.stability, new_state.review_count);
                 }
             }
@@ -690,7 +689,9 @@ impl Simulator {
     ///
     /// FSRS due status affects candidate eligibility here; urgency scoring
     /// happens downstream in `generate_session()`.
-    async fn get_candidates(
+    ///
+    /// OPTIMIZATION: Uses synchronous batch lookup to avoid O(n) async calls.
+    fn get_candidates(
         &self,
         user_id: &str,
         goal_items: &[i64],
@@ -698,10 +699,11 @@ impl Simulator {
         now_ts: i64,
         almost_due_window_days: u32,
     ) -> Result<Vec<CandidateNode>> {
-        let mut candidates = Vec::new();
+        let mut candidates = Vec::with_capacity(goal_items.len());
 
-        // Get memory basics for all goal items
-        let memory_basics = user_repo.get_memory_basics(user_id, goal_items).await?;
+        // OPTIMIZATION: Single batch fetch instead of 564 individual async calls
+        let memory_basics = user_repo.get_memory_basics_sync(user_id, goal_items);
+        let all_states = user_repo.get_memory_states_batch_sync(user_id, goal_items);
 
         // Calculate almost-due window in milliseconds
         let almost_due_window_ms = almost_due_window_days as i64 * 24 * 60 * 60 * 1000;
@@ -720,12 +722,9 @@ impl Simulator {
             // ISS OVERRIDE: ALL goal items are candidates for simulation.
             // This ensures fair evaluation of scheduler quality across the entire goal set.
             // Per spec §4, FSRS status must NOT be the sole gate for candidate eligibility.
-            // Production may use soft filtering (e.g., energy ≥ 0.95 AND next_due > 90 days out),
-            // but ISS needs all items eligible to properly test fairness and coverage.
 
-            // Get memory state for fairness fields
-            let memory_state = user_repo.get_memory_state(user_id, node_id).await?;
-            let (review_count, predicted_recall) = if let Some(state) = memory_state {
+            // Get memory state from batch (no async call!)
+            let (review_count, predicted_recall) = if let Some(state) = all_states.get(&node_id) {
                 // Calculate FSRS retrievability: R = e^(-t/S) where t = days since last review
                 let days_since_review = if state.review_count > 0 {
                     (now_ts - state.last_reviewed.timestamp_millis()) as f64 / (86400.0 * 1000.0)
@@ -772,8 +771,8 @@ impl Simulator {
             candidates.push(candidate);
         }
 
-        info!(
-            "Candidates: {} total ({} new, {} due, {} almost-due) | window={}d | ALL items eligible per spec §4 C2",
+        debug!(
+            "Candidates: {} total ({} new, {} due, {} almost-due) | window={}d",
             candidates.len(),
             count_new,
             count_due,

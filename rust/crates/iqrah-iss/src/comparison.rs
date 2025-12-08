@@ -13,6 +13,7 @@ use crate::simulator::Simulator;
 use anyhow::Result;
 use chrono::Utc;
 use iqrah_core::ports::ContentRepository;
+use rayon::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -296,17 +297,37 @@ pub async fn run_comparison(
             ..Default::default()
         };
 
-        // Create simulator
-        let simulator = Simulator::new(Arc::clone(&content_repo), config.clone());
+        // Run simulations IN PARALLEL using rayon
+        // We must exit the tokio async context before using rayon to avoid
+        // "Cannot start a runtime from within a runtime" errors.
+        let scenario_clone = scenario.clone();
+        let content_repo_clone = Arc::clone(&content_repo);
 
-        // Run simulations
+        let results: Vec<_> = tokio::task::block_in_place(|| {
+            (0..students_per_variant)
+                .into_par_iter()
+                .map(|i| {
+                    // Each rayon thread creates its own tokio runtime
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("Failed to create tokio runtime");
+
+                    let sim = Simulator::new(Arc::clone(&content_repo_clone), config.clone());
+                    let result = rt.block_on(sim.simulate_student(&scenario_clone, i));
+                    result.map(|(metrics, summary)| (i, metrics, summary))
+                })
+                .collect()
+        });
+
+        // Process results (back on main thread)
         let mut all_metrics = Vec::with_capacity(students_per_variant);
         let mut individual_summaries = Vec::new();
         let mut variant_debug_summaries = Vec::new();
 
-        for i in 0..students_per_variant {
-            match simulator.simulate_student(&scenario, i).await {
-                Ok((metrics, summary)) => {
+        for result in results {
+            match result {
+                Ok((i, metrics, summary)) => {
                     if include_individual {
                         individual_summaries.push(MetricsSummary {
                             student_index: i,
@@ -323,7 +344,7 @@ pub async fn run_comparison(
                     }
                 }
                 Err(e) => {
-                    warn!("Simulation failed for student {}: {}", i, e);
+                    warn!("Simulation failed for student: {}", e);
                 }
             }
         }

@@ -142,7 +142,7 @@ pub fn generate_session(
         })
         .collect();
 
-    tracing::info!("Before prereq gate: {} nodes", nodes.len());
+    tracing::debug!("Before prereq gate: {} nodes", nodes.len());
 
     // Step 2: Apply Prerequisite Mastery Gate with event emission
     let nodes_before_gate = nodes.len();
@@ -160,7 +160,7 @@ pub fn generate_session(
     });
     let gate_filtered = nodes_before_gate - nodes.len();
 
-    tracing::info!(
+    tracing::debug!(
         "After prereq gate: {} nodes ({} filtered)",
         nodes.len(),
         gate_filtered
@@ -211,7 +211,7 @@ pub fn generate_session(
     };
     let k = base_k.min(scored_nodes.len());
 
-    tracing::info!(
+    tracing::debug!(
         "Top-K selection: k={}, total_scored={}",
         k,
         scored_nodes.len()
@@ -464,7 +464,7 @@ fn compose_mixed_learning_session(
         target_new + target_almost_mastered + target_almost_there + target_struggling,
     );
 
-    tracing::info!(
+    tracing::debug!(
         "Composition: new={}/{}, am={}, at={}, str={}, rs={} (size={}, min_new={})",
         target_new,
         available_new,
@@ -524,7 +524,7 @@ fn compose_mixed_learning_session(
         .iter()
         .filter(|&id| new.iter().any(|n| n.data.id == *id))
         .count();
-    tracing::info!(
+    tracing::debug!(
         "Session returned: {} items ({} actually new from new bucket)",
         session.len(),
         actual_new_count
