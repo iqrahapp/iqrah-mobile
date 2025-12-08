@@ -3,7 +3,7 @@
 
 use super::memorization::MemorizationExercise;
 use super::types::Exercise;
-use crate::domain::node_id::{self, PREFIX_VERSE};
+use crate::domain::node_id;
 use crate::{ContentRepository, KnowledgeNode};
 use anyhow::Result;
 

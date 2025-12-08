@@ -110,7 +110,7 @@ pub fn aggregate_timeline(
         return vec![];
     }
 
-    let n_students = student_timelines.len() as f64;
+    let _n_students = student_timelines.len() as f64;
     let mut result = Vec::with_capacity(target_days as usize);
 
     for day in 0..target_days {

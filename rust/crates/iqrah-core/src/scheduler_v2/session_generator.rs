@@ -1,3 +1,7 @@
+use crate::scheduler_v2::events::{
+    BucketAllocation, NullEventSink, SchedulerEvent, SchedulerEventSink, ScoreBreakdown,
+    SessionModeEvent,
+};
 /// Session generation orchestrator for Scheduler v2.0
 ///
 /// This module implements the main session generation logic, including:
@@ -5,9 +9,8 @@
 /// - Priority scoring and ranking
 /// - Difficulty-based composition with fallback
 use crate::scheduler_v2::{
-    calculate_days_overdue, calculate_priority_score, calculate_readiness,
-    count_unsatisfied_parents, CandidateNode, InMemNode, ParentEnergyMap, SessionMixConfig,
-    UserProfile,
+    calculate_days_overdue, calculate_readiness, CandidateNode, InMemNode, ParentEnergyMap,
+    SessionMixConfig, UserProfile,
 };
 use std::collections::HashMap;
 
@@ -96,6 +99,7 @@ impl MasteryBand {
 /// * `now_ts` - Current timestamp in MILLISECONDS
 /// * `mode` - Session mode (Revision or MixedLearning)
 /// * `mix_config` - Optional session mix config (for MixedLearning mode)
+/// * `event_sink` - Optional event sink for observability (spec §9)
 ///
 /// # Returns
 /// * Vec of node_ids to include in the session
@@ -119,7 +123,12 @@ pub fn generate_session(
     now_ts: i64,
     mode: SessionMode,
     mix_config: Option<&SessionMixConfig>,
+    event_sink: Option<&dyn SchedulerEventSink>,
 ) -> Vec<i64> {
+    // Use NullEventSink as default when none provided (zero overhead)
+    let null_sink = NullEventSink;
+    let sink: &dyn SchedulerEventSink = event_sink.unwrap_or(&null_sink);
+
     if candidates.is_empty() || session_size == 0 {
         return Vec::new();
     }
@@ -135,13 +144,27 @@ pub fn generate_session(
 
     tracing::info!("Before prereq gate: {} nodes", nodes.len());
 
-    // Step 2: Apply Prerequisite Mastery Gate
+    // Step 2: Apply Prerequisite Mastery Gate with event emission
+    let nodes_before_gate = nodes.len();
     nodes.retain(|node| {
-        let unsatisfied = count_unsatisfied_parents(&node.parent_ids, &parent_energies);
-        unsatisfied == 0
+        let unsatisfied_parents: Vec<i64> =
+            get_unsatisfied_parent_ids(&node.parent_ids, &parent_energies);
+        let passes_gate = unsatisfied_parents.is_empty();
+        if !passes_gate {
+            sink.emit(SchedulerEvent::PrerequisiteGateFailed {
+                node_id: node.data.id,
+                unsatisfied_parents,
+            });
+        }
+        passes_gate
     });
+    let gate_filtered = nodes_before_gate - nodes.len();
 
-    tracing::info!("After prereq gate: {} nodes", nodes.len());
+    tracing::info!(
+        "After prereq gate: {} nodes ({} filtered)",
+        nodes.len(),
+        gate_filtered
+    );
 
     if nodes.is_empty() {
         return Vec::new();
@@ -154,8 +177,15 @@ pub fn generate_session(
         .map(|node| {
             let readiness = calculate_readiness(&node.parent_ids, &parent_energies);
             let days_overdue = calculate_days_overdue(node.data.next_due_ts, now_ts);
-            let (score, _tie_breaker) =
-                calculate_priority_score(&node, profile, readiness, days_overdue);
+            let (score, _tie_breaker, breakdown) =
+                calculate_priority_score_with_breakdown(&node, profile, readiness, days_overdue);
+
+            // Emit PriorityComputed event
+            sink.emit(SchedulerEvent::PriorityComputed {
+                node_id: node.data.id,
+                components: breakdown,
+            });
+
             (node, readiness, days_overdue, score)
         })
         .collect();
@@ -193,15 +223,85 @@ pub fn generate_session(
         .map(|(n, _, _, _)| n)
         .collect();
 
-    // Step 6: Apply mode-specific composition
+    // Step 6: Apply mode-specific composition with event emission
     match mode {
-        SessionMode::Revision => compose_revision_session(top_nodes, session_size),
+        SessionMode::Revision => {
+            let (session, buckets) = compose_revision_session_with_buckets(top_nodes, session_size);
+            sink.emit(SchedulerEvent::SessionComposed {
+                mode: SessionModeEvent::Revision,
+                buckets,
+            });
+            session
+        }
         SessionMode::MixedLearning => {
             let default_config = SessionMixConfig::default();
             let config = mix_config.unwrap_or(&default_config);
-            compose_mixed_learning_session(top_nodes, session_size, config)
+            let (session, buckets) =
+                compose_mixed_learning_session_with_buckets(top_nodes, session_size, config);
+            sink.emit(SchedulerEvent::SessionComposed {
+                mode: SessionModeEvent::MixedLearning,
+                buckets,
+            });
+            session
         }
     }
+}
+
+/// Helper to get unsatisfied parent IDs for event emission
+fn get_unsatisfied_parent_ids(parent_ids: &[i64], parent_energies: &ParentEnergyMap) -> Vec<i64> {
+    use crate::scheduler_v2::types::MASTERY_THRESHOLD;
+    parent_ids
+        .iter()
+        .filter(|id| {
+            let energy = parent_energies.get(id).copied().unwrap_or(0.0);
+            energy < MASTERY_THRESHOLD
+        })
+        .copied()
+        .collect()
+}
+
+/// Calculate priority score with full breakdown for event emission
+fn calculate_priority_score_with_breakdown(
+    node: &InMemNode,
+    profile: &UserProfile,
+    readiness: f32,
+    days_overdue: f32,
+) -> (f64, i64, ScoreBreakdown) {
+    // Replicate scoring logic to capture all components
+    const TARGET_REVIEWS: u32 = 7;
+    const TARGET_RECALL: f32 = 0.7;
+    const C_MAX: f32 = 9.0;
+
+    let urgency_factor = 1.0 + (profile.w_urgency * (1.0 + days_overdue.max(0.0)).ln());
+
+    let review_deficit = (TARGET_REVIEWS as i32 - node.data.review_count as i32).max(0) as f32;
+    let recall_deficit = (TARGET_RECALL - node.data.predicted_recall).max(0.0);
+    let fairness_additive = profile.w_fairness * (review_deficit + recall_deficit);
+
+    let coverage_factor = if node.data.review_count < TARGET_REVIEWS {
+        1.0 + (C_MAX * (1.0 - node.data.review_count as f32 / TARGET_REVIEWS as f32))
+    } else {
+        1.0
+    };
+
+    let learning_potential = profile.w_readiness * readiness
+        + profile.w_foundation * node.data.foundational_score
+        + profile.w_influence * node.data.influence_score
+        + fairness_additive;
+
+    let final_score = urgency_factor * coverage_factor * learning_potential;
+
+    let breakdown = ScoreBreakdown::new(
+        urgency_factor,
+        coverage_factor,
+        readiness,
+        node.data.foundational_score,
+        node.data.influence_score,
+        fairness_additive,
+        final_score as f64,
+    );
+
+    (final_score as f64, -node.data.quran_order, breakdown)
 }
 
 // ============================================================================
@@ -209,6 +309,7 @@ pub fn generate_session(
 // ============================================================================
 
 /// Composes a revision session using content difficulty buckets (60/30/10).
+#[allow(dead_code)] // Kept for backward compatibility, main code uses _with_buckets version
 fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i64> {
     // Bucket by difficulty
     let mut easy = Vec::new();
@@ -258,11 +359,72 @@ fn compose_revision_session(nodes: Vec<InMemNode>, session_size: usize) -> Vec<i
     session
 }
 
+/// Composes a revision session and returns bucket allocation for event emission.
+fn compose_revision_session_with_buckets(
+    nodes: Vec<InMemNode>,
+    session_size: usize,
+) -> (Vec<i64>, BucketAllocation) {
+    // Bucket by difficulty
+    let mut easy = Vec::new();
+    let mut medium = Vec::new();
+    let mut hard = Vec::new();
+
+    for node in nodes {
+        match DifficultyBucket::from_score(node.data.difficulty_score) {
+            DifficultyBucket::Easy => easy.push(node),
+            DifficultyBucket::Medium => medium.push(node),
+            DifficultyBucket::Hard => hard.push(node),
+        }
+    }
+
+    // Calculate targets
+    let target_easy = (session_size as f32 * 0.6).round() as usize;
+    let target_medium = (session_size as f32 * 0.3).round() as usize;
+    let target_hard = session_size.saturating_sub(target_easy + target_medium);
+
+    // Collect session
+    let mut session = Vec::new();
+
+    // Track actual counts for bucket allocation
+    let actual_easy = easy.len().min(target_easy);
+    let actual_medium = medium.len().min(target_medium);
+    let actual_hard = hard.len().min(target_hard);
+
+    // Take from each bucket up to target
+    session.extend(easy.iter().take(target_easy).map(|n| n.data.id));
+    session.extend(medium.iter().take(target_medium).map(|n| n.data.id));
+    session.extend(hard.iter().take(target_hard).map(|n| n.data.id));
+
+    // Fallback: if we didn't reach session_size, fill from remaining nodes
+    if session.len() < session_size {
+        let remaining_needed = session_size - session.len();
+
+        let added_ids: std::collections::HashSet<_> = session.iter().cloned().collect();
+        let remaining: Vec<_> = easy
+            .iter()
+            .chain(medium.iter())
+            .chain(hard.iter())
+            .filter(|n| !added_ids.contains(&n.data.id))
+            .collect();
+
+        session.extend(remaining.iter().take(remaining_needed).map(|n| n.data.id));
+    }
+
+    session.truncate(session_size);
+
+    // For revision mode, map difficulty buckets to allocation struct
+    // (easy -> almost_mastered, medium -> almost_there, hard -> struggling)
+    let buckets = BucketAllocation::revision(actual_easy, actual_medium, actual_hard);
+
+    (session, buckets)
+}
+
 // ============================================================================
 // MIXED LEARNING MODE COMPOSITION
 // ============================================================================
 
 /// Composes a mixed learning session using configurable mastery bands.
+#[allow(dead_code)] // Kept for backward compatibility, main code uses _with_buckets version
 fn compose_mixed_learning_session(
     nodes: Vec<InMemNode>,
     session_size: usize,
@@ -371,6 +533,105 @@ fn compose_mixed_learning_session(
     session
 }
 
+/// Composes a mixed learning session and returns bucket allocation for event emission.
+fn compose_mixed_learning_session_with_buckets(
+    nodes: Vec<InMemNode>,
+    session_size: usize,
+    config: &SessionMixConfig,
+) -> (Vec<i64>, BucketAllocation) {
+    // Bucket by mastery band
+    let mut new = Vec::new();
+    let mut really_struggling = Vec::new();
+    let mut struggling = Vec::new();
+    let mut almost_there = Vec::new();
+    let mut almost_mastered = Vec::new();
+
+    for node in nodes {
+        match MasteryBand::from_energy(node.data.energy) {
+            MasteryBand::New => new.push(node),
+            MasteryBand::AlmostMastered => almost_mastered.push(node),
+            MasteryBand::Struggling => struggling.push(node),
+            MasteryBand::ReallyStruggling => really_struggling.push(node),
+            MasteryBand::AlmostThere => almost_there.push(node),
+        }
+    }
+
+    // Calculate targets using configurable percentages
+    let pct_new_slots = (session_size as f32 * config.pct_new).round() as usize;
+    let available_new = new.len();
+    let target_new = pct_new_slots
+        .max(config.min_new_per_session)
+        .min(available_new);
+
+    let target_almost_mastered =
+        (session_size as f32 * config.pct_almost_mastered).round() as usize;
+    let target_almost_there = (session_size as f32 * config.pct_almost_there).round() as usize;
+    let target_struggling = (session_size as f32 * config.pct_struggling).round() as usize;
+    let target_really_struggling = session_size.saturating_sub(
+        target_new + target_almost_mastered + target_almost_there + target_struggling,
+    );
+
+    // Collect session
+    let mut session = Vec::new();
+
+    // Track actual counts
+    let actual_new = new.len().min(target_new);
+    let actual_almost_mastered = almost_mastered.len().min(target_almost_mastered);
+    let actual_almost_there = almost_there.len().min(target_almost_there);
+    let actual_struggling = struggling.len().min(target_struggling);
+    let actual_really_struggling = really_struggling.len().min(target_really_struggling);
+
+    session.extend(new.iter().take(target_new).map(|n| n.data.id));
+    session.extend(
+        almost_mastered
+            .iter()
+            .take(target_almost_mastered)
+            .map(|n| n.data.id),
+    );
+    session.extend(
+        almost_there
+            .iter()
+            .take(target_almost_there)
+            .map(|n| n.data.id),
+    );
+    session.extend(struggling.iter().take(target_struggling).map(|n| n.data.id));
+    session.extend(
+        really_struggling
+            .iter()
+            .take(target_really_struggling)
+            .map(|n| n.data.id),
+    );
+
+    // Fallback: if we didn't reach session_size, fill from remaining nodes
+    if session.len() < session_size {
+        let remaining_needed = session_size - session.len();
+
+        let added_ids: std::collections::HashSet<_> = session.iter().cloned().collect();
+        let remaining: Vec<_> = new
+            .iter()
+            .chain(almost_mastered.iter())
+            .chain(almost_there.iter())
+            .chain(struggling.iter())
+            .chain(really_struggling.iter())
+            .filter(|n| !added_ids.contains(&n.data.id))
+            .collect();
+
+        session.extend(remaining.iter().take(remaining_needed).map(|n| n.data.id));
+    }
+
+    session.truncate(session_size);
+
+    let buckets = BucketAllocation::mixed_learning(
+        actual_new,
+        actual_almost_mastered,
+        actual_almost_there,
+        actual_struggling,
+        actual_really_struggling,
+    );
+
+    (session, buckets)
+}
+
 // ============================================================================
 // TESTS
 // ============================================================================
@@ -412,6 +673,7 @@ mod tests {
             0,
             SessionMode::MixedLearning,
             None,
+            None, // event_sink
         );
         assert!(session.is_empty());
     }
@@ -445,6 +707,7 @@ mod tests {
             0,
             SessionMode::MixedLearning,
             None,
+            None, // event_sink
         );
 
         // A and B have no parents -> eligible
@@ -476,6 +739,7 @@ mod tests {
             0,
             SessionMode::Revision,
             None,
+            None, // event_sink
         );
 
         assert_eq!(session.len(), 6);
@@ -502,6 +766,7 @@ mod tests {
             0,
             SessionMode::MixedLearning,
             None,
+            None, // event_sink
         );
 
         assert_eq!(session.len(), 5);
@@ -608,6 +873,7 @@ mod tests {
             now_ts,
             SessionMode::MixedLearning,
             None,
+            None, // event_sink
         );
 
         // All items should be in session (only 3 candidates, 3 slots)

@@ -31,6 +31,7 @@
 /// ).await?;
 /// ```
 pub mod bandit;
+pub mod events;
 pub mod profiles;
 pub mod scoring;
 pub mod session_generator;
@@ -38,6 +39,10 @@ pub mod types;
 
 pub use bandit::{
     blend_profile, BanditArmState, BanditOptimizer, BLEND_RATIO, DEFAULT_SAFE_PROFILE,
+};
+pub use events::{
+    BucketAllocation, CollectingEventSink, LoggingEventSink, NullEventSink, SchedulerEvent,
+    SchedulerEventSink, ScoreBreakdown, SessionModeEvent,
 };
 pub use profiles::{calculate_session_reward, profile_weights, ProfileName, SessionResult};
 pub use scoring::{

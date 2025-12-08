@@ -1,4 +1,4 @@
-use iqrah_core::domain::{Node, NodeType, Verse};
+use iqrah_core::domain::{Node, NodeType};
 use iqrah_core::testing::MockContentRepository;
 use iqrah_iss::{Scenario, SimulationConfig, Simulator};
 use std::collections::HashMap;

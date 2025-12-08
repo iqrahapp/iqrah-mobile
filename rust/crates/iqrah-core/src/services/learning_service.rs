@@ -5,7 +5,7 @@ use crate::{
 use anyhow::Result;
 use chrono::Utc;
 use std::sync::Arc;
-use tracing::{debug, info, instrument};
+use tracing::{debug, instrument};
 
 /// Learning service handles review processing and FSRS scheduling
 pub struct LearningService {

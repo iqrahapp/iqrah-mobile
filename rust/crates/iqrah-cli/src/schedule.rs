@@ -202,6 +202,7 @@ pub async fn generate(
         now_ts,
         session_mode,
         None, // Use default mix config
+        None, // event_sink
     );
 
     // Display results

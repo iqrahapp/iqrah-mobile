@@ -475,6 +475,7 @@ impl Simulator {
                 now_ts,
                 SessionMode::MixedLearning,
                 Some(&mix_config),
+                None, // event_sink: use NullEventSink for ISS performance
             )
         };
 
@@ -727,7 +728,7 @@ impl Simulator {
             let (review_count, predicted_recall) = if let Some(state) = memory_state {
                 // Calculate FSRS retrievability: R = e^(-t/S) where t = days since last review
                 let days_since_review = if state.review_count > 0 {
-                    ((now_ts - state.last_reviewed.timestamp_millis()) as f64 / (86400.0 * 1000.0))
+                    (now_ts - state.last_reviewed.timestamp_millis()) as f64 / (86400.0 * 1000.0)
                 } else {
                     0.0
                 };

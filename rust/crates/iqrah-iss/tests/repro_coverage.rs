@@ -35,6 +35,8 @@ fn test_generate_session_includes_min_new() {
             foundational_score: 0.5,
             influence_score: 0.5,
             quran_order: i * 10,
+            review_count: 2,
+            predicted_recall: 0.6,
         });
     }
 
@@ -48,6 +50,8 @@ fn test_generate_session_includes_min_new() {
             foundational_score: 0.5,
             influence_score: 0.5,
             quran_order: i * 10,
+            review_count: 0,
+            predicted_recall: 0.0,
         });
     }
 
@@ -61,6 +65,8 @@ fn test_generate_session_includes_min_new() {
             foundational_score: 0.5,
             influence_score: 0.5,
             quran_order: i * 10,
+            review_count: 1,
+            predicted_recall: 0.2,
         });
     }
 
@@ -81,6 +87,7 @@ fn test_generate_session_includes_min_new() {
         now_ts,
         SessionMode::MixedLearning,
         Some(&mix_config),
+        None, // event_sink
     );
 
     println!("Session: {:?}", session);

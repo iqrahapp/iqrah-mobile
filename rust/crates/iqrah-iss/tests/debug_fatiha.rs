@@ -1,7 +1,7 @@
 use iqrah_core::domain::{Node, NodeType, Verse};
 use iqrah_core::ports::UserRepository;
 use iqrah_core::testing::MockContentRepository;
-use iqrah_iss::brain::{StudentParams, StudentParamsSelector};
+use iqrah_iss::brain::StudentParams;
 use iqrah_iss::{Scenario, SimulationConfig, Simulator};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -125,6 +125,7 @@ async fn test_debug_fatiha_learning() {
         session_size: 20,
         enable_bandit: false,
         student_count: 1,
+        session_mix: None, // Use default session mix
     };
 
     println!("\nRunning Fatiha simulation for 60 days...");

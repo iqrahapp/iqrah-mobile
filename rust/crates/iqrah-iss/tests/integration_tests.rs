@@ -5,7 +5,7 @@
 
 use iqrah_core::domain::Verse;
 use iqrah_core::testing::MockContentRepository;
-use iqrah_iss::{Scenario, SimulationConfig, SimulationMetrics, Simulator};
+use iqrah_iss::{Scenario, SimulationConfig, Simulator};
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -686,8 +686,8 @@ mod tests {
     #[test]
     fn test_attempt_recall_decreases_with_time() {
         let params = StudentParams::default();
-        let mut brain1 = StudentBrain::new(params.clone(), 42);
-        let mut brain2 = StudentBrain::new(params, 42);
+        let _brain1 = StudentBrain::new(params.clone(), 42);
+        let _brain2 = StudentBrain::new(params, 42);
 
         // Same stability and difficulty, different elapsed time
         let stability = 10.0;
