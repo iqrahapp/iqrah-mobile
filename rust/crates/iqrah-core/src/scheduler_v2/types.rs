@@ -18,7 +18,7 @@ pub const MASTERY_THRESHOLD: f32 = 0.3;
 
 /// Configuration for mastery-band percentages in MixedLearning mode.
 /// Percentages must sum to 1.0 (100%).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SessionMixConfig {
     /// Fraction of session for new items (energy == 0)
     pub pct_new: f32,
@@ -81,6 +81,7 @@ pub struct UserProfile {
     pub w_readiness: f32,
     pub w_foundation: f32,
     pub w_influence: f32,
+    pub w_fairness: f32,
 }
 
 impl UserProfile {
@@ -91,6 +92,7 @@ impl UserProfile {
             w_readiness: 1.0,
             w_foundation: 1.0,
             w_influence: 1.0,
+            w_fairness: 0.3, // Moderate fairness pressure
         }
     }
 
@@ -108,6 +110,7 @@ impl UserProfile {
             w_readiness: self.w_readiness * ratio + other.w_readiness * other_ratio,
             w_foundation: self.w_foundation * ratio + other.w_foundation * other_ratio,
             w_influence: self.w_influence * ratio + other.w_influence * other_ratio,
+            w_fairness: self.w_fairness * ratio + other.w_fairness * other_ratio,
         }
     }
 }
@@ -142,6 +145,13 @@ pub struct CandidateNode {
     /// Qur'an ordering: (surah * 1_000_000) + (ayah * 1000) + word_idx
     /// Used as tie-breaker in priority scoring
     pub quran_order: i64,
+
+    /// Number of times this item has been reviewed (for fairness term)
+    pub review_count: u32,
+
+    /// Predicted recall probability from FSRS (for fairness term)
+    /// Range: 0.0 (forgotten) to 1.0 (perfect recall)
+    pub predicted_recall: f32,
 }
 
 // ============================================================================
@@ -220,6 +230,7 @@ mod tests {
             w_readiness: 1.0,
             w_foundation: 2.0,
             w_influence: 1.0,
+            w_fairness: 0.3,
         };
         let profile2 = UserProfile::balanced();
 
@@ -242,6 +253,8 @@ mod tests {
             energy: 0.0,
             next_due_ts: 0,
             quran_order: 1001000,
+            review_count: 0,
+            predicted_recall: 0.0,
         };
 
         let node = InMemNode::new(candidate.clone());

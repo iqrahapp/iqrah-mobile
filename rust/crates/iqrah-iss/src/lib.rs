@@ -30,6 +30,7 @@ pub mod brain;
 pub mod comparison;
 pub mod config;
 pub mod debug_stats;
+pub mod evaluation;
 pub mod in_memory_repo;
 pub mod metrics;
 pub mod simulator;
@@ -45,6 +46,7 @@ pub use brain::{
 };
 pub use comparison::{run_comparison, AggregatedMetrics, ComparisonResults, VariantResult};
 pub use config::{Scenario, SimulationConfig};
+pub use evaluation::{evaluate, EvalMetrics, EvalResult, Flag, Verdict};
 pub use in_memory_repo::InMemoryUserRepository;
 pub use metrics::{days_to_mastery, is_mastered, retrievability, DailySnapshot, SimulationMetrics};
 pub use simulator::Simulator;

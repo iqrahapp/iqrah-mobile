@@ -1414,6 +1414,8 @@ impl ContentRepository for SqliteContentRepository {
                 energy: 0.0,    // Default - caller should merge from user repo
                 next_due_ts: 0, // Default - caller should merge from user repo
                 quran_order: r.quran_order,
+                review_count: 0,       // Default - caller should merge from user repo
+                predicted_recall: 0.0, // Default - caller should merge from user repo
             })
             .collect())
     }

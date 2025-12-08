@@ -5,7 +5,8 @@
 
 use crate::baselines::SchedulerVariant;
 use crate::config::{Scenario, SimulationConfig};
-use crate::debug_stats::{RunDebugReport, StudentDebugSummary, VariantDebugReport};
+use crate::debug_stats::{RunDebugReport, VariantDebugReport};
+use crate::evaluation::{evaluate, EvalResult};
 use crate::metrics::SimulationMetrics;
 use crate::simulator::Simulator;
 
@@ -209,6 +210,9 @@ pub struct VariantResult {
     /// Confidence interval stats for key metrics
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ci_stats: Option<ConfidenceIntervalStats>,
+    /// Multi-objective evaluation result (v2.1)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evaluation: Option<EvalResult>,
 }
 
 /// Confidence interval statistics for key metrics (v0.5).
@@ -373,9 +377,11 @@ pub async fn run_comparison(
             timeline: vec![],
             difficulty_buckets: vec![],
             ci_stats,
+            evaluation: None, // Computed below after debug stats
         });
     }
 
+    // Create debug report first
     let debug_report = if !variant_reports.is_empty() {
         Some(RunDebugReport {
             scenario_name: base_scenario.name.clone(),
@@ -385,6 +391,47 @@ pub async fn run_comparison(
     } else {
         None
     };
+
+    // Compute evaluation for each variant using debug stats
+    for (i, vr) in variant_results.iter_mut().enumerate() {
+        if let Some(ref report) = debug_report {
+            if let Some(variant_debug) = report.variants.get(i) {
+                if let Some(first_student) = variant_debug.students.first() {
+                    // Find matching SimulationMetrics from comparison
+                    // For simplicity, use mean values (evaluation is already aggregated by construction)
+                    let fake_sim_metrics = crate::metrics::SimulationMetrics {
+                        retention_per_minute: vr.metrics.retention_per_minute_mean,
+                        days_to_mastery: None,
+                        coverage_pct: vr.metrics.coverage_pct_mean,
+                        plan_faithfulness: vr.metrics.plan_faithfulness_mean,
+                        total_minutes: 0.0,
+                        total_days: base_scenario.target_days,
+                        gave_up: false,
+                        goal_item_count: (vr.metrics.items_never_reviewed_mean
+                            + vr.metrics.coverage_t_mean * 100.0)
+                            as usize,
+                        items_mastered: (vr.metrics.coverage_t_mean * 100.0) as usize,
+                        coverage_t: vr.metrics.coverage_t_mean,
+                        mean_r_t: vr.metrics.mean_r_t_mean,
+                        items_good_t: 0,
+                        rpm_t: vr.metrics.rpm_t_mean,
+                        items_good_short: None,
+                        rpm_short: vr.metrics.rpm_short_mean,
+                        coverage_acq: vr.metrics.coverage_acq_mean,
+                        mean_r_acq: vr.metrics.mean_r_acq_mean,
+                        items_never_reviewed: vr.metrics.items_never_reviewed_mean as usize,
+                    };
+                    let eval = evaluate(
+                        &fake_sim_metrics,
+                        first_student,
+                        &first_student.per_item_reviews,
+                        base_scenario.target_days,
+                    );
+                    vr.evaluation = Some(eval);
+                }
+            }
+        }
+    }
 
     // Calculate significance results
     let mut significance_results = Vec::new();

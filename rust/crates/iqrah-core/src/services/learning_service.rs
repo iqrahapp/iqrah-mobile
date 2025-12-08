@@ -5,7 +5,7 @@ use crate::{
 use anyhow::Result;
 use chrono::Utc;
 use std::sync::Arc;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 
 /// Learning service handles review processing and FSRS scheduling
 pub struct LearningService {
@@ -39,7 +39,7 @@ impl LearningService {
     }
 
     /// Process a single review at a specific timestamp
-    #[instrument(skip(self), fields(user_id, node_id, grade = ?grade, timestamp = ?timestamp))]
+    #[instrument(skip(self), fields(user_id, node_id, grade = ?grade, timestamp = ?timestamp), level = "debug")]
     pub async fn process_review_at(
         &self,
         user_id: &str,
@@ -47,7 +47,7 @@ impl LearningService {
         grade: ReviewGrade,
         timestamp: chrono::DateTime<Utc>,
     ) -> Result<MemoryState> {
-        info!("Processing review");
+        debug!("Processing review");
         // Task 3.2: Validate node exists in content.db before processing
         if !self.content_repo.node_exists(node_id).await? {
             return Err(anyhow::anyhow!(

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use iqrah_core::ReviewGrade;
 use serde::Serialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RunDebugReport {
@@ -129,6 +130,9 @@ pub struct StudentDebugSummary {
     pub skip_rate: f64,              // days_skipped / target_days
     pub r_buckets: RBuckets,         // Raw counts for aggregation
     pub delay_buckets: DelayBuckets, // Raw counts for aggregation
+    // Per-item review counts for fairness evaluation
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub per_item_reviews: HashMap<i64, u32>,
     // Stability tracking by review count bucket
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub stability_after_1: Vec<f64>,
@@ -302,6 +306,8 @@ pub struct StudentDebugAccumulator {
     pub r_sum: f64,
     pub r_count: u32,
     pub delay_buckets: DelayBuckets,
+    // Per-item review counts for fairness evaluation
+    pub per_item_reviews: HashMap<i64, u32>,
     // Stability tracking by review count bucket
     pub stability_after_1: Vec<f64>,
     pub stability_after_2_4: Vec<f64>,
@@ -330,6 +336,7 @@ impl StudentDebugAccumulator {
             r_sum: 0.0,
             r_count: 0,
             delay_buckets: Default::default(),
+            per_item_reviews: HashMap::new(),
             stability_after_1: Vec::new(),
             stability_after_2_4: Vec::new(),
             stability_after_5_9: Vec::new(),
@@ -337,13 +344,15 @@ impl StudentDebugAccumulator {
         }
     }
 
-    pub fn record_review(&mut self, grade: ReviewGrade, r: f64, elapsed_days: u32) {
+    pub fn record_review(&mut self, grade: ReviewGrade, r: f64, elapsed_days: u32, node_id: i64) {
         self.reviews += 1;
         self.grade_counts.inc(grade);
         self.r_buckets.inc(r);
         self.delay_buckets.inc(elapsed_days);
         self.r_sum += r;
         self.r_count += 1;
+        // Track per-item review counts for fairness evaluation
+        *self.per_item_reviews.entry(node_id).or_insert(0) += 1;
     }
 
     /// Record stability value after a review, bucketed by review count.
@@ -437,6 +446,7 @@ impl StudentDebugAccumulator {
             skip_rate,
             r_buckets: self.r_buckets,
             delay_buckets: self.delay_buckets,
+            per_item_reviews: self.per_item_reviews,
             stability_after_1: self.stability_after_1,
             stability_after_2_4: self.stability_after_2_4,
             stability_after_5_9: self.stability_after_5_9,

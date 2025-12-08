@@ -77,30 +77,35 @@ pub fn profile_weights(name: ProfileName) -> UserProfile {
             w_readiness: 1.0,
             w_foundation: 1.0,
             w_influence: 1.0,
+            w_fairness: 0.3,
         },
         ProfileName::FoundationHeavy => UserProfile {
             w_urgency: 0.8,
             w_readiness: 1.0,
             w_foundation: 1.5,
             w_influence: 0.8,
+            w_fairness: 0.2,
         },
         ProfileName::InfluenceHeavy => UserProfile {
             w_urgency: 0.8,
             w_readiness: 1.0,
             w_foundation: 0.8,
             w_influence: 1.5,
+            w_fairness: 0.2,
         },
         ProfileName::UrgencyHeavy => UserProfile {
             w_urgency: 1.5,
             w_readiness: 0.8,
             w_foundation: 1.0,
             w_influence: 1.0,
+            w_fairness: 0.15,
         },
         ProfileName::ReadinessFocused => UserProfile {
             w_urgency: 0.8,
             w_readiness: 1.5,
             w_foundation: 1.0,
             w_influence: 1.0,
+            w_fairness: 0.25,
         },
     }
 }

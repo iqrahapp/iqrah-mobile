@@ -5,6 +5,7 @@
 use crate::baselines::SchedulerVariant;
 use crate::brain::{StudentParams, StudentParamsSelector};
 use anyhow::Result;
+use iqrah_core::scheduler_v2::SessionMixConfig;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -149,6 +150,11 @@ pub struct Scenario {
     /// Scheduler variant to use
     #[serde(default)]
     pub scheduler: SchedulerVariant,
+
+    /// Optional session mix configuration override.
+    /// If not set, ISS computes based on plan size and horizon.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_mix: Option<SessionMixConfig>,
 }
 
 fn default_student_count() -> usize {
@@ -169,6 +175,7 @@ impl Scenario {
             enable_bandit: false,
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
+            session_mix: None,
         }
     }
 
@@ -185,6 +192,7 @@ impl Scenario {
             enable_bandit: true,
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
+            session_mix: None,
         }
     }
 
@@ -201,6 +209,7 @@ impl Scenario {
             enable_bandit: true,
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
+            session_mix: None,
         }
     }
 
@@ -217,6 +226,7 @@ impl Scenario {
             enable_bandit: true,
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
+            session_mix: None,
         }
     }
 
@@ -290,4 +300,62 @@ mod tests {
         assert_eq!(scenario.session_size, 10);
         assert!(scenario.enable_bandit);
     }
+}
+
+/// Compute min_new_per_session based on plan size and horizon.
+///
+/// Formula: items_per_day = total_items / (horizon * 0.8)
+/// For large plans, we need to introduce items aggressively to achieve coverage.
+/// Cap at 60% of session (not 30%) to ensure new items aren't crowded out by reviews.
+pub fn compute_min_new_for_plan(
+    total_items: usize,
+    horizon_days: u32,
+    session_size: usize,
+) -> usize {
+    if total_items == 0 || horizon_days == 0 {
+        return 1;
+    }
+
+    let effective_days = (horizon_days as f32 * 0.80).max(1.0);
+    let items_per_day = total_items as f32 / effective_days;
+    let min_new = items_per_day.ceil() as usize;
+
+    // Cap at 60% of session (raised from 30% to avoid starvation)
+    let max_new = (session_size * 6) / 10;
+    min_new.min(max_new).max(1)
+}
+
+/// Compute almost_due_window_days to keep recently-introduced items in candidate pool.
+///
+/// For large plans, FSRS schedules items 3-30 days out after first review.
+/// If almost_due_window is too small (default 2 days), those items disappear
+/// from candidates, causing coverage stalls.
+///
+/// Formula: cycle_days = session_size / intro_rate
+///          window = cycle_days * 10 (to cover multiple FSRS review cycles)
+///
+/// Example (juz_amma): 564 items / (180*0.8) = 3.9 items/day
+///                     cycle = 15/3.9 = 3.8 days
+///                     window = 3.8 * 10 = 38 days
+pub fn compute_almost_due_window(
+    total_items: usize,
+    horizon_days: u32,
+    session_size: usize,
+) -> u32 {
+    if total_items == 0 || horizon_days == 0 {
+        return 30; // Safe default for large plans
+    }
+
+    // For large plans (>100 items), keep ALL introduced items in candidate pool
+    // by setting window to full horizon. This ensures items cycle back for mastery.
+    if total_items > 100 {
+        return horizon_days; // Full horizon
+    }
+
+    // For small plans, use a more conservative window
+    let effective_days = (horizon_days as f32 * 0.80).max(1.0);
+    let intro_rate = total_items as f32 / effective_days;
+    let cycle_days = session_size as f32 / intro_rate.max(1.0);
+
+    (cycle_days * 2.0).round().max(7.0) as u32
 }

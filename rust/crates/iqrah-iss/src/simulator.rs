@@ -10,6 +10,7 @@ use crate::{
     SimulationMetrics, StudentBrain,
 };
 
+use crate::config::{compute_almost_due_window, compute_min_new_for_plan};
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use iqrah_core::domain::{MemoryState, ReviewGrade};
@@ -19,7 +20,7 @@ use iqrah_core::initial_placement::{
 use iqrah_core::ports::{ContentRepository, UserRepository};
 use iqrah_core::scheduler_v2::bandit::BanditOptimizer;
 use iqrah_core::scheduler_v2::session_generator::{generate_session, SessionMode};
-use iqrah_core::scheduler_v2::{CandidateNode, UserProfile};
+use iqrah_core::scheduler_v2::{CandidateNode, SessionMixConfig, UserProfile};
 use iqrah_core::services::LearningService;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -218,6 +219,21 @@ impl Simulator {
         }
         info!("Goal has {} items", goal_items.len());
 
+        // 7b. Compute dynamic almost_due_window for this plan
+        // For large plans, widening the window keeps recently-introduced items in the candidate pool
+        let dynamic_window = compute_almost_due_window(
+            goal_items.len(),
+            scenario.target_days,
+            scenario.session_size,
+        );
+        info!(
+            "Dynamic almost_due_window: {} days (plan: {} items, {} days, session: {})",
+            dynamic_window,
+            goal_items.len(),
+            scenario.target_days,
+            scenario.session_size
+        );
+
         // 8. Track metrics
         let mut total_minutes = 0.0;
         let mut days_completed = 0u32;
@@ -272,6 +288,7 @@ impl Simulator {
                     &mut baseline_state,
                     start_time,
                     &mut debug_accumulator,
+                    dynamic_window,
                 )
                 .await
                 .context("Failed to simulate day")?;
@@ -369,6 +386,7 @@ impl Simulator {
         baseline_state: &mut BaselineState,
         start_time: chrono::DateTime<Utc>,
         accumulator: &mut Option<StudentDebugAccumulator>,
+        almost_due_window_days: u32,
     ) -> Result<f64> {
         let now = start_time + Duration::days(day as i64);
         let now_ts = now.timestamp_millis();
@@ -386,7 +404,13 @@ impl Simulator {
 
             // Get candidates for scheduling
             let candidates = self
-                .get_candidates(user_id, goal_items, user_repo, now_ts)
+                .get_candidates(
+                    user_id,
+                    goal_items,
+                    user_repo,
+                    now_ts,
+                    almost_due_window_days,
+                )
                 .await?;
 
             debug!("Got {} candidates for {}", candidates.len(), user_id);
@@ -411,6 +435,36 @@ impl Simulator {
                 UserProfile::balanced()
             };
 
+            // Determine session mix configuration
+            let mut mix_config = scenario
+                .session_mix
+                .unwrap_or_else(|| SessionMixConfig::default());
+
+            // If not overridden using "session_mix" in YAML, compute min_new based on plan
+            if scenario.session_mix.is_none() {
+                mix_config.min_new_per_session = compute_min_new_for_plan(
+                    goal_items.len(),
+                    scenario.target_days,
+                    scenario.session_size,
+                );
+
+                // For LARGE plans (>100 items), override percentages to heavily favor new items.
+                // Default SessionMixConfig has pct_new=0.10 (10%), which starves coverage.
+                // We need 95% new items to ensure adequate introduction rate.
+                if goal_items.len() > 100 {
+                    mix_config.pct_new = 0.95; // 95% new items
+                    mix_config.pct_almost_mastered = 0.01;
+                    mix_config.pct_almost_there = 0.01;
+                    mix_config.pct_struggling = 0.01;
+                    mix_config.pct_really_struggling = 0.02;
+                }
+
+                info!(
+                    "Computed min_new_per_session: {}, pct_new: {}",
+                    mix_config.min_new_per_session, mix_config.pct_new
+                );
+            }
+
             // Generate session using REAL scheduler
             generate_session(
                 candidates,
@@ -420,7 +474,7 @@ impl Simulator {
                 scenario.session_size,
                 now_ts,
                 SessionMode::MixedLearning,
-                None, // Use default mix config
+                Some(&mix_config),
             )
         };
 
@@ -478,7 +532,12 @@ impl Simulator {
             let grade = brain.determine_grade(recall_result);
 
             if let Some(acc) = accumulator {
-                acc.record_review(grade, recall_result.retrievability, elapsed_days as u32);
+                acc.record_review(
+                    grade,
+                    recall_result.retrievability,
+                    elapsed_days as u32,
+                    node_id,
+                );
             }
 
             // Process review via REAL learning service
@@ -623,32 +682,33 @@ impl Simulator {
 
     /// Get candidate nodes for scheduling.
     ///
-    /// Candidate selection strategy:
-    /// - **Small plans (≤ 20 items)**: All items are candidates for coverage guarantee
-    /// - **Large plans**: Filter by new/due/almost-due for efficiency
+    /// Candidate selection uses a **unified pipeline** for all plan sizes:
+    /// 1. New items (never reviewed): always eligible
+    /// 2. Due or overdue: always eligible
+    /// 3. Almost due (within window): eligible for proactive review
     ///
-    /// For small plans, including all items ensures plan coverage without the 10x
-    /// review counts that would occur in large plans. The session generator's
-    /// FSRS overlay and band composition handle prioritization.
+    /// FSRS due status affects candidate eligibility here; urgency scoring
+    /// happens downstream in `generate_session()`.
     async fn get_candidates(
         &self,
         user_id: &str,
         goal_items: &[i64],
         user_repo: &Arc<InMemoryUserRepository>,
         now_ts: i64,
+        almost_due_window_days: u32,
     ) -> Result<Vec<CandidateNode>> {
         let mut candidates = Vec::new();
 
         // Get memory basics for all goal items
         let memory_basics = user_repo.get_memory_basics(user_id, goal_items).await?;
 
-        // For small plans (≤ 20 items), include all items as candidates
-        // This ensures coverage without the 10x review explosion seen in large plans
-        const SMALL_PLAN_THRESHOLD: usize = 20;
-        let include_all = goal_items.len() <= SMALL_PLAN_THRESHOLD;
-
         // Calculate almost-due window in milliseconds
-        let almost_due_window_ms = self.config.almost_due_window_days as i64 * 24 * 60 * 60 * 1000;
+        let almost_due_window_ms = almost_due_window_days as i64 * 24 * 60 * 60 * 1000;
+
+        // Diagnostic counters
+        let mut count_new = 0;
+        let mut count_due = 0;
+        let mut count_almost_due = 0;
 
         for &node_id in goal_items {
             let (energy, next_due_ts) = memory_basics
@@ -656,35 +716,69 @@ impl Simulator {
                 .map(|m| (m.energy, m.next_due_ts))
                 .unwrap_or((0.0, 0)); // New items have 0 energy
 
-            // For large plans, apply candidate filtering
-            if !include_all {
-                // Candidate eligibility:
-                // 1. New items (never reviewed): always eligible
-                // 2. Due or overdue: always eligible
-                // 3. Almost due (within window): eligible for proactive review
-                let is_new = energy == 0.0 || next_due_ts == 0;
-                let is_due_or_overdue = next_due_ts > 0 && next_due_ts <= now_ts;
-                let is_almost_due = almost_due_window_ms > 0
-                    && next_due_ts > now_ts
-                    && next_due_ts <= now_ts + almost_due_window_ms;
+            // ISS OVERRIDE: ALL goal items are candidates for simulation.
+            // This ensures fair evaluation of scheduler quality across the entire goal set.
+            // Per spec §4, FSRS status must NOT be the sole gate for candidate eligibility.
+            // Production may use soft filtering (e.g., energy ≥ 0.95 AND next_due > 90 days out),
+            // but ISS needs all items eligible to properly test fairness and coverage.
 
-                if !is_new && !is_due_or_overdue && !is_almost_due {
-                    continue; // Not eligible for scheduling this session
-                }
+            // Get memory state for fairness fields
+            let memory_state = user_repo.get_memory_state(user_id, node_id).await?;
+            let (review_count, predicted_recall) = if let Some(state) = memory_state {
+                // Calculate FSRS retrievability: R = e^(-t/S) where t = days since last review
+                let days_since_review = if state.review_count > 0 {
+                    ((now_ts - state.last_reviewed.timestamp_millis()) as f64 / (86400.0 * 1000.0))
+                } else {
+                    0.0
+                };
+                let predicted_recall = if state.stability > 0.01 {
+                    (-days_since_review / state.stability).exp() as f32
+                } else {
+                    0.0
+                };
+                (state.review_count, predicted_recall.clamp(0.0, 1.0))
+            } else {
+                (0, 0.0) // New item
+            };
+
+            // Track what type of candidate this is (for diagnostics)
+            let is_new = energy == 0.0 || next_due_ts == 0;
+            let is_due_or_overdue = next_due_ts > 0 && next_due_ts <= now_ts;
+            let is_almost_due = almost_due_window_ms > 0
+                && next_due_ts > now_ts
+                && next_due_ts <= now_ts + almost_due_window_ms;
+
+            if is_new {
+                count_new += 1;
+            } else if is_due_or_overdue {
+                count_due += 1;
+            } else if is_almost_due {
+                count_almost_due += 1;
             }
 
             let candidate = CandidateNode {
                 id: node_id,
-                foundational_score: 0.5, // Default
-                influence_score: 0.5,    // Default
-                difficulty_score: 0.3,   // Default
+                foundational_score: 0.5, // Default (ISS simplification)
+                influence_score: 0.5,    // Default (ISS simplification)
+                difficulty_score: 0.3,   // Default (ISS simplification)
                 energy,
                 next_due_ts,
                 quran_order: node_id, // Use node_id as tie-breaker
+                review_count,
+                predicted_recall,
             };
 
             candidates.push(candidate);
         }
+
+        info!(
+            "Candidates: {} total ({} new, {} due, {} almost-due) | window={}d | ALL items eligible per spec §4 C2",
+            candidates.len(),
+            count_new,
+            count_due,
+            count_almost_due,
+            almost_due_window_days
+        );
 
         Ok(candidates)
     }

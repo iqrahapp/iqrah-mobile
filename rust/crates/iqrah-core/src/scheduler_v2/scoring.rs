@@ -113,12 +113,39 @@ pub fn calculate_priority_score(
     // Urgency factor: logarithmic growth with days overdue
     let urgency_factor = 1.0 + (profile.w_urgency * (1.0 + days_overdue.max(0.0)).ln());
 
-    // Learning potential: weighted sum of readiness, foundation, and influence
+    // Fairness term (spec §6, equations 206-217)
+    // Pressures scheduler to cover underserved items and maintain balanced exposure
+    //
+    // Key insight: Due items get urgency MULTIPLIER (up to 3-4x for very overdue).
+    // New items need a STRONGER boost to compete and ensure coverage.
+    // We use a "coverage multiplier" that decays as items get reviewed.
+    const TARGET_REVIEWS: u32 = 7; // Items need ~7 reviews for stable long-term memory
+    const TARGET_RECALL: f32 = 0.7;
+
+    let review_deficit = (TARGET_REVIEWS as i32 - node.data.review_count as i32).max(0) as f32;
+    let recall_deficit = (TARGET_RECALL - node.data.predicted_recall).max(0.0);
+
+    // Additive fairness component (for fine-grained ranking among similar items)
+    let fairness_additive = profile.w_fairness * (review_deficit + recall_deficit);
+
+    // Coverage multiplier: new/under-reviewed items get a strong boost
+    // Decays from ~10x (brand new) to 1x (at TARGET_REVIEWS)
+    // This ensures new items can compete with highly overdue items (which get 3-4x urgency)
+    // The 10x max is calibrated to beat urgency_factor for items 20+ days overdue
+    let coverage_multiplier = if node.data.review_count < TARGET_REVIEWS {
+        1.0 + (9.0 * (1.0 - node.data.review_count as f32 / TARGET_REVIEWS as f32))
+    } else {
+        1.0
+    };
+
+    // Learning potential: weighted sum of readiness, foundation, influence, and fairness
     let learning_potential = profile.w_readiness * readiness
         + profile.w_foundation * node.data.foundational_score
-        + profile.w_influence * node.data.influence_score;
+        + profile.w_influence * node.data.influence_score
+        + fairness_additive;
 
-    let final_score = urgency_factor * learning_potential;
+    // Final score applies both urgency (for due items) and coverage (for new items)
+    let final_score = urgency_factor * coverage_multiplier * learning_potential;
 
     // Return (score, negative_quran_order) for sorting
     // Higher score first, then earlier Qur'an order
@@ -220,6 +247,8 @@ mod tests {
             energy: 0.0,
             next_due_ts: 0,
             quran_order: 1001000,
+            review_count: 0,
+            predicted_recall: 0.0,
         };
         let node = InMemNode::new(candidate);
         let profile = UserProfile::balanced();
@@ -229,10 +258,17 @@ mod tests {
         let (score, tie_breaker) =
             calculate_priority_score(&node, &profile, readiness, days_overdue);
 
-        // urgency_factor = 1.0 + 1.0 * ln(1.0 + 0.0) = 1.0
-        // learning_potential = 1.0 * 1.0 + 1.0 * 0.5 + 1.0 * 0.3 = 1.8
-        // final_score = 1.0 * 1.8 = 1.8
-        assert!((score - 1.8).abs() < 0.001);
+        // New formula with coverage_multiplier (10x max, TARGET_REVIEWS=7):
+        // urgency_factor = 1.0
+        // coverage_multiplier = 1 + 9 * (1 - 0/7) = 10.0 (brand new item)
+        // fairness_additive = 0.3 * (7 + 0.7) = 2.31
+        // learning_potential = 1.0 + 0.5 + 0.3 + 2.31 = 4.11
+        // final_score = 1.0 * 10.0 * 4.11 = 41.1
+        assert!(
+            score > 35.0 && score < 45.0,
+            "Expected ~41.0, got {}",
+            score
+        );
         assert_eq!(tie_breaker, -1001000);
     }
 
@@ -246,6 +282,8 @@ mod tests {
             energy: 0.5,
             next_due_ts: 0,
             quran_order: 2001000,
+            review_count: 2,
+            predicted_recall: 0.8,
         };
         let node = InMemNode::new(candidate);
         let profile = UserProfile::balanced();
@@ -255,10 +293,13 @@ mod tests {
         let (score, tie_breaker) =
             calculate_priority_score(&node, &profile, readiness, days_overdue);
 
-        // urgency_factor = 1.0 + 1.0 * ln(1.0 + 5.0) = 1.0 + ln(6.0) ≈ 1.0 + 1.79 ≈ 2.79
-        // learning_potential = 1.0 * 0.8 + 1.0 * 0.5 + 1.0 * 0.3 = 1.6
-        // final_score = 2.79 * 1.6 ≈ 4.46
-        assert!(score > 4.0 && score < 5.0);
+        // New formula with coverage_multiplier (10x max, TARGET_REVIEWS=7):
+        // urgency_factor = 1.0 + ln(6.0) ≈ 2.79
+        // coverage_multiplier = 1 + 9 * (1 - 2/7) = 1 + 6.43 ≈ 7.43
+        // fairness_additive = 0.3 * (5 + 0) = 1.5 (5 deficit, no recall deficit)
+        // learning_potential = 0.8 + 0.5 + 0.3 + 1.5 = 3.1
+        // final_score = 2.79 * 7.43 * 3.1 ≈ 64.3
+        assert!(score > 55.0 && score < 75.0, "Expected ~64, got {}", score);
         assert_eq!(tie_breaker, -2001000);
     }
 
@@ -272,6 +313,8 @@ mod tests {
             energy: 0.5,
             next_due_ts: 0,
             quran_order: 1001000,
+            review_count: 3,
+            predicted_recall: 0.7,
         };
         let node = InMemNode::new(candidate);
         let profile = UserProfile::balanced();

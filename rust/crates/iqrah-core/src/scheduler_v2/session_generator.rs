@@ -100,17 +100,16 @@ impl MasteryBand {
 /// # Returns
 /// * Vec of node_ids to include in the session
 ///
-/// # FSRS Overlay Architecture
+/// # Pipeline Architecture
 ///
-/// The session generation follows a layered approach:
-/// 1. **Graph/Energy Brain**: Uses prerequisite gate, priority scoring based on
-///    energy, foundational/influence scores, and urgency (days_overdue).
-/// 2. **FSRS Overlay**: Due items (next_due_ts <= now_ts) get hard priority.
-///    They are guaranteed to be in the session (up to session_size).
-/// 3. **Band Composition**: Remaining slots filled by mastery band proportions.
+/// Single unified pipeline where FSRS influences **urgency scoring**, not session composition:
+/// 1. **Prerequisite Gate**: Filters nodes with unsatisfied prerequisites (energy < 0.3).
+/// 2. **Priority Scoring**: Combines graph (foundational, influence), readiness,
+///    and urgency (days_overdue from FSRS). Due items get higher scores naturally.
+/// 3. **Sorting**: All candidates ranked by score DESC, quran_order ASC.
+/// 4. **Band Composition**: Top K candidates composed by SessionMode (mastery bands or difficulty).
 ///
-/// This ensures FSRS-scheduled reviews are never silently dropped while still
-/// allowing the graph-based scheduler to prioritize among non-due items.
+/// There is NO separate "due vs non-due" overlay. FSRS due status affects urgency in scoring.
 pub fn generate_session(
     candidates: Vec<CandidateNode>,
     parent_map: HashMap<i64, Vec<i64>>,
@@ -134,18 +133,23 @@ pub fn generate_session(
         })
         .collect();
 
+    tracing::info!("Before prereq gate: {} nodes", nodes.len());
+
     // Step 2: Apply Prerequisite Mastery Gate
     nodes.retain(|node| {
         let unsatisfied = count_unsatisfied_parents(&node.parent_ids, &parent_energies);
         unsatisfied == 0
     });
 
+    tracing::info!("After prereq gate: {} nodes", nodes.len());
+
     if nodes.is_empty() {
         return Vec::new();
     }
 
     // Step 3: Calculate readiness, days_overdue, and priority score for each node
-    let scored_nodes: Vec<(InMemNode, f32, f32, f64)> = nodes
+    // FSRS influences urgency here via days_overdue in the scoring function
+    let mut scored_nodes: Vec<(InMemNode, f32, f32, f64)> = nodes
         .into_iter()
         .map(|node| {
             let readiness = calculate_readiness(&node.parent_ids, &parent_energies);
@@ -156,92 +160,48 @@ pub fn generate_session(
         })
         .collect();
 
-    // Step 4: Apply FSRS overlay - separate due from non-due items
-    // Due items get hard priority in session assembly
-    let mut due_nodes: Vec<(InMemNode, f32, f32, f64)> = Vec::new();
-    let mut other_nodes: Vec<(InMemNode, f32, f32, f64)> = Vec::new();
-
-    for item in scored_nodes {
-        let is_due = item.0.data.next_due_ts > 0 && item.0.data.next_due_ts <= now_ts;
-        if is_due {
-            due_nodes.push(item);
-        } else {
-            other_nodes.push(item);
-        }
-    }
-
-    // Sort each group by score DESC, quran_order ASC
-    let sort_fn = |a: &(InMemNode, f32, f32, f64), b: &(InMemNode, f32, f32, f64)| {
+    // Step 4: Sort ALL scored nodes by priority (score DESC, quran_order ASC)
+    // No due/non-due split - single unified ranking
+    scored_nodes.sort_by(|a, b| {
         let score_cmp = b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal);
         if score_cmp == std::cmp::Ordering::Equal {
             a.0.data.quran_order.cmp(&b.0.data.quran_order)
         } else {
             score_cmp
         }
-    };
-    due_nodes.sort_by(sort_fn);
-    other_nodes.sort_by(sort_fn);
+    });
 
-    // Step 5: FSRS overlay - due items get hard priority
-    // Strategy: Pre-allocate slots for due items, then fill remaining with band composition
-    let due_ids: Vec<i64> = due_nodes.iter().map(|(n, _, _, _)| n.data.id).collect();
-    let due_count_for_session = due_ids.len().min(session_size);
-
-    // If we have more due items than session_size, use band composition on just due items
-    // Otherwise, seed session with due items and compose remaining slots from other items
-    let session = if due_nodes.len() >= session_size {
-        // All slots go to due items - compose from due_nodes only
-        let k = (session_size * 3).min(due_nodes.len());
-        let top_due: Vec<InMemNode> = due_nodes
-            .into_iter()
-            .take(k)
-            .map(|(n, _, _, _)| n)
-            .collect();
-
-        match mode {
-            SessionMode::Revision => compose_revision_session(top_due, session_size),
-            SessionMode::MixedLearning => {
-                let default_config = SessionMixConfig::default();
-                let config = mix_config.unwrap_or(&default_config);
-                compose_mixed_learning_session(top_due, session_size, config)
-            }
-        }
+    // Step 5: Take top K candidates for composition
+    // K must be large enough to include min_new fresh items, since composition
+    // needs those to honor min_new_per_session. For small pools use 3x, for large use 10x.
+    let base_k = if scored_nodes.len() > session_size * 5 {
+        session_size * 10 // Large pools: wider net to capture new items
     } else {
-        // Pre-allocate due items, then fill remaining slots
-        let remaining_slots = session_size.saturating_sub(due_count_for_session);
-
-        // Take top other_nodes for remaining slots
-        let k_other = (remaining_slots * 3).min(other_nodes.len());
-        let other_for_composition: Vec<InMemNode> = other_nodes
-            .into_iter()
-            .take(k_other)
-            .map(|(n, _, _, _)| n)
-            .collect();
-
-        // Compose the remaining slots from other_nodes
-        let other_session = if remaining_slots > 0 && !other_for_composition.is_empty() {
-            match mode {
-                SessionMode::Revision => {
-                    compose_revision_session(other_for_composition, remaining_slots)
-                }
-                SessionMode::MixedLearning => {
-                    let default_config = SessionMixConfig::default();
-                    let config = mix_config.unwrap_or(&default_config);
-                    compose_mixed_learning_session(other_for_composition, remaining_slots, config)
-                }
-            }
-        } else {
-            Vec::new()
-        };
-
-        // Final session: due items first (hard priority), then composed other items
-        let mut final_session: Vec<i64> = due_ids.into_iter().take(due_count_for_session).collect();
-        final_session.extend(other_session);
-        final_session.truncate(session_size);
-        final_session
+        session_size * 3 // Small pools: tighter selection
     };
+    let k = base_k.min(scored_nodes.len());
 
-    session
+    tracing::info!(
+        "Top-K selection: k={}, total_scored={}",
+        k,
+        scored_nodes.len()
+    );
+
+    let top_nodes: Vec<InMemNode> = scored_nodes
+        .into_iter()
+        .take(k)
+        .map(|(n, _, _, _)| n)
+        .collect();
+
+    // Step 6: Apply mode-specific composition
+    match mode {
+        SessionMode::Revision => compose_revision_session(top_nodes, session_size),
+        SessionMode::MixedLearning => {
+            let default_config = SessionMixConfig::default();
+            let config = mix_config.unwrap_or(&default_config);
+            compose_mixed_learning_session(top_nodes, session_size, config)
+        }
+    }
 }
 
 // ============================================================================
@@ -318,10 +278,10 @@ fn compose_mixed_learning_session(
     for node in nodes {
         match MasteryBand::from_energy(node.data.energy) {
             MasteryBand::New => new.push(node),
-            MasteryBand::ReallyStruggling => really_struggling.push(node),
-            MasteryBand::Struggling => struggling.push(node),
-            MasteryBand::AlmostThere => almost_there.push(node),
             MasteryBand::AlmostMastered => almost_mastered.push(node),
+            MasteryBand::Struggling => struggling.push(node),
+            MasteryBand::ReallyStruggling => really_struggling.push(node),
+            MasteryBand::AlmostThere => almost_there.push(node),
         }
     }
 
@@ -340,6 +300,18 @@ fn compose_mixed_learning_session(
     let target_struggling = (session_size as f32 * config.pct_struggling).round() as usize;
     let target_really_struggling = session_size.saturating_sub(
         target_new + target_almost_mastered + target_almost_there + target_struggling,
+    );
+
+    tracing::info!(
+        "Composition: new={}/{}, am={}, at={}, str={}, rs={} (size={}, min_new={})",
+        target_new,
+        available_new,
+        target_almost_mastered,
+        target_almost_there,
+        target_struggling,
+        target_really_struggling,
+        session_size,
+        config.min_new_per_session
     );
 
     // Collect session
@@ -384,6 +356,18 @@ fn compose_mixed_learning_session(
     }
 
     session.truncate(session_size);
+
+    // Debug: Count actual new items in returned session
+    let actual_new_count = session
+        .iter()
+        .filter(|&id| new.iter().any(|n| n.data.id == *id))
+        .count();
+    tracing::info!(
+        "Session returned: {} items ({} actually new from new bucket)",
+        session.len(),
+        actual_new_count
+    );
+
     session
 }
 
@@ -412,6 +396,8 @@ mod tests {
             energy,
             next_due_ts: due_ts,
             quran_order,
+            review_count: if energy > 0.0 { 1 } else { 0 }, // Simple heuristic
+            predicted_recall: energy,                       // Simple approximation
         }
     }
 
@@ -527,109 +513,90 @@ mod tests {
     }
 
     // =========================================================================
-    // FSRS OVERLAY TESTS
+    // URGENCY SCORING TESTS (unified pipeline - no overlay)
     // =========================================================================
 
     #[test]
-    fn test_fsrs_overlay_due_items_always_included() {
-        // Test that due items (next_due_ts <= now_ts) are always in the session
-        // even if their raw priority scores are lower than non-due items.
+    fn test_urgency_increases_score_for_overdue_items() {
+        // Two identical items except one is overdue - overdue should get higher score
+        // and thus appear first when sorted by score
+        use crate::scheduler_v2::calculate_priority_score;
+
         let now_ts = 1_000_000_000i64; // 1 billion ms
 
-        let candidates = vec![
-            // Two due items with low scores (low foundational)
-            make_candidate(1, 0.2, 0.1, 0.3, 0.3, now_ts - 100, 1000), // due
-            make_candidate(2, 0.2, 0.1, 0.3, 0.3, now_ts - 50, 2000),  // due
-            // Three non-due items with high scores
-            make_candidate(3, 0.9, 0.9, 0.3, 0.5, now_ts + 100_000, 3000), // not due
-            make_candidate(4, 0.9, 0.9, 0.3, 0.5, now_ts + 200_000, 4000), // not due
-            make_candidate(5, 0.9, 0.9, 0.3, 0.5, now_ts + 300_000, 5000), // not due
-        ];
+        // Item A: 5 days overdue
+        let candidate_a = CandidateNode {
+            id: 1,
+            foundational_score: 0.5,
+            influence_score: 0.5,
+            difficulty_score: 0.3,
+            energy: 0.3,
+            next_due_ts: now_ts - (5 * 86400 * 1000), // 5 days ago
+            quran_order: 1000,
+            review_count: 2,
+            predicted_recall: 0.6,
+        };
+        let node_a = InMemNode::new(candidate_a);
 
-        let session = generate_session(
-            candidates,
-            HashMap::new(),
-            HashMap::new(),
-            &UserProfile::balanced(),
-            3, // Only 3 slots
-            now_ts,
-            SessionMode::MixedLearning,
-            None,
-        );
+        // Item B: not due (due tomorrow)
+        let candidate_b = CandidateNode {
+            id: 2,
+            foundational_score: 0.5,
+            influence_score: 0.5,
+            difficulty_score: 0.3,
+            energy: 0.3,
+            next_due_ts: now_ts + (86400 * 1000), // tomorrow
+            quran_order: 2000,
+            review_count: 2,
+            predicted_recall: 0.7,
+        };
+        let node_b = InMemNode::new(candidate_b);
 
-        // Due items 1 and 2 MUST be in the session, regardless of their lower scores
+        let profile = UserProfile::balanced();
+        let readiness = 1.0;
+
+        // Calculate days_overdue for each
+        let days_overdue_a =
+            crate::scheduler_v2::calculate_days_overdue(node_a.data.next_due_ts, now_ts);
+        let days_overdue_b =
+            crate::scheduler_v2::calculate_days_overdue(node_b.data.next_due_ts, now_ts);
+
+        // Overdue item should have positive days_overdue
         assert!(
-            session.contains(&1),
-            "Due item 1 should be in session, got: {:?}",
-            session
+            days_overdue_a > 0.0,
+            "Overdue item should have days_overdue > 0"
         );
-        assert!(
-            session.contains(&2),
-            "Due item 2 should be in session, got: {:?}",
-            session
-        );
-        assert_eq!(session.len(), 3);
-    }
-
-    #[test]
-    fn test_fsrs_overlay_many_due_items_caps_at_session_size() {
-        // When due_nodes.len() > session_size, only top session_size due items used
-        let now_ts = 1_000_000_000i64;
-
-        let candidates = vec![
-            make_candidate(1, 0.5, 0.5, 0.3, 0.3, now_ts - 100, 1000), // due
-            make_candidate(2, 0.5, 0.5, 0.3, 0.3, now_ts - 50, 2000),  // due
-            make_candidate(3, 0.5, 0.5, 0.3, 0.3, now_ts - 25, 3000),  // due
-            make_candidate(4, 0.5, 0.5, 0.3, 0.3, now_ts - 10, 4000),  // due
-            make_candidate(5, 0.9, 0.9, 0.3, 0.5, now_ts + 100_000, 5000), // not due
-        ];
-
-        let session = generate_session(
-            candidates,
-            HashMap::new(),
-            HashMap::new(),
-            &UserProfile::balanced(),
-            3, // Only 3 slots, but 4 due items
-            now_ts,
-            SessionMode::MixedLearning,
-            None,
-        );
-
-        // Session should be exactly 3 items, all from due items
-        assert_eq!(session.len(), 3);
-
-        // Count how many due items are in session
-        let due_in_session = [1, 2, 3, 4]
-            .iter()
-            .filter(|id| session.contains(id))
-            .count();
         assert_eq!(
-            due_in_session, 3,
-            "All 3 slots should be due items, got: {:?}",
-            session
+            days_overdue_b, 0.0,
+            "Not-due item should have days_overdue = 0"
         );
 
-        // Non-due item 5 should NOT be in session
+        // Calculate scores
+        let (score_a, _) = calculate_priority_score(&node_a, &profile, readiness, days_overdue_a);
+        let (score_b, _) = calculate_priority_score(&node_b, &profile, readiness, days_overdue_b);
+
+        // Overdue item should have higher score due to urgency
         assert!(
-            !session.contains(&5),
-            "Non-due item should not be in session when we have enough due items"
+            score_a > score_b,
+            "Overdue item should have higher priority score: {} vs {}",
+            score_a,
+            score_b
         );
     }
 
     #[test]
-    fn test_fsrs_overlay_preserves_band_composition_for_non_due() {
-        // When there are few due items, remaining slots use band composition
+    fn test_unified_pipeline_ranks_by_combined_score() {
+        // Test that the unified pipeline ranks items by combined score
+        // (not by due/non-due status separately)
         let now_ts = 1_000_000_000i64;
 
         let candidates = vec![
-            // 1 due item
-            make_candidate(1, 0.5, 0.5, 0.3, 0.3, now_ts - 100, 1000), // due
-            // Non-due items across different mastery bands
-            make_candidate(10, 0.5, 0.5, 0.3, 0.0, now_ts + 100_000, 10000), // new
-            make_candidate(11, 0.5, 0.5, 0.3, 0.15, now_ts + 100_000, 11000), // really struggling
-            make_candidate(12, 0.5, 0.5, 0.3, 0.35, now_ts + 100_000, 12000), // struggling
-            make_candidate(13, 0.5, 0.5, 0.3, 0.55, now_ts + 100_000, 13000), // almost there
-            make_candidate(14, 0.5, 0.5, 0.3, 0.85, now_ts + 100_000, 14000), // almost mastered
+            // Item 1: slightly overdue, low graph scores
+            make_candidate(1, 0.2, 0.1, 0.3, 0.3, now_ts - (1 * 86400 * 1000), 1000),
+            // Item 2: not due, high graph scores
+            make_candidate(2, 0.9, 0.9, 0.3, 0.5, now_ts + 100_000, 2000),
+            // Item 3: very overdue (10 days), medium graph scores
+            make_candidate(3, 0.5, 0.5, 0.3, 0.3, now_ts - (10 * 86400 * 1000), 3000),
         ];
 
         let session = generate_session(
@@ -637,24 +604,73 @@ mod tests {
             HashMap::new(),
             HashMap::new(),
             &UserProfile::balanced(),
-            5,
+            3,
             now_ts,
             SessionMode::MixedLearning,
             None,
         );
 
-        // Due item 1 must be included
-        assert!(
-            session.contains(&1),
-            "Due item must be in session, got: {:?}",
-            session
-        );
-        assert_eq!(session.len(), 5);
+        // All items should be in session (only 3 candidates, 3 slots)
+        assert_eq!(session.len(), 3);
+        assert!(session.contains(&1));
+        assert!(session.contains(&2));
+        assert!(session.contains(&3));
 
-        // Remaining 4 slots should come from the band composition
-        // We don't test exact composition (that's tested elsewhere), just that
-        // the session has non-due items filling remaining slots
-        let non_due_count = session.iter().filter(|&&id| id != 1).count();
-        assert_eq!(non_due_count, 4, "Should have 4 non-due items");
+        // Note: We're NOT guaranteeing due items always come first.
+        // The ranking is by combined score (graph + urgency + readiness).
+    }
+
+    #[test]
+    fn test_high_foundational_score_boosts_priority() {
+        // Two items with same graph structure and urgency, different foundational scores
+        use crate::scheduler_v2::calculate_priority_score;
+
+        let candidate_high = CandidateNode {
+            id: 1,
+            foundational_score: 0.9,
+            influence_score: 0.5,
+            difficulty_score: 0.3,
+            energy: 0.3,
+            next_due_ts: 0, // new
+            quran_order: 1000,
+            review_count: 1,
+            predicted_recall: 0.5,
+        };
+
+        let candidate_low = CandidateNode {
+            id: 2,
+            foundational_score: 0.2,
+            influence_score: 0.5,
+            difficulty_score: 0.3,
+            energy: 0.3,
+            next_due_ts: 0, // new
+            quran_order: 2000,
+            review_count: 1,
+            predicted_recall: 0.5,
+        };
+
+        let profile = UserProfile::balanced();
+        let readiness = 1.0;
+        let days_overdue = 0.0;
+
+        let (score_high, _) = calculate_priority_score(
+            &InMemNode::new(candidate_high),
+            &profile,
+            readiness,
+            days_overdue,
+        );
+        let (score_low, _) = calculate_priority_score(
+            &InMemNode::new(candidate_low),
+            &profile,
+            readiness,
+            days_overdue,
+        );
+
+        assert!(
+            score_high > score_low,
+            "Higher foundational score should yield higher priority: {} vs {}",
+            score_high,
+            score_low
+        );
     }
 }
