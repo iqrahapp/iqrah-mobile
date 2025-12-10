@@ -9,8 +9,8 @@ use crate::scheduler_v2::events::{
 /// - Priority scoring and ranking
 /// - Difficulty-based composition with fallback
 use crate::scheduler_v2::{
-    calculate_days_overdue, calculate_readiness, CandidateNode, InMemNode, ParentEnergyMap,
-    SessionMixConfig, UserProfile,
+    calculate_days_overdue, calculate_readiness, compute_weighted_urgency, CandidateNode,
+    InMemNode, ParentEnergyMap, SessionMixConfig, UserProfile,
 };
 use std::collections::HashMap;
 
@@ -59,9 +59,13 @@ impl DifficultyBucket {
 // ============================================================================
 
 /// Mastery band for user energy-based composition.
+///
+/// ISS v2.6 FIX: "New" means "never reviewed" (review_count == 0),
+/// not "zero energy" (energy == 0.0). This allows items with propagated
+/// energy from graph to still be classified as "new" if unreviewed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MasteryBand {
-    New,              // energy == 0.0
+    New,              // review_count == 0 (never reviewed, regardless of energy)
     ReallyStruggling, // 0.0 < energy <= 0.2
     Struggling,       // 0.2 < energy <= 0.4
     AlmostThere,      // 0.4 < energy <= 0.7
@@ -69,6 +73,31 @@ enum MasteryBand {
 }
 
 impl MasteryBand {
+    /// Classify an item into a mastery band.
+    ///
+    /// # Arguments
+    /// * `energy` - Current mastery energy (0.0-1.0)
+    /// * `review_count` - Number of times item has been reviewed
+    ///
+    /// # Semantics
+    /// - "New" = never reviewed (review_count == 0), regardless of energy
+    /// - Other bands based on energy level for reviewed items
+    fn classify(energy: f32, review_count: u32) -> Self {
+        if review_count == 0 {
+            Self::New
+        } else if energy <= 0.2 {
+            Self::ReallyStruggling
+        } else if energy <= 0.4 {
+            Self::Struggling
+        } else if energy <= 0.7 {
+            Self::AlmostThere
+        } else {
+            Self::AlmostMastered
+        }
+    }
+
+    /// Legacy method for backwards compatibility
+    #[allow(dead_code)]
     fn from_energy(energy: f32) -> Self {
         if energy == 0.0 {
             Self::New
@@ -253,7 +282,9 @@ fn get_unsatisfied_parent_ids(parent_ids: &[i64], parent_energies: &ParentEnergy
     parent_ids
         .iter()
         .filter(|id| {
-            let energy = parent_energies.get(id).copied().unwrap_or(0.0);
+            // If parent is not in user's memory, treat as satisfied (1.0)
+            // Only block if parent exists in memory but has low energy
+            let energy = parent_energies.get(id).copied().unwrap_or(1.0);
             energy < MASTERY_THRESHOLD
         })
         .copied()
@@ -289,7 +320,15 @@ fn calculate_priority_score_with_breakdown(
         + profile.w_influence * node.data.influence_score
         + fairness_additive;
 
-    let final_score = urgency_factor * coverage_factor * learning_potential;
+    let base_score = urgency_factor * coverage_factor * learning_potential;
+
+    // ISS v2.5: Apply success probability weighting to prevent triage failure
+    let final_score = compute_weighted_urgency(
+        base_score,
+        node.data.energy,
+        node.data.review_count,
+        true, // Enable success weighting
+    );
 
     let breakdown = ScoreBreakdown::new(
         urgency_factor,
@@ -438,7 +477,7 @@ fn compose_mixed_learning_session(
     let mut almost_mastered = Vec::new();
 
     for node in nodes {
-        match MasteryBand::from_energy(node.data.energy) {
+        match MasteryBand::classify(node.data.energy, node.data.review_count) {
             MasteryBand::New => new.push(node),
             MasteryBand::AlmostMastered => almost_mastered.push(node),
             MasteryBand::Struggling => struggling.push(node),
@@ -449,11 +488,13 @@ fn compose_mixed_learning_session(
 
     // Calculate targets using configurable percentages
     // For new items: use max of (percentage * session_size) and min_new_per_session
+    // Then cap at max_new_per_session and available items
     // This guarantees coverage of unseen items even with small percentage
     let pct_new_slots = (session_size as f32 * config.pct_new).round() as usize;
     let available_new = new.len();
     let target_new = pct_new_slots
         .max(config.min_new_per_session)
+        .min(config.max_new_per_session) // Apply cap (for consolidation mode)
         .min(available_new);
 
     let target_almost_mastered =
@@ -547,7 +588,7 @@ fn compose_mixed_learning_session_with_buckets(
     let mut almost_mastered = Vec::new();
 
     for node in nodes {
-        match MasteryBand::from_energy(node.data.energy) {
+        match MasteryBand::classify(node.data.energy, node.data.review_count) {
             MasteryBand::New => new.push(node),
             MasteryBand::AlmostMastered => almost_mastered.push(node),
             MasteryBand::Struggling => struggling.push(node),
@@ -561,6 +602,7 @@ fn compose_mixed_learning_session_with_buckets(
     let available_new = new.len();
     let target_new = pct_new_slots
         .max(config.min_new_per_session)
+        .min(config.max_new_per_session) // Apply cap (for consolidation mode)
         .min(available_new);
 
     let target_almost_mastered =

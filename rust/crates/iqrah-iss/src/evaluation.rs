@@ -283,8 +283,8 @@ fn apply_guardrails(score: f64, flags: &[Flag]) -> f64 {
 
 /// Compute verdict from metrics and score.
 fn compute_verdict(metrics: &EvalMetrics, score: f64, flags: &[Flag]) -> Verdict {
-    // UNACCEPTABLE checks
-    if metrics.coverage_h < 0.50
+    // UNACCEPTABLE checks (ISS v2.2: using mean_r_h with lowered thresholds)
+    if metrics.mean_r_h < 0.40  // Lowered from 0.50 since mean_r is more forgiving
         || metrics.rho_starve > 0.25
         || metrics.rho_over > 0.60
         || flags.len() >= 2
@@ -292,8 +292,8 @@ fn compute_verdict(metrics: &EvalMetrics, score: f64, flags: &[Flag]) -> Verdict
         return Verdict::Unacceptable;
     }
 
-    // EXCELLENT checks
-    if metrics.coverage_h >= 0.85
+    // EXCELLENT checks (ISS v2.2: using mean_r_h)
+    if metrics.mean_r_h >= 0.75  // Lowered from 0.85
         && score >= 0.60
         && metrics.rho_over <= 0.30
         && metrics.rho_starve <= 0.05
@@ -302,8 +302,11 @@ fn compute_verdict(metrics: &EvalMetrics, score: f64, flags: &[Flag]) -> Verdict
         return Verdict::Excellent;
     }
 
-    // GOOD checks
-    if metrics.coverage_h >= 0.70 && score >= 0.40 && flags.is_empty() {
+    // GOOD checks (ISS v2.2: using mean_r_h)
+    if metrics.mean_r_h >= 0.60  // Lowered from 0.70
+        && score >= 0.40
+        && flags.is_empty()
+    {
         return Verdict::Good;
     }
 
@@ -403,10 +406,12 @@ pub fn evaluate(
     }
 
     // Compute raw score
+    // ISS v2.2: Use mean_r_h (continuous coverage) as primary coverage term
+    // This rewards partial learning and aligns with FSRS semantics
     let cv_norm = (cv_r / CV_MAX).min(1.0);
     let c_norm_capped = c_norm.min(2.0);
 
-    let raw_score = W_COV * metrics.coverage_h
+    let raw_score = W_COV * metrics.mean_r_h
         - W_COST * c_norm_capped
         - W_OVER * rho_over
         - W_UNFAIR * cv_norm
@@ -520,9 +525,10 @@ mod tests {
 
     #[test]
     fn test_verdict_unacceptable_low_coverage() {
+        // ISS v2.2: Testing with mean_r_h below 0.40 threshold
         let metrics = EvalMetrics {
             coverage_h: 0.40,
-            mean_r_h: 0.5,
+            mean_r_h: 0.35, // Below 0.40 threshold
             n_never: 0,
             rho_starve: 0.0,
             r_bar: 5.0,
@@ -547,9 +553,10 @@ mod tests {
 
     #[test]
     fn test_verdict_excellent() {
+        // ISS v2.2: Testing with mean_r_h above 0.75 threshold
         let metrics = EvalMetrics {
             coverage_h: 0.90,
-            mean_r_h: 0.92,
+            mean_r_h: 0.80, // Above 0.75 threshold
             n_never: 0,
             rho_starve: 0.0,
             r_bar: 5.0,

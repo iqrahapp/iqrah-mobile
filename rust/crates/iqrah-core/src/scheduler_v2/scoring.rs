@@ -75,6 +75,80 @@ pub fn count_unsatisfied_parents(parent_ids: &[i64], parent_energies: &ParentEne
 }
 
 // ============================================================================
+// ISS v2.5: SUCCESS PROBABILITY WEIGHTING
+// ============================================================================
+
+/// Estimate success probability for an item based on energy and maturity.
+///
+/// This is a heuristic approximation used for scheduling decisions to prevent
+/// "triage failure" - where the scheduler concentrates capacity on failing items.
+///
+/// # Factors
+/// - Energy (E): Higher energy → higher success probability
+/// - Review count (maturity): More reviews → more stable success
+///
+/// # Returns
+/// Probability in [0.05, 0.95]
+pub fn estimate_success_probability(energy: f32, review_count: u32) -> f32 {
+    // Base success probability from energy
+    // Calibration: E=0.10 → 10%, E=0.50 → 60%, E=0.90 → 90%
+    let energy_contrib = energy.clamp(0.0, 1.0);
+
+    // Maturity factor: young items are less stable
+    // review_count: 0-5 → maturity: 0.0-1.0
+    let maturity = (review_count as f32 / 5.0).clamp(0.0, 1.0);
+
+    // Young items: more pessimistic (multiply by 0.7)
+    // Mature items: use energy directly (multiply by 1.0)
+    let maturity_adjustment = 0.7 + 0.3 * maturity;
+
+    // Final success probability
+    let success_prob = energy_contrib * maturity_adjustment;
+
+    // Clamp to reasonable range
+    success_prob.clamp(0.05, 0.95)
+}
+
+/// Compute weighted urgency score to prevent triage failure.
+///
+/// Base urgency is dampened by success probability to balance between
+/// "urgent but failing" and "less urgent but viable" items.
+///
+/// # Formula
+/// ```text
+/// weighted = base_urgency × (α + (1-α) × success_prob)
+/// ```
+///
+/// where α = 0.3 (minimum weight for very low success items)
+///
+/// # Effect
+/// - Item with 10% success: urgency × 0.37 (dampened)
+/// - Item with 50% success: urgency × 0.65 (moderately dampened)
+/// - Item with 90% success: urgency × 0.93 (mostly preserved)
+pub fn compute_weighted_urgency(
+    base_urgency: f32,
+    energy: f32,
+    review_count: u32,
+    enable_success_weighting: bool,
+) -> f32 {
+    if !enable_success_weighting {
+        return base_urgency;
+    }
+
+    // Estimate success probability
+    let success_prob = estimate_success_probability(energy, review_count);
+
+    // Weight urgency by success probability
+    // α = minimum weight for very low success items
+    // This ensures they're not completely ignored, but deprioritized
+    // ISS v2.5 tuning: reduced from 0.3 to 0.1 for more aggressive dampening
+    let alpha = 0.1;
+    let weight = alpha + (1.0 - alpha) * success_prob;
+
+    base_urgency * weight
+}
+
+// ============================================================================
 // PRIORITY SCORING
 // ============================================================================
 
@@ -145,8 +219,18 @@ pub fn calculate_priority_score(
         + profile.w_influence * node.data.influence_score
         + fairness_additive;
 
-    // Final score (spec §6.7): applies urgency, coverage, and learning potential
-    let final_score = urgency_factor * coverage_factor * learning_potential;
+    // Base score (spec §6.7): applies urgency, coverage, and learning potential
+    let base_score = urgency_factor * coverage_factor * learning_potential;
+
+    // ISS v2.5: Apply success probability weighting to prevent triage failure
+    // This dampens urgency for items with low success probability, balancing
+    // between "urgent but failing" and "less urgent but viable" items.
+    let final_score = compute_weighted_urgency(
+        base_score,
+        node.data.energy,
+        node.data.review_count,
+        true, // Enable success weighting
+    );
 
     // Return (score, negative_quran_order) for sorting
     // Higher score first, then earlier Qur'an order
@@ -259,15 +343,14 @@ mod tests {
         let (score, tie_breaker) =
             calculate_priority_score(&node, &profile, readiness, days_overdue);
 
-        // New formula with coverage_multiplier (10x max, TARGET_REVIEWS=7):
-        // urgency_factor = 1.0
-        // coverage_multiplier = 1 + 9 * (1 - 0/7) = 10.0 (brand new item)
-        // fairness_additive = 0.3 * (7 + 0.7) = 2.31
-        // learning_potential = 1.0 + 0.5 + 0.3 + 2.31 = 4.11
-        // final_score = 1.0 * 10.0 * 4.11 = 41.1
+        // ISS v2.5: Updated formula with success probability weighting
+        // base_score = 41.1 (from urgency × coverage × learning_potential)
+        // success_prob = 0.05 (minimum for energy=0.0, review_count=0)
+        // weight = 0.1 + 0.9 × 0.05 = 0.145
+        // final_score = 41.1 × 0.145 ≈ 6.0
         assert!(
-            score > 35.0 && score < 45.0,
-            "Expected ~41.0, got {}",
+            score > 4.0 && score < 10.0,
+            "Expected ~6.0 (dampened by low energy), got {}",
             score
         );
         assert_eq!(tie_breaker, -1001000);
@@ -294,13 +377,16 @@ mod tests {
         let (score, tie_breaker) =
             calculate_priority_score(&node, &profile, readiness, days_overdue);
 
-        // New formula with coverage_multiplier (10x max, TARGET_REVIEWS=7):
-        // urgency_factor = 1.0 + ln(6.0) ≈ 2.79
-        // coverage_multiplier = 1 + 9 * (1 - 2/7) = 1 + 6.43 ≈ 7.43
-        // fairness_additive = 0.3 * (5 + 0) = 1.5 (5 deficit, no recall deficit)
-        // learning_potential = 0.8 + 0.5 + 0.3 + 1.5 = 3.1
-        // final_score = 2.79 * 7.43 * 3.1 ≈ 64.3
-        assert!(score > 55.0 && score < 75.0, "Expected ~64, got {}", score);
+        // ISS v2.5: Updated formula with success probability weighting
+        // base_score ≈ 64.3 (from urgency × coverage × learning_potential)
+        // success_prob = 0.5 × (0.7 + 0.3 × 2/5) = 0.41 (E=0.5, count=2)
+        // weight = 0.1 + 0.9 × 0.41 = 0.469
+        // final_score = 64.3 × 0.469 ≈ 30.2
+        assert!(
+            score > 25.0 && score < 40.0,
+            "Expected ~30.2 (dampened by moderate energy), got {}",
+            score
+        );
         assert_eq!(tie_breaker, -2001000);
     }
 
@@ -328,5 +414,94 @@ mod tests {
         // More days overdue should increase score
         assert!(score2 > score1);
         assert!(score3 > score2);
+    }
+
+    // ========================================================================
+    // ISS v2.5: Success Probability Weighting Tests
+    // ========================================================================
+
+    #[test]
+    fn test_success_probability_estimation() {
+        // Young item, low energy: very low success
+        let prob = estimate_success_probability(0.10, 1);
+        assert!(prob < 0.15, "Expected < 0.15, got {}", prob);
+
+        // Young item, medium energy: moderate success
+        let prob = estimate_success_probability(0.50, 2);
+        assert!(
+            prob > 0.30 && prob < 0.50,
+            "Expected 0.30-0.50, got {}",
+            prob
+        );
+
+        // Mature item, medium energy: good success
+        let prob = estimate_success_probability(0.50, 6);
+        assert!(
+            prob > 0.45 && prob < 0.60,
+            "Expected 0.45-0.60, got {}",
+            prob
+        );
+
+        // Mature item, high energy: very high success
+        let prob = estimate_success_probability(0.85, 8);
+        assert!(prob > 0.80, "Expected > 0.80, got {}", prob);
+    }
+
+    #[test]
+    fn test_success_probability_boundaries() {
+        // Very low energy, young item: minimum ~5%
+        let prob = estimate_success_probability(0.05, 0);
+        assert!(prob >= 0.05 && prob <= 0.10);
+
+        // Very high energy, mature item: maximum ~95%
+        let prob = estimate_success_probability(0.95, 10);
+        assert!(prob >= 0.90 && prob <= 0.95);
+    }
+
+    #[test]
+    fn test_weighted_urgency_dampens_failures() {
+        // Scenario: Two items, both with high base urgency
+        // Item A: E=0.08 (failing), review_count=3
+        // Item B: E=0.45 (viable), review_count=3
+
+        let urgency_a = 10.0;
+        let urgency_b = 7.0; // Lower base urgency
+
+        let weighted_a = compute_weighted_urgency(urgency_a, 0.08, 3, true);
+        let weighted_b = compute_weighted_urgency(urgency_b, 0.45, 3, true);
+
+        // After weighting, item B should rank higher despite lower base urgency
+        assert!(
+            weighted_b > weighted_a,
+            "Viable item should outrank failing item: B={} vs A={}",
+            weighted_b,
+            weighted_a
+        );
+    }
+
+    #[test]
+    fn test_weighted_urgency_disabled() {
+        let base = 10.0;
+        let weighted = compute_weighted_urgency(base, 0.10, 2, false);
+        assert_eq!(
+            weighted, base,
+            "Disabled weighting should return base urgency"
+        );
+    }
+
+    #[test]
+    fn test_maturity_affects_probability() {
+        let energy = 0.50;
+
+        let young = estimate_success_probability(energy, 1);
+        let mature = estimate_success_probability(energy, 8);
+
+        // Mature items should have higher success probability
+        assert!(
+            mature > young + 0.05,
+            "Mature should exceed young: {} vs {}",
+            mature,
+            young
+        );
     }
 }

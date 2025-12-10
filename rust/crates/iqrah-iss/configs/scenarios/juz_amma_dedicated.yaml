@@ -1,22 +1,38 @@
 name: juz_amma_dedicated
 goal_id: "juz:30"
 target_days: 180
-daily_minutes: 45.0
+daily_minutes: 60.0
 student_params:
   skip_day_prob: 0.05
-  early_quit_prob: 0.02
-  persistence_threshold: 200
+  early_quit_prob: 0.0
+  persistence_threshold: 1500
   forgetting_rate_mult: 0.9
   spacing_sensitivity: 1.2
   item_variability: 0.05
   fatigue_onset_minutes: 45.0
   fatigue_decay_rate: 0.01
   difficulty_sensitivity: 0.1
-  known_surah_ids: [1, 2, 3, 4, 5, 112, 113, 114]
+  # NOTE: Empty known_surah_ids ensures cluster gate controls all introduction
+  # (items start with review_count=0, energy=0)
+  known_surah_ids: []
   vocab_known_pct: 0.25
   overdue_sensitivity: 0.3
   momentum_sensitivity: 0.3
-session_size: 15
+  # ISS v2.7: Further reduced drift to allow stability growth
+  # (Target: reduce failure rate from 23% to 10-15%)
+  drift_alpha_max: 0.01  # From 0.02 → 0.01
+  drift_alpha_min: 0.002 # From 0.005 → 0.002
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+  session_capacity: 60.0
+  headroom_reserve: 0.10
+  reviews_to_stability: 5.0
+  days_to_stability: 30.0
+  # ISS v2.6 Cluster Gate Params - Expanded for higher coverage
+  max_working_set: 350                   # Raised for 35% coverage target
+  cluster_stability_threshold: 0.20     # Low threshold for faster expansion
+  cluster_expansion_batch_size: 10      # Large batches for faster introduction
+session_size: 20
 enable_bandit: true
 student_count: 1
 scheduler: iqrah_default

@@ -39,6 +39,63 @@ pub fn is_mastered(stability: f64, horizon_days: f64) -> bool {
     retrievability(stability, horizon_days) >= 0.9
 }
 
+/// Check if an item is mastered at a given horizon with configurable threshold.
+///
+/// # Arguments
+/// * `stability` - FSRS stability value in days
+/// * `horizon_days` - Evaluation horizon in days
+/// * `threshold` - Retrievability threshold (e.g., 0.9 for strict, 0.7 for relaxed)
+pub fn is_mastered_at(stability: f64, horizon_days: f64, threshold: f64) -> bool {
+    retrievability(stability, horizon_days) >= threshold
+}
+
+/// Compute continuous coverage with optional power transform (ISS v2.2).
+///
+/// # Arguments
+/// * `stabilities` - Map of node_id -> stability for goal items
+/// * `goal_items` - List of goal item node IDs
+/// * `horizon_days` - Evaluation horizon in days
+/// * `power` - Power transform parameter:
+///   - 1.0 = mean retrievability (mathematically clean)
+///   - <1.0 = sublinear reward for partial learning (e.g., 0.6)
+///
+/// # Returns
+/// Continuous coverage score in [0, 1]
+///
+/// # Examples
+/// ```ignore
+/// // Mean R (primary metric)
+/// let coverage = coverage_continuous(&stabilities, &goal_items, 180.0, 1.0);
+///
+/// // Forgiving variant
+/// let coverage_forgiving = coverage_continuous(&stabilities, &goal_items, 180.0, 0.6);
+/// ```
+pub fn coverage_continuous(
+    stabilities: &HashMap<i64, f64>,
+    goal_items: &[i64],
+    horizon_days: f64,
+    power: f64,
+) -> f64 {
+    if goal_items.is_empty() {
+        return 0.0;
+    }
+
+    let sum: f64 = goal_items
+        .iter()
+        .map(|&node_id| {
+            let s = stabilities.get(&node_id).copied().unwrap_or(0.0);
+            let r = retrievability(s, horizon_days);
+            if power == 1.0 {
+                r // Fast path: no pow needed
+            } else {
+                r.powf(power)
+            }
+        })
+        .sum();
+
+    sum / goal_items.len() as f64
+}
+
 /// Compute Spearman rank correlation coefficient between two vectors.
 ///
 /// # Arguments
@@ -204,7 +261,8 @@ pub struct SimulationMetrics {
     /// Smallest day d where >= X% of items mastered (None if never reached)
     pub days_to_mastery: Option<u32>,
 
-    /// Fraction of goal items that reached mastery [0, 1]
+    /// Primary coverage metric: mean retrievability at horizon [0, 1] (ISS v2.2)
+    /// This is the expected fraction of items recallable at T_eval
     pub coverage_pct: f64,
 
     /// Correlation between plan priority and actual introduction order [0, 1]
@@ -253,6 +311,13 @@ pub struct SimulationMetrics {
 
     /// Number of goal items that were never reviewed (0 reviews)
     pub items_never_reviewed: usize,
+
+    // === ISS v2.2: Energy Drift & Continuous Coverage ===
+    /// DEBUG: Binary coverage (R≥0.9) for comparison with v2.1
+    pub coverage_strict_debug: f64,
+
+    /// ALTERNATE: Power-transformed coverage (p=0.6) for forgiving evaluation
+    pub coverage_power_06: f64,
 }
 
 impl SimulationMetrics {
@@ -328,7 +393,10 @@ impl SimulationMetrics {
             0.0
         };
 
-        let coverage_pct = if !goal_items.is_empty() {
+        // === ISS v2.2: Compute continuous coverage metrics ===
+        // Primary coverage is now mean_r_t (computed below)
+        // Binary coverage moved to coverage_strict_debug for comparison
+        let coverage_strict_debug = if !goal_items.is_empty() {
             (items_mastered as f64 / goal_items.len() as f64).clamp(0.0, 1.0)
         } else {
             0.0
@@ -360,6 +428,12 @@ impl SimulationMetrics {
         } else {
             0.0
         };
+
+        // === ISS v2.2: Use mean_r_t as primary coverage metric ===
+        let coverage_pct = mean_r_t;
+
+        // Power-transformed coverage (forgiving variant, p=0.6)
+        let coverage_power_06 = coverage_continuous(stabilities, goal_items, horizon_days, 0.6);
         let rpm_t = if total_minutes > 0.0 {
             items_good_t as f64 / total_minutes
         } else {
@@ -437,6 +511,9 @@ impl SimulationMetrics {
             coverage_acq,
             mean_r_acq,
             items_never_reviewed,
+            // ISS v2.2 fields
+            coverage_strict_debug,
+            coverage_power_06,
         }
     }
 }
@@ -462,6 +539,9 @@ impl Default for SimulationMetrics {
             coverage_acq: 0.0,
             mean_r_acq: 0.0,
             items_never_reviewed: 0,
+            // ISS v2.2 fields
+            coverage_strict_debug: 0.0,
+            coverage_power_06: 0.0,
         }
     }
 }
@@ -494,6 +574,60 @@ mod tests {
         assert!(is_mastered(40.0, 30.0)); // Above threshold
         assert!(!is_mastered(20.0, 30.0)); // Below threshold
         assert!(!is_mastered(29.0, 30.0)); // Just below threshold
+    }
+
+    // === ISS v2.2: Continuous Coverage Tests ===
+
+    #[test]
+    fn test_coverage_continuous_mean_r() {
+        let mut stabilities = HashMap::new();
+        stabilities.insert(1, 180.0); // R = 0.9
+        stabilities.insert(2, 90.0); // R at 180d horizon
+        stabilities.insert(3, 45.0); // R at 180d horizon
+
+        let goal_items = vec![1, 2, 3];
+        let coverage = coverage_continuous(&stabilities, &goal_items, 180.0, 1.0);
+
+        // Using FSRS formula R = (1 + t/(9*S))^-1:
+        // R1: (1 + 180/(9*180))^-1 = (1 + 1/9)^-1 = 0.9
+        // R2: (1 + 180/(9*90))^-1 = (1 + 180/810)^-1 ≈ 0.82
+        // R3: (1 + 180/(9*45))^-1 = (1 + 180/405)^-1 ≈ 0.69
+        // Mean ≈ (0.9 + 0.82 + 0.69) / 3 ≈ 0.80
+        assert!(coverage > 0.75 && coverage < 0.85, "Coverage: {}", coverage);
+    }
+
+    #[test]
+    fn test_coverage_continuous_power_transform() {
+        let mut stabilities = HashMap::new();
+        stabilities.insert(1, 180.0); // R = 0.9 → 0.9^0.6 ≈ 0.93
+        stabilities.insert(2, 45.0); // R ≈ 0.5 → 0.5^0.6 ≈ 0.66
+
+        let goal_items = vec![1, 2];
+        let coverage = coverage_continuous(&stabilities, &goal_items, 180.0, 0.6);
+
+        // Should be higher than linear mean due to sublinear transform
+        let linear = coverage_continuous(&stabilities, &goal_items, 180.0, 1.0);
+        assert!(
+            coverage > linear,
+            "Power transform should be more forgiving"
+        );
+    }
+
+    #[test]
+    fn test_coverage_continuous_empty_goal() {
+        let stabilities = HashMap::new();
+        let goal_items: Vec<i64> = vec![];
+        let coverage = coverage_continuous(&stabilities, &goal_items, 180.0, 1.0);
+        assert_eq!(coverage, 0.0);
+    }
+
+    #[test]
+    fn test_coverage_continuous_no_reviews() {
+        let stabilities = HashMap::new(); // Empty - no items reviewed
+        let goal_items = vec![1, 2, 3];
+        let coverage = coverage_continuous(&stabilities, &goal_items, 180.0, 1.0);
+        // All items have S=0 → R=0 → coverage=0
+        assert_eq!(coverage, 0.0);
     }
 
     #[test]
@@ -580,6 +714,9 @@ mod tests {
             coverage_acq: 0.8,
             mean_r_acq: 0.85,
             items_never_reviewed: 0,
+            // ISS v2.2 fields
+            coverage_strict_debug: 0.8,
+            coverage_power_06: 0.85,
         };
 
         // r_norm = 0.5, mastery_term = 0.5, cov = 0.8, faith = 1.0

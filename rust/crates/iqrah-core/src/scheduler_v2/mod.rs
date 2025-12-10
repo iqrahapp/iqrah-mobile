@@ -47,7 +47,7 @@ pub use events::{
 pub use profiles::{calculate_session_reward, profile_weights, ProfileName, SessionResult};
 pub use scoring::{
     calculate_days_overdue, calculate_priority_score, calculate_readiness,
-    count_unsatisfied_parents,
+    compute_weighted_urgency, count_unsatisfied_parents,
 };
 pub use session_generator::{generate_session, SessionMode};
 pub use types::{

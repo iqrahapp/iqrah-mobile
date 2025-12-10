@@ -25,30 +25,44 @@
 //! - [`SignificanceResult`]: Welch's t-test results between variants
 //! - [`DifficultyBucketMetrics`]: Performance breakdown by difficulty
 
+pub mod axis;
 pub mod baselines;
 pub mod brain;
 pub mod comparison;
 pub mod config;
 pub mod debug_stats;
 pub mod evaluation;
+pub mod events;
 pub mod in_memory_repo;
 pub mod metrics;
+pub mod sanity_log;
 pub mod simulator;
 pub mod stats;
 
 // Re-exports for convenience
+pub use axis::{AxisConfig, AxisCoverageMode, AxisKind, AxisMode};
 pub use baselines::{
-    FixedSrsBaseline, PageOrderBaseline, RandomBaseline, SchedulerVariant, SessionGenerator,
+    FixedSrsBaseline, GraphTopoBaseline, PageOrderBaseline, RandomBaseline, SchedulerVariant,
+    SessionGenerator,
 };
 pub use brain::{
     ParamRange, ParamVariation, PriorKnowledgeConfig, RecallResult, StudentBrain, StudentParams,
-    StudentParamsSelector,
+    StudentParamsSelector, StudentProfile,
 };
 pub use comparison::{run_comparison, AggregatedMetrics, ComparisonResults, VariantResult};
 pub use config::{Scenario, SimulationConfig};
 pub use evaluation::{evaluate, EvalMetrics, EvalResult, Flag, Verdict};
+pub use events::{
+    compute_stats, event_channel, write_events_jsonl, EnergyBucket, EnergyHistogram, EventAnalyzer,
+    EventReceiver, EventSender, EventStats, SessionCategory, SimulationEvent, SkipReason,
+    TransitionCause,
+};
 pub use in_memory_repo::InMemoryUserRepository;
 pub use metrics::{days_to_mastery, is_mastered, retrievability, DailySnapshot, SimulationMetrics};
+pub use sanity_log::{
+    DailyReviewHistogram, EnergyHistogram as SanityEnergyHistogram, SanitySummary,
+    StudentSanityData,
+};
 pub use simulator::Simulator;
 pub use stats::{
     compute_difficulty_buckets, welchs_t_test, DifficultyBucket, DifficultyBucketMetrics,

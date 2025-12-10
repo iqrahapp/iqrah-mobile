@@ -2,8 +2,9 @@
 //!
 //! Supports loading scenarios from YAML files for reproducible experiments.
 
+use crate::axis::AxisConfig;
 use crate::baselines::SchedulerVariant;
-use crate::brain::{StudentParams, StudentParamsSelector};
+use crate::brain::{StudentParams, StudentParamsSelector, StudentProfile};
 use anyhow::Result;
 use iqrah_core::scheduler_v2::SessionMixConfig;
 use serde::{Deserialize, Serialize};
@@ -32,7 +33,6 @@ pub struct SimulationConfig {
     pub expected_rpm: f64,
 
     /// Target mastery fraction for days_to_mastery metric
-    /// Target mastery fraction for days_to_mastery metric
     #[serde(default = "default_mastery_target")]
     pub mastery_target: f64,
 
@@ -40,10 +40,19 @@ pub struct SimulationConfig {
     #[serde(default)]
     pub debug_stats: bool,
 
+    /// Enable event logging for diagnostics (default: false)
+    #[serde(default)]
+    pub event_log_enabled: bool,
+
     /// Window in days for "almost due" items to be included in candidate pool (default: 2)
     /// Set to 0 to disable almost-due inclusion (original behavior)
     #[serde(default = "default_almost_due_window")]
     pub almost_due_window_days: u32,
+
+    /// Retrievability threshold for mastery (default: 0.9)
+    /// Lower to 0.7 for more realistic coverage expectations.
+    #[serde(default = "default_mastery_r_threshold")]
+    pub mastery_r_threshold: f64,
 }
 
 fn default_expected_rpm() -> f64 {
@@ -56,6 +65,10 @@ fn default_mastery_target() -> f64 {
 
 fn default_almost_due_window() -> u32 {
     2 // Include items due within 2 days as candidates (legacy, now all items included)
+}
+
+fn default_mastery_r_threshold() -> f64 {
+    0.9 // R >= 0.9 required for mastery (strict)
 }
 
 impl SimulationConfig {
@@ -92,7 +105,9 @@ impl SimulationConfig {
             expected_rpm: 0.1,
             mastery_target: 0.8,
             debug_stats: false,
+            event_log_enabled: false,
             almost_due_window_days: 2,
+            mastery_r_threshold: 0.9,
         }
     }
 }
@@ -106,7 +121,9 @@ impl Default for SimulationConfig {
             expected_rpm: 0.1,
             mastery_target: 0.8,
             debug_stats: false,
+            event_log_enabled: false,
             almost_due_window_days: 2,
+            mastery_r_threshold: 0.9,
         }
     }
 }
@@ -155,6 +172,17 @@ pub struct Scenario {
     /// If not set, ISS computes based on plan size and horizon.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_mix: Option<SessionMixConfig>,
+
+    /// Axis configuration for this scenario (per ISS v2.1 spec §3).
+    /// Determines which axes to schedule and how to measure coverage.
+    /// Default: SingleAxis(Memorization) + PerUnit coverage
+    #[serde(default)]
+    pub axis_config: AxisConfig,
+
+    /// Named student profile to use (ISS v2.3).
+    /// Takes precedence over student_params and student_params_selector.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub student_profile: Option<StudentProfile>,
 }
 
 fn default_student_count() -> usize {
@@ -176,6 +204,8 @@ impl Scenario {
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
             session_mix: None,
+            axis_config: AxisConfig::benchmark(),
+            student_profile: None,
         }
     }
 
@@ -193,6 +223,8 @@ impl Scenario {
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
             session_mix: None,
+            axis_config: AxisConfig::benchmark(),
+            student_profile: None,
         }
     }
 
@@ -210,6 +242,8 @@ impl Scenario {
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
             session_mix: None,
+            axis_config: AxisConfig::benchmark(),
+            student_profile: None,
         }
     }
 
@@ -227,6 +261,8 @@ impl Scenario {
             student_count: 1,
             scheduler: SchedulerVariant::IqrahDefault,
             session_mix: None,
+            axis_config: AxisConfig::benchmark(),
+            student_profile: None,
         }
     }
 
@@ -240,13 +276,25 @@ impl Scenario {
 
     /// Get student parameters for a specific student index.
     ///
-    /// If student_params_selector is set, samples from it;
-    /// otherwise uses the fixed student_params.
+    /// Priority: student_profile > student_params_selector > student_params
     pub fn get_student_params(&self, student_index: usize, base_seed: u64) -> StudentParams {
-        match &self.student_params_selector {
-            Some(selector) => selector.sample_for_student(student_index, base_seed),
-            None => self.student_params.clone(),
+        // Priority 1: Named profile (ISS v2.3)
+        if let Some(profile) = &self.student_profile {
+            return profile.to_params();
         }
+        // Priority 2: Heterogeneous selector
+        if let Some(selector) = &self.student_params_selector {
+            return selector.sample_for_student(student_index, base_seed);
+        }
+        // Priority 3: Fixed params
+        self.student_params.clone()
+    }
+
+    /// Create scenario with a specific student profile.
+    pub fn with_profile(&self, profile: StudentProfile) -> Self {
+        let mut clone = self.clone();
+        clone.student_profile = Some(profile);
+        clone
     }
 }
 
@@ -300,30 +348,22 @@ mod tests {
         assert_eq!(scenario.session_size, 10);
         assert!(scenario.enable_bandit);
     }
+
+    #[test]
+    fn test_dedicated_student_uses_benchmark_axis() {
+        let scenario = Scenario::dedicated_student();
+        // Should return None (indicating valid)
+        assert!(
+            scenario.axis_config.validate_for_benchmark().is_none(),
+            "Dedicated student scenario must use benchmark axis configuration"
+        );
+    }
 }
 
 /// Compute min_new_per_session based on plan size and horizon.
 ///
-/// Formula: items_per_day = total_items / (horizon * 0.8)
-/// For large plans, we need to introduce items aggressively to achieve coverage.
-/// Cap at 60% of session (not 30%) to ensure new items aren't crowded out by reviews.
-pub fn compute_min_new_for_plan(
-    total_items: usize,
-    horizon_days: u32,
-    session_size: usize,
-) -> usize {
-    if total_items == 0 || horizon_days == 0 {
-        return 1;
-    }
-
-    let effective_days = (horizon_days as f32 * 0.80).max(1.0);
-    let items_per_day = total_items as f32 / effective_days;
-    let min_new = items_per_day.ceil() as usize;
-
-    // Cap at 60% of session (raised from 30% to avoid starvation)
-    let max_new = (session_size * 6) / 10;
-    min_new.min(max_new).max(1)
-}
+// NOTE: compute_min_new_for_plan() was removed in ISS v2.3
+// Replaced by dynamic compute_sustainable_intro_rate() in simulator.rs
 
 /// Compute almost_due_window_days to keep recently-introduced items in candidate pool.
 ///
@@ -331,31 +371,29 @@ pub fn compute_min_new_for_plan(
 /// If almost_due_window is too small (default 2 days), those items disappear
 /// from candidates, causing coverage stalls.
 ///
-/// Formula: cycle_days = session_size / intro_rate
-///          window = cycle_days * 10 (to cover multiple FSRS review cycles)
+/// ISS v2.2: Use smooth continuous formula, no hardcoded thresholds.
+/// Formula: window = min(horizon, max(7, cycle_days * 4))
+///          where cycle_days = session_size / intro_rate
 ///
-/// Example (juz_amma): 564 items / (180*0.8) = 3.9 items/day
-///                     cycle = 15/3.9 = 3.8 days
-///                     window = 3.8 * 10 = 38 days
+/// This naturally scales from ~7 days for tiny plans to full horizon for huge plans.
 pub fn compute_almost_due_window(
     total_items: usize,
     horizon_days: u32,
     session_size: usize,
 ) -> u32 {
     if total_items == 0 || horizon_days == 0 {
-        return 30; // Safe default for large plans
+        return 30; // Safe default for edge cases
     }
 
-    // For large plans (>100 items), keep ALL introduced items in candidate pool
-    // by setting window to full horizon. This ensures items cycle back for mastery.
-    if total_items > 100 {
-        return horizon_days; // Full horizon
-    }
+    // REMOVED (ISS v2.2 cleanup): Hardcoded >100 item threshold.
+    // Now using smooth continuous formula that scales naturally.
 
-    // For small plans, use a more conservative window
     let effective_days = (horizon_days as f32 * 0.80).max(1.0);
     let intro_rate = total_items as f32 / effective_days;
-    let cycle_days = session_size as f32 / intro_rate.max(1.0);
+    let cycle_days = session_size as f32 / intro_rate.max(0.1);
 
-    (cycle_days * 2.0).round().max(7.0) as u32
+    // Window = cycle * 4 (covers multiple FSRS review cycles)
+    // Minimum 7 days, maximum full horizon
+    let window = (cycle_days * 4.0).round().max(7.0) as u32;
+    window.min(horizon_days)
 }

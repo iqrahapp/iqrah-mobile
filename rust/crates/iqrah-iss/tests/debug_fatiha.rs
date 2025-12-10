@@ -126,10 +126,12 @@ async fn test_debug_fatiha_learning() {
         enable_bandit: false,
         student_count: 1,
         session_mix: None, // Use default session mix
+        axis_config: iqrah_iss::AxisConfig::benchmark(),
+        student_profile: None,
     };
 
     println!("\nRunning Fatiha simulation for 60 days...");
-    let (metrics, user_repo, _debug) = simulator
+    let (metrics, user_repo, _debug, _sanity) = simulator
         .simulate_student_debug(&scenario, 0)
         .await
         .expect("Simulation failed");

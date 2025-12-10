@@ -41,7 +41,7 @@ async fn test_debug_stats_smoke() {
     let result = simulator.simulate_student(&scenario, 0).await;
     assert!(result.is_ok(), "Simulation should succeed");
 
-    let (metrics, summary) = result.unwrap();
+    let (metrics, summary, _) = result.unwrap();
 
     // 2. Verify basic metrics
     assert!(metrics.total_days > 0);
@@ -98,7 +98,7 @@ async fn test_debug_stats_disabled_by_default() {
     let result = simulator.simulate_student(&scenario, 0).await;
     assert!(result.is_ok());
 
-    let (_, summary) = result.unwrap();
+    let (_, summary, _) = result.unwrap();
     assert!(
         summary.is_none(),
         "Debug summary should be None when debug_stats is false"

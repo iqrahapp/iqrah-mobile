@@ -30,8 +30,9 @@ pub struct InitialPlacementConfig {
 
     /// Base review count for fully-known verse
     ///
-    /// Scales linearly with memorization_pct
-    /// Default: 5
+    /// NOTE: Should be 0 for ISS simulation - review_count should only
+    /// increment on actual reviews, not during initial placement.
+    /// Default: 0
     pub verse_base_review_count: u32,
 
     /// Threshold for treating verse as "fully known"
@@ -62,7 +63,9 @@ pub struct InitialPlacementConfig {
 
     /// Base review count for known vocabulary
     ///
-    /// Default: 3
+    /// NOTE: Should be 0 for ISS simulation - review_count should only
+    /// increment on actual reviews, not during initial placement.
+    /// Default: 0
     pub vocab_base_review_count: u32,
 
     /// Base difficulty for vocabulary nodes
@@ -112,14 +115,14 @@ impl Default for InitialPlacementConfig {
             verse_base_stability_days: 30.0,
             verse_stability_power: 2.0,
             verse_min_stability_days: 1.0,
-            verse_base_review_count: 5,
+            verse_base_review_count: 0, // Items start as "new" until actually reviewed
             verse_known_threshold: 0.9,
             verse_base_difficulty: 3.0,
 
             // Vocabulary
             vocab_base_stability_days: 14.0,
             vocab_stability_power: 1.5,
-            vocab_base_review_count: 3,
+            vocab_base_review_count: 0, // Items start as "new" until actually reviewed
             vocab_base_difficulty: 4.0,
 
             // Energy

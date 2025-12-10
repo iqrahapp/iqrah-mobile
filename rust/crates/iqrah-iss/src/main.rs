@@ -8,6 +8,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use iqrah_core::ContentRepository;
 use iqrah_iss::{
     run_comparison, Scenario, SchedulerVariant, SimulationConfig, SimulationMetrics, Simulator,
+    StudentProfile,
 };
 use iqrah_storage::{create_content_repository, open_content_db_readonly};
 use std::path::PathBuf;
@@ -134,6 +135,14 @@ enum Commands {
         /// Include individual student metrics in output
         #[arg(long)]
         include_individual: bool,
+
+        /// Student profile to use (strong_dedicated, normal_dedicated, harsh_stress_test)
+        #[arg(long)]
+        student_profile: Option<String>,
+
+        /// Output directory for event tracking files (JSONL + analysis markdown)
+        #[arg(long)]
+        emit_events: Option<PathBuf>,
     },
 }
 
@@ -210,9 +219,22 @@ async fn main() -> Result<()> {
             goal,
             output,
             include_individual,
+            student_profile,
+            emit_events,
         } => {
             // Determine which scenario to use
             let scenario_name = preset.as_ref().unwrap_or(&scenario);
+
+            // Parse student profile if provided
+            let profile = student_profile
+                .as_ref()
+                .and_then(|s| StudentProfile::from_str(s));
+            if student_profile.is_some() && profile.is_none() {
+                warn!(
+                    "Unknown student profile '{}', using default",
+                    student_profile.as_ref().unwrap()
+                );
+            }
 
             run_compare(
                 content_repo,
@@ -224,6 +246,8 @@ async fn main() -> Result<()> {
                 goal.as_deref(),
                 output,
                 include_individual,
+                profile,
+                emit_events,
             )
             .await?;
         }
@@ -254,7 +278,7 @@ async fn run_single(
     info!("  Days: {}", scenario.target_days);
     info!("  Seed: {}", seed);
 
-    let (metrics, _debug) = simulator
+    let (metrics, _debug, _sanity) = simulator
         .simulate_student(&scenario, 0)
         .await
         .context("Simulation failed")?;
@@ -301,7 +325,7 @@ async fn run_batch(
     let mut all_metrics: Vec<SimulationMetrics> = Vec::with_capacity(count);
 
     for i in 0..count {
-        let (metrics, _debug) = simulator
+        let (metrics, _debug, _sanity) = simulator
             .simulate_student(&scenario, i)
             .await
             .context(format!("Simulation failed for student {}", i))?;
@@ -356,6 +380,13 @@ fn create_scenario(name: &str, days: Option<u32>, goal: Option<&str>) -> Scenari
     let mut scenario = match name {
         "casual" | "juz_amma_casual" => Scenario::casual_learner(),
         "dedicated" | "juz_amma_dedicated" => Scenario::dedicated_student(),
+        "surah_fatiha_dedicated" => {
+            let mut s = Scenario::dedicated_student();
+            s.goal_id = "surah:1".to_string();
+            // Fatiha is short, shorten target days
+            s.target_days = 30;
+            s
+        }
         _ => Scenario::default(),
     };
     scenario.target_days = days.unwrap_or(30);
@@ -505,6 +536,8 @@ async fn run_compare(
     goal: Option<&str>,
     output: Option<PathBuf>,
     include_individual: bool,
+    profile: Option<StudentProfile>,
+    emit_events: Option<PathBuf>,
 ) -> Result<()> {
     // Parse variant names
     let variants: Vec<SchedulerVariant> = variant_names
@@ -523,7 +556,20 @@ async fn run_compare(
     }
 
     // Create base scenario
-    let base_scenario = create_scenario(scenario_name, days, goal);
+    let mut base_scenario = create_scenario(scenario_name, days, goal);
+
+    // Apply student profile if specified
+    if let Some(p) = profile {
+        base_scenario.student_profile = Some(p);
+        info!("Using student profile: {}", p.name());
+    }
+
+    // Log event tracking status
+    if let Some(ref event_dir) = emit_events {
+        info!("Event tracking enabled, output dir: {:?}", event_dir);
+        // Create directory if it doesn't exist
+        std::fs::create_dir_all(event_dir)?;
+    }
 
     info!("Running comparison:");
     info!("  Variants: {:?}", variant_names);
@@ -532,6 +578,9 @@ async fn run_compare(
     info!("  Goal: {}", base_scenario.goal_id);
     info!("  Days: {}", base_scenario.target_days);
     info!("  Seed: {}", seed);
+    if let Some(ref p) = base_scenario.student_profile {
+        info!("  Student Profile: {}", p.name());
+    }
 
     println!("\n=== Scheduler Comparison ===");
     println!(
@@ -541,11 +590,14 @@ async fn run_compare(
     println!("Students per variant: {}", students);
     println!("Goal: {}", base_scenario.goal_id);
     println!("Days: {}", base_scenario.target_days);
+    if let Some(ref p) = base_scenario.student_profile {
+        println!("Profile: {}", p.name());
+    }
     println!();
 
     // Run comparison
     let (results, debug_report) = run_comparison(
-        content_repo,
+        Arc::clone(&content_repo),
         &base_scenario,
         &variants,
         students,
@@ -616,6 +668,56 @@ async fn run_compare(
             std::fs::write(&debug_path, debug_json)?;
             println!("Debug report saved to {:?}", debug_path);
         }
+    }
+
+    // Event tracking: Run one student per variant with event collection
+    if let Some(ref event_dir) = emit_events {
+        use iqrah_iss::{event_channel, write_events_jsonl, EventAnalyzer, Simulator};
+
+        println!("\n=== Collecting Events (student 0 per variant) ===");
+
+        for &variant in &variants {
+            let scenario = base_scenario.with_scheduler(variant);
+            let mut config = SimulationConfig {
+                scenarios: vec![scenario.clone()],
+                base_seed: seed,
+                event_log_enabled: true,
+                ..Default::default()
+            };
+            config.event_log_enabled = true;
+
+            // Create event channel
+            let (event_sender, event_receiver) = event_channel(true);
+
+            // Create simulator with external event sender
+            let sim = Simulator::with_event_sender(Arc::clone(&content_repo), config, event_sender);
+
+            // Run student 0
+            let _ = sim.simulate_student(&scenario, 0).await;
+
+            // Collect events
+            let events = event_receiver.collect();
+            println!("  {}: {} events collected", variant.name(), events.len());
+
+            // Write JSONL
+            let events_path = event_dir.join(format!("{}_events.jsonl", variant.name()));
+            if let Err(e) = write_events_jsonl(&events, &events_path) {
+                warn!("Failed to write events for {}: {}", variant.name(), e);
+            } else {
+                println!("    -> {:?}", events_path);
+            }
+
+            // Generate analysis report
+            let analyzer = EventAnalyzer::from_events(events);
+            let report_path = event_dir.join(format!("{}_analysis.md", variant.name()));
+            if let Err(e) = analyzer.write_report(&report_path, variant.name()) {
+                warn!("Failed to write analysis for {}: {}", variant.name(), e);
+            } else {
+                println!("    -> {:?}", report_path);
+            }
+        }
+
+        println!("\nEvent tracking complete. Files saved to {:?}", event_dir);
     }
 
     Ok(())

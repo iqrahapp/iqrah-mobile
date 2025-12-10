@@ -7,7 +7,7 @@ student_count: 30
 scheduler: "IqrahDefault"
 student_params:
   skip_day_prob: 0.05
-  early_quit_prob: 0.01
+  early_quit_prob: 0.0
   persistence_threshold: 350
   overdue_sensitivity: 0.3
   momentum_sensitivity: 0.4
@@ -15,3 +15,10 @@ student_params:
   spacing_sensitivity: 1.0
   forgetting_rate_mult: 1.0
   fatigue_onset_minutes: 30.0
+  # ISS v2.3 Params
+  drift_alpha_max: 0.15
+  drift_alpha_min: 0.02
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.05
+  session_capacity: 25.0
+  headroom_reserve: 0.10

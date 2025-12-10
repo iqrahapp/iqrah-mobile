@@ -144,6 +144,25 @@ impl InMemoryUserRepository {
         let states = self.memory_states.read().unwrap();
         states.get(&(user_id.to_string(), node_id)).cloned()
     }
+
+    /// Get parent energies for given node IDs (ISS v2.6 prerequisite gate).
+    ///
+    /// Returns a HashMap mapping node_id -> energy for all requested parent nodes
+    /// that have existing memory states.
+    pub async fn get_parent_energies(
+        &self,
+        user_id: &str,
+        parent_ids: &[i64],
+    ) -> Result<HashMap<i64, f32>> {
+        let states = self.memory_states.read().unwrap();
+        let mut result = HashMap::new();
+        for &node_id in parent_ids {
+            if let Some(state) = states.get(&(user_id.to_string(), node_id)) {
+                result.insert(node_id, state.energy as f32);
+            }
+        }
+        Ok(result)
+    }
 }
 
 impl Default for InMemoryUserRepository {

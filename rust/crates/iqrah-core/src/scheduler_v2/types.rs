@@ -34,12 +34,16 @@ pub struct SessionMixConfig {
     /// This guarantees plan coverage even when pct_new * session_size < 1.
     /// Set to 0 to disable (use percentage only).
     pub min_new_per_session: usize,
+    /// Maximum number of new items to include per session.
+    /// Use usize::MAX for no cap. Set to 0 to block all new items (consolidation mode).
+    pub max_new_per_session: usize,
 }
 
 impl Default for SessionMixConfig {
     /// Default configuration: 10% new, 10% almost mastered, 50% almost there,
     /// 20% struggling, 10% really struggling.
     /// min_new_per_session = 1 to guarantee at least 1 new item if available.
+    /// max_new_per_session = usize::MAX (no cap by default).
     fn default() -> Self {
         Self {
             pct_new: 0.10,
@@ -48,6 +52,7 @@ impl Default for SessionMixConfig {
             pct_struggling: 0.20,
             pct_really_struggling: 0.10,
             min_new_per_session: 1, // Guarantee at least 1 new item if available
+            max_new_per_session: usize::MAX, // No cap by default
         }
     }
 }

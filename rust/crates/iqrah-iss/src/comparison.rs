@@ -8,6 +8,7 @@ use crate::config::{Scenario, SimulationConfig};
 use crate::debug_stats::{RunDebugReport, VariantDebugReport};
 use crate::evaluation::{evaluate, EvalResult};
 use crate::metrics::SimulationMetrics;
+use crate::sanity_log::SanitySummary;
 use crate::simulator::Simulator;
 
 use anyhow::Result;
@@ -62,6 +63,9 @@ pub struct AggregatedMetrics {
 
     /// Mean number of items never reviewed across students
     pub items_never_reviewed_mean: f64,
+
+    /// Mean goal item count (should be constant across students but kept for safety)
+    pub goal_item_count_mean: f64,
 }
 
 impl AggregatedMetrics {
@@ -139,6 +143,9 @@ impl AggregatedMetrics {
             metrics.iter().map(|m| m.items_never_reviewed as f64).sum();
         let items_never_reviewed_mean = items_never_reviewed_sum / n_f64;
 
+        let goal_item_count_sum: f64 = metrics.iter().map(|m| m.goal_item_count as f64).sum();
+        let goal_item_count_mean = goal_item_count_sum / n_f64;
+
         Self {
             final_score_mean,
             final_score_std,
@@ -159,6 +166,7 @@ impl AggregatedMetrics {
             coverage_acq_mean,
             mean_r_acq_mean,
             items_never_reviewed_mean,
+            goal_item_count_mean,
         }
     }
 
@@ -184,6 +192,7 @@ impl AggregatedMetrics {
             coverage_acq_mean: 0.0,
             mean_r_acq_mean: 0.0,
             items_never_reviewed_mean: 0.0,
+            goal_item_count_mean: 0.0,
         }
     }
 }
@@ -214,6 +223,9 @@ pub struct VariantResult {
     /// Multi-objective evaluation result (v2.1)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub evaluation: Option<EvalResult>,
+    /// Sanity check logs (v2.1)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sanity: Option<SanitySummary>,
 }
 
 /// Confidence interval statistics for key metrics (v0.5).
@@ -315,7 +327,7 @@ pub async fn run_comparison(
 
                     let sim = Simulator::new(Arc::clone(&content_repo_clone), config.clone());
                     let result = rt.block_on(sim.simulate_student(&scenario_clone, i));
-                    result.map(|(metrics, summary)| (i, metrics, summary))
+                    result.map(|(metrics, summary, sanity)| (i, metrics, summary, sanity))
                 })
                 .collect()
         });
@@ -324,10 +336,11 @@ pub async fn run_comparison(
         let mut all_metrics = Vec::with_capacity(students_per_variant);
         let mut individual_summaries = Vec::new();
         let mut variant_debug_summaries = Vec::new();
+        let mut variant_sanity_data = Vec::new();
 
         for result in results {
             match result {
-                Ok((i, metrics, summary)) => {
+                Ok((i, metrics, summary, sanity)) => {
                     if include_individual {
                         individual_summaries.push(MetricsSummary {
                             student_index: i,
@@ -341,6 +354,9 @@ pub async fn run_comparison(
                     all_metrics.push(metrics);
                     if let Some(s) = summary {
                         variant_debug_summaries.push(s);
+                    }
+                    if let Some(s) = sanity {
+                        variant_sanity_data.push(s);
                     }
                 }
                 Err(e) => {
@@ -389,6 +405,16 @@ pub async fn run_comparison(
             .collect();
         all_variant_scores.push((variant.name().to_string(), final_scores_for_sig));
 
+        // Compute sanity summary
+        let sanity_summary = if !variant_sanity_data.is_empty() {
+            Some(SanitySummary::from_students(
+                &variant.name().to_string(),
+                &variant_sanity_data,
+            ))
+        } else {
+            None
+        };
+
         variant_results.push(VariantResult {
             variant: variant.name().to_string(),
             students: all_metrics.len(),
@@ -399,6 +425,7 @@ pub async fn run_comparison(
             difficulty_buckets: vec![],
             ci_stats,
             evaluation: None, // Computed below after debug stats
+            sanity: sanity_summary,
         });
     }
 
@@ -428,9 +455,7 @@ pub async fn run_comparison(
                         total_minutes: 0.0,
                         total_days: base_scenario.target_days,
                         gave_up: false,
-                        goal_item_count: (vr.metrics.items_never_reviewed_mean
-                            + vr.metrics.coverage_t_mean * 100.0)
-                            as usize,
+                        goal_item_count: vr.metrics.goal_item_count_mean.round() as usize,
                         items_mastered: (vr.metrics.coverage_t_mean * 100.0) as usize,
                         coverage_t: vr.metrics.coverage_t_mean,
                         mean_r_t: vr.metrics.mean_r_t_mean,
@@ -441,6 +466,9 @@ pub async fn run_comparison(
                         coverage_acq: vr.metrics.coverage_acq_mean,
                         mean_r_acq: vr.metrics.mean_r_acq_mean,
                         items_never_reviewed: vr.metrics.items_never_reviewed_mean as usize,
+                        // ISS v2.2 fields
+                        coverage_strict_debug: vr.metrics.coverage_t_mean,
+                        coverage_power_06: vr.metrics.mean_r_t_mean,
                     };
                     let eval = evaluate(
                         &fake_sim_metrics,
@@ -546,6 +574,9 @@ mod tests {
             coverage_acq: 0.8,
             mean_r_acq: 0.9,
             items_never_reviewed: 0,
+            // ISS v2.2 fields
+            coverage_strict_debug: 0.8,
+            coverage_power_06: 0.9,
         };
         let agg = AggregatedMetrics::compute(&[m], 30, 0.1);
 
