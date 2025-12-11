@@ -35,4 +35,4 @@ student_params:
 session_size: 20
 enable_bandit: true
 student_count: 1
-scheduler: iqrah_default
+scheduler: baseline_random
