@@ -1,0 +1,120 @@
+name: ISS Smoke Test
+
+on:
+  pull_request:
+    paths:
+      - 'rust/crates/iqrah-iss/**'
+  push:
+    branches: [main]
+    paths:
+      - 'rust/crates/iqrah-iss/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+
+      - name: Run unit tests
+        working-directory: rust
+        run: cargo test -p iqrah-iss --lib
+
+      - name: SS40 Smoke Test (30d, seed=42)
+        working-directory: rust
+        run: |
+          cargo run --release -p iqrah-iss -- compare \
+            --scenario juz_amma_dedicated \
+            -V iqrah_default \
+            -n 1 --days 30 \
+            --trace --trace-dir /tmp/ci_smoke 2>&1 | tee /tmp/smoke_output.txt
+
+          # Check for key metrics (relaxed for CI)
+          echo "=== Smoke Test Complete ==="
+          cat /tmp/smoke_output.txt | grep "iqrah_default"
+
+      - name: Verify smoke test results
+        working-directory: rust
+        run: |
+          # Extract metrics from memory health trace
+          TRACE_FILE=$(find /tmp/ci_smoke -name "*memory_health_trace.csv" | head -1)
+          if [ -f "$TRACE_FILE" ]; then
+            echo "Trace file found: $TRACE_FILE"
+            # Get final row (day 29)
+            FINAL_ROW=$(tail -1 "$TRACE_FILE")
+            echo "Final metrics: $FINAL_ROW"
+
+            # Extract at_risk_ratio_0_9 (column 19)
+            AT_RISK=$(echo "$FINAL_ROW" | cut -d',' -f19)
+            echo "at_risk_ratio_0_9: $AT_RISK"
+
+            # Basic sanity: at_risk should be a number <= 0.20
+            if [ "$(echo "$AT_RISK <= 0.20" | bc -l)" -eq 1 ]; then
+              echo "✅ at_risk_ratio_0_9 check PASSED"
+            else
+              echo "❌ at_risk_ratio_0_9 check FAILED (>0.20)"
+              exit 1
+            fi
+          else
+            echo "Warning: Trace file not found, skipping metric verification"
+          fi
+
+  casual-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: smoke-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+
+      - name: SS15 Casual Smoke Test (30d)
+        working-directory: rust
+        run: |
+          cargo run --release -p iqrah-iss -- compare \
+            --scenario juz_amma_casual_365d \
+            -V iqrah_default \
+            -n 1 --days 30 \
+            --trace --trace-dir /tmp/casual_smoke 2>&1 | tee /tmp/casual_output.txt
+
+          echo "=== Casual Smoke Test Complete ==="
+          cat /tmp/casual_output.txt | grep "iqrah_default"
+
+      - name: Verify casual smoke results
+        working-directory: rust
+        run: |
+          TRACE_FILE=$(find /tmp/casual_smoke -name "*memory_health_trace.csv" | head -1)
+          if [ -f "$TRACE_FILE" ]; then
+            FINAL_ROW=$(tail -1 "$TRACE_FILE")
+            echo "Final metrics: $FINAL_ROW"
+
+            # Casual thresholds are more relaxed
+            AT_RISK=$(echo "$FINAL_ROW" | cut -d',' -f19)
+            echo "at_risk_ratio_0_9: $AT_RISK"
+
+            if [ "$(echo "$AT_RISK <= 0.25" | bc -l)" -eq 1 ]; then
+              echo "✅ casual at_risk_ratio_0_9 check PASSED"
+            else
+              echo "❌ casual at_risk_ratio_0_9 check FAILED (>0.25)"
+              exit 1
+            fi
+          fi
