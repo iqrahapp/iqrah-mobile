@@ -274,6 +274,12 @@ class ContentDatabaseBuilder:
         total_verses = 0
 
         ayah_metadata = self.metadata_cache.get("ayah", {})
+        juz_metadata = self.metadata_cache.get("juz", {})
+
+        # Build verse_key → juz_number lookup from juz metadata
+        verse_juz_lookup = self._build_verse_juz_lookup(juz_metadata)
+        logger.info(f"Built juz lookup for {len(verse_juz_lookup)} verses")
+
         chapters = self.quran.chapters
         iterator = tqdm(chapters, desc="Verses", disable=not show_progress)
 
@@ -286,6 +292,12 @@ class ContentDatabaseBuilder:
                 # Get additional metadata
                 verse_id = str(verse.id) if hasattr(verse, "id") else None
                 metadata = ayah_metadata.get(verse_id, {}) if verse_id else {}
+
+                # Get juz number from lookup (preferred) or verse attribute (fallback)
+                juz_number = verse_juz_lookup.get(
+                    verse.verse_key,
+                    verse.juz_number if hasattr(verse, "juz_number") else None
+                )
 
                 cursor.execute(
                     """
@@ -302,7 +314,7 @@ class ContentDatabaseBuilder:
                         verse.chapter,
                         verse.verse_number,
                         verse.text_uthmani,
-                        verse.juz_number if hasattr(verse, "juz_number") else None,
+                        juz_number,
                         verse.hizb_number if hasattr(verse, "hizb_number") else None,
                         verse.rub_el_hizb_number if hasattr(verse, "rub_el_hizb_number") else None,
                         verse.manzil_number if hasattr(verse, "manzil_number") else None,
@@ -318,6 +330,50 @@ class ContentDatabaseBuilder:
 
         conn.commit()
         logger.info(f"Populated {total_verses} verses")
+
+    def _build_verse_juz_lookup(self, juz_metadata: Dict) -> Dict[str, int]:
+        """
+        Build a verse_key → juz_number lookup table from juz metadata.
+
+        The juz metadata has verse_mapping like:
+        {
+            "1": {
+                "juz_number": 1,
+                "verse_mapping": {"1": "1-7", "2": "1-141"}
+            }
+        }
+
+        Returns:
+            Dict mapping verse_key (e.g., "1:1") to juz_number (e.g., 1)
+        """
+        lookup = {}
+
+        for juz_id, juz_data in juz_metadata.items():
+            juz_number = juz_data.get("juz_number")
+            if not juz_number:
+                continue
+
+            verse_mapping = juz_data.get("verse_mapping", {})
+
+            for chapter_str, verse_range in verse_mapping.items():
+                chapter_num = int(chapter_str)
+
+                # Parse verse range like "1-7" or "142-252"
+                if "-" in verse_range:
+                    start, end = verse_range.split("-")
+                    start_verse = int(start)
+                    end_verse = int(end)
+                else:
+                    # Single verse
+                    start_verse = int(verse_range)
+                    end_verse = start_verse
+
+                # Add all verses in range to lookup
+                for verse_num in range(start_verse, end_verse + 1):
+                    verse_key = f"{chapter_num}:{verse_num}"
+                    lookup[verse_key] = juz_number
+
+        return lookup
 
     def _populate_words(self, conn: sqlite3.Connection, show_progress: bool) -> None:
         """Populate words table."""
