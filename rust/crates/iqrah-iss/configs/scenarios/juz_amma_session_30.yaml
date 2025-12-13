@@ -1,8 +1,5 @@
-# Juz 30 Dedicated Default (SS40)
-# Promoted from juz_amma_dedicated_ss40 after n=10 validation
-# Coverage: 65.8% (vs 48.9% baseline), at_risk_0.9: 0.029
-# Legacy: see juz_amma_dedicated_ss20_legacy.yaml
-name: juz_amma_dedicated
+# M2.9.3: Pareto Sweep - Dedicated session_size=30
+name: juz_amma_session_30
 goal_id: "juz:30"
 target_days: 180
 daily_minutes: 60.0
@@ -31,12 +28,11 @@ student_params:
   max_working_set: 500
   cluster_stability_threshold: 0.15
   cluster_expansion_batch_size: 15
-  # SS40 key changes
-  intro_min_per_day: 5              # From 3 → 5
+  intro_min_per_day: 5
   max_working_set_ratio_of_goal: 1.0
-  target_reviews_per_active: 0.06   # From 0.08 → 0.06
+  target_reviews_per_active: 0.06
   max_p90_due_age_days: 45.0
-session_size: 40                    # From 20 → 40
+session_size: 30  # Sensitivity Test
 enable_bandit: true
 student_count: 1
 scheduler: iqrah_default

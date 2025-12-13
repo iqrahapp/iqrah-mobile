@@ -1,0 +1,60 @@
+# Fatiha from scratch with M2.9 optimizations
+name: "Learn Fatiha from Scratch (v2.9)"
+
+# Goal: Memorize Surah Al-Fatiha (7 ayahs)
+goal_id: "surah:1"
+
+# Timeline: 30 days (User Question 1)
+target_days: 30
+daily_minutes: 15.0
+
+# User specified: session_size 40
+session_size: 40
+
+student_params:
+  # CRITICAL: Clear all pre-known items
+  known_surah_ids: []
+  vocab_known_pct: 0.0
+
+  # CRITICAL: Zero initial placement
+  verse_base_review_count: 0
+  vocab_base_review_count: 0
+
+  # Base learner parameters (dedicated student)
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 500
+  forgetting_rate_mult: 0.8
+  spacing_sensitivity: 1.2
+
+  # Review capacity (User specified)
+  min_reviews_per_day: 30
+  max_reviews_per_day: 50
+  mean_reviews_per_day: 40.0
+  reviews_stddev: 5.0
+
+  # Cluster control - tuned for small goal (7 items)
+  max_working_set: 10
+  cluster_stability_threshold: 0.15  # User specified
+  cluster_expansion_batch_size: 2    # Small batches for 7 items
+
+  # Drift parameters
+  drift_alpha_max: 0.08
+  drift_alpha_min: 0.01
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+
+  # Memory parameters
+  stability_scale: 1.2
+  lapse_baseline: 0.08
+  fatigue_sensitivity: 0.15
+
+# v2.8: Exercise evaluations for memorization axis
+exercises:
+  # Continuous recitation every 2 days for high resolution timeline
+  - type: memory
+    subtype: continuous_recitation
+    frequency_days: 2
+    parameters:
+      sample_size: 7
+      sampling_strategy: sequential

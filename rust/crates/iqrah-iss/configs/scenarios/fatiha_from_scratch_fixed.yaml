@@ -1,0 +1,49 @@
+# Fatiha from scratch with M2.9 optimizations (FIXED)
+name: "Learn Fatiha from Scratch (v2.9 Fixed)"
+
+goal_id: "surah:1"
+target_days: 30
+daily_minutes: 15.0
+session_size: 40
+
+student_params:
+  known_surah_ids: []
+  vocab_known_pct: 0.0
+  verse_base_review_count: 0
+  vocab_base_review_count: 0
+
+  # Parameters
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 500
+  forgetting_rate_mult: 0.8
+  spacing_sensitivity: 1.2
+
+  min_reviews_per_day: 30
+  max_reviews_per_day: 50
+  mean_reviews_per_day: 40.0
+  reviews_stddev: 5.0
+
+  max_working_set: 10
+  cluster_stability_threshold: 0.15
+  cluster_expansion_batch_size: 2
+
+  # CRITICAL FIX: Ensure introduction flow
+  intro_min_per_day: 3
+
+  drift_alpha_max: 0.08
+  drift_alpha_min: 0.01
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+
+  stability_scale: 1.2
+  lapse_baseline: 0.08
+  fatigue_sensitivity: 0.15
+
+exercises:
+  - type: memory
+    subtype: continuous_recitation
+    frequency_days: 2
+    parameters:
+      sample_size: 7
+      sampling_strategy: sequential

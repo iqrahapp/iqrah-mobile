@@ -965,11 +965,19 @@ impl EventAnalyzer {
                 "**FINDING**: ✅ Working set limit active {:.0}% of days. Consolidation is working as intended.",
                 cluster_analysis.pct_gated_by_working_set * 100.0
             )?;
-        } else {
             writeln!(
                 writer,
                 "**FINDING**: ✅ Cluster stability gate operating normally."
             )?;
+        }
+
+        // ====================================================================
+        // ISS v2.8: Exercise Evaluation Results
+        // ====================================================================
+        let exercise_analysis = analyze_exercise_performance(&self.events);
+        if !exercise_analysis.exercise_history.is_empty() {
+            let exercise_report = generate_exercise_report(&exercise_analysis);
+            writeln!(writer, "{}", exercise_report)?;
         }
 
         writer.flush()?;
@@ -1499,4 +1507,238 @@ impl EventAnalyzer {
             energy_samples,
         }
     }
+}
+
+// ============================================================================
+// ISS v2.8: Exercise Evaluation Analysis
+// ============================================================================
+
+use crate::axis::AxisKind;
+
+/// Exercise performance analysis.
+#[derive(Debug, Default)]
+pub struct ExerciseAnalysis {
+    /// Per-exercise history: exercise_name → [(day, score, grade, summary)]
+    pub exercise_history: HashMap<String, Vec<ExerciseEvaluationRecord>>,
+
+    /// Per-axis aggregates: axis → performance
+    pub axis_performance: HashMap<AxisKind, AxisPerformance>,
+}
+
+/// Single exercise evaluation record.
+#[derive(Debug, Clone)]
+pub struct ExerciseEvaluationRecord {
+    pub day: u32,
+    pub score: f64,
+    pub grade: String,
+    pub items_tested: usize,
+    pub summary: String,
+}
+
+/// Performance metrics for a specific axis.
+#[derive(Debug, Default, Clone)]
+pub struct AxisPerformance {
+    /// Latest evaluation score.
+    pub latest_score: f64,
+
+    /// Latest grade.
+    pub latest_grade: String,
+
+    /// Score history: [(day, score)]
+    pub score_history: Vec<(u32, f64)>,
+
+    /// Average score across all evaluations.
+    pub avg_score: f64,
+
+    /// Trend analysis.
+    pub trend: Trend,
+}
+
+/// Performance trend.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Trend {
+    Improving,
+    Stable,
+    Declining,
+    #[default]
+    Insufficient,
+}
+
+impl ExerciseAnalysis {
+    /// Add an exercise evaluation result.
+    pub fn add_evaluation(
+        &mut self,
+        day: u32,
+        exercise_name: String,
+        exercise_axis: AxisKind,
+        score: f64,
+        grade: String,
+        items_tested: usize,
+        summary: String,
+    ) {
+        // Add to exercise history
+        let record = ExerciseEvaluationRecord {
+            day,
+            score,
+            grade: grade.clone(),
+            items_tested,
+            summary,
+        };
+        self.exercise_history
+            .entry(exercise_name)
+            .or_default()
+            .push(record);
+
+        // Update axis aggregates
+        let perf = self.axis_performance.entry(exercise_axis).or_default();
+
+        perf.latest_score = score;
+        perf.latest_grade = grade;
+        perf.score_history.push((day, score));
+
+        // Recompute average
+        perf.avg_score = perf.score_history.iter().map(|(_, s)| s).sum::<f64>()
+            / perf.score_history.len() as f64;
+
+        // Update trend
+        perf.trend = compute_exercise_trend(&perf.score_history);
+    }
+}
+
+/// Compute trend from score history.
+fn compute_exercise_trend(history: &[(u32, f64)]) -> Trend {
+    if history.len() < 3 {
+        return Trend::Insufficient;
+    }
+
+    // Simple linear regression slope
+    let n = history.len() as f64;
+    let sum_x: f64 = history.iter().enumerate().map(|(i, _)| i as f64).sum();
+    let sum_y: f64 = history.iter().map(|(_, score)| score).sum();
+    let sum_xy: f64 = history
+        .iter()
+        .enumerate()
+        .map(|(i, (_, score))| i as f64 * score)
+        .sum();
+    let sum_x2: f64 = history
+        .iter()
+        .enumerate()
+        .map(|(i, _)| (i as f64).powi(2))
+        .sum();
+
+    let denominator = n * sum_x2 - sum_x.powi(2);
+    if denominator.abs() < 0.001 {
+        return Trend::Stable;
+    }
+
+    let slope = (n * sum_xy - sum_x * sum_y) / denominator;
+
+    if slope > 0.05 {
+        Trend::Improving
+    } else if slope < -0.05 {
+        Trend::Declining
+    } else {
+        Trend::Stable
+    }
+}
+
+/// Build exercise analysis from events.
+pub fn analyze_exercise_performance(events: &[SimulationEvent]) -> ExerciseAnalysis {
+    let mut analysis = ExerciseAnalysis::default();
+
+    for event in events {
+        if let SimulationEvent::ExerciseEvaluation {
+            day,
+            exercise_name,
+            exercise_axis,
+            score,
+            grade,
+            items_tested,
+            summary,
+        } = event
+        {
+            analysis.add_evaluation(
+                *day,
+                exercise_name.clone(),
+                *exercise_axis,
+                *score,
+                grade.clone(),
+                *items_tested,
+                summary.clone(),
+            );
+        }
+    }
+
+    analysis
+}
+
+/// Generate exercise report section.
+pub fn generate_exercise_report(analysis: &ExerciseAnalysis) -> String {
+    let mut report = String::new();
+
+    if analysis.exercise_history.is_empty() {
+        return report; // No exercises run
+    }
+
+    report.push_str("\n## 📊 Exercise Evaluation Results (ISS v2.8)\n\n");
+
+    // Per-axis summary table
+    if !analysis.axis_performance.is_empty() {
+        report.push_str("### Performance by Axis\n\n");
+        report.push_str("| Axis | Latest | Avg Score | Trend | Evals |\n");
+        report.push_str("|------|--------|-----------|-------|-------|\n");
+
+        let mut sorted_axes: Vec<_> = analysis.axis_performance.iter().collect();
+        sorted_axes.sort_by_key(|(axis, _)| format!("{:?}", axis));
+
+        for (axis, perf) in sorted_axes {
+            let trend_icon = match perf.trend {
+                Trend::Improving => "📈",
+                Trend::Stable => "➡️",
+                Trend::Declining => "📉",
+                Trend::Insufficient => "❓",
+            };
+
+            report.push_str(&format!(
+                "| {:?} | {:.2} ({}) | {:.2} | {} | {} |\n",
+                axis,
+                perf.latest_score,
+                perf.latest_grade,
+                perf.avg_score,
+                trend_icon,
+                perf.score_history.len(),
+            ));
+        }
+
+        report.push_str("\n");
+    }
+
+    // Detailed exercise breakdown
+    report.push_str("### Exercise Timeline\n\n");
+
+    let mut sorted_exercises: Vec<_> = analysis.exercise_history.iter().collect();
+    sorted_exercises.sort_by_key(|(name, _)| *name);
+
+    for (name, history) in sorted_exercises {
+        report.push_str(&format!("**{}** ({} evaluations)\n\n", name, history.len()));
+
+        // Show last 5 evaluations only to keep report concise
+        let display_count = history.len().min(5);
+        let start = history.len().saturating_sub(display_count);
+
+        for record in &history[start..] {
+            report.push_str(&format!(
+                "- Day {}: score={:.2}, grade={}, items={}\n",
+                record.day, record.score, record.grade, record.items_tested
+            ));
+        }
+
+        if history.len() > 5 {
+            report.push_str(&format!("  *(showing last 5 of {})*\n", history.len()));
+        }
+
+        report.push_str("\n");
+    }
+
+    report
 }

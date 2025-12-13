@@ -54,7 +54,8 @@ pub struct AggregatedMetrics {
     pub total_students: usize,
 
     // === New outcome metrics ===
-    pub coverage_t_mean: f64,
+    pub coverage_h_0_9_mean: f64,
+    pub introduced_ratio_mean: f64,
     pub mean_r_t_mean: f64,
     pub rpm_t_mean: f64,
     pub rpm_short_mean: Option<f64>,
@@ -116,8 +117,11 @@ impl AggregatedMetrics {
         let gave_up_fraction = gave_up_count as f64 / n_f64;
 
         // New outcome metrics
-        let coverage_t_sum: f64 = metrics.iter().map(|m| m.coverage_t).sum();
-        let coverage_t_mean = coverage_t_sum / n_f64;
+        let coverage_h_0_9_sum: f64 = metrics.iter().map(|m| m.coverage_h_0_9).sum();
+        let coverage_h_0_9_mean = coverage_h_0_9_sum / n_f64;
+
+        let introduced_ratio_sum: f64 = metrics.iter().map(|m| m.introduced_ratio).sum();
+        let introduced_ratio_mean = introduced_ratio_sum / n_f64;
 
         let mean_r_t_sum: f64 = metrics.iter().map(|m| m.mean_r_t).sum();
         let mean_r_t_mean = mean_r_t_sum / n_f64;
@@ -159,7 +163,8 @@ impl AggregatedMetrics {
             days_to_mastery_count,
             gave_up_fraction,
             total_students: n,
-            coverage_t_mean,
+            coverage_h_0_9_mean,
+            introduced_ratio_mean,
             mean_r_t_mean,
             rpm_t_mean,
             rpm_short_mean,
@@ -185,7 +190,8 @@ impl AggregatedMetrics {
             days_to_mastery_count: 0,
             gave_up_fraction: 0.0,
             total_students: 0,
-            coverage_t_mean: 0.0,
+            coverage_h_0_9_mean: 0.0,
+            introduced_ratio_mean: 0.0,
             mean_r_t_mean: 0.0,
             rpm_t_mean: 0.0,
             rpm_short_mean: None,
@@ -275,6 +281,7 @@ pub struct ComparisonResults {
 /// * `students_per_variant` - Number of students to simulate per variant
 /// * `base_seed` - Base RNG seed
 /// * `include_individual` - Whether to include individual student metrics
+/// * `debug_trace` - M1.2: Gate trace configuration
 pub async fn run_comparison(
     content_repo: Arc<dyn ContentRepository>,
     base_scenario: &Scenario,
@@ -283,6 +290,7 @@ pub async fn run_comparison(
     base_seed: u64,
     expected_rpm: f64,
     include_individual: bool,
+    debug_trace: crate::config::DebugTraceConfig,
 ) -> Result<(ComparisonResults, Option<RunDebugReport>)> {
     info!(
         "Running comparison: {} variants × {} students",
@@ -306,6 +314,7 @@ pub async fn run_comparison(
             base_seed,
             expected_rpm,
             debug_stats: true, // Force debug stats for comparison to get full reports
+            debug_trace: debug_trace.clone(),
             ..Default::default()
         };
 
@@ -456,8 +465,10 @@ pub async fn run_comparison(
                         total_days: base_scenario.target_days,
                         gave_up: false,
                         goal_item_count: vr.metrics.goal_item_count_mean.round() as usize,
-                        items_mastered: (vr.metrics.coverage_t_mean * 100.0) as usize,
-                        coverage_t: vr.metrics.coverage_t_mean,
+                        items_mastered: (vr.metrics.coverage_h_0_9_mean * 100.0) as usize,
+                        // M1 metrics
+                        introduced_ratio: vr.metrics.introduced_ratio_mean,
+                        coverage_h_0_9: vr.metrics.coverage_h_0_9_mean,
                         mean_r_t: vr.metrics.mean_r_t_mean,
                         items_good_t: 0,
                         rpm_t: vr.metrics.rpm_t_mean,
@@ -467,7 +478,7 @@ pub async fn run_comparison(
                         mean_r_acq: vr.metrics.mean_r_acq_mean,
                         items_never_reviewed: vr.metrics.items_never_reviewed_mean as usize,
                         // ISS v2.2 fields
-                        coverage_strict_debug: vr.metrics.coverage_t_mean,
+                        coverage_strict_debug: vr.metrics.coverage_h_0_9_mean,
                         coverage_power_06: vr.metrics.mean_r_t_mean,
                     };
                     let eval = evaluate(
@@ -565,7 +576,9 @@ mod tests {
             gave_up: false,
             goal_item_count: 10,
             items_mastered: 8,
-            coverage_t: 0.8,
+            // M1 metrics
+            introduced_ratio: 0.8,
+            coverage_h_0_9: 0.8,
             mean_r_t: 0.9,
             items_good_t: 8,
             rpm_t: 0.08,

@@ -201,6 +201,76 @@ pub struct StudentParams {
     /// Energy threshold for auto-pruning (if enabled)
     #[serde(default = "default_cluster_prune_energy_threshold")]
     pub cluster_prune_energy_threshold: f64,
+
+    // ========================================================================
+    // 11. BUDGET-BASED INTRO OVERRIDE (ISS v2.9)
+    // ========================================================================
+    // Allows introductions when review budget is underutilized, even if
+    // cluster gate would block. Solves "from-scratch stall" on large goals.
+    /// Enable budget-based introduction override (default: false)
+    /// When enabled, allows introductions based on remaining capacity
+    #[serde(default)]
+    pub intro_override_enabled: bool,
+
+    /// Slack ratio: if capacity_used < slack_ratio, allow override
+    /// Typical value: 0.6 means allow introductions if <60% of capacity is used
+    #[serde(default = "default_intro_slack_ratio")]
+    pub intro_slack_ratio: f64,
+
+    /// Maximum new items per day when override triggers
+    /// Limits explosive introduction even with leftover budget
+    #[serde(default = "default_max_new_items_per_day")]
+    pub max_new_items_per_day: usize,
+
+    // ========================================================================
+    // 12. FLOOR INTRODUCTION MECHANISM (ISS v2.9)
+    // ========================================================================
+    // Guarantees minimum progress even when all gates would block.
+    /// Minimum new items per day (default: 0, no floor)
+    /// If > 0, always introduce this many items unless working set full
+    #[serde(default)]
+    pub intro_min_per_day: usize,
+
+    /// Bootstrap active count threshold (default: 0, disabled)
+    /// If > 0, skip cluster gate entirely until active_count >= this value
+    /// Use for from-scratch large goals (e.g., intro_bootstrap_until_active: 120)
+    #[serde(default)]
+    pub intro_bootstrap_until_active: usize,
+
+    // ========================================================================
+    // 13. CLUSTER GATE HYSTERESIS (M2.4)
+    // ========================================================================
+    /// Hysteresis band around cluster_stability_threshold.
+    /// Prevents flapping when cluster energy hovers near threshold.
+    /// threshold_low = threshold - hysteresis, threshold_high = threshold + hysteresis
+    /// Gate only flips when energy crosses these boundaries.
+    /// Default: 0.01 (1% band each side). Set 0 to disable hysteresis.
+    #[serde(default = "default_cluster_gate_hysteresis")]
+    pub cluster_gate_hysteresis: f64,
+
+    // ========================================================================
+    // 14. WORKING-SET RATIO-OF-GOAL (M2.5 - Fairness Unblocker)
+    // ========================================================================
+    /// If set, effective_max_working_set = ceil(goal_count * ratio), clamped to [1, goal_count].
+    /// If None, use raw max_working_set as-is.
+    /// Set to 1.0 for Juz30 to allow full goal introduction without ceiling constraints.
+    #[serde(default)]
+    pub max_working_set_ratio_of_goal: Option<f64>,
+
+    // ========================================================================
+    // 15. BACKLOG-AWARE WORKING SET + FLOOR (M2.6)
+    // ========================================================================
+    /// Target reviews per active item per day.
+    /// Used to compute budgeted working set: max_ws_budget = floor(actual_reviews / target).
+    /// Default: None (disabled). Recommended: 0.08 (dedicated), 0.05 (casual).
+    #[serde(default)]
+    pub target_reviews_per_active: Option<f64>,
+
+    /// Maximum acceptable p90 due-age (days) before backlog is considered severe.
+    /// When p90_due_age > this threshold, intro_floor is disabled (set to 0).
+    /// Default: None (disabled). Recommended: 45 (dedicated), 90 (casual).
+    #[serde(default)]
+    pub max_p90_due_age_days: Option<f64>,
 }
 
 // Default functions for serde
@@ -309,6 +379,19 @@ fn default_cluster_prune_energy_threshold() -> f64 {
     0.85 // E>0.85 for pruning consideration
 }
 
+// ISS v2.9 defaults
+fn default_intro_slack_ratio() -> f64 {
+    0.6 // Allow override if <60% of budget is due
+}
+fn default_max_new_items_per_day() -> usize {
+    10 // Limit explosive introduction
+}
+
+// M2.4: Cluster gate hysteresis default
+fn default_cluster_gate_hysteresis() -> f64 {
+    0.01 // 1% band each side of threshold (prevents flapping)
+}
+
 impl Default for StudentParams {
     fn default() -> Self {
         Self {
@@ -350,6 +433,17 @@ impl Default for StudentParams {
             cluster_auto_prune_enabled: default_cluster_auto_prune_enabled(),
             cluster_prune_days_threshold: default_cluster_prune_days_threshold(),
             cluster_prune_energy_threshold: default_cluster_prune_energy_threshold(),
+            // ISS v2.9 intro override
+            intro_override_enabled: false,
+            intro_slack_ratio: default_intro_slack_ratio(),
+            max_new_items_per_day: default_max_new_items_per_day(),
+            intro_min_per_day: 0,
+            intro_bootstrap_until_active: 0,
+            cluster_gate_hysteresis: default_cluster_gate_hysteresis(),
+            max_working_set_ratio_of_goal: None,
+            // M2.6: Backlog-aware working set + floor
+            target_reviews_per_active: None,
+            max_p90_due_age_days: None,
         }
     }
 }
@@ -402,6 +496,17 @@ impl StudentParams {
             cluster_auto_prune_enabled: false,
             cluster_prune_days_threshold: 7,
             cluster_prune_energy_threshold: 0.85,
+            // ISS v2.9
+            intro_override_enabled: false,
+            intro_slack_ratio: 0.6,
+            max_new_items_per_day: 10,
+            intro_min_per_day: 0,
+            intro_bootstrap_until_active: 0,
+            cluster_gate_hysteresis: default_cluster_gate_hysteresis(),
+            max_working_set_ratio_of_goal: None,
+            // M2.6: Backlog-aware working set + floor
+            target_reviews_per_active: None,
+            max_p90_due_age_days: None,
         }
     }
 
@@ -452,6 +557,17 @@ impl StudentParams {
             cluster_auto_prune_enabled: false,
             cluster_prune_days_threshold: 7,
             cluster_prune_energy_threshold: 0.85,
+            // ISS v2.9
+            intro_override_enabled: false,
+            intro_slack_ratio: 0.6,
+            max_new_items_per_day: 10,
+            intro_min_per_day: 0,
+            intro_bootstrap_until_active: 0,
+            cluster_gate_hysteresis: default_cluster_gate_hysteresis(),
+            max_working_set_ratio_of_goal: None,
+            // M2.6: Backlog-aware working set + floor
+            target_reviews_per_active: None,
+            max_p90_due_age_days: None,
         }
     }
 
@@ -498,6 +614,86 @@ impl StudentParams {
         let maturity = (review_count as f64 / 5.0).clamp(0.0, 1.0);
 
         r_star_young * (1.0 - maturity) + r_star_mature * maturity
+    }
+
+    /// Compute effective max_working_set from ratio-of-goal (M2.5).
+    ///
+    /// If `max_working_set_ratio_of_goal` is set:
+    ///   effective = ceil(goal_count * ratio), clamped to [1, goal_count]
+    /// If None:
+    ///   use raw `max_working_set` as-is
+    ///
+    /// # Arguments
+    /// * `goal_count` - Total items in the goal
+    ///
+    /// # Returns
+    /// * Effective working-set ceiling to use in IntroductionPolicy
+    pub fn compute_effective_max_working_set(&self, goal_count: usize) -> usize {
+        if let Some(ratio) = self.max_working_set_ratio_of_goal {
+            let derived = (goal_count as f64 * ratio).ceil() as usize;
+            derived.clamp(1, goal_count.max(1))
+        } else {
+            self.max_working_set
+        }
+    }
+
+    /// Compute budgeted working set based on actual reviews (M2.6).
+    ///
+    /// Ensures working set grows only as fast as review capacity can support.
+    ///
+    /// # Formula
+    /// ```text
+    /// max_ws_budget = floor(actual_reviews / target_reviews_per_active)
+    /// ```
+    /// Clamped to [1, goal_count]. Returns None if target_reviews_per_active is not set.
+    ///
+    /// # Arguments
+    /// * `actual_reviews` - Number of reviews completed today
+    /// * `goal_count` - Total items in the goal (upper bound)
+    pub fn compute_budgeted_working_set(
+        &self,
+        actual_reviews: usize,
+        goal_count: usize,
+    ) -> Option<usize> {
+        self.target_reviews_per_active.map(|target| {
+            if target <= 0.0 {
+                goal_count.max(1)
+            } else {
+                let budget = (actual_reviews as f64 / target).floor() as usize;
+                budget.clamp(1, goal_count.max(1))
+            }
+        })
+    }
+
+    /// Compute effective intro floor based on backlog severity (M2.6).
+    ///
+    /// Disables the intro floor when backlog is severe to prevent
+    /// adding items when review pressure is already too high.
+    ///
+    /// # Arguments
+    /// * `p90_due_age_days` - 90th percentile days since last review for active items
+    ///
+    /// # Returns
+    /// * `intro_min_per_day` if backlog is acceptable
+    /// * `0` if backlog is severe (p90_due_age > max_p90_due_age_days)
+    /// * `intro_min_per_day` if max_p90_due_age_days is not set (feature disabled)
+    pub fn compute_effective_intro_floor(&self, p90_due_age_days: f64) -> usize {
+        if let Some(max_age) = self.max_p90_due_age_days {
+            if p90_due_age_days > max_age {
+                0 // Disable floor when backlog is severe
+            } else {
+                self.intro_min_per_day
+            }
+        } else {
+            self.intro_min_per_day
+        }
+    }
+
+    /// Check if backlog is severe based on p90 due age (M2.6).
+    pub fn is_backlog_severe(&self, p90_due_age_days: f64) -> bool {
+        self.max_p90_due_age_days
+            .map(|max| p90_due_age_days > max)
+            .unwrap_or(false)
     }
 
     /// Compute drift rate with both energy and maturity dependence (ISS v2.4 Fix 3).
@@ -627,6 +823,17 @@ impl StudentProfile {
                 cluster_auto_prune_enabled: false,
                 cluster_prune_days_threshold: 7,
                 cluster_prune_energy_threshold: 0.85,
+                // ISS v2.9
+                intro_override_enabled: false,
+                intro_slack_ratio: 0.6,
+                max_new_items_per_day: 10,
+                intro_min_per_day: 0,
+                intro_bootstrap_until_active: 0,
+                cluster_gate_hysteresis: default_cluster_gate_hysteresis(),
+                max_working_set_ratio_of_goal: None,
+                // M2.6: Backlog-aware working set + floor
+                target_reviews_per_active: None,
+                max_p90_due_age_days: None,
             },
             StudentProfile::NormalDedicated => StudentParams {
                 skip_day_prob: 0.08,
@@ -666,6 +873,17 @@ impl StudentProfile {
                 cluster_auto_prune_enabled: false,
                 cluster_prune_days_threshold: 7,
                 cluster_prune_energy_threshold: 0.85,
+                // ISS v2.9
+                intro_override_enabled: false,
+                intro_slack_ratio: 0.6,
+                max_new_items_per_day: 10,
+                intro_min_per_day: 0,
+                intro_bootstrap_until_active: 0,
+                cluster_gate_hysteresis: default_cluster_gate_hysteresis(),
+                max_working_set_ratio_of_goal: None,
+                // M2.6: Backlog-aware working set + floor
+                target_reviews_per_active: None,
+                max_p90_due_age_days: None,
             },
             StudentProfile::HarshStressTest => StudentParams {
                 skip_day_prob: 0.20,
@@ -705,6 +923,17 @@ impl StudentProfile {
                 cluster_auto_prune_enabled: false,
                 cluster_prune_days_threshold: 7,
                 cluster_prune_energy_threshold: 0.85,
+                // ISS v2.9
+                intro_override_enabled: false,
+                intro_slack_ratio: 0.6,
+                max_new_items_per_day: 10,
+                intro_min_per_day: 0,
+                intro_bootstrap_until_active: 0,
+                cluster_gate_hysteresis: default_cluster_gate_hysteresis(),
+                max_working_set_ratio_of_goal: None,
+                // M2.6: Backlog-aware working set + floor
+                target_reviews_per_active: None,
+                max_p90_due_age_days: None,
             },
         }
     }
@@ -1747,5 +1976,137 @@ mod tests {
             brain_hard.fatigue,
             brain_easy.fatigue
         );
+    }
+
+    #[test]
+    fn test_effective_max_working_set_ratio_1_0() {
+        let mut params = StudentParams::default();
+        params.max_working_set = 50;
+        params.max_working_set_ratio_of_goal = Some(1.0);
+        // With ratio 1.0, effective = goal_count (564)
+        assert_eq!(params.compute_effective_max_working_set(564), 564);
+    }
+
+    #[test]
+    fn test_effective_max_working_set_ratio_0_95() {
+        let mut params = StudentParams::default();
+        params.max_working_set = 50;
+        params.max_working_set_ratio_of_goal = Some(0.95);
+        // With ratio 0.95, effective = ceil(564 * 0.95) = ceil(535.8) = 536
+        assert_eq!(params.compute_effective_max_working_set(564), 536);
+    }
+
+    #[test]
+    fn test_effective_max_working_set_ratio_above_1() {
+        let mut params = StudentParams::default();
+        params.max_working_set = 50;
+        params.max_working_set_ratio_of_goal = Some(1.5);
+        // Ratio > 1 should clamp to goal_count
+        assert_eq!(params.compute_effective_max_working_set(564), 564);
+    }
+
+    #[test]
+    fn test_effective_max_working_set_ratio_very_small() {
+        let mut params = StudentParams::default();
+        params.max_working_set = 50;
+        params.max_working_set_ratio_of_goal = Some(0.001);
+        // Very small ratio should clamp to 1
+        assert_eq!(params.compute_effective_max_working_set(564), 1);
+    }
+
+    #[test]
+    fn test_effective_max_working_set_none_uses_raw() {
+        let mut params = StudentParams::default();
+        params.max_working_set = 150;
+        params.max_working_set_ratio_of_goal = None;
+        // None should use raw max_working_set
+        assert_eq!(params.compute_effective_max_working_set(564), 150);
+    }
+
+    // ========================================================================
+    // M2.6: Budgeted Working Set Tests
+    // ========================================================================
+
+    #[test]
+    fn test_budgeted_working_set_basic() {
+        let mut params = StudentParams::default();
+        params.target_reviews_per_active = Some(0.1);
+        // reviews=20, target=0.1 => max_ws_budget = 200
+        assert_eq!(params.compute_budgeted_working_set(20, 564), Some(200));
+    }
+
+    #[test]
+    fn test_budgeted_working_set_clamps_to_goal() {
+        let mut params = StudentParams::default();
+        params.target_reviews_per_active = Some(0.01);
+        // reviews=20, target=0.01 => max_ws_budget = 2000, but clamped to goal_count
+        assert_eq!(params.compute_budgeted_working_set(20, 564), Some(564));
+    }
+
+    #[test]
+    fn test_budgeted_working_set_clamps_to_1() {
+        let mut params = StudentParams::default();
+        params.target_reviews_per_active = Some(0.5);
+        // reviews=0, target=0.5 => max_ws_budget = 0, but clamped to 1
+        assert_eq!(params.compute_budgeted_working_set(0, 564), Some(1));
+    }
+
+    #[test]
+    fn test_budgeted_working_set_none_disabled() {
+        let params = StudentParams::default();
+        // target_reviews_per_active = None => feature disabled
+        assert_eq!(params.compute_budgeted_working_set(20, 564), None);
+    }
+
+    // ========================================================================
+    // M2.6: Backlog-Aware Floor Tests
+    // ========================================================================
+
+    #[test]
+    fn test_effective_intro_floor_normal() {
+        let mut params = StudentParams::default();
+        params.intro_min_per_day = 5;
+        params.max_p90_due_age_days = Some(45.0);
+        // p90_due_age=30 < max=45 => floor still active
+        assert_eq!(params.compute_effective_intro_floor(30.0), 5);
+    }
+
+    #[test]
+    fn test_effective_intro_floor_backlog_severe() {
+        let mut params = StudentParams::default();
+        params.intro_min_per_day = 5;
+        params.max_p90_due_age_days = Some(45.0);
+        // p90_due_age=60 > max=45 => floor disabled
+        assert_eq!(params.compute_effective_intro_floor(60.0), 0);
+    }
+
+    #[test]
+    fn test_effective_intro_floor_boundary() {
+        let mut params = StudentParams::default();
+        params.intro_min_per_day = 5;
+        params.max_p90_due_age_days = Some(45.0);
+        // p90_due_age=45 = max=45 => floor still active (not >)
+        assert_eq!(params.compute_effective_intro_floor(45.0), 5);
+        // p90_due_age=45.1 > max=45 => floor disabled
+        assert_eq!(params.compute_effective_intro_floor(45.1), 0);
+    }
+
+    #[test]
+    fn test_effective_intro_floor_disabled() {
+        let mut params = StudentParams::default();
+        params.intro_min_per_day = 5;
+        params.max_p90_due_age_days = None;
+        // Feature disabled => always use intro_min_per_day
+        assert_eq!(params.compute_effective_intro_floor(100.0), 5);
+    }
+
+    #[test]
+    fn test_is_backlog_severe() {
+        let mut params = StudentParams::default();
+        params.max_p90_due_age_days = Some(45.0);
+        assert!(!params.is_backlog_severe(30.0));
+        assert!(!params.is_backlog_severe(45.0));
+        assert!(params.is_backlog_severe(45.1));
+        assert!(params.is_backlog_severe(100.0));
     }
 }

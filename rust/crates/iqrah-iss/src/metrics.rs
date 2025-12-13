@@ -283,11 +283,25 @@ pub struct SimulationMetrics {
     /// Number of items that reached mastery
     pub items_mastered: usize,
 
-    // === New outcome metrics at T_eval ===
-    /// Fraction of items with R(T_eval) >= 0.9 at evaluation horizon
-    pub coverage_t: f64,
+    // =========================================================================
+    // ISS v2.9 M1: Explicit Metrics (4 required for M1 acceptance)
+    // =========================================================================
+    /// M1 METRIC 1: introduced_ratio = items_introduced / goal_count
+    /// An item is "introduced" if it has review_count > 0 (in introduction_order map)
+    pub introduced_ratio: f64,
 
-    /// Mean retrievability across all goal items at T_eval
+    /// M1 METRIC 2: mean_retrievability = ΣR / goal_count (same as mean_r_t)
+    /// Already computed as mean_r_t below
+
+    /// M1 METRIC 3: coverage_h_0_9 = count(R ≥ 0.9) / goal_count (binary)
+    /// Renamed from coverage_t for clarity
+    pub coverage_h_0_9: f64,
+
+    /// M1 METRIC 4: exercise_availability_ratio (from exercise results)
+    /// Set externally when exercises are evaluated
+
+    // === Outcome metrics at T_eval ===
+    /// Mean retrievability across all goal items at T_eval (M1 METRIC 2)
     pub mean_r_t: f64,
 
     /// Number of items with R(T_eval) >= 0.9
@@ -314,6 +328,7 @@ pub struct SimulationMetrics {
 
     // === ISS v2.2: Energy Drift & Continuous Coverage ===
     /// DEBUG: Binary coverage (R≥0.9) for comparison with v2.1
+    /// (Deprecated: use coverage_h_0_9 instead)
     pub coverage_strict_debug: f64,
 
     /// ALTERNATE: Power-transformed coverage (p=0.6) for forgiving evaluation
@@ -418,7 +433,7 @@ impl SimulationMetrics {
             .collect();
 
         let items_good_t = r_evals.iter().filter(|&&r| r >= 0.9).count();
-        let coverage_t = if !goal_items.is_empty() {
+        let coverage_h_0_9 = if !goal_items.is_empty() {
             items_good_t as f64 / goal_items.len() as f64
         } else {
             0.0
@@ -492,6 +507,13 @@ impl SimulationMetrics {
         // Items never reviewed = goal items not in introduction_order
         let items_never_reviewed = goal_items.len().saturating_sub(introduction_order.len());
 
+        // M1: Compute introduced_ratio = items_introduced / goal_count
+        let introduced_ratio = if !goal_items.is_empty() {
+            introduction_order.len() as f64 / goal_items.len() as f64
+        } else {
+            0.0
+        };
+
         Self {
             retention_per_minute,
             days_to_mastery: None, // TODO: Implement daily snapshot tracking
@@ -502,7 +524,9 @@ impl SimulationMetrics {
             gave_up,
             goal_item_count: goal_items.len(),
             items_mastered,
-            coverage_t,
+            // M1 metrics
+            introduced_ratio,
+            coverage_h_0_9,
             mean_r_t,
             items_good_t,
             rpm_t,
@@ -530,7 +554,9 @@ impl Default for SimulationMetrics {
             gave_up: false,
             goal_item_count: 0,
             items_mastered: 0,
-            coverage_t: 0.0,
+            // M1 metrics
+            introduced_ratio: 0.0,
+            coverage_h_0_9: 0.0,
             mean_r_t: 0.0,
             items_good_t: 0,
             rpm_t: 0.0,
@@ -705,7 +731,8 @@ mod tests {
             gave_up: false,
             goal_item_count: 100,
             items_mastered: 80,
-            coverage_t: 0.8,
+            introduced_ratio: 0.8,
+            coverage_h_0_9: 0.8,
             mean_r_t: 0.85,
             items_good_t: 80,
             rpm_t: 0.08,

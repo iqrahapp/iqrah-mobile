@@ -1,0 +1,39 @@
+# M2.9.1: Strong Student Profile - Dedicated
+# Changes from avg: better memory, less forgetting, benefits more from spacing
+name: juz_amma_dedicated_strong
+goal_id: "juz:30"
+target_days: 180
+daily_minutes: 60.0
+student_params:
+  skip_day_prob: 0.02            # Strong: rarely skip (from 0.05)
+  early_quit_prob: 0.0
+  persistence_threshold: 2000     # Strong: more resilient (from 1500)
+  forgetting_rate_mult: 0.6       # Strong: much better memory (from 0.9)
+  spacing_sensitivity: 1.5        # Strong: benefits more from spacing (from 1.2)
+  item_variability: 0.03          # Strong: more consistent (from 0.05)
+  fatigue_onset_minutes: 60.0     # Strong: later fatigue (from 45)
+  fatigue_decay_rate: 0.005       # Strong: slower fatigue decay (from 0.01)
+  difficulty_sensitivity: 0.05    # Strong: less affected by difficulty (from 0.1)
+  known_surah_ids: []
+  vocab_known_pct: 0.25
+  overdue_sensitivity: 0.2        # Strong: less frustrated by overdue (from 0.3)
+  momentum_sensitivity: 0.3
+  drift_alpha_max: 0.008          # Strong: even slower drift (from 0.01)
+  drift_alpha_min: 0.001          # Strong: (from 0.002)
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+  session_capacity: 60.0
+  headroom_reserve: 0.10
+  reviews_to_stability: 5.0
+  days_to_stability: 30.0
+  max_working_set: 500
+  cluster_stability_threshold: 0.15
+  cluster_expansion_batch_size: 15
+  intro_min_per_day: 3
+  max_working_set_ratio_of_goal: 1.0
+  target_reviews_per_active: 0.08
+  max_p90_due_age_days: 45.0
+session_size: 20
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default

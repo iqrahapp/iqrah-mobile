@@ -4,7 +4,13 @@
 //! ISS **orchestrates** the simulation; `iqrah-core` **decides** what to schedule.
 
 use crate::baselines::{FixedSrsBaseline, GraphTopoBaseline, PageOrderBaseline, RandomBaseline};
+use crate::config::{GateReason, GateTraceRow};
 use crate::debug_stats::{StudentDebugAccumulator, StudentDebugSummary};
+use crate::gate_trace::GateTraceCollector;
+use crate::memory_health_trace::{
+    compute_mean, compute_p10, compute_p50, compute_p90, MemoryHealthRow,
+    MemoryHealthTraceCollector,
+};
 
 use crate::{
     InMemoryUserRepository, Scenario, SchedulerVariant, SessionGenerator, SimulationConfig,
@@ -12,6 +18,7 @@ use crate::{
 };
 
 use crate::config::compute_almost_due_window;
+use crate::introduction_policy::{compute_allowance, IntroductionAllowance};
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use iqrah_core::domain::{MemoryState, ReviewGrade};
@@ -20,7 +27,7 @@ use iqrah_core::initial_placement::{
 };
 use iqrah_core::ports::{ContentRepository, UserRepository};
 use iqrah_core::scheduler_v2::bandit::BanditOptimizer;
-use iqrah_core::scheduler_v2::session_generator::{generate_session, SessionMode};
+// M2.2: generate_session replaced by budget-enforced selection
 use iqrah_core::scheduler_v2::{CandidateNode, SessionMixConfig, UserProfile};
 use iqrah_core::services::LearningService;
 use rand::rngs::StdRng;
@@ -57,18 +64,6 @@ fn estimate_exercise_time(
     };
 
     (base_secs * diff_mult * stab_mult).clamp(10.0, 120.0)
-}
-
-/// Convert a verse key (e.g., "1:1") to a node ID.
-/// Uses a simple encoding: chapter * 1000 + verse
-fn verse_key_to_node_id(key: &str) -> i64 {
-    let parts: Vec<&str> = key.split(':').collect();
-    if parts.len() != 2 {
-        return 0;
-    }
-    let chapter: i64 = parts[0].parse().unwrap_or(0);
-    let verse: i64 = parts[1].parse().unwrap_or(0);
-    chapter * 1000 + verse
 }
 
 use crate::brain::StudentParams;
@@ -419,6 +414,9 @@ impl Simulator {
         // ISS v2.6: Create learning cluster for batch-based introduction
         // Seed cluster with items that are already active from initial placement
         let mut learning_cluster = LearningCluster::new();
+
+        // M2.4: Per-student hysteresis state for gate (start true = allow expansion initially)
+        let mut gate_expand_mode = true;
         {
             let initial_states = user_repo.get_memory_states_batch_sync(&user_id, &goal_items);
             let initial_active: Vec<i64> = initial_states
@@ -432,6 +430,39 @@ impl Simulator {
                 learning_cluster.add_batch(&initial_active, 0);
             }
         }
+
+        // ISS v2.8: Load exercises from scenario config
+        let (exercises, mut exercise_schedules) =
+            crate::exercises::load_exercises(&scenario.exercises);
+        if !exercises.is_empty() {
+            debug!(
+                "Loaded {} exercises for scenario {}",
+                exercises.len(),
+                scenario.name
+            );
+        }
+
+        // M1.2: Create gate trace collector if enabled
+        let mut gate_trace_collector = if self.config.debug_trace.enabled {
+            Some(GateTraceCollector::new(
+                &self.config.debug_trace,
+                &scenario.name,
+                &scenario.scheduler.name(),
+            ))
+        } else {
+            None
+        };
+
+        // M3: Create memory health trace collector if enabled
+        let mut memory_health_collector = if self.config.debug_trace.enabled {
+            Some(MemoryHealthTraceCollector::new(
+                &self.config.debug_trace,
+                &scenario.name,
+                &scenario.scheduler.name(),
+            ))
+        } else {
+            None
+        };
 
         // 9. Main simulation loop
         for day in 0..scenario.target_days {
@@ -487,6 +518,9 @@ impl Simulator {
                     session_size,
                     dynamic_window,
                     &mut learning_cluster,
+                    gate_trace_collector.as_mut(),
+                    &mut gate_expand_mode,
+                    memory_health_collector.as_mut(),
                 )
                 .await
                 .context("Failed to simulate day")?;
@@ -505,6 +539,41 @@ impl Simulator {
             // Check daily minute budget
             if day_minutes >= scenario.daily_minutes {
                 debug!("Day {} completed full budget", day);
+            }
+
+            // ISS v2.8: Run scheduled exercises at end of day
+            if !exercises.is_empty() {
+                // Collect current memory states for exercise evaluation
+                let memory_states: HashMap<i64, MemoryState> = goal_items
+                    .iter()
+                    .filter_map(|id| {
+                        user_repo
+                            .get_memory_state_sync(&user_id, *id)
+                            .map(|s| (*id, s))
+                    })
+                    .collect();
+
+                // Debug: Log mismatch between goal items and memory states
+                if memory_states.len() != goal_items.len() {
+                    debug!(
+                        "Exercise memory states mismatch: {} goal items, {} states found",
+                        goal_items.len(),
+                        memory_states.len()
+                    );
+                    if !goal_items.is_empty() {
+                        debug!("First goal item: {}", goal_items[0]);
+                    }
+                }
+
+                self.run_scheduled_exercises(
+                    scenario,
+                    &mut exercise_schedules,
+                    &exercises,
+                    &memory_states,
+                    &goal_items,
+                    &brain,
+                    day,
+                );
             }
         }
 
@@ -571,6 +640,20 @@ impl Simulator {
             sanity_data.retrievability_histogram.add(recall_prob);
         }
 
+        // M1.2: Write trace output if enabled
+        if let Some(collector) = gate_trace_collector {
+            if let Err(e) = collector.write_output() {
+                warn!("Failed to write gate trace output: {}", e);
+            }
+        }
+
+        // M3: Write memory health trace output if enabled
+        if let Some(collector) = memory_health_collector {
+            if let Err(e) = collector.write_output() {
+                warn!("Failed to write memory health trace output: {}", e);
+            }
+        }
+
         Ok((metrics, user_repo, debug_summary, Some(sanity_data)))
     }
 
@@ -626,6 +709,9 @@ impl Simulator {
         session_size: usize,
         almost_due_window_days: u32,
         learning_cluster: &mut LearningCluster,
+        mut gate_trace: Option<&mut GateTraceCollector>,
+        gate_expand_mode: &mut bool,
+        memory_health: Option<&mut MemoryHealthTraceCollector>,
     ) -> Result<f64> {
         let now = start_time + Duration::days(day as i64);
         let now_ts = now.timestamp_millis();
@@ -638,14 +724,25 @@ impl Simulator {
         }
 
         // 1. Generate session - branch based on scheduler variant
-        let session_items = if let Some(baseline_session) = {
+        let session_result = if let Some(baseline_session) = {
             // Get memory states for baseline session generation
             let memory_states = user_repo.get_all_states_for_user(user_id);
             // Use dynamic session size
             baseline_state.generate_session(goal_items, &memory_states, session_size, day)
         } {
-            // Use baseline-generated session
-            baseline_session
+            // Use baseline-generated session with default allowance (baseline doesn't use policy)
+            let default_allowance = IntroductionAllowance {
+                allowance_raw: 0,
+                allowance_after_capacity: 0,
+                allowance_after_workingset: 0,
+                allowance_after_gate: 0,
+                allowance_after_floor: 0,
+                allowance_final: 0,
+                gate_expand_mode: false,
+                threshold_low: 0.0,
+                threshold_high: 0.0,
+            };
+            (baseline_session, default_allowance)
         } else {
             // Use real Iqrah scheduler
 
@@ -669,39 +766,72 @@ impl Simulator {
             // Step 1: Compute weighted cluster energy (INFINITY if empty)
             let cluster_energy = learning_cluster.compute_weighted_energy(&states_map, day);
 
-            // Step 2: Check if cluster is ready for expansion
-            let can_expand = if learning_cluster.is_empty() {
-                true // Bootstrap: Always allow first batch
+            // M2.4: Compute introduction allowance using explicit clamp stages
+            // compute_allowance() internally calls update_expand_mode() with hysteresis
+            // Order: capacity → working-set (HARD) → gate → floor
+            let capacity_used = 0.5; // TODO: Compute actual capacity utilization
+
+            // M2.5: Compute effective working-set from ratio-of-goal
+            let effective_max_ws_from_ratio = brain
+                .params
+                .compute_effective_max_working_set(goal_items.len());
+
+            // M2.6: Compute p90 due age for backlog-aware decisions
+            let now_ts = (start_time + Duration::days(day as i64)).timestamp_millis();
+            let active_due_ages: Vec<f64> = states_map
+                .values()
+                .filter(|s| s.review_count > 0)
+                .map(|s| {
+                    (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                        / (24.0 * 60.0 * 60.0 * 1000.0)
+                })
+                .collect();
+            let p90_due_age = if active_due_ages.is_empty() {
+                0.0
             } else {
-                cluster_energy >= brain.params.cluster_stability_threshold
+                crate::memory_health_trace::compute_p90(&active_due_ages)
             };
 
-            // Step 3: Determine how many new items to allow (used for filtering)
-            let new_items_limit = if can_expand {
-                // Check working set limit first
-                if active_count >= brain.params.max_working_set {
-                    0 // At working set limit - consolidate
-                } else {
-                    // Within limit - allow batch
-                    let remaining_capacity = brain.params.max_working_set - active_count;
-                    let batch_size = brain.params.cluster_expansion_batch_size;
-                    batch_size.min(remaining_capacity)
-                }
-            } else {
-                0 // Cluster not stable - consolidate
+            // M2.6: Compute budgeted working set (caps based on review capacity)
+            let max_ws_budget = brain
+                .params
+                .compute_budgeted_working_set(session_size, goal_items.len());
+            let effective_max_ws = match max_ws_budget {
+                Some(budget) => effective_max_ws_from_ratio.min(budget),
+                None => effective_max_ws_from_ratio,
             };
+
+            // M2.6: Compute backlog-aware intro floor
+            let intro_floor_effective = brain.params.compute_effective_intro_floor(p90_due_age);
+
+            let allowance = compute_allowance(
+                &brain.params,
+                active_count,
+                effective_max_ws, // M2.5 + M2.6: min of ratio-derived and budget-derived
+                cluster_energy,
+                *gate_expand_mode, // current mode - will be updated internally
+                capacity_used,
+                intro_floor_effective, // M2.6: may be 0 if backlog severe
+            );
+            // Update gate_expand_mode from policy result (hysteresis applied internally)
+            *gate_expand_mode = allowance.gate_expand_mode;
+            let new_items_limit = allowance.allowance_final;
 
             // Get cluster node IDs for membership filtering
             let cluster_node_ids = learning_cluster.node_ids();
 
-            debug!(
-                "ClusterGate day={}: cluster_size={}, cluster_energy={:.3}, can_expand={}, active={}, new_limit={}",
+            // M2.4: Log policy decision for diagnosis
+            tracing::info!(
+                "M2.4 Policy day={}: expand_mode={}, raw={}, cap={}, ws={}, gate={}, final={} (active={}, ceiling={})",
                 day,
-                learning_cluster.len(),
-                cluster_energy,
-                can_expand,
+                *gate_expand_mode,
+                allowance.allowance_raw,
+                allowance.allowance_after_capacity,
+                allowance.allowance_after_workingset,
+                allowance.allowance_after_gate,
+                allowance.allowance_final,
                 active_count,
-                new_items_limit
+                brain.params.max_working_set
             );
 
             // Get ALL candidates for scheduling (sync batch operation)
@@ -717,8 +847,15 @@ impl Simulator {
             // === ISS v2.6: Filter candidates by cluster membership ===
             // Only include:
             // 1. Items already in cluster (being learned)
-            // 2. OR new items (review_count=0) if gate is open, up to limit
-            let mut new_items_allowed = new_items_limit;
+            // 2. OR new items (review_count=0) - M2.2: let budget selection handle limiting
+            // (removed new_items_allowed counter - budget-enforced selection does this)
+
+            // M2.3: Count new items BEFORE cluster filter
+            let new_from_get_candidates = all_candidates
+                .iter()
+                .filter(|c| c.review_count == 0)
+                .count();
+
             let candidates: Vec<_> = all_candidates
                 .into_iter()
                 .filter(|c| {
@@ -726,15 +863,17 @@ impl Simulator {
                     if cluster_node_ids.contains(&c.id) {
                         return true;
                     }
-                    // Item is new (review_count=0) and gate allows more
-                    if c.review_count == 0 && new_items_allowed > 0 {
-                        new_items_allowed -= 1;
+                    // Item is new (review_count=0) - include all, budget selection will limit
+                    if c.review_count == 0 {
                         return true;
                     }
-                    // Otherwise exclude - not in cluster and not eligible for introduction
+                    // Otherwise exclude - not in cluster and not a new item
                     false
                 })
                 .collect();
+
+            // M2.3: Count new items AFTER cluster filter (should be same for new items)
+            let new_pass_cluster_filter = candidates.iter().filter(|c| c.review_count == 0).count();
 
             debug!(
                 "Filtered candidates: {} from {} (cluster: {}, new_allowed: {})",
@@ -783,21 +922,96 @@ impl Simulator {
             // Determine session mix configuration
             // Note: Cluster gate already filtered candidates, so we use default mix config
             // The candidate filtering controls introduction, not band composition percentages
-            let mix_config = scenario
+            let _mix_config = scenario
                 .session_mix
                 .unwrap_or_else(|| SessionMixConfig::default());
 
-            // Generate session using REAL scheduler
-            let session = generate_session(
-                candidates,
-                parent_map,
-                parent_energies,
-                &profile,
-                session_size, // Use dynamic session_size
-                now_ts,
-                SessionMode::MixedLearning,
-                Some(&mix_config),
-                None, // event_sink: use NullEventSink for ISS performance
+            // === M2.2: BUDGET-ENFORCED SESSION COMPOSITION ===
+            // Split candidates into due (review_count > 0) and new (review_count == 0)
+            let (new_candidates, mut due_candidates): (Vec<_>, Vec<_>) =
+                candidates.into_iter().partition(|c| c.review_count == 0);
+
+            // M2.7: Sort due candidates by due_age DESC (most overdue first)
+            // M2.8: Added deterministic tie-break (item_id ASC)
+            // This prevents starvation where items with large due_age never get selected.
+            // Due age = now - next_due_ts (negative means not yet due)
+            due_candidates.sort_by(|a, b| {
+                // Higher due_age (more overdue) = higher priority
+                // if next_due_ts < now_ts, item is overdue -> positive due_age
+                // Sort DESC: larger due_age comes first
+                let due_age_a = now_ts - a.next_due_ts;
+                let due_age_b = now_ts - b.next_due_ts;
+                // Primary: due_age DESC, Secondary: id ASC (deterministic)
+                due_age_b.cmp(&due_age_a).then(a.id.cmp(&b.id))
+            });
+
+            let due_candidates_available = due_candidates.len();
+            let new_candidates_available = new_candidates.len();
+
+            // M2.4: Use policy's allowance_final directly (floor already applied in stage 4)
+            // Don't cap further with intro_budget - that would double-apply the floor
+            let intro_cap = new_items_limit;
+
+            // Compute budgets with hard reservation for intro
+            let actual_intro_budget = intro_cap.min(session_size);
+            let due_budget = session_size.saturating_sub(actual_intro_budget);
+
+            // Step 1: Select new items up to intro_cap (hard reservation)
+            let new_to_select = intro_cap.min(new_candidates_available);
+            let selected_new: Vec<i64> = new_candidates
+                .iter()
+                .take(new_to_select)
+                .map(|c| c.id)
+                .collect();
+
+            // Step 2: Select due items up to due_budget (now sorted by most overdue first)
+            let due_to_select = due_budget.min(due_candidates_available);
+            let selected_due: Vec<i64> = due_candidates
+                .iter()
+                .take(due_to_select)
+                .map(|c| c.id)
+                .collect();
+
+            // Step 3: Compute spillover
+            // If new_selected < intro_cap, spill unused intro slots to due
+            let unused_intro_slots = intro_cap.saturating_sub(selected_new.len());
+            let spill_to_due_count =
+                unused_intro_slots.min(due_candidates_available.saturating_sub(selected_due.len()));
+
+            // M2.2 HARD CAP: Do NOT spill unused due slots to new items
+            // intro_cap is a MAXIMUM, not a target - prevents accidental over-introduction
+            // If due candidates are few, we just do fewer reviews, NOT more new intros
+            let spill_to_new_count = 0usize; // DISABLED: was causing intro > intro_cap
+
+            // Step 4: Apply spillover - only to due items (already sorted by overdue priority)
+            let additional_due: Vec<i64> = due_candidates
+                .iter()
+                .skip(selected_due.len())
+                .take(spill_to_due_count)
+                .map(|c| c.id)
+                .collect();
+
+            // Combine into final session (no additional_new since spill_to_new is disabled)
+            let mut session: Vec<i64> = Vec::with_capacity(session_size);
+            session.extend(selected_new.iter().cloned());
+            session.extend(selected_due.iter().cloned());
+            session.extend(additional_due.iter().cloned());
+
+            // Final session stats for trace (no additional_new since spill_to_new disabled)
+            let final_new_selected = selected_new.len(); // No spillover to new
+            let final_due_selected = selected_due.len() + additional_due.len();
+            let final_spill_to_due = spill_to_due_count;
+            let final_spill_to_new = spill_to_new_count;
+
+            // M2.3: Log actual session partition sizes for funnel diagnosis
+            tracing::info!(
+                "M2.3 SessionPartition day={}: new_candidates_actual={}, due_candidates_actual={}, new_to_select={}, selected_new={}",
+                day, new_candidates_available, due_candidates_available, new_to_select, final_new_selected
+            );
+
+            debug!(
+                "M2.2 BudgetSession day={}: session_size={}, intro_cap={}, due_budget={}, new_selected={}, due_selected={}, spill_due={}, spill_new={}",
+                day, session_size, intro_cap, due_budget, final_new_selected, final_due_selected, final_spill_to_due, final_spill_to_new
             );
 
             // === Event tracking: Record ItemSkipped for candidates not in session ===
@@ -827,8 +1041,14 @@ impl Simulator {
                 }
             }
 
-            session
+            // Store selection stats for trace (via closure capture trick - use thread_local or pass)
+            // For now we'll recompute these values in the trace block later
+
+            (session, allowance)
         };
+
+        // Destructure (session, allowance) tuple
+        let (session_items, allowance) = session_result;
 
         debug!(
             "Generated session with {} items for {}",
@@ -1097,7 +1317,14 @@ impl Simulator {
             let avg_interval = Self::compute_actual_avg_interval(&all_states) as f32;
             let maintenance_burden = active_items as f32 / avg_interval.max(1.0);
             let capacity_util = maintenance_burden / brain.params.session_capacity as f32;
-            let intro_rate = Self::compute_sustainable_intro_rate(&all_states, &brain.params);
+
+            // M1.2: Collect gate diagnostics for trace
+            let mut gate_diag = crate::config::GateDiagnostics::default();
+            let intro_rate = Self::compute_sustainable_intro_rate(
+                &all_states,
+                &brain.params,
+                Some(&mut gate_diag),
+            );
 
             // Note: add_batch and prune_mastered are called unconditionally above
             // (lines 1010-1034), so we don't duplicate them here
@@ -1146,6 +1373,292 @@ impl Simulator {
                 intro_gated_by_cluster: cluster_energy_gated,
                 intro_gated_by_working_set: working_set_gated,
             });
+        }
+
+        // M1.2: Add gate trace row unconditionally (outside event block)
+        // This ensures --trace works without --emit-events
+        if let Some(trace) = gate_trace.as_mut() {
+            // Get states and compute values needed for trace
+            let states = user_repo.get_memory_states_batch_sync(user_id, goal_items);
+            let active_items = states.values().filter(|s| s.review_count > 0).count();
+            let all_states: Vec<_> = states.values().cloned().collect();
+
+            // Collect gate diagnostics from compute_sustainable_intro_rate
+            let mut gate_diag = crate::config::GateDiagnostics::default();
+            let _intro_rate = Self::compute_sustainable_intro_rate(
+                &all_states,
+                &brain.params,
+                Some(&mut gate_diag),
+            );
+
+            // M2.1: Correct intro tracking using introduction_order delta
+            // introduced_total is authoritative (introduction_order.len())
+            let introduced_total = introduction_order.len();
+            let single_review_items = states.values().filter(|s| s.review_count == 1).count();
+
+            // Get previous introduced_total from trace rows to compute delta
+            let prev_introduced_total =
+                trace.rows().last().map(|r| r.introduced_total).unwrap_or(0);
+            let introduced_today = introduced_total.saturating_sub(prev_introduced_total);
+
+            // M2.2: Compute candidate availability
+            // New candidates = unreviewed goal items not yet introduced
+            let new_candidates_available = goal_items.len().saturating_sub(introduced_total);
+            // Due candidates ~ active items (approximation - actual would need session block data)
+            let due_candidates_available = active_items;
+
+            // M2.2: Budget enforcement stats
+            let intro_budget = brain.params.intro_min_per_day;
+            let new_items_limit_today = if gate_diag.gate_blocked {
+                0
+            } else {
+                brain
+                    .params
+                    .cluster_expansion_batch_size
+                    .min(brain.params.max_working_set.saturating_sub(active_items))
+            };
+            let intro_cap = intro_budget.min(new_items_limit_today);
+            let due_budget = session_size.saturating_sub(intro_cap.min(session_size));
+
+            // Actual selection (intro_today = new_selected with M2.2 enforcement)
+            let new_selected = introduced_today;
+            let due_selected = session_len.saturating_sub(new_selected);
+
+            // Spillover computation
+            let spill_to_due = intro_cap
+                .saturating_sub(new_selected)
+                .min(due_candidates_available.saturating_sub(due_selected));
+            let spill_to_new = due_budget
+                .saturating_sub(due_selected)
+                .min(new_candidates_available.saturating_sub(new_selected));
+
+            let capacity_budget = brain.params.session_capacity as usize;
+            let budget_delta = capacity_budget as i32 - session_len as i32;
+
+            // M2.5: Compute effective max working-set for trace
+            let effective_max_ws_for_trace = brain
+                .params
+                .compute_effective_max_working_set(goal_items.len());
+
+            // M2.6: Compute p90 due age for backlog-aware decisions
+            let now_ts = (start_time + Duration::days(day as i64)).timestamp_millis();
+            let active_due_ages: Vec<f64> = states
+                .values()
+                .filter(|s| s.review_count > 0)
+                .map(|s| {
+                    (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                        / (24.0 * 60.0 * 60.0 * 1000.0)
+                })
+                .collect();
+            let p90_due_age = if active_due_ages.is_empty() {
+                0.0
+            } else {
+                compute_p90(&active_due_ages)
+            };
+
+            // M2.6: Compute budgeted working set and backlog-aware floor
+            let max_ws_budget = brain
+                .params
+                .compute_budgeted_working_set(session_len, goal_items.len());
+            let backlog_severe = brain.params.is_backlog_severe(p90_due_age);
+            let intro_floor_effective = brain.params.compute_effective_intro_floor(p90_due_age);
+
+            // M2.7: Compute overdue candidate stats
+            // overdue = items with due_age > 0 (last_reviewed is in the past beyond their interval)
+            let overdue_candidates_count = active_due_ages.iter().filter(|&&age| age > 0.0).count();
+            // Since we don't have detailed selecteditem tracking here, approximate:
+            // overdue_selected ≈ min(session_len, overdue_candidates_count) when sorted by due_age DESC
+            let overdue_selected_count = session_len.min(overdue_candidates_count);
+            // max_due_age_selected = max due age in the session (first item after sort)
+            let max_due_age_selected = active_due_ages.iter().cloned().fold(0.0_f64, f64::max);
+
+            trace.add_row(GateTraceRow {
+                day,
+                due_reviews: session_len,
+                actual_reviews: session_len,
+                capacity_budget,
+                budget_delta,
+                introduced_today,
+                introduced_total,
+                single_review_items,
+                new_items_limit_today,
+                total_active: active_items,
+                max_new_gate_param: brain.params.max_working_set,
+                cluster_energy: gate_diag.cluster_energy,
+                gate_blocked: gate_diag.gate_blocked,
+                gate_reason: gate_diag.gate_reason,
+                threshold: gate_diag.threshold,
+                working_set_factor: gate_diag.working_set_factor,
+                capacity_used: gate_diag.capacity_used,
+                session_size,
+                due_budget,
+                intro_budget,
+                due_selected,
+                new_selected,
+                due_candidates_available,
+                new_candidates_available,
+                intro_cap,
+                spill_to_due,
+                spill_to_new,
+                // M2.3: Candidate funnel diagnostics
+                goal_total: goal_items.len(),
+                unintroduced_total: goal_items.len().saturating_sub(introduced_total),
+                new_from_get_candidates: goal_items.len().saturating_sub(introduced_total), // ISS returns all
+                new_pass_cluster_filter: new_candidates_available, // After cluster filter
+                new_candidates_in_session: new_candidates_available, // Same as partition
+                // M2.4: Introduction policy explicit clamp stages
+                gate_expand_mode: allowance.gate_expand_mode,
+                threshold_low: allowance.threshold_low,
+                threshold_high: allowance.threshold_high,
+                allowance_raw: allowance.allowance_raw,
+                allowance_after_capacity: allowance.allowance_after_capacity,
+                allowance_after_workingset: allowance.allowance_after_workingset,
+                allowance_after_gate: allowance.allowance_after_gate,
+                allowance_final: allowance.allowance_final,
+                intro_min_per_day: brain.params.intro_min_per_day,
+                intro_bootstrap_until_active: brain.params.intro_bootstrap_until_active,
+                max_working_set_effective: effective_max_ws_for_trace,
+                // M2.6: Backlog-aware working set + floor
+                max_ws_budget,
+                target_reviews_per_active: brain.params.target_reviews_per_active,
+                intro_floor_effective,
+                p90_due_age_days_trace: p90_due_age,
+                max_p90_due_age_days: brain.params.max_p90_due_age_days,
+                backlog_severe,
+                // M2.7: Overdue fairness diagnostics
+                overdue_candidates_count,
+                overdue_selected_count,
+                max_due_age_selected,
+            });
+        }
+
+        // M3: Compute and add memory health trace row
+        if let Some(mh) = memory_health {
+            // Get states for aggregate computation
+            let states = user_repo.get_memory_states_batch_sync(user_id, goal_items);
+            let now_ts = (start_time + Duration::days(day as i64)).timestamp_millis();
+
+            // Collect energy values from active items
+            let active_states: Vec<_> = states.values().filter(|s| s.review_count > 0).collect();
+
+            if !active_states.is_empty() {
+                let energies: Vec<f64> = active_states.iter().map(|s| s.energy.into()).collect();
+                let stabilities: Vec<f64> =
+                    active_states.iter().map(|s| s.stability.into()).collect();
+
+                // Retrievability at today (R(S, 0) = 1.0 for just-reviewed items)
+                // For items not reviewed today, compute R using FSRS formula
+                let retrievabilities: Vec<f64> = active_states
+                    .iter()
+                    .map(|s| {
+                        let elapsed_days = (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                            / (24.0 * 60.0 * 60.0 * 1000.0);
+                        let eff_stab = if s.stability < 0.1 {
+                            1.0
+                        } else {
+                            s.stability as f64
+                        };
+                        (1.0 + elapsed_days / (9.0 * eff_stab)).powf(-1.0)
+                    })
+                    .collect();
+
+                // Due age: days since last review (for backlog severity)
+                let due_ages: Vec<f64> = active_states
+                    .iter()
+                    .map(|s| {
+                        (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                            / (24.0 * 60.0 * 60.0 * 1000.0)
+                    })
+                    .collect();
+
+                // Items reviewed today: check if last_reviewed is within today
+                let items_reviewed_today = active_states
+                    .iter()
+                    .filter(|s| {
+                        let days_since = (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                            / (24.0 * 60.0 * 60.0 * 1000.0);
+                        days_since < 1.0
+                    })
+                    .count();
+
+                // Mean p_recall for items reviewed today
+                let reviewed_today_recalls: Vec<f64> = active_states
+                    .iter()
+                    .filter(|s| {
+                        let days_since = (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                            / (24.0 * 60.0 * 60.0 * 1000.0);
+                        days_since < 1.0
+                    })
+                    .map(|s| {
+                        // For just-reviewed items, use energy as proxy for recall
+                        s.energy as f64
+                    })
+                    .collect();
+
+                let total_active = active_states.len();
+
+                // M2.8: Compute at-risk metrics (R-based backlog severity)
+                const R_RISK_THRESHOLD: f64 = 0.80;
+                let at_risk_count = retrievabilities
+                    .iter()
+                    .filter(|&&r| r < R_RISK_THRESHOLD)
+                    .count();
+                let at_risk_ratio = if total_active > 0 {
+                    at_risk_count as f64 / total_active as f64
+                } else {
+                    0.0
+                };
+                let p10_R_today = compute_p10(&retrievabilities);
+
+                // p90 due age among at-risk items only
+                let at_risk_due_ages: Vec<f64> = active_states
+                    .iter()
+                    .zip(retrievabilities.iter())
+                    .filter(|(_, &r)| r < R_RISK_THRESHOLD)
+                    .map(|(s, _)| {
+                        (now_ts - s.last_reviewed.timestamp_millis()) as f64
+                            / (24.0 * 60.0 * 60.0 * 1000.0)
+                    })
+                    .collect();
+                let p90_due_age_at_risk = compute_p90(&at_risk_due_ages);
+
+                mh.add_row(MemoryHealthRow {
+                    day,
+                    mean_energy: compute_mean(&energies),
+                    p10_energy: compute_p10(&energies),
+                    mean_stability: compute_mean(&stabilities),
+                    p10_stability: compute_p10(&stabilities),
+                    mean_retrievability_today: compute_mean(&retrievabilities),
+                    mean_p_recall_reviewed_today: if reviewed_today_recalls.is_empty() {
+                        0.0
+                    } else {
+                        compute_mean(&reviewed_today_recalls)
+                    },
+                    mean_reviews_per_active_item_today: if total_active > 0 {
+                        items_reviewed_today as f64 / total_active as f64
+                    } else {
+                        0.0
+                    },
+                    p50_due_age_days: compute_p50(&due_ages),
+                    p90_due_age_days: compute_p90(&due_ages),
+                    total_active,
+                    items_reviewed_today,
+                    items_due_today: 0, // TODO: compute from FSRS intervals
+                    // M2.8: At-risk backlog metrics
+                    at_risk_count,
+                    at_risk_ratio,
+                    p10_R_today,
+                    p90_due_age_at_risk,
+                    // M2.9: Weaker at-risk threshold (R < 0.90)
+                    at_risk_count_0_9: retrievabilities.iter().filter(|&&r| r < 0.90).count(),
+                    at_risk_ratio_0_9: if total_active > 0 {
+                        retrievabilities.iter().filter(|&&r| r < 0.90).count() as f64
+                            / total_active as f64
+                    } else {
+                        0.0
+                    },
+                });
+            }
         }
 
         Ok(minutes_spent)
@@ -1223,27 +1736,46 @@ impl Simulator {
     /// Returns the number of new items that can be sustainably introduced
     /// per day given current maintenance burden and available session capacity.
     ///
-    /// Formula:
-    /// ```text
-    /// available_capacity = (1 - capacity_used) × (1 - headroom)
-    /// sustainable_rate = σ(available) × capacity / burden_per_new
-    /// ```
+    /// M1.2: Optionally fills `out_diag` with gate decision diagnostics for trace output.
     fn compute_sustainable_intro_rate(
         items: &[MemoryState],
         student_params: &crate::brain::StudentParams,
+        out_diag: Option<&mut crate::config::GateDiagnostics>,
     ) -> f64 {
         let active_count = items.iter().filter(|i| i.review_count > 0).count();
 
+        // Compute cluster energy upfront (needed for diagnostics)
+        let cluster_energy = Self::compute_cluster_energy(items);
+        let threshold = student_params.cluster_stability_threshold;
+        let max_working_set = student_params.max_working_set;
+
+        // Helper to fill diagnostics
+        macro_rules! fill_diag {
+            ($gate_blocked:expr, $gate_reason:expr, $wsf:expr, $cap_used:expr) => {
+                if let Some(diag) = out_diag {
+                    diag.cluster_energy = cluster_energy;
+                    diag.threshold = threshold;
+                    diag.working_set_factor = $wsf;
+                    diag.capacity_used = $cap_used;
+                    diag.gate_blocked = $gate_blocked;
+                    diag.gate_reason = $gate_reason;
+                    diag.active_count = active_count;
+                    diag.max_working_set = max_working_set;
+                }
+            };
+        }
+
         if active_count == 0 {
             // No maintenance burden yet, introduce freely but conservatively
+            fill_diag!(false, GateReason::None, 1.0, 0.0);
             return student_params.session_capacity * 0.8;
         }
 
         // =========================================================================
         // ISS v2.6: Working Set Limit Check
         // =========================================================================
-        // If at or above the working set limit, stop introducing and consolidate
         if active_count >= student_params.max_working_set {
+            fill_diag!(true, GateReason::WorkingSetFull, 0.0, 1.0);
             return 0.0; // At limit - consolidate existing items
         }
 
@@ -1252,38 +1784,69 @@ impl Simulator {
             Self::compute_working_set_factor(active_count, student_params.max_working_set);
 
         // =========================================================================
-        // ISS v2.6: Cluster Stability Gate
+        // ISS v2.9: Bootstrap exception based on intro_bootstrap_until_active
         // =========================================================================
-        // Compute mean energy of active items (the "cluster")
-        let cluster_energy = Self::compute_cluster_energy(items);
+        let bootstrap_threshold = if student_params.intro_bootstrap_until_active > 0 {
+            student_params.intro_bootstrap_until_active
+        } else {
+            10 // Default original value
+        };
+        let skip_cluster_gate = active_count < bootstrap_threshold;
 
-        // Bootstrap exception: Skip cluster gate when fewer than 10 active items
-        // This allows initial items to be introduced before the cluster can stabilize
-        const BOOTSTRAP_THRESHOLD: usize = 10;
-        let skip_cluster_gate = active_count < BOOTSTRAP_THRESHOLD;
+        // Compute capacity-related values upfront (needed for override and rate)
+        let avg_review_interval = Self::compute_actual_avg_interval(items);
+        let maintenance_burden = active_count as f64 / avg_review_interval;
+        let capacity_used = maintenance_burden / student_params.session_capacity;
 
-        // If cluster energy is below threshold and not in bootstrap phase, consolidate
+        // If cluster energy is below threshold and not in bootstrap phase, check for override
         if !skip_cluster_gate && cluster_energy < student_params.cluster_stability_threshold {
-            return 0.0; // Cluster weak - consolidate
+            // =========================================================================
+            // ISS v2.9: Budget-based intro override
+            // =========================================================================
+            if student_params.intro_override_enabled {
+                if capacity_used < student_params.intro_slack_ratio {
+                    // Override: allow introductions despite weak cluster
+                    fill_diag!(false, GateReason::None, working_set_factor, capacity_used);
+                    let override_rate = student_params.max_new_items_per_day as f64;
+                    return override_rate.max(student_params.intro_min_per_day as f64);
+                }
+            }
+
+            // =========================================================================
+            // ISS v2.9: Floor mechanism
+            // =========================================================================
+            if student_params.intro_min_per_day > 0 {
+                fill_diag!(
+                    true,
+                    GateReason::ClusterWeak,
+                    working_set_factor,
+                    capacity_used
+                );
+                return student_params.intro_min_per_day as f64;
+            }
+
+            fill_diag!(
+                true,
+                GateReason::ClusterWeak,
+                working_set_factor,
+                capacity_used
+            );
+            return 0.0; // Cluster weak, no override, no floor - consolidate
         }
 
         // =========================================================================
         // Original capacity-based logic (ISS v2.3/v2.4)
         // =========================================================================
-        let active_count_f64 = active_count as f64;
-
-        // ISS v2.4: Use actual FSRS stability
-        let avg_review_interval = Self::compute_actual_avg_interval(items);
-
-        // Compute maintenance burden (reviews/day needed for existing items)
-        let maintenance_burden = active_count_f64 / avg_review_interval;
-
-        // Compute capacity utilization
-        let capacity_used = maintenance_burden / student_params.session_capacity;
 
         // If heavily over capacity (>110%), return minimum.
         if capacity_used >= 1.1 {
-            return 1.0;
+            fill_diag!(
+                true,
+                GateReason::CapacityExceeded,
+                working_set_factor,
+                capacity_used
+            );
+            return student_params.intro_min_per_day.max(1) as f64;
         }
 
         // Apply headroom reserve (keep buffer for urgent items)
@@ -1296,10 +1859,8 @@ impl Simulator {
         let raw_intro_rate = available_capacity / review_burden_per_new;
 
         // Calculate current coverage for adaptive damping (mean Retrievability)
-        // Only consider introduced items (review_count > 0)
         let introduced_items: Vec<_> = items.iter().filter(|i| i.review_count > 0).collect();
         let current_coverage = if !introduced_items.is_empty() {
-            // Use energy as proxy for retrievability (or stability->R conversion)
             introduced_items.iter().map(|i| i.energy).sum::<f64>() / introduced_items.len() as f64
         } else {
             0.0
@@ -1310,13 +1871,25 @@ impl Simulator {
         let damping = Self::adaptive_sigmoid_damping(capacity_margin, current_coverage);
 
         // Apply both damping and working set factor
-        let rate = raw_intro_rate * damping * student_params.session_capacity * working_set_factor;
+        let mut rate =
+            raw_intro_rate * damping * student_params.session_capacity * working_set_factor;
+
+        // ISS v2.9: Apply max_new_items_per_day cap
+        if student_params.intro_override_enabled || student_params.max_new_items_per_day > 0 {
+            rate = rate.min(student_params.max_new_items_per_day as f64);
+        }
+
+        // ISS v2.9: Apply intro_min_per_day floor
+        rate = rate.max(student_params.intro_min_per_day as f64);
 
         // Ensure at least 1 if we have capacity and damping didn't kill it
         if rate < 1.0 && capacity_margin > 0.05 && working_set_factor > 0.0 {
-            return 1.0;
+            fill_diag!(false, GateReason::None, working_set_factor, capacity_used);
+            return 1.0_f64.max(student_params.intro_min_per_day as f64);
         }
 
+        // Normal path - no gate blocked
+        fill_diag!(false, GateReason::None, working_set_factor, capacity_used);
         rate.max(1.0)
     }
 
@@ -1437,11 +2010,15 @@ impl Simulator {
     /// Get goal items (node IDs) for a goal.
     async fn get_goal_items(&self, goal_id: &str) -> Result<Vec<i64>> {
         // Try to get from real content repository via node_goals table
-        let items = self.content_repo.get_nodes_for_goal(goal_id).await?;
-
-        if !items.is_empty() {
-            return Ok(items);
-        }
+        // Catch errors (e.g., missing table) and fall through to parsing
+        let _items = match self.content_repo.get_nodes_for_goal(goal_id).await {
+            Ok(items) if !items.is_empty() => return Ok(items),
+            Ok(_) => (), // Empty result, fall through
+            Err(e) => {
+                debug!("node_goals query failed (falling back to parsing): {}", e);
+                // Fall through to parsing
+            }
+        };
 
         // Fallback: parse goal_id and get real node IDs from nodes table
         // Format: "surah:N" or "juz:N"
@@ -1475,22 +2052,106 @@ impl Simulator {
 
     /// Helper to get verses for a range of surahs as node IDs
     async fn get_verses_as_nodes(&self, start_surah: i32, end_surah: i32) -> Result<Vec<i64>> {
+        use iqrah_core::domain::node_id as nid;
+
         let mut node_ids = Vec::new();
 
         for surah_num in start_surah..=end_surah {
             let verses = self.content_repo.get_verses_for_chapter(surah_num).await?;
 
             for verse in verses {
-                if let Ok(Some(node)) = self.content_repo.get_node_by_ukey(&verse.key).await {
-                    node_ids.push(node.id);
-                } else {
-                    warn!("Node not found for ukey: {}, using synthetic ID", verse.key);
-                    node_ids.push(verse_key_to_node_id(&verse.key));
-                }
+                // Use encoded verse IDs that exercises can decode with nid::decode_verse
+                // The DB stores Knowledge node IDs (TYPE=5) which have a different format
+                node_ids.push(nid::encode_verse(
+                    verse.chapter_number as u8,
+                    verse.verse_number as u16,
+                ));
             }
         }
 
         Ok(node_ids)
+    }
+
+    // =========================================================================
+    // ISS v2.8: Exercise Framework Integration
+    // =========================================================================
+
+    /// Run scheduled exercises for the current day.
+    ///
+    /// This is called at the end of each simulated day to evaluate the student
+    /// using axis-appropriate exercises (memory: trials-based, translation: accuracy).
+    fn run_scheduled_exercises(
+        &self,
+        _scenario: &Scenario,
+        schedules: &mut HashMap<String, crate::exercises::ExerciseSchedule>,
+        exercises: &[Box<dyn crate::exercises::Exercise>],
+        memory_states: &HashMap<i64, MemoryState>,
+        goal_items: &[i64],
+        brain: &StudentBrain,
+        day: u32,
+    ) {
+        use crate::events::SimulationEvent;
+
+        // Find exercises due today
+        let due_exercises: Vec<(String, usize)> = schedules
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, schedule))| schedule.is_due(day))
+            .map(|(idx, (name, _))| (name.clone(), idx))
+            .collect();
+
+        if due_exercises.is_empty() {
+            return;
+        }
+
+        // Execute each due exercise
+        for (name, idx) in due_exercises {
+            if idx >= exercises.len() {
+                continue;
+            }
+
+            let exercise = &exercises[idx];
+
+            // Evaluate exercise
+            match exercise.evaluate(memory_states, goal_items, brain, day) {
+                Ok(result) => {
+                    let metadata = exercise.metadata();
+
+                    // Emit ExerciseEvaluation event
+                    self.event_sender
+                        .record(SimulationEvent::ExerciseEvaluation {
+                            day,
+                            exercise_name: name.clone(),
+                            exercise_axis: metadata.axis,
+                            score: result.score,
+                            grade: format!("{:?}", result.grade),
+                            items_tested: match &result.details {
+                                crate::exercises::ExerciseDetails::Memory {
+                                    items_tested, ..
+                                } => *items_tested,
+                                crate::exercises::ExerciseDetails::Translation {
+                                    items_tested,
+                                    ..
+                                } => *items_tested,
+                            },
+                            summary: result.summary.clone(),
+                        });
+
+                    debug!(
+                        "Exercise {} completed: score={:.2}, grade={:?}",
+                        name, result.score, result.grade
+                    );
+                }
+                Err(e) => {
+                    warn!("Exercise {} failed on day {}: {}", name, day, e);
+                }
+            }
+
+            // Update schedule
+            if let Some(schedule) = schedules.get_mut(&name) {
+                schedule.record_run(day);
+            }
+        }
     }
 
     /// Get candidate nodes for scheduling.
@@ -1660,23 +2321,6 @@ impl Simulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_verse_key_to_node_id() {
-        // Test basic encoding: chapter * 1000 + verse
-        assert_eq!(verse_key_to_node_id("1:1"), 1001);
-        assert_eq!(verse_key_to_node_id("1:7"), 1007);
-        assert_eq!(verse_key_to_node_id("2:255"), 2255);
-        assert_eq!(verse_key_to_node_id("114:6"), 114006);
-    }
-
-    #[test]
-    fn test_verse_key_to_node_id_invalid() {
-        // Invalid keys should return 0
-        assert_eq!(verse_key_to_node_id("invalid"), 0);
-        assert_eq!(verse_key_to_node_id(""), 0);
-        assert_eq!(verse_key_to_node_id("1:2:3"), 0);
-    }
 
     // Integration tests that require a real ContentRepository should be
     // placed in tests/integration_tests.rs and run against a test database.

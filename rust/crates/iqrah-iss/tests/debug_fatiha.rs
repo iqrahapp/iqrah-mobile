@@ -128,6 +128,7 @@ async fn test_debug_fatiha_learning() {
         session_mix: None, // Use default session mix
         axis_config: iqrah_iss::AxisConfig::benchmark(),
         student_profile: None,
+        exercises: vec![],
     };
 
     println!("\nRunning Fatiha simulation for 60 days...");
@@ -142,7 +143,7 @@ async fn test_debug_fatiha_learning() {
         "Items Mastered: {}/{}",
         metrics.items_mastered, metrics.goal_item_count
     );
-    println!("Coverage(T): {:.1}%", metrics.coverage_t * 100.0);
+    println!("Coverage(H@0.9): {:.1}%", metrics.coverage_h_0_9 * 100.0);
     println!("Mean R(T): {:.2}", metrics.mean_r_t);
     println!("Cov(Acq): {:.1}%", metrics.coverage_acq * 100.0);
     println!("Mean R(Acq): {:.2}", metrics.mean_r_acq);

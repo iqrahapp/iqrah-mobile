@@ -1,0 +1,39 @@
+# M2.9 Task C: Forced Gating Trigger Scenario
+# Extreme stress test to make backlog_severe actually trigger
+name: juz_amma_forced_gating_trigger
+goal_id: "juz:30"
+target_days: 60
+daily_minutes: 15.0
+student_params:
+  skip_day_prob: 0.30             # Very high skip rate
+  early_quit_prob: 0.10
+  persistence_threshold: 300
+  forgetting_rate_mult: 3.0       # Extremely poor memory
+  spacing_sensitivity: 0.4
+  item_variability: 0.20
+  fatigue_onset_minutes: 10.0
+  fatigue_decay_rate: 0.05
+  difficulty_sensitivity: 0.4
+  known_surah_ids: []
+  vocab_known_pct: 0.25
+  overdue_sensitivity: 0.8
+  momentum_sensitivity: 0.3
+  drift_alpha_max: 0.05           # Very fast drift
+  drift_alpha_min: 0.02
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+  session_capacity: 15.0
+  headroom_reserve: 0.10
+  reviews_to_stability: 5.0
+  days_to_stability: 30.0
+  max_working_set: 100
+  cluster_stability_threshold: 0.15
+  cluster_expansion_batch_size: 5
+  intro_min_per_day: 3
+  max_working_set_ratio_of_goal: 0.3
+  target_reviews_per_active: 0.08
+  max_p90_due_age_days: 15.0       # Very strict threshold
+session_size: 6                    # Very small sessions
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default

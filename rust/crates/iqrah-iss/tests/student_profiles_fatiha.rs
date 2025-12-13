@@ -52,6 +52,7 @@ async fn test_fatiha_strong_dedicated_coverage() {
         42,
         0.1,
         false,
+        iqrah_iss::config::DebugTraceConfig::default(),
     )
     .await
     .expect("Comparison should complete");

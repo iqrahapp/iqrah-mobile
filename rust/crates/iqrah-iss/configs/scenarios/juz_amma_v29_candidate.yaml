@@ -1,0 +1,83 @@
+# ISS v2.9 Candidate: Juz 30 with Aggressive Floor Mechanism
+# High floor params calibrated for large from-scratch goals
+
+name: "Juz 30 v2.9 Candidate"
+
+# Goal: All verses in Juz 30 (Surah 78-114, ~564 verses)
+goal_id: "juz:30"
+
+# Timeline: 180 days for thorough validation
+target_days: 180
+daily_minutes: 45.0
+session_size: 40
+
+# Student parameters with aggressive v2.9 floor mechanism
+student_params:
+  # Start from scratch
+  known_surah_ids: []
+  vocab_known_pct: 0.0
+
+  # Zero initial placement
+  verse_base_review_count: 0
+  vocab_base_review_count: 0
+
+  # Base learner parameters
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 500
+  forgetting_rate_mult: 1.0
+  spacing_sensitivity: 1.0
+
+  # Review capacity
+  min_reviews_per_day: 30
+  max_reviews_per_day: 80
+  mean_reviews_per_day: 55.0
+  reviews_stddev: 10.0
+
+  # Cluster control - relaxed for large goals
+  max_working_set: 300
+  cluster_stability_threshold: 0.10  # Lower threshold
+  cluster_expansion_batch_size: 15
+
+  # =========================================================================
+  # ISS v2.9: Aggressive Floor Introduction Mechanism
+  # =========================================================================
+  # Calibrated for 564 items in 180 days: need ~3.14/day minimum
+
+  # Enable capacity-based override
+  intro_override_enabled: true
+  intro_slack_ratio: 0.8       # Allow override if <80% of capacity is used
+  max_new_items_per_day: 15    # Higher cap for large goal
+
+  # Floor: guarantee at least 5 new items per day
+  intro_min_per_day: 5
+
+  # Bootstrap: skip cluster gate until 150 active items (26% of goal)
+  intro_bootstrap_until_active: 150
+
+  # Drift parameters
+  drift_alpha_max: 0.15
+  drift_alpha_min: 0.03
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.02
+
+  # Memory parameters
+  stability_scale: 1.0
+  lapse_baseline: 0.10
+  fatigue_sensitivity: 0.20
+
+# Exercises
+exercises:
+  - type: memory
+    subtype: sample_recitation
+    frequency_days: 15
+    parameters:
+      sample_size: 10
+      sampling_strategy: random
+
+  - type: memory
+    subtype: continuous_recitation
+    frequency_days: 30
+    parameters:
+      sample_size: 20
+      sampling_strategy: sequential

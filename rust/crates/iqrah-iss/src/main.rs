@@ -143,6 +143,14 @@ enum Commands {
         /// Output directory for event tracking files (JSONL + analysis markdown)
         #[arg(long)]
         emit_events: Option<PathBuf>,
+
+        /// M1.2: Enable gate trace output (CSV + markdown summary)
+        #[arg(long)]
+        trace: bool,
+
+        /// M1.2: Output directory for gate trace files (default: ./trace_output)
+        #[arg(long, default_value = "./trace_output")]
+        trace_dir: PathBuf,
     },
 }
 
@@ -221,6 +229,8 @@ async fn main() -> Result<()> {
             include_individual,
             student_profile,
             emit_events,
+            trace,
+            trace_dir,
         } => {
             // Determine which scenario to use
             let scenario_name = preset.as_ref().unwrap_or(&scenario);
@@ -248,6 +258,8 @@ async fn main() -> Result<()> {
                 include_individual,
                 profile,
                 emit_events,
+                trace,
+                trace_dir,
             )
             .await?;
         }
@@ -538,6 +550,8 @@ async fn run_compare(
     include_individual: bool,
     profile: Option<StudentProfile>,
     emit_events: Option<PathBuf>,
+    trace_enabled: bool,
+    trace_dir: PathBuf,
 ) -> Result<()> {
     // Parse variant names
     let variants: Vec<SchedulerVariant> = variant_names
@@ -595,6 +609,18 @@ async fn run_compare(
     }
     println!();
 
+    // M1.2: Configure gate trace if enabled
+    let trace_config = if trace_enabled {
+        info!("Gate trace enabled, output dir: {:?}", trace_dir);
+        std::fs::create_dir_all(&trace_dir)?;
+        iqrah_iss::config::DebugTraceConfig {
+            enabled: true,
+            out_dir: trace_dir.to_string_lossy().to_string(),
+        }
+    } else {
+        iqrah_iss::config::DebugTraceConfig::default()
+    };
+
     // Run comparison
     let (results, debug_report) = run_comparison(
         Arc::clone(&content_repo),
@@ -604,6 +630,7 @@ async fn run_compare(
         seed,
         0.1, // expected_rpm
         include_individual,
+        trace_config,
     )
     .await?;
 
@@ -636,12 +663,12 @@ async fn run_compare(
             "{:<20} {:>8.3} {:>10.1} {:>10.4} {:>10.1} {:>10} | {:>10.1} {:>8.2} {:>10.4} | {:>10.1} {:>8.2}",
             variant.variant,
             m.final_score_mean,
-            m.coverage_pct_mean * 100.0,
+            m.coverage_pct_mean * 100.0,          // = mean_retrievability * 100
             m.retention_per_minute_mean,
             m.gave_up_fraction * 100.0,
             mastery_str,
-            m.coverage_t_mean * 100.0,
-            m.mean_r_t_mean,
+            m.coverage_h_0_9_mean * 100.0,        // M1: coverage_h@0.9
+            m.mean_r_t_mean,                       // M1: mean_retrievability
             m.rpm_t_mean,
             m.coverage_acq_mean * 100.0,
             m.mean_r_acq_mean

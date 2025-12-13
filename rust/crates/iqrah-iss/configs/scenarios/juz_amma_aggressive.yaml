@@ -1,0 +1,71 @@
+# Juz 30 Aggressive Learning - Large Goal Validation
+# Uses aggressive parameters to maximize item introduction for fair random comparison
+
+name: "Juz 30 Aggressive"
+
+# Goal: All verses in Juz 30 (Surah 78-114, ~564 verses)
+goal_id: "juz:30"
+
+# Timeline and capacity
+target_days: 90
+daily_minutes: 45.0
+session_size: 40
+
+# Student parameters (no profile to avoid overrides)
+student_params:
+  # Start from scratch
+  known_surah_ids: []
+  vocab_known_pct: 0.0
+
+  # Zero initial placement
+  verse_base_review_count: 0
+  vocab_base_review_count: 0
+
+  # Base learner parameters
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 500
+  forgetting_rate_mult: 1.0
+  spacing_sensitivity: 1.0
+
+  # High review capacity for large goal
+  min_reviews_per_day: 30
+  max_reviews_per_day: 60
+  mean_reviews_per_day: 45.0
+  reviews_stddev: 8.0
+
+  # AGGRESSIVE cluster control - low thresholds for faster introduction
+  max_working_set: 300
+  cluster_stability_threshold: 0.08
+  cluster_expansion_batch_size: 30
+  # M2.4: Floor to prevent introduction starvation
+  intro_min_per_day: 3
+
+  # Drift parameters
+  drift_alpha_max: 0.15
+  drift_alpha_min: 0.03
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.02
+
+  # Memory parameters
+  stability_scale: 1.0
+  lapse_baseline: 0.10
+  fatigue_sensitivity: 0.20
+
+# Exercises for comparison
+exercises:
+  # Sample 10 random items every 15 days
+  - type: memory
+    subtype: sample_recitation
+    frequency_days: 15
+    parameters:
+      sample_size: 10
+      sampling_strategy: random
+
+  # Continuous recitation of 20 items every 30 days
+  - type: memory
+    subtype: continuous_recitation
+    frequency_days: 30
+    parameters:
+      sample_size: 20
+      sampling_strategy: sequential

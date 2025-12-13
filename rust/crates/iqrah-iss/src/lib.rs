@@ -33,11 +33,19 @@ pub mod config;
 pub mod debug_stats;
 pub mod evaluation;
 pub mod events;
+pub mod exercises;
+pub mod gate_trace;
 pub mod in_memory_repo;
+pub mod introduction_policy;
+pub mod memory_health_trace;
 pub mod metrics;
 pub mod sanity_log;
 pub mod simulator;
 pub mod stats;
+
+// M2.2: Budget enforcement tests
+#[cfg(test)]
+mod budget_tests;
 
 // Re-exports for convenience
 pub use axis::{AxisConfig, AxisCoverageMode, AxisKind, AxisMode};

@@ -1,0 +1,22 @@
+# ISS v2.8 Exercise Framework - Fatiha Test Configuration
+# This config demonstrates exercise evaluation with a simple scenario
+
+name: "Fatiha with Memory Exercise"
+
+goal_id: "surah:1"
+
+target_days: 60
+daily_minutes: 15.0
+session_size: 20
+
+student_profile: strong_dedicated
+
+# v2.8: Exercise evaluations
+exercises:
+  # Memory exercise: Sample recitation of 3 random ayahs
+  - type: memory
+    subtype: sample_recitation
+    frequency_days: 15
+    parameters:
+      sample_size: 3
+      sampling_strategy: random

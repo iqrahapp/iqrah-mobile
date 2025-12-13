@@ -53,6 +53,10 @@ pub struct SimulationConfig {
     /// Lower to 0.7 for more realistic coverage expectations.
     #[serde(default = "default_mastery_r_threshold")]
     pub mastery_r_threshold: f64,
+
+    /// M1.2: Debug trace configuration (gate diagnostics)
+    #[serde(default)]
+    pub debug_trace: DebugTraceConfig,
 }
 
 fn default_expected_rpm() -> f64 {
@@ -69,6 +73,204 @@ fn default_almost_due_window() -> u32 {
 
 fn default_mastery_r_threshold() -> f64 {
     0.9 // R >= 0.9 required for mastery (strict)
+}
+
+// ============================================================================
+// ISS v2.9: Debug Trace Configuration
+// ============================================================================
+
+/// Configuration for diagnostic trace output (ISS v2.9).
+/// When enabled, emits detailed CSV and markdown summaries for gate analysis.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DebugTraceConfig {
+    /// Whether to enable trace output (default: false)
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Output directory for trace files (default: "./trace_output")
+    #[serde(default = "default_trace_out_dir")]
+    pub out_dir: String,
+}
+
+fn default_trace_out_dir() -> String {
+    "./trace_output".to_string()
+}
+
+/// Reason why cluster gate blocked introduction (ISS v2.9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum GateReason {
+    /// No gate blocked - introduction allowed
+    #[default]
+    None,
+    /// Cluster energy below stability threshold
+    ClusterWeak,
+    /// Working set at capacity
+    WorkingSetFull,
+    /// Session capacity exceeded
+    CapacityExceeded,
+    /// Computed intro rate too low
+    RateTooLow,
+}
+
+impl std::fmt::Display for GateReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GateReason::None => write!(f, "allowed"),
+            GateReason::ClusterWeak => write!(f, "cluster_weak"),
+            GateReason::WorkingSetFull => write!(f, "working_set_full"),
+            GateReason::CapacityExceeded => write!(f, "capacity_exceeded"),
+            GateReason::RateTooLow => write!(f, "rate_too_low"),
+        }
+    }
+}
+
+/// A single row of gate trace data for CSV output.
+///
+/// M2.0 SEMANTICS CLARIFICATION:
+/// - `capacity_budget`: Soft budget for capacity ratio computation (NOT a hard cap)
+/// - `actual_reviews`: Items actually reviewed (can exceed capacity_budget by design)
+/// - `budget_delta`: capacity_budget - actual_reviews (can be negative)
+/// - `max_new_gate_param`: max_working_set param value (only gates NEW introductions)
+/// - `total_active`: Items with review_count > 0 (can exceed max_new_gate_param)
+///
+/// M2.1 TRACE CORRECTNESS:
+/// - `introduced_today`: Delta of introduced_total vs previous day (CORRECT metric)
+/// - `introduced_total`: Total items introduced so far (authoritative)
+/// - `single_review_items`: Items with review_count == 1 (old misdefinition, kept for reference)
+/// - `new_items_limit_today`: Actual cap on new items computed this day
+/// - Session budget columns: session_size, due_budget, intro_budget, due_selected, new_selected
+///
+/// M2.2 BUDGET ENFORCEMENT:
+/// - `due_candidates_available`: Due/overdue items available for selection
+/// - `new_candidates_available`: Unintroduced items available for selection
+/// - `intro_cap`: min(intro_budget, new_items_limit_today) - actual cap on new selection
+/// - `spill_to_due`: Unused intro slots that went to due items
+/// - `spill_to_new`: Unused due slots that went to new items
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GateTraceRow {
+    pub day: u32,
+    /// Items scheduled for review (same as actual_reviews in current impl)
+    pub due_reviews: usize,
+    /// Actual items reviewed this day (NOT capped by capacity_budget)
+    pub actual_reviews: usize,
+    /// Soft capacity budget for utilization ratio (NOT a hard limit)
+    pub capacity_budget: usize,
+    /// capacity_budget - actual_reviews (can be negative by design)
+    pub budget_delta: i32,
+
+    // M2.1: Corrected introduction metrics
+    /// Delta of introduced_total vs previous day (what was ACTUALLY introduced today)
+    pub introduced_today: usize,
+    /// Total items introduced so far (= introduction_order.len())
+    pub introduced_total: usize,
+    /// Items with review_count == 1 (kept for backwards compat, but NOT "introduced today")
+    pub single_review_items: usize,
+    /// Cap on new items computed for this day (from gate logic)
+    pub new_items_limit_today: usize,
+
+    /// Items with review_count > 0 (can exceed max_new_gate_param)
+    pub total_active: usize,
+    /// max_working_set param (only gates NEW introductions, not total active)
+    pub max_new_gate_param: usize,
+    pub cluster_energy: f64,
+    pub gate_blocked: bool,
+    pub gate_reason: GateReason,
+    pub threshold: f64,
+    pub working_set_factor: f64,
+    pub capacity_used: f64,
+
+    // M2.1: Session composition budgets
+    /// Total session size from sample_daily_reviews()
+    pub session_size: usize,
+    /// Budget allocated to due items (session_size - intro_budget)
+    pub due_budget: usize,
+    /// Budget allocated to new items (clamped by intro_min_per_day, max_new_items_per_day)
+    pub intro_budget: usize,
+    /// Actual due items selected
+    pub due_selected: usize,
+    /// Actual new items selected
+    pub new_selected: usize,
+
+    // M2.2: Budget enforcement verification
+    /// Due/overdue items available for selection
+    pub due_candidates_available: usize,
+    /// Unintroduced items available for selection
+    pub new_candidates_available: usize,
+    /// Effective intro cap = min(intro_budget, new_items_limit_today)
+    pub intro_cap: usize,
+    /// Unused intro slots that went to due items
+    pub spill_to_due: usize,
+    /// Unused due slots that went to new items
+    pub spill_to_new: usize,
+
+    // M2.3: Candidate funnel diagnostics
+    /// Total goal items
+    pub goal_total: usize,
+    /// Unintroduced items = goal_total - introduced_total
+    pub unintroduced_total: usize,
+    /// Unintroduced items that passed get_candidates (always == unintroduced for ISS)
+    pub new_from_get_candidates: usize,
+    /// Unintroduced items that passed cluster filter (review_count == 0 check)
+    pub new_pass_cluster_filter: usize,
+    /// Final new candidates in session selection partition
+    pub new_candidates_in_session: usize,
+
+    // M2.4: Introduction policy explicit clamp stages
+    /// Gate expand mode (true = allow expansion, false = consolidate)
+    pub gate_expand_mode: bool,
+    /// Threshold low boundary = threshold - hysteresis
+    pub threshold_low: f64,
+    /// Threshold high boundary = threshold + hysteresis
+    pub threshold_high: f64,
+    /// Stage 0: Base batch size (raw allowance)
+    pub allowance_raw: usize,
+    /// Stage 1: After capacity throttle
+    pub allowance_after_capacity: usize,
+    /// Stage 2: After working-set clamp (HARD)
+    pub allowance_after_workingset: usize,
+    /// Stage 3: After gate clamp
+    pub allowance_after_gate: usize,
+    /// Stage 4: Final after floor
+    pub allowance_final: usize,
+
+    // M1: intro policy params (for debugging)
+    pub intro_min_per_day: usize,
+    pub intro_bootstrap_until_active: usize,
+    // M2.5: working-set ratio-of-goal trace
+    pub max_working_set_effective: usize,
+    // M2.6: Backlog-aware working set + floor trace
+    pub max_ws_budget: Option<usize>,
+    pub target_reviews_per_active: Option<f64>,
+    pub intro_floor_effective: usize,
+    pub p90_due_age_days_trace: f64,
+    pub max_p90_due_age_days: Option<f64>,
+    pub backlog_severe: bool,
+    // M2.7: Overdue fairness diagnostics
+    pub overdue_candidates_count: usize,
+    pub overdue_selected_count: usize,
+    pub max_due_age_selected: f64,
+}
+
+/// Diagnostic output from compute_sustainable_intro_rate (ISS v2.9 M1.2).
+/// Filled in by the intro decision function to avoid duplicating gating logic.
+#[derive(Debug, Clone, Default)]
+pub struct GateDiagnostics {
+    /// Cluster average energy (weighted)
+    pub cluster_energy: f64,
+    /// Stability threshold used for gating
+    pub threshold: f64,
+    /// Working set factor (1.0 when plenty of room, 0.0 at limit)
+    pub working_set_factor: f64,
+    /// Session capacity utilization ratio (maintenance_burden / session_capacity)
+    pub capacity_used: f64,
+    /// Whether intro was blocked by any gate
+    pub gate_blocked: bool,
+    /// Primary reason for blocking (if blocked)
+    pub gate_reason: GateReason,
+    /// Number of active items (review_count > 0)
+    pub active_count: usize,
+    /// Maximum working set size from params
+    pub max_working_set: usize,
 }
 
 impl SimulationConfig {
@@ -108,6 +310,7 @@ impl SimulationConfig {
             event_log_enabled: false,
             almost_due_window_days: 2,
             mastery_r_threshold: 0.9,
+            debug_trace: DebugTraceConfig::default(),
         }
     }
 }
@@ -124,6 +327,7 @@ impl Default for SimulationConfig {
             event_log_enabled: false,
             almost_due_window_days: 2,
             mastery_r_threshold: 0.9,
+            debug_trace: DebugTraceConfig::default(),
         }
     }
 }
@@ -183,6 +387,11 @@ pub struct Scenario {
     /// Takes precedence over student_params and student_params_selector.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub student_profile: Option<StudentProfile>,
+
+    /// Exercise configurations for v2.8 exercise framework.
+    /// Optional: scenarios without this field work as v2.7 (backward compatible).
+    #[serde(default)]
+    pub exercises: Vec<crate::exercises::ExerciseConfig>,
 }
 
 fn default_student_count() -> usize {
@@ -206,6 +415,7 @@ impl Scenario {
             session_mix: None,
             axis_config: AxisConfig::benchmark(),
             student_profile: None,
+            exercises: vec![],
         }
     }
 
@@ -225,6 +435,7 @@ impl Scenario {
             session_mix: None,
             axis_config: AxisConfig::benchmark(),
             student_profile: None,
+            exercises: vec![],
         }
     }
 
@@ -244,6 +455,7 @@ impl Scenario {
             session_mix: None,
             axis_config: AxisConfig::benchmark(),
             student_profile: None,
+            exercises: vec![],
         }
     }
 
@@ -263,6 +475,7 @@ impl Scenario {
             session_mix: None,
             axis_config: AxisConfig::benchmark(),
             student_profile: None,
+            exercises: vec![],
         }
     }
 

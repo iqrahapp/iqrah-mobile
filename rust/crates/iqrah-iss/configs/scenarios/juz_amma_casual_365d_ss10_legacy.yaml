@@ -1,6 +1,5 @@
-# Juz 30 Casual Default (SS15)
-# Promoted after n=5 screening: 51.5% coverage (vs 44.6% baseline)
-# Legacy: see juz_amma_casual_365d_ss10_legacy.yaml
+# Realistic Juz 'Amma scenario for casual learners
+# 365 days gives ~0.5 min/verse which is achievable
 name: juz_amma_casual_365d
 goal_id: "juz:30"
 target_days: 365
@@ -19,15 +18,17 @@ student_params:
   vocab_known_pct: 0.1
   overdue_sensitivity: 0.4
   momentum_sensitivity: 0.5
-  # SS15 key changes
-  max_working_set: 300           # From 150 → 300
+  # M2.4: Cluster gate params for large from-scratch goal (casual pace)
+  max_working_set: 150
   cluster_stability_threshold: 0.20
-  cluster_expansion_batch_size: 8  # From 5 → 8
-  intro_min_per_day: 4             # From 3 → 4
+  cluster_expansion_batch_size: 5
+  intro_min_per_day: 3
+  # M2.5: Working-set ratio of goal for fair comparison
   max_working_set_ratio_of_goal: 1.0
+  # M2.6: Backlog-aware working set + floor
   target_reviews_per_active: 0.05
   max_p90_due_age_days: 90.0
-session_size: 15                   # From 10 → 15
+session_size: 10
 enable_bandit: true
 student_count: 1
 scheduler: iqrah_default

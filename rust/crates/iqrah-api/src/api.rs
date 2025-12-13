@@ -808,3 +808,25 @@ impl From<iqrah_core::Word> for WordDto {
         }
     }
 }
+
+// ========================================================================
+// Telemetry API v1 (Polling-based, Rust→Dart)
+// ========================================================================
+
+/// Drain all pending telemetry events as JSON strings
+/// Call periodically from Dart (e.g. every 30s or on app background)
+pub fn drain_telemetry_events() -> Result<Vec<String>> {
+    Ok(crate::telemetry::drain_events())
+}
+
+/// Get count of pending telemetry events
+pub fn get_telemetry_event_count() -> Result<u32> {
+    Ok(crate::telemetry::pending_event_count() as u32)
+}
+
+/// Debug: manually emit a test event (dev only)
+#[cfg(debug_assertions)]
+pub fn debug_emit_test_event() -> Result<String> {
+    crate::telemetry::emit_daily_health(0, 100, 5, 20, 0.95, 0.90, 0.05, 30.0, 564);
+    Ok("Test event emitted".to_string())
+}

@@ -1,0 +1,68 @@
+# ISS v2.8 Juz 30 (Juz Amma) Benchmark Configuration
+# This config validates the exercise framework with a real-world memorization scenario
+
+name: "Juz 30 Memorization Benchmark"
+
+# Goal: Memorize Juz Amma (564 verses)
+goal_id: "juz:30"
+
+# Timeline: 180 days (6 months)
+target_days: 180
+daily_minutes: 20.0
+session_size: 25
+
+# Student config: Learn from scratch with proper cluster control
+student_params:
+  # CRITICAL: Clear pre-known items to learn from scratch
+  known_surah_ids: []
+  vocab_known_pct: 0.0
+
+  # Base learner parameters
+  skip_day_prob: 0.05
+  early_quit_prob: 0.02
+  persistence_threshold: 500
+  forgetting_rate_mult: 0.8
+  spacing_sensitivity: 1.2
+
+  # Review capacity
+  min_reviews_per_day: 15
+  max_reviews_per_day: 40
+  mean_reviews_per_day: 25.0
+  reviews_stddev: 5.0
+
+  # v2.6 Cluster control (tuned for 564 items)
+  max_working_set: 100
+  cluster_stability_threshold: 0.25
+  cluster_expansion_batch_size: 5
+  # M2.4: Floor to prevent introduction starvation
+  intro_min_per_day: 3
+
+  # v2.7 Drift parameters (gentler for learning)
+  drift_alpha_max: 0.08
+  drift_alpha_min: 0.01
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+
+  # Memory parameters
+  stability_scale: 1.2
+  lapse_baseline: 0.08
+  fatigue_sensitivity: 0.15
+
+# v2.8: Exercise evaluations for memorization axis
+exercises:
+  # Sample recitation every 15 days - tests random ayah recall
+  - type: memory
+    subtype: sample_recitation
+    frequency_days: 15
+    parameters:
+      sample_size: 5
+      sampling_strategy: random
+
+  # Full recitation every 60 days - tests continuous recall
+  - type: memory
+    subtype: continuous_recitation
+    frequency_days: 60
+    parameters:
+      # Sample from goal (juz:30)
+      sample_size: 10
+      sampling_strategy: sequential

@@ -1,0 +1,39 @@
+# M2.9.2: Backlog Gating Regression Scenario
+# Very constrained capacity to force at-risk ratio up and trigger gating
+name: juz_amma_regression_backlog_trigger
+goal_id: "juz:30"
+target_days: 60
+daily_minutes: 20.0  # Very short sessions
+student_params:
+  skip_day_prob: 0.15            # Higher skip rate
+  early_quit_prob: 0.05
+  persistence_threshold: 500
+  forgetting_rate_mult: 1.8      # Very poor memory to accelerate decay
+  spacing_sensitivity: 0.6
+  item_variability: 0.15
+  fatigue_onset_minutes: 15.0    # Quick fatigue
+  fatigue_decay_rate: 0.03
+  difficulty_sensitivity: 0.25
+  known_surah_ids: []
+  vocab_known_pct: 0.25
+  overdue_sensitivity: 0.6
+  momentum_sensitivity: 0.3
+  drift_alpha_max: 0.025         # Very fast drift
+  drift_alpha_min: 0.010
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+  session_capacity: 20.0         # Tiny capacity
+  headroom_reserve: 0.10
+  reviews_to_stability: 5.0
+  days_to_stability: 30.0
+  max_working_set: 200           # Smaller working set
+  cluster_stability_threshold: 0.15
+  cluster_expansion_batch_size: 10
+  intro_min_per_day: 3           # Floor enabled
+  max_working_set_ratio_of_goal: 0.5
+  target_reviews_per_active: 0.08
+  max_p90_due_age_days: 30.0     # Lower threshold for earlier gating
+session_size: 8                  # Very small sessions!
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default

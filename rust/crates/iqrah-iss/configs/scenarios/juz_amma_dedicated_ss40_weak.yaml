@@ -1,0 +1,38 @@
+# M2.9.3: Weak Student Profile with SS40 config
+name: juz_amma_dedicated_ss40_weak
+goal_id: "juz:30"
+target_days: 180
+daily_minutes: 60.0
+student_params:
+  skip_day_prob: 0.10
+  early_quit_prob: 0.02
+  persistence_threshold: 800
+  forgetting_rate_mult: 1.5
+  spacing_sensitivity: 0.8
+  item_variability: 0.10
+  fatigue_onset_minutes: 30.0
+  fatigue_decay_rate: 0.02
+  difficulty_sensitivity: 0.2
+  known_surah_ids: []
+  vocab_known_pct: 0.25
+  overdue_sensitivity: 0.5
+  momentum_sensitivity: 0.3
+  drift_alpha_max: 0.015
+  drift_alpha_min: 0.005
+  drift_mastery_exponent: 2.0
+  drift_energy_floor: 0.08
+  session_capacity: 60.0
+  headroom_reserve: 0.10
+  reviews_to_stability: 5.0
+  days_to_stability: 30.0
+  max_working_set: 500
+  cluster_stability_threshold: 0.15
+  cluster_expansion_batch_size: 15
+  intro_min_per_day: 5
+  max_working_set_ratio_of_goal: 1.0
+  target_reviews_per_active: 0.06
+  max_p90_due_age_days: 45.0
+session_size: 40
+enable_bandit: true
+student_count: 1
+scheduler: iqrah_default

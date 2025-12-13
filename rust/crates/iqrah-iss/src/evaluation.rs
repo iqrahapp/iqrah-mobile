@@ -369,7 +369,7 @@ pub fn evaluate(
 
     // Build metrics struct
     let metrics = EvalMetrics {
-        coverage_h: sim_metrics.coverage_t,
+        coverage_h: sim_metrics.coverage_h_0_9,
         mean_r_h: sim_metrics.mean_r_t,
         n_never,
         rho_starve,

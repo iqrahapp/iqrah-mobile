@@ -18,6 +18,11 @@ student_params:
   vocab_known_pct: 0.25
   overdue_sensitivity: 0.3
   momentum_sensitivity: 0.3
+  # M2.4: Cluster gate params for large from-scratch goal
+  max_working_set: 200
+  cluster_stability_threshold: 0.15
+  cluster_expansion_batch_size: 10
+  intro_min_per_day: 3
 session_size: 15
 enable_bandit: true
 student_count: 1

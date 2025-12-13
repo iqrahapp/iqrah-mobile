@@ -228,6 +228,17 @@ pub enum SimulationEvent {
         intro_gated_by_cluster: bool,
         intro_gated_by_working_set: bool,
     },
+
+    /// ISS v2.8: Exercise evaluation result.
+    ExerciseEvaluation {
+        day: u32,
+        exercise_name: String,
+        exercise_axis: crate::axis::AxisKind,
+        score: f64,
+        grade: String,
+        items_tested: usize,
+        summary: String,
+    },
 }
 
 /// Event sender for recording simulation events.
@@ -343,6 +354,9 @@ pub fn compute_stats(events: &[SimulationEvent]) -> EventStats {
             SimulationEvent::FrustrationSpike { .. } => stats.frustration_spikes += 1,
             SimulationEvent::GaveUp { day, .. } => stats.gave_up_day = Some(*day),
             SimulationEvent::DaySnapshot { day, .. } => stats.days_completed = *day,
+            SimulationEvent::ExerciseEvaluation { .. } => {
+                // Exercise evaluations are tracked separately
+            }
         }
     }
 
