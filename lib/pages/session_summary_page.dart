@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/utils/app_logger.dart';
 
 class SessionSummaryPage extends ConsumerStatefulWidget {
   final int reviewCount;
@@ -25,7 +26,7 @@ class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
       // Clear the session from the database
       await api.clearSession();
     } catch (e) {
-      print('Error clearing session: $e');
+      AppLogger.session('Error clearing session', error: e);
     }
   }
 

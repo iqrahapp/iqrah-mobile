@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/services/node_id_service.dart';
 
 /// User preferences for content fetching
 class UserPreferences {
@@ -352,23 +353,44 @@ class ExerciseContentService {
     int translatorId,
   ) async {
     try {
-      // Check if contentKey is a verse key (contains ':') or word ID (integer)
-      if (contentKey.contains(':')) {
-        final translation = await api.getVerseTranslationByTranslator(
-          verseKey: contentKey,
-          translatorId: translatorId,
-        );
-        return translation ?? 'Translation not found';
-      } else {
-        final wordId = int.tryParse(contentKey);
-        if (wordId != null) {
+      // Use proper node type detection instead of contains(':')
+      final nodeType = NodeIdService.getBaseNodeType(contentKey);
+
+      switch (nodeType) {
+        case NodeType.verse:
+          final verseKey = NodeIdService.parseVerseKey(contentKey);
+          final translation = await api.getVerseTranslationByTranslator(
+            verseKey: verseKey,
+            translatorId: translatorId,
+          );
+          return translation ?? 'Translation not found';
+
+        case NodeType.word:
+          final wordId = NodeIdService.parseWordId(contentKey);
           final translation = await api.getWordTranslation(
             wordId: wordId,
             translatorId: translatorId,
           );
           return translation ?? 'Translation not found';
-        }
-        return 'Invalid content key: $contentKey';
+
+        case NodeType.wordInstance:
+          final (chapter, verse, position) =
+              NodeIdService.parseWordInstance(contentKey);
+          final word = await api.getWordAtPosition(
+            chapter: chapter,
+            verse: verse,
+            position: position,
+          );
+          if (word == null) return 'Word not found';
+
+          final translation = await api.getWordTranslation(
+            wordId: word.id,
+            translatorId: translatorId,
+          );
+          return translation ?? 'Translation not found';
+
+        default:
+          return 'Unsupported content type: $contentKey';
       }
     } catch (e) {
       return 'Error fetching translation: $e';

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,21 @@ import 'package:iqrah/rust_bridge/frb_generated.dart';
 import 'package:iqrah/utils/database_path.dart';
 
 const graphAssetPath = "assets/knowledge-graph.cbor.zst";
+const contentDbAssetPath = "rust/content.db";
+
+Future<void> _ensureContentDb(String contentDbPath) async {
+  final contentDbFile = File(contentDbPath);
+  if (await contentDbFile.exists()) {
+    final stat = await contentDbFile.stat();
+    if (stat.size > 0) {
+      return;
+    }
+  }
+
+  final assetData = await rootBundle.load(contentDbAssetPath);
+  await contentDbFile.writeAsBytes(assetData.buffer.asUint8List(), flush: true);
+  debugPrint('✅ Content DB copied to: $contentDbPath');
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,16 +34,16 @@ Future<void> main() async {
   final ByteData assetData;
   try {
     assetData = await rootBundle.load(graphAssetPath);
-    print('✅ Asset loaded successfully: $graphAssetPath');
+    debugPrint('✅ Asset loaded successfully: $graphAssetPath');
   } catch (e) {
-    print('❌ Failed to load asset: $graphAssetPath');
-    print('Error: $e');
+    debugPrint('❌ Failed to load asset: $graphAssetPath');
+    debugPrint('Error: $e');
     // Exit the app with a non-zero exit code to indicate failure
     exit(1);
   }
 
   final dbDir = await getDatabasePath();
-  print('db directory: $dbDir');
+  debugPrint('db directory: $dbDir');
 
   // Ensure the database directory exists
   final directory = Directory(dbDir);
@@ -37,16 +53,18 @@ Future<void> main() async {
 
   final bytes = assetData.buffer.asUint8List();
 
-  // setupDatabase now requires contentDbPath and userDbPath separately
   final contentDbPath = "$dbDir/content.db";
   final userDbPath = "$dbDir/user.db";
 
+  await _ensureContentDb(contentDbPath);
+
+  // setupDatabase now requires contentDbPath and userDbPath separately
   final initMsg = await setupDatabase(
     contentDbPath: contentDbPath,
     userDbPath: userDbPath,
     kgBytes: bytes,
   );
-  print(initMsg);
+  debugPrint(initMsg);
 
   runApp(const ProviderScope(child: MyApp()));
 }

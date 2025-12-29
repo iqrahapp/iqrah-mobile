@@ -10,7 +10,7 @@ part 'api.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `app`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ExerciseDto`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
 
 /// One-time setup: initializes databases and imports graph
 Future<String> setupDatabase({
@@ -66,6 +66,17 @@ Future<WordDto?> getWord({required int wordId}) =>
 /// Get all words for a verse
 Future<List<WordDto>> getWordsForVerse({required String verseKey}) =>
     RustLib.instance.api.crateApiGetWordsForVerse(verseKey: verseKey);
+
+/// Get word at specific position in a verse (resolves WORD_INSTANCE nodes)
+Future<WordDto?> getWordAtPosition({
+  required int chapter,
+  required int verse,
+  required int position,
+}) => RustLib.instance.api.crateApiGetWordAtPosition(
+  chapter: chapter,
+  verse: verse,
+  position: position,
+);
 
 /// Get word translation
 Future<String?> getWordTranslation({
@@ -157,6 +168,60 @@ Future<String?> getVerseTranslationByTranslator({
   translatorId: translatorId,
 );
 
+/// Drain all pending telemetry events as JSON strings
+/// Call periodically from Dart (e.g. every 30s or on app background)
+Future<List<String>> drainTelemetryEvents() =>
+    RustLib.instance.api.crateApiDrainTelemetryEvents();
+
+/// Get count of pending telemetry events
+Future<int> getTelemetryEventCount() =>
+    RustLib.instance.api.crateApiGetTelemetryEventCount();
+
+/// Debug: manually emit a test event (dev only)
+Future<String> debugEmitTestEvent() =>
+    RustLib.instance.api.crateApiDebugEmitTestEvent();
+
+/// Get energy snapshot for a node including neighbor energies
+Future<EnergySnapshotDto> getEnergySnapshot({
+  required String userId,
+  required String nodeId,
+}) => RustLib.instance.api.crateApiGetEnergySnapshot(
+  userId: userId,
+  nodeId: nodeId,
+);
+
+/// Simulate energy propagation without persisting changes
+Future<PropagationResultDto> simulatePropagation({
+  required String userId,
+  required String nodeId,
+  required double energyDelta,
+}) => RustLib.instance.api.crateApiSimulatePropagation(
+  userId: userId,
+  nodeId: nodeId,
+  energyDelta: energyDelta,
+);
+
+/// Parse a verse range string into individual node IDs
+/// Supports: "1:1-1:7" or "1:1-7" (shorthand for same chapter)
+Future<List<String>> parseNodeRange({required String range}) =>
+    RustLib.instance.api.crateApiParseNodeRange(range: range);
+
+/// Query nodes with filters (type, energy range)
+Future<List<NodeSearchDto>> queryNodesFiltered({
+  required String userId,
+  required NodeFilterDto filter,
+  required int limit,
+}) => RustLib.instance.api.crateApiQueryNodesFiltered(
+  userId: userId,
+  filter: filter,
+  limit: limit,
+);
+
+/// Execute a debug SQL query (debug builds only)
+/// Only SELECT queries are allowed for safety
+Future<DbQueryResultDto> executeDebugQuery({required String sql}) =>
+    RustLib.instance.api.crateApiExecuteDebugQuery(sql: sql);
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>>
 abstract class AppState implements RustOpaqueInterface {
   ArcContentRepository get contentRepo;
@@ -220,6 +285,24 @@ class DashboardStatsDto {
           dueCount == other.dueCount;
 }
 
+class DbQueryResultDto {
+  final List<String> columns;
+  final List<List<String>> rows;
+
+  const DbQueryResultDto({required this.columns, required this.rows});
+
+  @override
+  int get hashCode => columns.hashCode ^ rows.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DbQueryResultDto &&
+          runtimeType == other.runtimeType &&
+          columns == other.columns &&
+          rows == other.rows;
+}
+
 class DebugStatsDto {
   final int totalNodesCount;
   final int totalEdgesCount;
@@ -243,6 +326,30 @@ class DebugStatsDto {
           totalNodesCount == other.totalNodesCount &&
           totalEdgesCount == other.totalEdgesCount &&
           dueCount == other.dueCount;
+}
+
+class EnergySnapshotDto {
+  final String nodeId;
+  final double energy;
+  final List<NodeEnergyDto> neighbors;
+
+  const EnergySnapshotDto({
+    required this.nodeId,
+    required this.energy,
+    required this.neighbors,
+  });
+
+  @override
+  int get hashCode => nodeId.hashCode ^ energy.hashCode ^ neighbors.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EnergySnapshotDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          energy == other.energy &&
+          neighbors == other.neighbors;
 }
 
 @freezed
@@ -380,6 +487,61 @@ class NodeData {
           metadata == other.metadata;
 }
 
+class NodeEnergyDto {
+  final String nodeId;
+  final double energy;
+  final double edgeWeight;
+
+  const NodeEnergyDto({
+    required this.nodeId,
+    required this.energy,
+    required this.edgeWeight,
+  });
+
+  @override
+  int get hashCode => nodeId.hashCode ^ energy.hashCode ^ edgeWeight.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeEnergyDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          energy == other.energy &&
+          edgeWeight == other.edgeWeight;
+}
+
+class NodeFilterDto {
+  final String? nodeType;
+  final double? minEnergy;
+  final double? maxEnergy;
+  final String? range;
+
+  const NodeFilterDto({
+    this.nodeType,
+    this.minEnergy,
+    this.maxEnergy,
+    this.range,
+  });
+
+  @override
+  int get hashCode =>
+      nodeType.hashCode ^
+      minEnergy.hashCode ^
+      maxEnergy.hashCode ^
+      range.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is NodeFilterDto &&
+          runtimeType == other.runtimeType &&
+          nodeType == other.nodeType &&
+          minEnergy == other.minEnergy &&
+          maxEnergy == other.maxEnergy &&
+          range == other.range;
+}
+
 class NodeSearchDto {
   final String nodeId;
   final String nodeType;
@@ -402,6 +564,24 @@ class NodeSearchDto {
           nodeId == other.nodeId &&
           nodeType == other.nodeType &&
           preview == other.preview;
+}
+
+class PropagationResultDto {
+  final List<NodeEnergyDto> before;
+  final List<NodeEnergyDto> after;
+
+  const PropagationResultDto({required this.before, required this.after});
+
+  @override
+  int get hashCode => before.hashCode ^ after.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PropagationResultDto &&
+          runtimeType == other.runtimeType &&
+          before == other.before &&
+          after == other.after;
 }
 
 class SessionPreviewDto {

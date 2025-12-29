@@ -139,10 +139,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_i_32(dynamic raw);
 
   @protected
   NodeData dco_decode_box_autoadd_node_data(dynamic raw);
+
+  @protected
+  NodeFilterDto dco_decode_box_autoadd_node_filter_dto(dynamic raw);
 
   @protected
   TranslatorDto dco_decode_box_autoadd_translator_dto(dynamic raw);
@@ -157,7 +163,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw);
 
   @protected
+  DbQueryResultDto dco_decode_db_query_result_dto(dynamic raw);
+
+  @protected
   DebugStatsDto dco_decode_debug_stats_dto(dynamic raw);
+
+  @protected
+  EnergySnapshotDto dco_decode_energy_snapshot_dto(dynamic raw);
 
   @protected
   ExerciseDataDto dco_decode_exercise_data_dto(dynamic raw);
@@ -179,6 +191,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<LanguageDto> dco_decode_list_language_dto(dynamic raw);
+
+  @protected
+  List<List<String>> dco_decode_list_list_String(dynamic raw);
+
+  @protected
+  List<NodeEnergyDto> dco_decode_list_node_energy_dto(dynamic raw);
 
   @protected
   List<NodeSearchDto> dco_decode_list_node_search_dto(dynamic raw);
@@ -208,10 +226,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NodeData dco_decode_node_data(dynamic raw);
 
   @protected
+  NodeEnergyDto dco_decode_node_energy_dto(dynamic raw);
+
+  @protected
+  NodeFilterDto dco_decode_node_filter_dto(dynamic raw);
+
+  @protected
   NodeSearchDto dco_decode_node_search_dto(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
 
   @protected
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
@@ -227,6 +254,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto? dco_decode_opt_box_autoadd_word_dto(dynamic raw);
+
+  @protected
+  PropagationResultDto dco_decode_propagation_result_dto(dynamic raw);
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
@@ -357,10 +387,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
   NodeData sse_decode_box_autoadd_node_data(SseDeserializer deserializer);
+
+  @protected
+  NodeFilterDto sse_decode_box_autoadd_node_filter_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   TranslatorDto sse_decode_box_autoadd_translator_dto(
@@ -379,7 +417,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  DbQueryResultDto sse_decode_db_query_result_dto(SseDeserializer deserializer);
+
+  @protected
   DebugStatsDto sse_decode_debug_stats_dto(SseDeserializer deserializer);
+
+  @protected
+  EnergySnapshotDto sse_decode_energy_snapshot_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   ExerciseDataDto sse_decode_exercise_data_dto(SseDeserializer deserializer);
@@ -403,6 +449,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<LanguageDto> sse_decode_list_language_dto(SseDeserializer deserializer);
+
+  @protected
+  List<List<String>> sse_decode_list_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<NodeEnergyDto> sse_decode_list_node_energy_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<NodeSearchDto> sse_decode_list_node_search_dto(
@@ -440,10 +494,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NodeData sse_decode_node_data(SseDeserializer deserializer);
 
   @protected
+  NodeEnergyDto sse_decode_node_energy_dto(SseDeserializer deserializer);
+
+  @protected
+  NodeFilterDto sse_decode_node_filter_dto(SseDeserializer deserializer);
+
+  @protected
   NodeSearchDto sse_decode_node_search_dto(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
@@ -461,6 +524,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto? sse_decode_opt_box_autoadd_word_dto(SseDeserializer deserializer);
+
+  @protected
+  PropagationResultDto sse_decode_propagation_result_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   (String, String) sse_decode_record_string_string(
@@ -613,11 +681,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_node_data(
     NodeData self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_node_filter_dto(
+    NodeFilterDto self,
     SseSerializer serializer,
   );
 
@@ -643,7 +720,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_db_query_result_dto(
+    DbQueryResultDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_debug_stats_dto(DebugStatsDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_energy_snapshot_dto(
+    EnergySnapshotDto self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_exercise_data_dto(
@@ -672,6 +761,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_language_dto(
     List<LanguageDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_list_String(
+    List<List<String>> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_node_energy_dto(
+    List<NodeEnergyDto> self,
     SseSerializer serializer,
   );
 
@@ -721,10 +822,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_node_data(NodeData self, SseSerializer serializer);
 
   @protected
+  void sse_encode_node_energy_dto(NodeEnergyDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_node_filter_dto(NodeFilterDto self, SseSerializer serializer);
+
+  @protected
   void sse_encode_node_search_dto(NodeSearchDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
@@ -750,6 +860,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_word_dto(
     WordDto? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_propagation_result_dto(
+    PropagationResultDto self,
     SseSerializer serializer,
   );
 

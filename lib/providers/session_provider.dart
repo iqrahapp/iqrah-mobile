@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/utils/app_logger.dart';
 
 class SessionState {
   final List<api.ExerciseDataDto> exercises;
@@ -78,7 +79,7 @@ class SessionNotifier extends Notifier<SessionState> {
 
       state = state.copyWith(currentIndex: state.currentIndex + 1);
     } catch (e) {
-      print("Failed to submit review for current exercise: $e");
+      AppLogger.session('Failed to submit review for current exercise', error: e);
     }
   }
 }

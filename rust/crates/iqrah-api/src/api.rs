@@ -21,6 +21,12 @@ pub struct AppState {
 
 static APP: OnceCell<AppState> = OnceCell::new();
 
+// Debug-only: store content pool separately to avoid FRB trying to serialize it
+#[cfg(debug_assertions)]
+static DEBUG_CONTENT_POOL: OnceCell<sqlx::SqlitePool> = OnceCell::new();
+#[cfg(debug_assertions)]
+static DEBUG_USER_POOL: OnceCell<sqlx::SqlitePool> = OnceCell::new();
+
 /// Get app state (helper function)
 fn app() -> &'static AppState {
     APP.get()
@@ -38,6 +44,12 @@ pub async fn setup_database(
     // Initialize databases
     let content_pool = init_content_db(&content_db_path).await?;
     let user_pool = init_user_db(&user_db_path).await?;
+
+    // Clone pool for debug builds before consuming it
+    #[cfg(debug_assertions)]
+    let debug_content_pool = content_pool.clone();
+    #[cfg(debug_assertions)]
+    let debug_user_pool = user_pool.clone();
 
     // Create repositories
     let content_repo: Arc<dyn ContentRepository> =
@@ -75,6 +87,13 @@ pub async fn setup_database(
     ));
 
     let exercise_service = Arc::new(ExerciseService::new(Arc::clone(&content_repo)));
+
+    // Store debug pool separately (debug builds only)
+    #[cfg(debug_assertions)]
+    {
+        let _ = DEBUG_CONTENT_POOL.set(debug_content_pool);
+        let _ = DEBUG_USER_POOL.set(debug_user_pool);
+    }
 
     // Store in global state
     APP.set(AppState {
@@ -201,6 +220,23 @@ pub async fn get_words_for_verse(verse_key: String) -> Result<Vec<WordDto>> {
     let app = app();
     let words = app.content_repo.get_words_for_verse(&verse_key).await?;
     Ok(words.into_iter().map(|w| w.into()).collect())
+}
+
+/// Get word at specific position in a verse (resolves WORD_INSTANCE nodes)
+pub async fn get_word_at_position(
+    chapter: i32,
+    verse: i32,
+    position: i32,
+) -> Result<Option<WordDto>> {
+    let app = app();
+    let verse_key = format!("{}:{}", chapter, verse);
+    let words = app.content_repo.get_words_for_verse(&verse_key).await?;
+
+    // Find word at the specified position (1-based)
+    Ok(words
+        .into_iter()
+        .map(|w| w.into())
+        .find(|w: &WordDto| w.position == position))
 }
 
 /// Get word translation
@@ -500,6 +536,44 @@ pub struct DebugStatsDto {
     pub total_nodes_count: u32,
     pub total_edges_count: u32,
     pub due_count: u32,
+}
+
+// ========================================================================
+// Debug Infrastructure DTOs (Phase 2)
+// ========================================================================
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EnergySnapshotDto {
+    pub node_id: String,
+    pub energy: f64,
+    pub neighbors: Vec<NodeEnergyDto>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NodeEnergyDto {
+    pub node_id: String,
+    pub energy: f64,
+    pub edge_weight: f64,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct PropagationResultDto {
+    pub before: Vec<NodeEnergyDto>,
+    pub after: Vec<NodeEnergyDto>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct NodeFilterDto {
+    pub node_type: Option<String>,
+    pub min_energy: Option<f64>,
+    pub max_energy: Option<f64>,
+    pub range: Option<String>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct DbQueryResultDto {
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<String>>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -829,4 +903,298 @@ pub fn get_telemetry_event_count() -> Result<u32> {
 pub fn debug_emit_test_event() -> Result<String> {
     crate::telemetry::emit_daily_health(0, 100, 5, 20, 0.95, 0.90, 0.05, 30.0, 564);
     Ok("Test event emitted".to_string())
+}
+
+// ========================================================================
+// Debug Infrastructure API (Phase 2)
+// ========================================================================
+
+/// Get energy snapshot for a node including neighbor energies
+pub async fn get_energy_snapshot(user_id: String, node_id: String) -> Result<EnergySnapshotDto> {
+    let app = app();
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+
+    // Get node energy
+    let state = app.user_repo.get_memory_state(&user_id, nid_val).await?;
+    let energy = state.map(|s| s.energy).unwrap_or(0.0);
+
+    // Get neighbor edges
+    let edges = app.content_repo.get_edges_from(nid_val).await?;
+
+    // Get neighbor energies
+    let mut neighbors = Vec::new();
+    for edge in edges {
+        let neighbor_state = app
+            .user_repo
+            .get_memory_state(&user_id, edge.target_id)
+            .await?;
+        neighbors.push(NodeEnergyDto {
+            node_id: nid::to_ukey(edge.target_id).unwrap_or_default(),
+            energy: neighbor_state.map(|s| s.energy).unwrap_or(0.0),
+            edge_weight: edge.param1, // param1 holds propagation weight
+        });
+    }
+
+    Ok(EnergySnapshotDto {
+        node_id,
+        energy,
+        neighbors,
+    })
+}
+
+/// Simulate energy propagation without persisting changes
+pub async fn simulate_propagation(
+    user_id: String,
+    node_id: String,
+    energy_delta: f64,
+) -> Result<PropagationResultDto> {
+    let app = app();
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+
+    // Get edges from this node
+    let edges = app.content_repo.get_edges_from(nid_val).await?;
+
+    // Collect before states
+    let mut before = Vec::new();
+    let mut after = Vec::new();
+
+    for edge in edges {
+        let target_ukey = nid::to_ukey(edge.target_id).unwrap_or_default();
+        let target_state = app
+            .user_repo
+            .get_memory_state(&user_id, edge.target_id)
+            .await?;
+        let current_energy = target_state.map(|s| s.energy).unwrap_or(0.0);
+
+        before.push(NodeEnergyDto {
+            node_id: target_ukey.clone(),
+            energy: current_energy,
+            edge_weight: edge.param1,
+        });
+
+        // Calculate propagated delta (simplified: weight * delta * 0.1 decay)
+        let propagated = energy_delta * edge.param1 * 0.1;
+        let new_energy = (current_energy + propagated).clamp(0.0, 1.0);
+
+        after.push(NodeEnergyDto {
+            node_id: target_ukey,
+            energy: new_energy,
+            edge_weight: edge.param1,
+        });
+    }
+
+    Ok(PropagationResultDto { before, after })
+}
+
+/// Parse a verse range string into individual node IDs
+/// Supports: "1:1-1:7" or "1:1-7" (shorthand for same chapter)
+pub fn parse_node_range(range: String) -> Result<Vec<String>> {
+    let range = range.trim();
+
+    // Try to parse as "chapter:start-end" (shorthand)
+    if let Some((prefix, end_str)) = range.rsplit_once('-') {
+        if let Some((chapter_str, start_str)) = prefix.rsplit_once(':') {
+            // Shorthand: "1:1-7"
+            if let (Ok(chapter), Ok(start), Ok(end)) = (
+                chapter_str.parse::<u8>(),
+                start_str.parse::<u16>(),
+                end_str.parse::<u16>(),
+            ) {
+                if start <= end && (1..=114).contains(&chapter) {
+                    return Ok((start..=end)
+                        .map(|v| format!("VERSE:{}:{}", chapter, v))
+                        .collect());
+                }
+            }
+        }
+
+        // Try full format: "1:1-2:5" (cross-chapter - not supported for simplicity)
+        // For now, return error for cross-chapter ranges
+        if prefix.contains(':') && end_str.contains(':') {
+            return Err(anyhow::anyhow!(
+                "Cross-chapter ranges not supported. Use same-chapter format: 1:1-7"
+            ));
+        }
+    }
+
+    Err(anyhow::anyhow!(
+        "Invalid range format. Use: chapter:start-end (e.g., 1:1-7)"
+    ))
+}
+
+/// Query nodes with filters (type, energy range)
+pub async fn query_nodes_filtered(
+    user_id: String,
+    filter: NodeFilterDto,
+    limit: u32,
+) -> Result<Vec<NodeSearchDto>> {
+    let app = app();
+    let all_nodes = app.content_repo.get_all_nodes().await?;
+
+    let mut results = Vec::new();
+
+    for node in all_nodes {
+        // Apply node type filter
+        if let Some(ref type_filter) = filter.node_type {
+            let node_type_str: String = node.node_type.into();
+            if !node_type_str.eq_ignore_ascii_case(type_filter) {
+                continue;
+            }
+        }
+
+        // Apply energy range filter
+        if filter.min_energy.is_some() || filter.max_energy.is_some() {
+            let state = app.user_repo.get_memory_state(&user_id, node.id).await?;
+            let energy = state.map(|s| s.energy).unwrap_or(0.0);
+
+            if let Some(min) = filter.min_energy {
+                if energy < min {
+                    continue;
+                }
+            }
+            if let Some(max) = filter.max_energy {
+                if energy > max {
+                    continue;
+                }
+            }
+        }
+
+        // Apply range filter (verse range)
+        if let Some(ref range_str) = filter.range {
+            if let Ok(valid_ids) = parse_node_range(range_str.clone()) {
+                let ukey = nid::to_ukey(node.id).unwrap_or_default();
+                if !valid_ids.contains(&ukey) {
+                    continue;
+                }
+            }
+        }
+
+        // Get preview text
+        let preview = app
+            .content_repo
+            .get_quran_text(node.id)
+            .await?
+            .unwrap_or_default();
+
+        results.push(NodeSearchDto {
+            node_id: nid::to_ukey(node.id).unwrap_or_default(),
+            node_type: format!("{:?}", node.node_type),
+            preview: preview.chars().take(100).collect(),
+        });
+
+        if results.len() >= limit as usize {
+            break;
+        }
+    }
+
+    Ok(results)
+}
+
+/// Execute a debug SQL query (debug builds only)
+/// Only SELECT queries are allowed for safety
+#[cfg(debug_assertions)]
+pub async fn execute_debug_query(sql: String) -> Result<DbQueryResultDto> {
+    use sqlx::{Column, Row};
+
+    let trimmed = sql.trim();
+    let upper = trimmed.to_uppercase();
+
+    // Only allow SELECT queries for safety
+    if !upper.starts_with("SELECT") {
+        return Err(anyhow::anyhow!(
+            "Only SELECT queries allowed in debug mode"
+        ));
+    }
+
+    let user_tables = [
+        "USER_MEMORY_STATES",
+        "SESSION_STATE",
+        "PROPAGATION_EVENTS",
+        "PROPAGATION_DETAILS",
+        "USER_STATS",
+        "APP_SETTINGS",
+        "USER_BANDIT_STATE",
+    ];
+    let content_tables = [
+        "NODES",
+        "EDGES",
+        "CHAPTERS",
+        "VERSES",
+        "WORDS",
+        "SCRIPT_RESOURCES",
+        "SCRIPT_CONTENTS",
+        "VERSE_TRANSLATIONS",
+        "WORD_TRANSLATIONS",
+        "TRANSLATORS",
+        "LANGUAGES",
+        "ROOTS",
+        "LEMMAS",
+        "MORPHOLOGY_SEGMENTS",
+        "GOALS",
+        "GOAL_NODES",
+        "RECITERS",
+        "VERSE_RECITATIONS",
+        "WORD_AUDIO",
+        "TEXT_VARIANTS",
+        "CONTENT_PACKAGES",
+        "INSTALLED_PACKAGES",
+    ];
+
+    let user_match = user_tables.iter().any(|t| upper.contains(t));
+    let content_match = content_tables.iter().any(|t| upper.contains(t));
+
+    if user_match && content_match {
+        return Err(anyhow::anyhow!(
+            "Cross-database queries are not supported in debug mode"
+        ));
+    }
+
+    let pool = if user_match {
+        DEBUG_USER_POOL
+            .get()
+            .ok_or_else(|| anyhow::anyhow!("Debug user pool not initialized"))?
+    } else {
+        DEBUG_CONTENT_POOL
+            .get()
+            .ok_or_else(|| anyhow::anyhow!("Debug content pool not initialized"))?
+    };
+    let rows: Vec<sqlx::sqlite::SqliteRow> = sqlx::query(trimmed)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| anyhow::anyhow!("Query failed: {}", e))?;
+
+    // Extract column names from first row if available
+    let columns: Vec<String> = if rows.is_empty() {
+        Vec::new()
+    } else {
+        rows[0]
+            .columns()
+            .iter()
+            .map(|c: &sqlx::sqlite::SqliteColumn| c.name().to_string())
+            .collect()
+    };
+
+    // Convert rows to string values
+    let result_rows: Vec<Vec<String>> = rows
+        .iter()
+        .map(|row: &sqlx::sqlite::SqliteRow| {
+            columns
+                .iter()
+                .enumerate()
+                .map(|(i, _)| {
+                    // Try to get value as different types
+                    row.try_get::<String, _>(i)
+                        .or_else(|_| row.try_get::<i64, _>(i).map(|v: i64| v.to_string()))
+                        .or_else(|_| row.try_get::<f64, _>(i).map(|v: f64| v.to_string()))
+                        .or_else(|_| row.try_get::<bool, _>(i).map(|v: bool| v.to_string()))
+                        .unwrap_or_else(|_| "NULL".to_string())
+                })
+                .collect()
+        })
+        .collect();
+
+    Ok(DbQueryResultDto {
+        columns,
+        rows: result_rows,
+    })
 }

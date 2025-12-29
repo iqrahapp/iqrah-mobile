@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iqrah/features/debug/debug_home_screen.dart';
 import 'package:iqrah/pages/excercise_page.dart';
 import 'package:iqrah/pages/sandbox_page.dart';
 import 'package:iqrah/pages/settings_page.dart';
@@ -37,6 +39,16 @@ class DashboardPage extends ConsumerWidget {
               ).push(MaterialPageRoute(builder: (_) => const SandboxPage()));
             },
           ),
+          if (kDebugMode)
+            IconButton(
+              tooltip: 'Debug Tools',
+              icon: const Icon(Icons.bug_report),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DebugHomeScreen()),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(exercisesProvider),

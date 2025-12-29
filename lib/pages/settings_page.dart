@@ -154,72 +154,69 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
                       return preferredTranslatorAsync.when(
                         data: (preferredId) {
-                          return Column(
-                            children: translators.map((translator) {
-                              final isSelected = translator.id == preferredId;
-                              return Card(
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.primaryContainer
-                                    : null,
-                                child: ListTile(
-                                  title: Text(
-                                    translator.fullName,
-                                    style: TextStyle(
-                                      fontWeight: isSelected
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
+                          void setPreferredTranslator(int id) {
+                            ref
+                                .read(preferredTranslatorProvider.notifier)
+                                .setPreferredTranslator(id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Translator changed to ${translators.firstWhere((t) => t.id == id).fullName}'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+
+                          return RadioGroup<int>(
+                            groupValue: preferredId,
+                            onChanged: (value) {
+                              if (value != null) {
+                                setPreferredTranslator(value);
+                              }
+                            },
+                            child: Column(
+                              children: translators.map((translator) {
+                                final isSelected = translator.id == preferredId;
+                                return Card(
+                                  color: isSelected
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .primaryContainer
+                                      : null,
+                                  child: RadioListTile<int>(
+                                    value: translator.id,
+                                    selected: isSelected,
+                                    title: Text(
+                                      translator.fullName,
+                                      style: TextStyle(
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (translator.description != null)
+                                          Text(translator.description!),
+                                        if (translator.license != null)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 4.0),
+                                            child: Text(
+                                              'License: ${translator.license}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      if (translator.description != null)
-                                        Text(translator.description!),
-                                      if (translator.license != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 4.0),
-                                          child: Text(
-                                            'License: ${translator.license}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  leading: Radio<int>(
-                                    value: translator.id,
-                                    groupValue: preferredId,
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        ref
-                                            .read(preferredTranslatorProvider.notifier)
-                                            .setPreferredTranslator(value);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Translator changed to ${translator.fullName}'),
-                                            duration: const Duration(seconds: 2),
-                                          ),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                  onTap: () {
-                                    ref
-                                        .read(preferredTranslatorProvider.notifier)
-                                        .setPreferredTranslator(translator.id);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            'Translator changed to ${translator.fullName}'),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              );
-                            }).toList(),
+                                );
+                              }).toList(),
+                            ),
                           );
                         },
                         loading: () => const CircularProgressIndicator(),
