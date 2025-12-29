@@ -132,6 +132,7 @@ where
     }
 
     /// Process a single surah report.
+    #[allow(clippy::too_many_arguments)]
     async fn process_surah_report(
         &self,
         user_id: &str,

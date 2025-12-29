@@ -116,6 +116,7 @@ pub fn pending_event_count() -> usize {
 }
 
 /// Emit daily health summary
+#[allow(clippy::too_many_arguments)]
 pub fn emit_daily_health(
     day: u32,
     total_active: u32,

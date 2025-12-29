@@ -451,11 +451,11 @@ mod tests {
     fn test_success_probability_boundaries() {
         // Very low energy, young item: minimum ~5%
         let prob = estimate_success_probability(0.05, 0);
-        assert!(prob >= 0.05 && prob <= 0.10);
+        assert!((0.05..=0.10).contains(&prob));
 
         // Very high energy, mature item: maximum ~95%
         let prob = estimate_success_probability(0.95, 10);
-        assert!(prob >= 0.90 && prob <= 0.95);
+        assert!((0.90..=0.95).contains(&prob));
     }
 
     #[test]

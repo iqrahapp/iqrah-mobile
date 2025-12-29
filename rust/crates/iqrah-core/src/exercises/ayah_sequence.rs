@@ -240,7 +240,7 @@ mod tests {
         // Setup get_node for verse lookups (node IDs 11-17 for verses 1:1-1:7)
         mock.expect_get_node().returning(|node_id| {
             let verse_num = (node_id - 10) as i32;
-            if verse_num >= 1 && verse_num <= 7 {
+            if (1..=7).contains(&verse_num) {
                 Ok(Some(Node {
                     id: node_id,
                     ukey: format!("VERSE:1:{}", verse_num),

@@ -28,6 +28,7 @@ impl MemorizationAction {
     }
 
     /// Parse from string (for compatibility with server commands)
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "Tap" | "tap" => Some(MemorizationAction::Tap),

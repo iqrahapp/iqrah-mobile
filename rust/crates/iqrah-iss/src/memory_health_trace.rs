@@ -49,7 +49,7 @@ pub struct MemoryHealthRow {
     /// at_risk_count / total_active (strict)
     pub at_risk_ratio: f64,
     /// 10th percentile of R_today among active items (tail health)
-    pub p10_R_today: f64,
+    pub p10_r_today: f64,
     /// p90 due_age only among at-risk (R<0.80) items
     pub p90_due_age_at_risk: f64,
     // M2.9: Weaker at-risk threshold (R < 0.90)
@@ -140,7 +140,7 @@ impl MemoryHealthTraceCollector {
                 row.items_due_today,
                 row.at_risk_count,
                 row.at_risk_ratio,
-                row.p10_R_today,
+                row.p10_r_today,
                 row.p90_due_age_at_risk,
                 row.at_risk_count_0_9,
                 row.at_risk_ratio_0_9,

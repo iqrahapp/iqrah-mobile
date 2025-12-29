@@ -714,7 +714,7 @@ impl Simulator {
         memory_health: Option<&mut MemoryHealthTraceCollector>,
     ) -> Result<f64> {
         let now = start_time + Duration::days(day as i64);
-        let now_ts = now.timestamp_millis();
+        let _now_ts = now.timestamp_millis();
 
         // Configure Brain for Oracle mode if needed
         if matches!(baseline_state, BaselineState::OraclePerfect) {
@@ -851,7 +851,7 @@ impl Simulator {
             // (removed new_items_allowed counter - budget-enforced selection does this)
 
             // M2.3: Count new items BEFORE cluster filter
-            let new_from_get_candidates = all_candidates
+            let _new_from_get_candidates = all_candidates
                 .iter()
                 .filter(|c| c.review_count == 0)
                 .count();
@@ -873,7 +873,8 @@ impl Simulator {
                 .collect();
 
             // M2.3: Count new items AFTER cluster filter (should be same for new items)
-            let new_pass_cluster_filter = candidates.iter().filter(|c| c.review_count == 0).count();
+            let _new_pass_cluster_filter =
+                candidates.iter().filter(|c| c.review_count == 0).count();
 
             debug!(
                 "Filtered candidates: {} from {} (cluster: {}, new_allowed: {})",
@@ -902,7 +903,7 @@ impl Simulator {
 
             // Build parent_energies from current memory states
             let all_parent_ids: Vec<i64> = parent_map.values().flatten().copied().collect();
-            let parent_energies: HashMap<i64, f32> = if all_parent_ids.is_empty() {
+            let _parent_energies: HashMap<i64, f32> = if all_parent_ids.is_empty() {
                 HashMap::new()
             } else {
                 user_repo
@@ -912,7 +913,7 @@ impl Simulator {
             };
 
             // Get user profile (via bandit if enabled)
-            let profile = if scenario.enable_bandit {
+            let _profile = if scenario.enable_bandit {
                 self.select_profile_via_bandit(user_id, &scenario.goal_id, user_repo, scheduler_rng)
                     .await?
             } else {
@@ -1608,7 +1609,7 @@ impl Simulator {
                 } else {
                     0.0
                 };
-                let p10_R_today = compute_p10(&retrievabilities);
+                let p10_r_today = compute_p10(&retrievabilities);
 
                 // p90 due age among at-risk items only
                 let at_risk_due_ages: Vec<f64> = active_states
@@ -1647,7 +1648,7 @@ impl Simulator {
                     // M2.8: At-risk backlog metrics
                     at_risk_count,
                     at_risk_ratio,
-                    p10_R_today,
+                    p10_r_today,
                     p90_due_age_at_risk,
                     // M2.9: Weaker at-risk threshold (R < 0.90)
                     at_risk_count_0_9: retrievabilities.iter().filter(|&&r| r < 0.90).count(),

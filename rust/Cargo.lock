@@ -3010,6 +3010,7 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
  "tracing",
  "tracing-subscriber",

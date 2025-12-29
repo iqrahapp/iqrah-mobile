@@ -143,6 +143,7 @@ impl MasteryBand {
 /// 4. **Band Composition**: Top K candidates composed by SessionMode (mastery bands or difficulty).
 ///
 /// There is NO separate "due vs non-due" overlay. FSRS due status affects urgency in scoring.
+#[allow(clippy::too_many_arguments)]
 pub fn generate_session(
     candidates: Vec<CandidateNode>,
     parent_map: HashMap<i64, Vec<i64>>,
@@ -899,7 +900,7 @@ mod tests {
 
         let candidates = vec![
             // Item 1: slightly overdue, low graph scores
-            make_candidate(1, 0.2, 0.1, 0.3, 0.3, now_ts - (1 * 86400 * 1000), 1000),
+            make_candidate(1, 0.2, 0.1, 0.3, 0.3, now_ts - 86400 * 1000, 1000),
             // Item 2: not due, high graph scores
             make_candidate(2, 0.9, 0.9, 0.3, 0.5, now_ts + 100_000, 2000),
             // Item 3: very overdue (10 days), medium graph scores
