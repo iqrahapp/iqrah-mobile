@@ -16,31 +16,25 @@ Future<void> _ensureContentDb(String contentDbPath) async {
   final contentDbFile = File(contentDbPath);
   if (await contentDbFile.exists()) {
     final stat = await contentDbFile.stat();
-    if (stat.size > 0) {
+    // Only skip if file is reasonably large (has actual data, not just schema)
+    // The bundled content.db with full Quran data is ~90MB
+    if (stat.size > 10 * 1024 * 1024) {
+      // > 10MB
       return;
     }
+    // File exists but is too small - delete and recopy
+    debugPrint('⚠️ Content DB exists but seems empty (${stat.size} bytes), recopying...');
+    await contentDbFile.delete();
   }
 
   final assetData = await rootBundle.load(contentDbAssetPath);
   await contentDbFile.writeAsBytes(assetData.buffer.asUint8List(), flush: true);
-  debugPrint('✅ Content DB copied to: $contentDbPath');
+  debugPrint('✅ Content DB copied to: $contentDbPath (${assetData.lengthInBytes} bytes)');
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
-
-  // Ensure the asset still exist
-  final ByteData assetData;
-  try {
-    assetData = await rootBundle.load(graphAssetPath);
-    debugPrint('✅ Asset loaded successfully: $graphAssetPath');
-  } catch (e) {
-    debugPrint('❌ Failed to load asset: $graphAssetPath');
-    debugPrint('Error: $e');
-    // Exit the app with a non-zero exit code to indicate failure
-    exit(1);
-  }
 
   final dbDir = await getDatabasePath();
   debugPrint('db directory: $dbDir');
@@ -51,12 +45,29 @@ Future<void> main() async {
     await directory.create(recursive: true);
   }
 
-  final bytes = assetData.buffer.asUint8List();
-
   final contentDbPath = "$dbDir/content.db";
   final userDbPath = "$dbDir/user.db";
 
+  // Copy bundled content.db if needed
   await _ensureContentDb(contentDbPath);
+
+  // Only load CBOR if content.db is empty (first run without bundled data)
+  // This avoids loading 12MB on every startup
+  Uint8List bytes = Uint8List(0);
+  final contentDbFile = File(contentDbPath);
+  final stat = await contentDbFile.stat();
+  if (stat.size < 1024) {
+    // Database is empty/tiny, load CBOR for import
+    try {
+      final assetData = await rootBundle.load(graphAssetPath);
+      bytes = assetData.buffer.asUint8List();
+      debugPrint('✅ CBOR loaded for import: $graphAssetPath');
+    } catch (e) {
+      debugPrint('⚠️ CBOR not available: $e');
+    }
+  } else {
+    debugPrint('✅ Using bundled content.db (${stat.size} bytes)');
+  }
 
   // setupDatabase now requires contentDbPath and userDbPath separately
   final initMsg = await setupDatabase(

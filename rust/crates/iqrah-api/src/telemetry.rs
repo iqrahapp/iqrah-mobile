@@ -87,6 +87,15 @@ pub struct PanicPayload {
     pub location: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EchoRecallCompletedPayload {
+    pub user_id: String,
+    pub word_count: u32,
+    pub total_duration_ms: u64,
+    pub struggles: u32,
+    pub average_energy: f64,
+}
+
 // ============================================================================
 // Emission Functions
 // ============================================================================
@@ -168,6 +177,27 @@ pub fn emit_panic(function_name: &str, message: &str, location: Option<&str>) {
         location: location.map(|s| s.to_string()),
     };
     emit_internal(TelemetryEvent::new("rust.panic", payload));
+}
+
+/// Emit Echo Recall completed event
+pub fn emit_echo_recall_completed(
+    user_id: &str,
+    word_count: u32,
+    total_duration_ms: u64,
+    struggles: u32,
+    average_energy: f64,
+) {
+    let payload = EchoRecallCompletedPayload {
+        user_id: user_id.to_string(),
+        word_count,
+        total_duration_ms,
+        struggles,
+        average_energy,
+    };
+    emit_internal(TelemetryEvent::new(
+        "exercise.echo_recall_completed",
+        payload,
+    ));
 }
 
 // ============================================================================

@@ -373,6 +373,12 @@ mod tests {
         async fn get_all_nodes(&self) -> Result<Vec<crate::Node>> {
             Ok(vec![])
         }
+        async fn has_nodes(&self) -> Result<bool> {
+            Ok(false)
+        }
+        async fn search_by_content(&self, _query: &str, _limit: i64) -> Result<Vec<crate::Node>> {
+            Ok(vec![])
+        }
         async fn get_nodes_by_type(&self, _node_type: crate::NodeType) -> Result<Vec<crate::Node>> {
             Ok(vec![])
         }

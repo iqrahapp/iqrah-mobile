@@ -165,10 +165,38 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
             Row(
               children: [
                 const Text('Node: '),
-                Text(
-                  snapshot.nodeId,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    snapshot.nodeId,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (snapshot.nodeType != null) ...[
+                  Chip(
+                    label: Text(snapshot.nodeType!),
+                    padding: EdgeInsets.zero,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primaryContainer,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (snapshot.knowledgeAxis != null)
+                  Chip(
+                    label: Text(snapshot.knowledgeAxis!),
+                    padding: EdgeInsets.zero,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.secondaryContainer,
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -284,6 +312,7 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
 
   Widget _buildPropagationResults() {
     final result = _propagationResult!;
+    final diag = result.diagnostics;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -295,9 +324,75 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
+            // Diagnostics info card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: diag.nodeFound
+                    ? (diag.totalEdges > 0
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.orange.withValues(alpha: 0.1))
+                    : Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: diag.nodeFound
+                      ? (diag.totalEdges > 0 ? Colors.green : Colors.orange)
+                      : Colors.red,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        diag.nodeFound
+                            ? (diag.totalEdges > 0
+                                ? Icons.check_circle
+                                : Icons.warning)
+                            : Icons.error,
+                        size: 18,
+                        color: diag.nodeFound
+                            ? (diag.totalEdges > 0 ? Colors.green : Colors.orange)
+                            : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        diag.nodeFound ? 'Node Found' : 'Node Not Found',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      if (diag.nodeType != null)
+                        Chip(
+                          label: Text(diag.nodeType!),
+                          padding: EdgeInsets.zero,
+                          labelPadding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    diag.message,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Total edges: ${diag.totalEdges}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             if (result.before.isEmpty)
               const Text(
-                'No propagation targets',
+                'No propagation targets to display',
                 style: TextStyle(color: Colors.grey),
               )
             else

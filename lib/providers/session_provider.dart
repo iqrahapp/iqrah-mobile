@@ -65,7 +65,16 @@ class SessionNotifier extends Notifier<SessionState> {
         translatePhrase: (e) => e.nodeId,
         posTagging: (e) => e.nodeId,
         crossVerseConnection: (e) => e.nodeId,
+        // EchoRecall handles its own review via finalize_echo_recall
+        // Use first ayah as representative node for session tracking
+        echoRecall: (e) => e.ayahNodeIds.isNotEmpty ? e.ayahNodeIds.first : '',
       );
+
+      // EchoRecall handles its own energy updates, skip standard review
+      if (exercise is api.ExerciseDataDto_EchoRecall) {
+        state = state.copyWith(currentIndex: state.currentIndex + 1);
+        return;
+      }
 
       await api.processReview(
         userId: "test_user",

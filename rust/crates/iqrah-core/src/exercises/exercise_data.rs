@@ -173,6 +173,14 @@ pub enum ExerciseData {
         /// Theme/connection type
         connection_theme: String,
     },
+
+    /// Exercise 18: Echo Recall - Progressive blur memorization
+    /// A stateful exercise that displays words with varying visibility
+    /// based on energy levels. User taps through words, timing is tracked.
+    EchoRecall {
+        /// Node IDs of ayahs to practice (verse nodes)
+        ayah_node_ids: Vec<i64>,
+    },
 }
 
 impl ExerciseData {
@@ -197,6 +205,8 @@ impl ExerciseData {
             | Self::TranslatePhrase { node_id, .. }
             | Self::PosTagging { node_id, .. }
             | Self::CrossVerseConnection { node_id, .. } => *node_id,
+            // EchoRecall uses first ayah as representative node for scheduling
+            Self::EchoRecall { ayah_node_ids } => ayah_node_ids.first().copied().unwrap_or(0),
         }
     }
 
@@ -221,12 +231,13 @@ impl ExerciseData {
             Self::TranslatePhrase { .. } => "translate_phrase",
             Self::PosTagging { .. } => "pos_tagging",
             Self::CrossVerseConnection { .. } => "cross_verse_connection",
+            Self::EchoRecall { .. } => "echo_recall",
         }
     }
 
     /// Check if this exercise type is stateful (requires maintaining state between submissions)
     pub fn is_stateful(&self) -> bool {
-        matches!(self, Self::AyahChain { .. })
+        matches!(self, Self::AyahChain { .. } | Self::EchoRecall { .. })
     }
 
     /// Check if this exercise type is an MCQ (has predefined options)
@@ -252,6 +263,7 @@ impl ExerciseData {
                 | Self::FullVerseInput { .. }
                 | Self::AyahChain { .. }
                 | Self::ReverseCloze { .. }
+                | Self::EchoRecall { .. }
         )
     }
 
@@ -738,6 +750,9 @@ mod tests {
                 related_verse_ids: vec![],
                 connection_theme: "theme".to_string(),
             },
+            ExerciseData::EchoRecall {
+                ayah_node_ids: vec![1, 2, 3],
+            },
         ];
 
         let mut type_names: Vec<&str> = exercises.iter().map(|e| e.type_name()).collect();
@@ -750,7 +765,7 @@ mod tests {
             original_len,
             "All exercise types should have unique type names"
         );
-        assert_eq!(original_len, 18, "Expected 18 exercise types");
+        assert_eq!(original_len, 19, "Expected 19 exercise types");
     }
 
     #[test]
@@ -762,9 +777,14 @@ mod tests {
             completed_count: 0,
         };
 
+        let echo_recall = ExerciseData::EchoRecall {
+            ayah_node_ids: vec![1, 2, 3],
+        };
+
         let memorization = ExerciseData::Memorization { node_id: 1 };
 
         assert!(ayah_chain.is_stateful());
+        assert!(echo_recall.is_stateful());
         assert!(!memorization.is_stateful());
     }
 

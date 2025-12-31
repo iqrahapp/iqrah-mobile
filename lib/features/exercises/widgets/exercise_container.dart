@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iqrah/features/exercises/widgets/echo_recall_widget.dart';
 import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/services/exercise_content_service.dart';
 
@@ -179,6 +180,10 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
         translatePhrase: (e) async {},
         posTagging: (e) async {},
         crossVerseConnection: (e) async {},
+        echoRecall: (e) async {
+          // EchoRecall handles its own loading via start_echo_recall
+          // No content pre-loading needed here
+        },
       );
 
       if (mounted) {
@@ -231,6 +236,11 @@ class _ExerciseContainerState extends ConsumerState<ExerciseContainer> {
       posTagging: (_) => const Text('POS Tagging not implemented'),
       crossVerseConnection: (_) =>
           const Text('Cross Verse Connection not implemented'),
+      echoRecall: (e) => EchoRecallWidget(
+        userId: e.userId,
+        ayahNodeIds: e.ayahNodeIds,
+        onComplete: () => widget.onComplete(true),
+      ),
     );
   }
 

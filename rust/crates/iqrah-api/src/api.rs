@@ -2,7 +2,7 @@ use anyhow::Result;
 // Re-exported for frb_generated access
 use iqrah_core::domain::node_id as nid;
 pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
-use iqrah_core::{import_cbor_graph_from_bytes, ReviewGrade};
+use iqrah_core::{import_cbor_graph_from_bytes, KnowledgeNode, ReviewGrade};
 pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
 use iqrah_storage::{
     create_content_repository, init_content_db, init_user_db, SqliteUserRepository,
@@ -33,6 +33,70 @@ fn app() -> &'static AppState {
         .expect("App not initialized - call setup_database first")
 }
 
+/// Populate the nodes table from existing verses/words/chapters data.
+/// Uses INSERT OR IGNORE to be idempotent - safe to call multiple times.
+async fn populate_nodes_from_content(pool: &sqlx::SqlitePool) -> Result<()> {
+    // Check if nodes table already has data
+    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nodes")
+        .fetch_one(pool)
+        .await?;
+
+    if count.0 > 0 {
+        tracing::info!(
+            "Nodes table already has {} entries, skipping population",
+            count.0
+        );
+        return Ok(());
+    }
+
+    tracing::info!("Populating nodes table from existing content data...");
+
+    // Populate chapter nodes (type = 1)
+    // ID encoding: (TYPE_CHAPTER << 56) | chapter_number
+    sqlx::query(
+        "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
+         SELECT (CAST(1 AS INTEGER) << 56) | chapter_number,
+                'CHAPTER:' || chapter_number,
+                1
+         FROM chapters",
+    )
+    .execute(pool)
+    .await?;
+
+    // Populate verse nodes (type = 2)
+    // ID encoding: (TYPE_VERSE << 56) | (chapter_number << 16) | verse_number
+    sqlx::query(
+        "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
+         SELECT (CAST(2 AS INTEGER) << 56) | (chapter_number << 16) | verse_number,
+                'VERSE:' || verse_key,
+                2
+         FROM verses",
+    )
+    .execute(pool)
+    .await?;
+
+    // Populate word nodes (type = 3)
+    // ID encoding: (TYPE_WORD << 56) | word_id
+    sqlx::query(
+        "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
+         SELECT (CAST(3 AS INTEGER) << 56) | word_id,
+                'WORD:' || word_id,
+                3
+         FROM words",
+    )
+    .execute(pool)
+    .await?;
+
+    // Count how many nodes were inserted
+    let new_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nodes")
+        .fetch_one(pool)
+        .await?;
+
+    tracing::info!("Populated {} nodes from content tables", new_count.0);
+
+    Ok(())
+}
+
 /// One-time setup: initializes databases and imports graph
 pub async fn setup_database(
     content_db_path: String,
@@ -45,6 +109,10 @@ pub async fn setup_database(
     let content_pool = init_content_db(&content_db_path).await?;
     let user_pool = init_user_db(&user_db_path).await?;
 
+    // Populate nodes table from existing verses/words/chapters if empty
+    // This ensures the knowledge graph is available even if CBOR import didn't run
+    populate_nodes_from_content(&content_pool).await?;
+
     // Clone pool for debug builds before consuming it
     #[cfg(debug_assertions)]
     let debug_content_pool = content_pool.clone();
@@ -56,10 +124,10 @@ pub async fn setup_database(
         Arc::new(create_content_repository(content_pool));
     let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
 
-    // Check if data already imported
-    let all_nodes = content_repo.get_all_nodes().await?;
+    // Check if data already imported (efficient O(1) check)
+    let has_data = content_repo.has_nodes().await?;
 
-    if all_nodes.is_empty() && !kg_bytes.is_empty() {
+    if !has_data && !kg_bytes.is_empty() {
         tracing::info!("Importing knowledge graph...");
         let cursor = std::io::Cursor::new(kg_bytes);
         let stats = import_cbor_graph_from_bytes(Arc::clone(&content_repo), cursor).await?;
@@ -68,11 +136,8 @@ pub async fn setup_database(
             stats.nodes_imported,
             stats.edges_imported
         );
-    } else {
-        tracing::info!(
-            "Database already contains {} nodes, skipping import",
-            all_nodes.len()
-        );
+    } else if has_data {
+        tracing::info!("Database already contains data, skipping import");
     }
 
     // Create services
@@ -133,7 +198,17 @@ pub async fn get_exercises(
     for item in due_items {
         let nid_val = item.node.id;
         // We need the ukey for the exercise service
-        let ukey = nid::to_ukey(nid_val).unwrap_or_default();
+        let base_ukey = nid::to_ukey(nid_val).unwrap_or_default();
+        let ukey = match item.knowledge_axis {
+            Some(axis) if !base_ukey.is_empty() => {
+                if KnowledgeNode::parse(&base_ukey).is_some() {
+                    base_ukey
+                } else {
+                    nid::knowledge(&base_ukey, axis)
+                }
+            }
+            _ => base_ukey,
+        };
 
         // Generate V2 exercise
         match app
@@ -141,7 +216,18 @@ pub async fn get_exercises(
             .generate_exercise_v2(nid_val, &ukey)
             .await
         {
-            Ok(ex) => exercises.push(ex.into()),
+            Ok(ex) => {
+                let mut dto: ExerciseDataDto = ex.into();
+                // Inject user_id for EchoRecall exercises (lost during From conversion)
+                if let ExerciseDataDto::EchoRecall {
+                    user_id: ref mut uid,
+                    ..
+                } = dto
+                {
+                    *uid = user_id.clone();
+                }
+                exercises.push(dto);
+            }
             Err(e) => tracing::error!("Failed to generate exercise for {}: {}", ukey, e),
         }
     }
@@ -318,6 +404,100 @@ pub async fn get_debug_stats(user_id: String) -> Result<DebugStatsDto> {
     })
 }
 
+/// Close database pools (debug only)
+/// After calling this, the app must be restarted to reinitialize databases.
+#[cfg(debug_assertions)]
+pub async fn close_databases() -> Result<String> {
+    // Close the debug pools if they exist
+    if let Some(pool) = DEBUG_CONTENT_POOL.get() {
+        pool.close().await;
+        tracing::info!("Content database pool closed");
+    }
+    if let Some(pool) = DEBUG_USER_POOL.get() {
+        pool.close().await;
+        tracing::info!("User database pool closed");
+    }
+
+    Ok("Database pools closed. Please restart the app to reinitialize.".to_string())
+}
+
+/// Get database health status with table counts and issues
+#[cfg(debug_assertions)]
+pub async fn get_db_health() -> Result<DbHealthDto> {
+    let content_pool = DEBUG_CONTENT_POOL
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("Content pool not available"))?;
+    let user_pool = DEBUG_USER_POOL
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("User pool not available"))?;
+
+    // Query content database counts
+    let chapters_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM chapters")
+        .fetch_one(content_pool)
+        .await?;
+    let verses_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM verses")
+        .fetch_one(content_pool)
+        .await?;
+    let words_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM words")
+        .fetch_one(content_pool)
+        .await?;
+    let nodes_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nodes")
+        .fetch_one(content_pool)
+        .await?;
+    let edges_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM edges")
+        .fetch_one(content_pool)
+        .await
+        .unwrap_or((0,));
+
+    // Query user database counts
+    let user_memory_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM memory_states")
+        .fetch_one(user_pool)
+        .await
+        .unwrap_or((0,));
+
+    // Check for issues
+    let mut issues = Vec::new();
+    if chapters_count.0 == 0 {
+        issues.push("chapters table is empty".to_string());
+    } else if chapters_count.0 != 114 {
+        issues.push(format!("expected 114 chapters, found {}", chapters_count.0));
+    }
+    if verses_count.0 == 0 {
+        issues.push("verses table is empty".to_string());
+    }
+    if words_count.0 == 0 {
+        issues.push("words table is empty".to_string());
+    }
+    if nodes_count.0 == 0 {
+        issues.push("nodes table is empty - knowledge graph not populated".to_string());
+    }
+
+    let is_healthy = issues.is_empty();
+
+    Ok(DbHealthDto {
+        chapters_count: chapters_count.0,
+        verses_count: verses_count.0,
+        words_count: words_count.0,
+        nodes_count: nodes_count.0,
+        edges_count: edges_count.0,
+        user_memory_count: user_memory_count.0,
+        is_healthy,
+        issues,
+    })
+}
+
+/// Close database pools (release stub - returns error)
+#[cfg(not(debug_assertions))]
+pub async fn close_databases() -> Result<String> {
+    Err(anyhow::anyhow!("close_databases is only available in debug builds"))
+}
+
+/// Get database health status (release stub - returns error)
+#[cfg(not(debug_assertions))]
+pub async fn get_db_health() -> Result<DbHealthDto> {
+    Err(anyhow::anyhow!("get_db_health is only available in debug builds"))
+}
+
 /// Reset user progress
 pub async fn reseed_database(user_id: String) -> Result<String> {
     // TODO: Implement user progress reset
@@ -370,30 +550,54 @@ pub async fn clear_session() -> Result<String> {
 /// Search nodes
 pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto>> {
     let app = app();
+    let limit_i64 = limit as i64;
 
-    let all_nodes = app.content_repo.get_all_nodes().await?;
+    // Search by content (Arabic text) - primary search method
+    let content_results = app
+        .content_repo
+        .search_by_content(&query, limit_i64)
+        .await?;
 
-    // Simple prefix search
-    let results: Vec<_> = all_nodes
-        .into_iter()
-        .filter(|n| {
-            nid::to_ukey(n.id)
-                .map(|s| s.starts_with(&query))
-                .unwrap_or(false)
-        })
-        .take(limit as usize)
-        .collect();
+    // Also search by node ID prefix (for power users who know IDs like "VERSE:1:1")
+    let id_results: Vec<_> = if query.starts_with("VERSE:") || query.starts_with("WORD:") {
+        app.content_repo
+            .get_all_nodes()
+            .await?
+            .into_iter()
+            .filter(|n| {
+                nid::to_ukey(n.id)
+                    .map(|s| s.starts_with(&query))
+                    .unwrap_or(false)
+            })
+            .take(limit as usize)
+            .collect()
+    } else {
+        Vec::new()
+    };
 
+    // Combine results, content search first
+    let mut seen = std::collections::HashSet::new();
+    let mut combined = Vec::new();
+
+    for node in content_results.into_iter().chain(id_results.into_iter()) {
+        if seen.insert(node.id) && combined.len() < limit as usize {
+            combined.push(node);
+        }
+    }
+
+    // Build DTOs with preview text
     let mut dtos = Vec::new();
-    for node in results {
+    for node in combined {
         let arabic = app
             .content_repo
             .get_quran_text(node.id)
             .await?
             .unwrap_or_default();
+        let knowledge_axis = nid::decode_knowledge_id(node.id).map(|(_, axis)| axis.to_string());
         dtos.push(NodeSearchDto {
             node_id: nid::to_ukey(node.id).unwrap_or_default(),
             node_type: format!("{:?}", node.node_type),
+            knowledge_axis,
             preview: arabic.chars().take(100).collect(),
         });
     }
@@ -538,6 +742,18 @@ pub struct DebugStatsDto {
     pub due_count: u32,
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct DbHealthDto {
+    pub chapters_count: i64,
+    pub verses_count: i64,
+    pub words_count: i64,
+    pub nodes_count: i64,
+    pub edges_count: i64,
+    pub user_memory_count: i64,
+    pub is_healthy: bool,
+    pub issues: Vec<String>,
+}
+
 // ========================================================================
 // Debug Infrastructure DTOs (Phase 2)
 // ========================================================================
@@ -546,6 +762,8 @@ pub struct DebugStatsDto {
 pub struct EnergySnapshotDto {
     pub node_id: String,
     pub energy: f64,
+    pub node_type: Option<String>,
+    pub knowledge_axis: Option<String>,
     pub neighbors: Vec<NodeEnergyDto>,
 }
 
@@ -557,9 +775,18 @@ pub struct NodeEnergyDto {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct PropagationDiagnosticsDto {
+    pub node_found: bool,
+    pub node_type: Option<String>,
+    pub total_edges: u32,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct PropagationResultDto {
     pub before: Vec<NodeEnergyDto>,
     pub after: Vec<NodeEnergyDto>,
+    pub diagnostics: PropagationDiagnosticsDto,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -589,6 +816,7 @@ pub struct SessionPreviewDto {
 pub struct NodeSearchDto {
     pub node_id: String,
     pub node_type: String,
+    pub knowledge_axis: Option<String>,
     pub preview: String,
 }
 
@@ -701,6 +929,13 @@ pub enum ExerciseDataDto {
         node_id: String,
         related_verse_ids: Vec<String>,
         connection_theme: String,
+    },
+    /// Echo Recall exercise - progressive blur memorization
+    EchoRecall {
+        /// User ID for session tracking
+        user_id: String,
+        /// List of ayah node IDs to practice (e.g., ["VERSE:1:1", "VERSE:1:2"])
+        ayah_node_ids: Vec<String>,
     },
 }
 
@@ -852,6 +1087,14 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
                     .collect(),
                 connection_theme,
             },
+            EchoRecall { ayah_node_ids } => ExerciseDataDto::EchoRecall {
+                // user_id is not stored in core ExerciseData, injected at session level
+                user_id: String::new(),
+                ayah_node_ids: ayah_node_ids
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
+            },
         }
     }
 }
@@ -884,6 +1127,386 @@ impl From<iqrah_core::Word> for WordDto {
 }
 
 // ========================================================================
+// Echo Recall DTOs (Phase 3)
+// ========================================================================
+
+/// Hint shown for obscured words
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct HintDto {
+    /// "first", "last", or "both"
+    pub hint_type: String,
+    /// First character hint (if applicable)
+    pub first_char: Option<String>,
+    /// Last character hint (if applicable)
+    pub last_char: Option<String>,
+}
+
+/// Visibility state for a word in Echo Recall
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct WordVisibilityDto {
+    /// "visible", "obscured", or "hidden"
+    pub visibility_type: String,
+    /// Hint shown when obscured
+    pub hint: Option<HintDto>,
+    /// Blur coverage (0.0 to 1.0) when obscured
+    pub coverage: Option<f64>,
+}
+
+/// A single word in an Echo Recall session
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EchoRecallWordDto {
+    /// Node ID (e.g., "WORD:101")
+    pub node_id: String,
+    /// Arabic text
+    pub text: String,
+    /// Word visibility state
+    pub visibility: WordVisibilityDto,
+    /// Current energy level (0.0 to 1.0)
+    pub energy: f64,
+}
+
+/// Complete state of an Echo Recall session
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EchoRecallStateDto {
+    /// All words in the session
+    pub words: Vec<EchoRecallWordDto>,
+}
+
+/// Statistics for an Echo Recall session
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EchoRecallStatsDto {
+    pub total_words: u32,
+    pub visible_count: u32,
+    pub obscured_count: u32,
+    pub hidden_count: u32,
+    pub average_energy: f64,
+    pub mastery_percentage: f64,
+}
+
+/// Energy update result from finalizing Echo Recall
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EnergyUpdateDto {
+    pub node_id: String,
+    pub energy: f64,
+}
+
+/// Per-word timing for metrics
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct WordTimingDto {
+    pub word_node_id: String,
+    pub duration_ms: u64,
+}
+
+/// Complete metrics for an Echo Recall session
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EchoRecallMetricsDto {
+    pub word_timings: Vec<WordTimingDto>,
+    pub total_duration_ms: u64,
+    pub struggles: u32,
+}
+
+/// Result from finalizing Echo Recall (energy updates + metrics acknowledgement)
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EchoRecallResultDto {
+    pub energy_updates: Vec<EnergyUpdateDto>,
+    pub words_processed: u32,
+    pub average_energy: f64,
+}
+
+// ========================================================================
+// Echo Recall Conversions
+// ========================================================================
+
+impl From<iqrah_core::domain::models::Hint> for HintDto {
+    fn from(hint: iqrah_core::domain::models::Hint) -> Self {
+        use iqrah_core::domain::models::Hint;
+        match hint {
+            Hint::First { char } => HintDto {
+                hint_type: "first".to_string(),
+                first_char: Some(char.to_string()),
+                last_char: None,
+            },
+            Hint::Last { char } => HintDto {
+                hint_type: "last".to_string(),
+                first_char: None,
+                last_char: Some(char.to_string()),
+            },
+            Hint::Both { first, last } => HintDto {
+                hint_type: "both".to_string(),
+                first_char: Some(first.to_string()),
+                last_char: Some(last.to_string()),
+            },
+        }
+    }
+}
+
+impl From<iqrah_core::domain::models::WordVisibility> for WordVisibilityDto {
+    fn from(vis: iqrah_core::domain::models::WordVisibility) -> Self {
+        use iqrah_core::domain::models::WordVisibility;
+        match vis {
+            WordVisibility::Visible => WordVisibilityDto {
+                visibility_type: "visible".to_string(),
+                hint: None,
+                coverage: None,
+            },
+            WordVisibility::Obscured { hint, coverage } => WordVisibilityDto {
+                visibility_type: "obscured".to_string(),
+                hint: Some(hint.into()),
+                coverage: Some(coverage),
+            },
+            WordVisibility::Hidden => WordVisibilityDto {
+                visibility_type: "hidden".to_string(),
+                hint: None,
+                coverage: None,
+            },
+        }
+    }
+}
+
+impl From<iqrah_core::domain::models::EchoRecallWord> for EchoRecallWordDto {
+    fn from(word: iqrah_core::domain::models::EchoRecallWord) -> Self {
+        EchoRecallWordDto {
+            node_id: word.node_id,
+            text: word.text,
+            visibility: word.visibility.into(),
+            energy: word.energy,
+        }
+    }
+}
+
+impl From<iqrah_core::domain::models::EchoRecallState> for EchoRecallStateDto {
+    fn from(state: iqrah_core::domain::models::EchoRecallState) -> Self {
+        EchoRecallStateDto {
+            words: state.words.into_iter().map(|w| w.into()).collect(),
+        }
+    }
+}
+
+impl From<iqrah_core::domain::models::EchoRecallStats> for EchoRecallStatsDto {
+    fn from(stats: iqrah_core::domain::models::EchoRecallStats) -> Self {
+        EchoRecallStatsDto {
+            total_words: stats.total_words as u32,
+            visible_count: stats.visible_count as u32,
+            obscured_count: stats.obscured_count as u32,
+            hidden_count: stats.hidden_count as u32,
+            average_energy: stats.average_energy,
+            mastery_percentage: stats.mastery_percentage,
+        }
+    }
+}
+
+// Reverse conversions (DTO -> Domain) for state passing
+impl From<HintDto> for iqrah_core::domain::models::Hint {
+    fn from(dto: HintDto) -> Self {
+        use iqrah_core::domain::models::Hint;
+        match dto.hint_type.as_str() {
+            "first" => Hint::First {
+                char: dto
+                    .first_char
+                    .unwrap_or_default()
+                    .chars()
+                    .next()
+                    .unwrap_or('_'),
+            },
+            "last" => Hint::Last {
+                char: dto
+                    .last_char
+                    .unwrap_or_default()
+                    .chars()
+                    .next()
+                    .unwrap_or('_'),
+            },
+            "both" => Hint::Both {
+                first: dto
+                    .first_char
+                    .unwrap_or_default()
+                    .chars()
+                    .next()
+                    .unwrap_or('_'),
+                last: dto
+                    .last_char
+                    .unwrap_or_default()
+                    .chars()
+                    .next()
+                    .unwrap_or('_'),
+            },
+            _ => Hint::First { char: '_' },
+        }
+    }
+}
+
+impl From<WordVisibilityDto> for iqrah_core::domain::models::WordVisibility {
+    fn from(dto: WordVisibilityDto) -> Self {
+        use iqrah_core::domain::models::WordVisibility;
+        match dto.visibility_type.as_str() {
+            "visible" => WordVisibility::Visible,
+            "obscured" => WordVisibility::Obscured {
+                hint: dto
+                    .hint
+                    .map(|h| h.into())
+                    .unwrap_or(iqrah_core::domain::models::Hint::First { char: '_' }),
+                coverage: dto.coverage.unwrap_or(0.0),
+            },
+            "hidden" => WordVisibility::Hidden,
+            _ => WordVisibility::Visible,
+        }
+    }
+}
+
+impl From<EchoRecallWordDto> for iqrah_core::domain::models::EchoRecallWord {
+    fn from(dto: EchoRecallWordDto) -> Self {
+        iqrah_core::domain::models::EchoRecallWord {
+            node_id: dto.node_id,
+            text: dto.text,
+            visibility: dto.visibility.into(),
+            energy: dto.energy,
+        }
+    }
+}
+
+impl From<EchoRecallStateDto> for iqrah_core::domain::models::EchoRecallState {
+    fn from(dto: EchoRecallStateDto) -> Self {
+        iqrah_core::domain::models::EchoRecallState {
+            words: dto.words.into_iter().map(|w| w.into()).collect(),
+        }
+    }
+}
+
+// ========================================================================
+// Echo Recall FFI Functions (Phase 3)
+// ========================================================================
+
+/// Start a new Echo Recall session
+///
+/// Fetches all words from the specified ayahs, retrieves their current
+/// energy levels, and calculates initial visibility.
+pub async fn start_echo_recall(
+    user_id: String,
+    ayah_node_ids: Vec<String>,
+) -> Result<EchoRecallStateDto> {
+    use iqrah_core::exercises::EchoRecallExercise;
+
+    let app = app();
+
+    let exercise = EchoRecallExercise::new(
+        &user_id,
+        ayah_node_ids,
+        app.content_repo.as_ref(),
+        app.user_repo.as_ref(),
+    )
+    .await?;
+
+    Ok(exercise.state().clone().into())
+}
+
+/// Submit a word recall and get updated state
+///
+/// Calculates energy change based on recall time, updates the word's
+/// energy and visibility, and recalculates neighbor visibility.
+///
+/// Note: user_id and ayah_node_ids are included for API consistency but
+/// the stateless pattern means they're only used for context/logging.
+pub async fn submit_echo_recall(
+    user_id: String,
+    ayah_node_ids: Vec<String>,
+    state: EchoRecallStateDto,
+    word_node_id: String,
+    recall_time_ms: u32,
+) -> Result<EchoRecallStateDto> {
+    use iqrah_core::exercises::EchoRecallExercise;
+
+    // Convert DTO to domain state
+    let domain_state: iqrah_core::domain::models::EchoRecallState = state.into();
+
+    // Create exercise from state with context
+    let mut exercise = EchoRecallExercise::from_state(&user_id, ayah_node_ids, domain_state);
+
+    // Submit the recall
+    exercise.submit_recall(&word_node_id, recall_time_ms)?;
+
+    // Return updated state
+    Ok(exercise.state().clone().into())
+}
+
+/// Get statistics for an Echo Recall session
+pub fn echo_recall_stats(state: EchoRecallStateDto) -> EchoRecallStatsDto {
+    // Convert to domain state and get stats
+    let domain_state: iqrah_core::domain::models::EchoRecallState = state.into();
+    domain_state.get_stats().into()
+}
+
+/// Finalize an Echo Recall session
+///
+/// Persists energy updates to the user's memory states and emits telemetry.
+/// Accepts per-word timing metrics for detailed analytics.
+pub async fn finalize_echo_recall(
+    user_id: String,
+    state: EchoRecallStateDto,
+    metrics: EchoRecallMetricsDto,
+) -> Result<EchoRecallResultDto> {
+    use iqrah_core::exercises::EchoRecallExercise;
+
+    let app = app();
+
+    // Convert DTO to domain state
+    let domain_state: iqrah_core::domain::models::EchoRecallState = state.into();
+
+    // Create exercise from state to get finalize data
+    let exercise = EchoRecallExercise::from_state(&user_id, Vec::new(), domain_state.clone());
+
+    // Get energy updates
+    let updates = exercise.finalize();
+
+    // Persist each energy update
+    for (node_id, energy) in &updates {
+        // Update memory state with new energy
+        if let Ok(Some(mut mem_state)) = app.user_repo.get_memory_state(&user_id, *node_id).await {
+            mem_state.energy = *energy;
+            let _ = app.user_repo.save_memory_state(&mem_state).await;
+        }
+    }
+
+    // Increment stats - each word in EchoRecall counts as a review
+    let word_count = domain_state.words.len() as u32;
+    for _ in 0..word_count {
+        let _ = app.session_service.increment_stat("reviews_today").await;
+    }
+
+    // Emit telemetry with detailed metrics
+    let stats = domain_state.get_stats();
+    crate::telemetry::emit_echo_recall_completed(
+        &user_id,
+        stats.total_words as u32,
+        metrics.total_duration_ms,
+        metrics.struggles,
+        stats.average_energy,
+    );
+
+    // Log per-word timings for analytics (can be extended to persist)
+    for timing in &metrics.word_timings {
+        tracing::debug!(
+            "Word timing: {} = {}ms",
+            timing.word_node_id,
+            timing.duration_ms
+        );
+    }
+
+    // Convert energy updates to DTOs
+    let energy_updates: Vec<EnergyUpdateDto> = updates
+        .into_iter()
+        .filter_map(|(id, energy)| {
+            nid::to_ukey(id).map(|node_id| EnergyUpdateDto { node_id, energy })
+        })
+        .collect();
+
+    Ok(EchoRecallResultDto {
+        energy_updates,
+        words_processed: stats.total_words as u32,
+        average_energy: stats.average_energy,
+    })
+}
+
+// ========================================================================
 // Telemetry API v1 (Polling-based, Rust→Dart)
 // ========================================================================
 
@@ -905,6 +1528,12 @@ pub fn debug_emit_test_event() -> Result<String> {
     Ok("Test event emitted".to_string())
 }
 
+/// Debug: manually emit a test event (release stub - returns error)
+#[cfg(not(debug_assertions))]
+pub fn debug_emit_test_event() -> Result<String> {
+    Err(anyhow::anyhow!("debug_emit_test_event is only available in debug builds"))
+}
+
 // ========================================================================
 // Debug Infrastructure API (Phase 2)
 // ========================================================================
@@ -913,6 +1542,10 @@ pub fn debug_emit_test_event() -> Result<String> {
 pub async fn get_energy_snapshot(user_id: String, node_id: String) -> Result<EnergySnapshotDto> {
     let app = app();
     let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+
+    // Get node type and knowledge axis from ID
+    let node_type = nid::decode_type(nid_val).map(|t| t.to_string());
+    let knowledge_axis = nid::decode_knowledge_id(nid_val).map(|(_, axis)| axis.to_string());
 
     // Get node energy
     let state = app.user_repo.get_memory_state(&user_id, nid_val).await?;
@@ -938,6 +1571,8 @@ pub async fn get_energy_snapshot(user_id: String, node_id: String) -> Result<Ene
     Ok(EnergySnapshotDto {
         node_id,
         energy,
+        node_type,
+        knowledge_axis,
         neighbors,
     })
 }
@@ -951,8 +1586,39 @@ pub async fn simulate_propagation(
     let app = app();
     let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
 
+    // Look up the node to get diagnostic info
+    let node = app.content_repo.get_node(nid_val).await?;
+    let node_found = node.is_some();
+    let node_type = node.as_ref().map(|n| n.node_type.to_string());
+
     // Get edges from this node
     let edges = app.content_repo.get_edges_from(nid_val).await?;
+    let total_edges = edges.len() as u32;
+
+    // Build diagnostic message
+    let message = if !node_found {
+        format!("Node '{}' not found in the knowledge graph", node_id)
+    } else if edges.is_empty() {
+        format!(
+            "Node '{}' (type: {}) has no outgoing edges. This node may be a leaf node or isolated.",
+            node_id,
+            node_type.as_deref().unwrap_or("unknown")
+        )
+    } else {
+        format!(
+            "Found {} connected nodes from '{}' (type: {})",
+            edges.len(),
+            node_id,
+            node_type.as_deref().unwrap_or("unknown")
+        )
+    };
+
+    let diagnostics = PropagationDiagnosticsDto {
+        node_found,
+        node_type,
+        total_edges,
+        message,
+    };
 
     // Collect before states
     let mut before = Vec::new();
@@ -983,7 +1649,11 @@ pub async fn simulate_propagation(
         });
     }
 
-    Ok(PropagationResultDto { before, after })
+    Ok(PropagationResultDto {
+        before,
+        after,
+        diagnostics,
+    })
 }
 
 /// Parse a verse range string into individual node IDs
@@ -1076,9 +1746,12 @@ pub async fn query_nodes_filtered(
             .await?
             .unwrap_or_default();
 
+        let knowledge_axis = nid::decode_knowledge_id(node.id).map(|(_, axis)| axis.to_string());
+
         results.push(NodeSearchDto {
             node_id: nid::to_ukey(node.id).unwrap_or_default(),
             node_type: format!("{:?}", node.node_type),
+            knowledge_axis,
             preview: preview.chars().take(100).collect(),
         });
 
@@ -1101,9 +1774,7 @@ pub async fn execute_debug_query(sql: String) -> Result<DbQueryResultDto> {
 
     // Only allow SELECT queries for safety
     if !upper.starts_with("SELECT") {
-        return Err(anyhow::anyhow!(
-            "Only SELECT queries allowed in debug mode"
-        ));
+        return Err(anyhow::anyhow!("Only SELECT queries allowed in debug mode"));
     }
 
     let user_tables = [
@@ -1197,4 +1868,10 @@ pub async fn execute_debug_query(sql: String) -> Result<DbQueryResultDto> {
         columns,
         rows: result_rows,
     })
+}
+
+/// Execute a debug SQL query (release stub - returns error)
+#[cfg(not(debug_assertions))]
+pub async fn execute_debug_query(_sql: String) -> Result<DbQueryResultDto> {
+    Err(anyhow::anyhow!("execute_debug_query is only available in debug builds"))
 }

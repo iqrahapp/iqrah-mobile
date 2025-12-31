@@ -8,9 +8,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'api.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `app`
+// These functions are ignored because they are not marked as `pub`: `app`, `populate_nodes_from_content`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ExerciseDto`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// One-time setup: initializes databases and imports graph
 Future<String> setupDatabase({
@@ -106,6 +106,14 @@ Future<DashboardStatsDto> getDashboardStats({required String userId}) =>
 Future<DebugStatsDto> getDebugStats({required String userId}) =>
     RustLib.instance.api.crateApiGetDebugStats(userId: userId);
 
+/// Close database pools (debug only)
+/// After calling this, the app must be restarted to reinitialize databases.
+Future<String> closeDatabases() =>
+    RustLib.instance.api.crateApiCloseDatabases();
+
+/// Get database health status with table counts and issues
+Future<DbHealthDto> getDbHealth() => RustLib.instance.api.crateApiGetDbHealth();
+
 /// Reset user progress
 Future<String> reseedDatabase({required String userId}) =>
     RustLib.instance.api.crateApiReseedDatabase(userId: userId);
@@ -166,6 +174,58 @@ Future<String?> getVerseTranslationByTranslator({
 }) => RustLib.instance.api.crateApiGetVerseTranslationByTranslator(
   verseKey: verseKey,
   translatorId: translatorId,
+);
+
+/// Start a new Echo Recall session
+///
+/// Fetches all words from the specified ayahs, retrieves their current
+/// energy levels, and calculates initial visibility.
+Future<EchoRecallStateDto> startEchoRecall({
+  required String userId,
+  required List<String> ayahNodeIds,
+}) => RustLib.instance.api.crateApiStartEchoRecall(
+  userId: userId,
+  ayahNodeIds: ayahNodeIds,
+);
+
+/// Submit a word recall and get updated state
+///
+/// Calculates energy change based on recall time, updates the word's
+/// energy and visibility, and recalculates neighbor visibility.
+///
+/// Note: user_id and ayah_node_ids are included for API consistency but
+/// the stateless pattern means they're only used for context/logging.
+Future<EchoRecallStateDto> submitEchoRecall({
+  required String userId,
+  required List<String> ayahNodeIds,
+  required EchoRecallStateDto state,
+  required String wordNodeId,
+  required int recallTimeMs,
+}) => RustLib.instance.api.crateApiSubmitEchoRecall(
+  userId: userId,
+  ayahNodeIds: ayahNodeIds,
+  state: state,
+  wordNodeId: wordNodeId,
+  recallTimeMs: recallTimeMs,
+);
+
+/// Get statistics for an Echo Recall session
+Future<EchoRecallStatsDto> echoRecallStats({
+  required EchoRecallStateDto state,
+}) => RustLib.instance.api.crateApiEchoRecallStats(state: state);
+
+/// Finalize an Echo Recall session
+///
+/// Persists energy updates to the user's memory states and emits telemetry.
+/// Accepts per-word timing metrics for detailed analytics.
+Future<EchoRecallResultDto> finalizeEchoRecall({
+  required String userId,
+  required EchoRecallStateDto state,
+  required EchoRecallMetricsDto metrics,
+}) => RustLib.instance.api.crateApiFinalizeEchoRecall(
+  userId: userId,
+  state: state,
+  metrics: metrics,
 );
 
 /// Drain all pending telemetry events as JSON strings
@@ -285,6 +345,53 @@ class DashboardStatsDto {
           dueCount == other.dueCount;
 }
 
+class DbHealthDto {
+  final PlatformInt64 chaptersCount;
+  final PlatformInt64 versesCount;
+  final PlatformInt64 wordsCount;
+  final PlatformInt64 nodesCount;
+  final PlatformInt64 edgesCount;
+  final PlatformInt64 userMemoryCount;
+  final bool isHealthy;
+  final List<String> issues;
+
+  const DbHealthDto({
+    required this.chaptersCount,
+    required this.versesCount,
+    required this.wordsCount,
+    required this.nodesCount,
+    required this.edgesCount,
+    required this.userMemoryCount,
+    required this.isHealthy,
+    required this.issues,
+  });
+
+  @override
+  int get hashCode =>
+      chaptersCount.hashCode ^
+      versesCount.hashCode ^
+      wordsCount.hashCode ^
+      nodesCount.hashCode ^
+      edgesCount.hashCode ^
+      userMemoryCount.hashCode ^
+      isHealthy.hashCode ^
+      issues.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DbHealthDto &&
+          runtimeType == other.runtimeType &&
+          chaptersCount == other.chaptersCount &&
+          versesCount == other.versesCount &&
+          wordsCount == other.wordsCount &&
+          nodesCount == other.nodesCount &&
+          edgesCount == other.edgesCount &&
+          userMemoryCount == other.userMemoryCount &&
+          isHealthy == other.isHealthy &&
+          issues == other.issues;
+}
+
 class DbQueryResultDto {
   final List<String> columns;
   final List<List<String>> rows;
@@ -328,19 +435,174 @@ class DebugStatsDto {
           dueCount == other.dueCount;
 }
 
+/// Complete metrics for an Echo Recall session
+class EchoRecallMetricsDto {
+  final List<WordTimingDto> wordTimings;
+  final BigInt totalDurationMs;
+  final int struggles;
+
+  const EchoRecallMetricsDto({
+    required this.wordTimings,
+    required this.totalDurationMs,
+    required this.struggles,
+  });
+
+  @override
+  int get hashCode =>
+      wordTimings.hashCode ^ totalDurationMs.hashCode ^ struggles.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EchoRecallMetricsDto &&
+          runtimeType == other.runtimeType &&
+          wordTimings == other.wordTimings &&
+          totalDurationMs == other.totalDurationMs &&
+          struggles == other.struggles;
+}
+
+/// Result from finalizing Echo Recall (energy updates + metrics acknowledgement)
+class EchoRecallResultDto {
+  final List<EnergyUpdateDto> energyUpdates;
+  final int wordsProcessed;
+  final double averageEnergy;
+
+  const EchoRecallResultDto({
+    required this.energyUpdates,
+    required this.wordsProcessed,
+    required this.averageEnergy,
+  });
+
+  @override
+  int get hashCode =>
+      energyUpdates.hashCode ^ wordsProcessed.hashCode ^ averageEnergy.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EchoRecallResultDto &&
+          runtimeType == other.runtimeType &&
+          energyUpdates == other.energyUpdates &&
+          wordsProcessed == other.wordsProcessed &&
+          averageEnergy == other.averageEnergy;
+}
+
+/// Complete state of an Echo Recall session
+class EchoRecallStateDto {
+  /// All words in the session
+  final List<EchoRecallWordDto> words;
+
+  const EchoRecallStateDto({required this.words});
+
+  @override
+  int get hashCode => words.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EchoRecallStateDto &&
+          runtimeType == other.runtimeType &&
+          words == other.words;
+}
+
+/// Statistics for an Echo Recall session
+class EchoRecallStatsDto {
+  final int totalWords;
+  final int visibleCount;
+  final int obscuredCount;
+  final int hiddenCount;
+  final double averageEnergy;
+  final double masteryPercentage;
+
+  const EchoRecallStatsDto({
+    required this.totalWords,
+    required this.visibleCount,
+    required this.obscuredCount,
+    required this.hiddenCount,
+    required this.averageEnergy,
+    required this.masteryPercentage,
+  });
+
+  @override
+  int get hashCode =>
+      totalWords.hashCode ^
+      visibleCount.hashCode ^
+      obscuredCount.hashCode ^
+      hiddenCount.hashCode ^
+      averageEnergy.hashCode ^
+      masteryPercentage.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EchoRecallStatsDto &&
+          runtimeType == other.runtimeType &&
+          totalWords == other.totalWords &&
+          visibleCount == other.visibleCount &&
+          obscuredCount == other.obscuredCount &&
+          hiddenCount == other.hiddenCount &&
+          averageEnergy == other.averageEnergy &&
+          masteryPercentage == other.masteryPercentage;
+}
+
+/// A single word in an Echo Recall session
+class EchoRecallWordDto {
+  /// Node ID (e.g., "WORD:101")
+  final String nodeId;
+
+  /// Arabic text
+  final String text;
+
+  /// Word visibility state
+  final WordVisibilityDto visibility;
+
+  /// Current energy level (0.0 to 1.0)
+  final double energy;
+
+  const EchoRecallWordDto({
+    required this.nodeId,
+    required this.text,
+    required this.visibility,
+    required this.energy,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^ text.hashCode ^ visibility.hashCode ^ energy.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EchoRecallWordDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          text == other.text &&
+          visibility == other.visibility &&
+          energy == other.energy;
+}
+
 class EnergySnapshotDto {
   final String nodeId;
   final double energy;
+  final String? nodeType;
+  final String? knowledgeAxis;
   final List<NodeEnergyDto> neighbors;
 
   const EnergySnapshotDto({
     required this.nodeId,
     required this.energy,
+    this.nodeType,
+    this.knowledgeAxis,
     required this.neighbors,
   });
 
   @override
-  int get hashCode => nodeId.hashCode ^ energy.hashCode ^ neighbors.hashCode;
+  int get hashCode =>
+      nodeId.hashCode ^
+      energy.hashCode ^
+      nodeType.hashCode ^
+      knowledgeAxis.hashCode ^
+      neighbors.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -349,7 +611,28 @@ class EnergySnapshotDto {
           runtimeType == other.runtimeType &&
           nodeId == other.nodeId &&
           energy == other.energy &&
+          nodeType == other.nodeType &&
+          knowledgeAxis == other.knowledgeAxis &&
           neighbors == other.neighbors;
+}
+
+/// Energy update result from finalizing Echo Recall
+class EnergyUpdateDto {
+  final String nodeId;
+  final double energy;
+
+  const EnergyUpdateDto({required this.nodeId, required this.energy});
+
+  @override
+  int get hashCode => nodeId.hashCode ^ energy.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EnergyUpdateDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          energy == other.energy;
 }
 
 @freezed
@@ -430,6 +713,42 @@ sealed class ExerciseDataDto with _$ExerciseDataDto {
     required List<String> relatedVerseIds,
     required String connectionTheme,
   }) = ExerciseDataDto_CrossVerseConnection;
+
+  /// Echo Recall exercise - progressive blur memorization
+  const factory ExerciseDataDto.echoRecall({
+    /// User ID for session tracking
+    required String userId,
+
+    /// List of ayah node IDs to practice (e.g., ["VERSE:1:1", "VERSE:1:2"])
+    required List<String> ayahNodeIds,
+  }) = ExerciseDataDto_EchoRecall;
+}
+
+/// Hint shown for obscured words
+class HintDto {
+  /// "first", "last", or "both"
+  final String hintType;
+
+  /// First character hint (if applicable)
+  final String? firstChar;
+
+  /// Last character hint (if applicable)
+  final String? lastChar;
+
+  const HintDto({required this.hintType, this.firstChar, this.lastChar});
+
+  @override
+  int get hashCode =>
+      hintType.hashCode ^ firstChar.hashCode ^ lastChar.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HintDto &&
+          runtimeType == other.runtimeType &&
+          hintType == other.hintType &&
+          firstChar == other.firstChar &&
+          lastChar == other.lastChar;
 }
 
 class LanguageDto {
@@ -545,16 +864,22 @@ class NodeFilterDto {
 class NodeSearchDto {
   final String nodeId;
   final String nodeType;
+  final String? knowledgeAxis;
   final String preview;
 
   const NodeSearchDto({
     required this.nodeId,
     required this.nodeType,
+    this.knowledgeAxis,
     required this.preview,
   });
 
   @override
-  int get hashCode => nodeId.hashCode ^ nodeType.hashCode ^ preview.hashCode;
+  int get hashCode =>
+      nodeId.hashCode ^
+      nodeType.hashCode ^
+      knowledgeAxis.hashCode ^
+      preview.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -563,17 +888,54 @@ class NodeSearchDto {
           runtimeType == other.runtimeType &&
           nodeId == other.nodeId &&
           nodeType == other.nodeType &&
+          knowledgeAxis == other.knowledgeAxis &&
           preview == other.preview;
+}
+
+class PropagationDiagnosticsDto {
+  final bool nodeFound;
+  final String? nodeType;
+  final int totalEdges;
+  final String message;
+
+  const PropagationDiagnosticsDto({
+    required this.nodeFound,
+    this.nodeType,
+    required this.totalEdges,
+    required this.message,
+  });
+
+  @override
+  int get hashCode =>
+      nodeFound.hashCode ^
+      nodeType.hashCode ^
+      totalEdges.hashCode ^
+      message.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PropagationDiagnosticsDto &&
+          runtimeType == other.runtimeType &&
+          nodeFound == other.nodeFound &&
+          nodeType == other.nodeType &&
+          totalEdges == other.totalEdges &&
+          message == other.message;
 }
 
 class PropagationResultDto {
   final List<NodeEnergyDto> before;
   final List<NodeEnergyDto> after;
+  final PropagationDiagnosticsDto diagnostics;
 
-  const PropagationResultDto({required this.before, required this.after});
+  const PropagationResultDto({
+    required this.before,
+    required this.after,
+    required this.diagnostics,
+  });
 
   @override
-  int get hashCode => before.hashCode ^ after.hashCode;
+  int get hashCode => before.hashCode ^ after.hashCode ^ diagnostics.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -581,7 +943,8 @@ class PropagationResultDto {
       other is PropagationResultDto &&
           runtimeType == other.runtimeType &&
           before == other.before &&
-          after == other.after;
+          after == other.after &&
+          diagnostics == other.diagnostics;
 }
 
 class SessionPreviewDto {
@@ -736,4 +1099,54 @@ class WordDto {
           textUthmani == other.textUthmani &&
           verseKey == other.verseKey &&
           position == other.position;
+}
+
+/// Per-word timing for metrics
+class WordTimingDto {
+  final String wordNodeId;
+  final BigInt durationMs;
+
+  const WordTimingDto({required this.wordNodeId, required this.durationMs});
+
+  @override
+  int get hashCode => wordNodeId.hashCode ^ durationMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WordTimingDto &&
+          runtimeType == other.runtimeType &&
+          wordNodeId == other.wordNodeId &&
+          durationMs == other.durationMs;
+}
+
+/// Visibility state for a word in Echo Recall
+class WordVisibilityDto {
+  /// "visible", "obscured", or "hidden"
+  final String visibilityType;
+
+  /// Hint shown when obscured
+  final HintDto? hint;
+
+  /// Blur coverage (0.0 to 1.0) when obscured
+  final double? coverage;
+
+  const WordVisibilityDto({
+    required this.visibilityType,
+    this.hint,
+    this.coverage,
+  });
+
+  @override
+  int get hashCode =>
+      visibilityType.hashCode ^ hint.hashCode ^ coverage.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WordVisibilityDto &&
+          runtimeType == other.runtimeType &&
+          visibilityType == other.visibilityType &&
+          hint == other.hint &&
+          coverage == other.coverage;
 }

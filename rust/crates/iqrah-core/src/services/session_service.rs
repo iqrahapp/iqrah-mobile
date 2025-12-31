@@ -108,7 +108,13 @@ impl SessionService {
             }
 
             // Phase 4: Filter by knowledge axis if specified
-            let knowledge_axis = KnowledgeNode::parse(&node.ukey).map(|kn| kn.axis);
+            let knowledge_axis = KnowledgeNode::parse(&node.ukey).map(|kn| kn.axis).or(
+                if matches!(node.node_type, NodeType::Verse) {
+                    Some(KnowledgeAxis::Memorization)
+                } else {
+                    None
+                },
+            );
 
             if let Some(filter_axis) = axis_filter {
                 // If filtering by axis, only include matching knowledge nodes
@@ -381,6 +387,36 @@ mod tests {
                 "Only WordInstance and Verse should be included"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn test_defaults_axis_for_verse_nodes() {
+        // Arrange
+        let content_repo = Arc::new(create_content_mock());
+        let now = Utc::now();
+
+        let states = vec![MemoryState {
+            user_id: "user1".to_string(),
+            node_id: 3, // Verse
+            stability: 10.0,
+            difficulty: 5.0,
+            energy: 0.3,
+            last_reviewed: now,
+            due_at: now,
+            review_count: 2,
+        }];
+
+        let user_repo = Arc::new(create_user_mock_with_due_states(states));
+        let service = SessionService::new(content_repo, user_repo);
+
+        // Act
+        let result = service.get_due_items("user1", 10, false, None).await;
+
+        // Assert
+        assert!(result.is_ok());
+        let items = result.unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].knowledge_axis, Some(KnowledgeAxis::Memorization));
     }
 
     #[tokio::test]

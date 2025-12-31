@@ -17,7 +17,6 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$ExerciseDataDto {
-  String get nodeId => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String nodeId) memorization,
@@ -74,6 +73,8 @@ mixin _$ExerciseDataDto {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
@@ -124,6 +125,7 @@ mixin _$ExerciseDataDto {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
@@ -173,6 +175,7 @@ mixin _$ExerciseDataDto {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -202,6 +205,7 @@ mixin _$ExerciseDataDto {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
@@ -225,6 +229,7 @@ mixin _$ExerciseDataDto {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
@@ -248,14 +253,9 @@ mixin _$ExerciseDataDto {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) => throw _privateConstructorUsedError;
-
-  /// Create a copy of ExerciseDataDto
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $ExerciseDataDtoCopyWith<ExerciseDataDto> get copyWith =>
-      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -264,8 +264,6 @@ abstract class $ExerciseDataDtoCopyWith<$Res> {
     ExerciseDataDto value,
     $Res Function(ExerciseDataDto) then,
   ) = _$ExerciseDataDtoCopyWithImpl<$Res, ExerciseDataDto>;
-  @useResult
-  $Res call({String nodeId});
 }
 
 /// @nodoc
@@ -280,29 +278,14 @@ class _$ExerciseDataDtoCopyWithImpl<$Res, $Val extends ExerciseDataDto>
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({Object? nodeId = null}) {
-    return _then(
-      _value.copyWith(
-            nodeId: null == nodeId
-                ? _value.nodeId
-                : nodeId // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
-  }
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_MemorizationImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_MemorizationImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_MemorizationImplCopyWith(
     _$ExerciseDataDto_MemorizationImpl value,
     $Res Function(_$ExerciseDataDto_MemorizationImpl) then,
   ) = __$$ExerciseDataDto_MemorizationImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId});
 }
@@ -427,6 +410,8 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return memorization(nodeId);
   }
@@ -481,6 +466,7 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return memorization?.call(nodeId);
   }
@@ -534,6 +520,7 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (memorization != null) {
@@ -570,6 +557,7 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return memorization(this);
   }
@@ -597,6 +585,7 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return memorization?.call(this);
   }
@@ -624,6 +613,7 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (memorization != null) {
@@ -638,12 +628,10 @@ abstract class ExerciseDataDto_Memorization extends ExerciseDataDto {
       _$ExerciseDataDto_MemorizationImpl;
   const ExerciseDataDto_Memorization._() : super._();
 
-  @override
   String get nodeId;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_MemorizationImplCopyWith<
     _$ExerciseDataDto_MemorizationImpl
@@ -652,13 +640,11 @@ abstract class ExerciseDataDto_Memorization extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_McqArToEnImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_McqArToEnImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_McqArToEnImplCopyWith(
     _$ExerciseDataDto_McqArToEnImpl value,
     $Res Function(_$ExerciseDataDto_McqArToEnImpl) then,
   ) = __$$ExerciseDataDto_McqArToEnImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, List<String> distractorNodeIds});
 }
@@ -804,6 +790,8 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return mcqArToEn(nodeId, distractorNodeIds);
   }
@@ -858,6 +846,7 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return mcqArToEn?.call(nodeId, distractorNodeIds);
   }
@@ -911,6 +900,7 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (mcqArToEn != null) {
@@ -947,6 +937,7 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return mcqArToEn(this);
   }
@@ -974,6 +965,7 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return mcqArToEn?.call(this);
   }
@@ -1001,6 +993,7 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (mcqArToEn != null) {
@@ -1017,26 +1010,22 @@ abstract class ExerciseDataDto_McqArToEn extends ExerciseDataDto {
   }) = _$ExerciseDataDto_McqArToEnImpl;
   const ExerciseDataDto_McqArToEn._() : super._();
 
-  @override
   String get nodeId;
   List<String> get distractorNodeIds;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_McqArToEnImplCopyWith<_$ExerciseDataDto_McqArToEnImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_McqEnToArImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_McqEnToArImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_McqEnToArImplCopyWith(
     _$ExerciseDataDto_McqEnToArImpl value,
     $Res Function(_$ExerciseDataDto_McqEnToArImpl) then,
   ) = __$$ExerciseDataDto_McqEnToArImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, List<String> distractorNodeIds});
 }
@@ -1182,6 +1171,8 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return mcqEnToAr(nodeId, distractorNodeIds);
   }
@@ -1236,6 +1227,7 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return mcqEnToAr?.call(nodeId, distractorNodeIds);
   }
@@ -1289,6 +1281,7 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (mcqEnToAr != null) {
@@ -1325,6 +1318,7 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return mcqEnToAr(this);
   }
@@ -1352,6 +1346,7 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return mcqEnToAr?.call(this);
   }
@@ -1379,6 +1374,7 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (mcqEnToAr != null) {
@@ -1395,26 +1391,22 @@ abstract class ExerciseDataDto_McqEnToAr extends ExerciseDataDto {
   }) = _$ExerciseDataDto_McqEnToArImpl;
   const ExerciseDataDto_McqEnToAr._() : super._();
 
-  @override
   String get nodeId;
   List<String> get distractorNodeIds;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_McqEnToArImplCopyWith<_$ExerciseDataDto_McqEnToArImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_TranslationImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_TranslationImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_TranslationImplCopyWith(
     _$ExerciseDataDto_TranslationImpl value,
     $Res Function(_$ExerciseDataDto_TranslationImpl) then,
   ) = __$$ExerciseDataDto_TranslationImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId});
 }
@@ -1537,6 +1529,8 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return translation(nodeId);
   }
@@ -1591,6 +1585,7 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return translation?.call(nodeId);
   }
@@ -1644,6 +1639,7 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (translation != null) {
@@ -1680,6 +1676,7 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return translation(this);
   }
@@ -1707,6 +1704,7 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return translation?.call(this);
   }
@@ -1734,6 +1732,7 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (translation != null) {
@@ -1748,25 +1747,21 @@ abstract class ExerciseDataDto_Translation extends ExerciseDataDto {
       _$ExerciseDataDto_TranslationImpl;
   const ExerciseDataDto_Translation._() : super._();
 
-  @override
   String get nodeId;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_TranslationImplCopyWith<_$ExerciseDataDto_TranslationImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_ContextualTranslationImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_ContextualTranslationImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_ContextualTranslationImplCopyWith(
     _$ExerciseDataDto_ContextualTranslationImpl value,
     $Res Function(_$ExerciseDataDto_ContextualTranslationImpl) then,
   ) = __$$ExerciseDataDto_ContextualTranslationImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, String verseKey});
 }
@@ -1906,6 +1901,8 @@ class _$ExerciseDataDto_ContextualTranslationImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return contextualTranslation(nodeId, verseKey);
   }
@@ -1960,6 +1957,7 @@ class _$ExerciseDataDto_ContextualTranslationImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return contextualTranslation?.call(nodeId, verseKey);
   }
@@ -2013,6 +2011,7 @@ class _$ExerciseDataDto_ContextualTranslationImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (contextualTranslation != null) {
@@ -2049,6 +2048,7 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return contextualTranslation(this);
   }
@@ -2076,6 +2076,7 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return contextualTranslation?.call(this);
   }
@@ -2103,6 +2104,7 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (contextualTranslation != null) {
@@ -2119,13 +2121,11 @@ abstract class ExerciseDataDto_ContextualTranslation extends ExerciseDataDto {
   }) = _$ExerciseDataDto_ContextualTranslationImpl;
   const ExerciseDataDto_ContextualTranslation._() : super._();
 
-  @override
   String get nodeId;
   String get verseKey;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_ContextualTranslationImplCopyWith<
     _$ExerciseDataDto_ContextualTranslationImpl
@@ -2134,13 +2134,11 @@ abstract class ExerciseDataDto_ContextualTranslation extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_ClozeDeletionImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_ClozeDeletionImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_ClozeDeletionImplCopyWith(
     _$ExerciseDataDto_ClozeDeletionImpl value,
     $Res Function(_$ExerciseDataDto_ClozeDeletionImpl) then,
   ) = __$$ExerciseDataDto_ClozeDeletionImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, int blankPosition});
 }
@@ -2277,6 +2275,8 @@ class _$ExerciseDataDto_ClozeDeletionImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return clozeDeletion(nodeId, blankPosition);
   }
@@ -2331,6 +2331,7 @@ class _$ExerciseDataDto_ClozeDeletionImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return clozeDeletion?.call(nodeId, blankPosition);
   }
@@ -2384,6 +2385,7 @@ class _$ExerciseDataDto_ClozeDeletionImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (clozeDeletion != null) {
@@ -2420,6 +2422,7 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return clozeDeletion(this);
   }
@@ -2447,6 +2450,7 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return clozeDeletion?.call(this);
   }
@@ -2474,6 +2478,7 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (clozeDeletion != null) {
@@ -2490,13 +2495,11 @@ abstract class ExerciseDataDto_ClozeDeletion extends ExerciseDataDto {
   }) = _$ExerciseDataDto_ClozeDeletionImpl;
   const ExerciseDataDto_ClozeDeletion._() : super._();
 
-  @override
   String get nodeId;
   int get blankPosition;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_ClozeDeletionImplCopyWith<
     _$ExerciseDataDto_ClozeDeletionImpl
@@ -2505,13 +2508,11 @@ abstract class ExerciseDataDto_ClozeDeletion extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_FirstLetterHintImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_FirstLetterHintImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_FirstLetterHintImplCopyWith(
     _$ExerciseDataDto_FirstLetterHintImpl value,
     $Res Function(_$ExerciseDataDto_FirstLetterHintImpl) then,
   ) = __$$ExerciseDataDto_FirstLetterHintImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, int wordPosition});
 }
@@ -2651,6 +2652,8 @@ class _$ExerciseDataDto_FirstLetterHintImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return firstLetterHint(nodeId, wordPosition);
   }
@@ -2705,6 +2708,7 @@ class _$ExerciseDataDto_FirstLetterHintImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return firstLetterHint?.call(nodeId, wordPosition);
   }
@@ -2758,6 +2762,7 @@ class _$ExerciseDataDto_FirstLetterHintImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (firstLetterHint != null) {
@@ -2794,6 +2799,7 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return firstLetterHint(this);
   }
@@ -2821,6 +2827,7 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return firstLetterHint?.call(this);
   }
@@ -2848,6 +2855,7 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (firstLetterHint != null) {
@@ -2864,13 +2872,11 @@ abstract class ExerciseDataDto_FirstLetterHint extends ExerciseDataDto {
   }) = _$ExerciseDataDto_FirstLetterHintImpl;
   const ExerciseDataDto_FirstLetterHint._() : super._();
 
-  @override
   String get nodeId;
   int get wordPosition;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_FirstLetterHintImplCopyWith<
     _$ExerciseDataDto_FirstLetterHintImpl
@@ -2879,13 +2885,11 @@ abstract class ExerciseDataDto_FirstLetterHint extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_MissingWordMcqImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_MissingWordMcqImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_MissingWordMcqImplCopyWith(
     _$ExerciseDataDto_MissingWordMcqImpl value,
     $Res Function(_$ExerciseDataDto_MissingWordMcqImpl) then,
   ) = __$$ExerciseDataDto_MissingWordMcqImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, int blankPosition, List<String> distractorNodeIds});
 }
@@ -3052,6 +3056,8 @@ class _$ExerciseDataDto_MissingWordMcqImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return missingWordMcq(nodeId, blankPosition, distractorNodeIds);
   }
@@ -3106,6 +3112,7 @@ class _$ExerciseDataDto_MissingWordMcqImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return missingWordMcq?.call(nodeId, blankPosition, distractorNodeIds);
   }
@@ -3159,6 +3166,7 @@ class _$ExerciseDataDto_MissingWordMcqImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (missingWordMcq != null) {
@@ -3195,6 +3203,7 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return missingWordMcq(this);
   }
@@ -3222,6 +3231,7 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return missingWordMcq?.call(this);
   }
@@ -3249,6 +3259,7 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (missingWordMcq != null) {
@@ -3266,14 +3277,12 @@ abstract class ExerciseDataDto_MissingWordMcq extends ExerciseDataDto {
   }) = _$ExerciseDataDto_MissingWordMcqImpl;
   const ExerciseDataDto_MissingWordMcq._() : super._();
 
-  @override
   String get nodeId;
   int get blankPosition;
   List<String> get distractorNodeIds;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_MissingWordMcqImplCopyWith<
     _$ExerciseDataDto_MissingWordMcqImpl
@@ -3282,13 +3291,11 @@ abstract class ExerciseDataDto_MissingWordMcq extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_NextWordMcqImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_NextWordMcqImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_NextWordMcqImplCopyWith(
     _$ExerciseDataDto_NextWordMcqImpl value,
     $Res Function(_$ExerciseDataDto_NextWordMcqImpl) then,
   ) = __$$ExerciseDataDto_NextWordMcqImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({
     String nodeId,
@@ -3453,6 +3460,8 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return nextWordMcq(nodeId, contextPosition, distractorNodeIds);
   }
@@ -3507,6 +3516,7 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return nextWordMcq?.call(nodeId, contextPosition, distractorNodeIds);
   }
@@ -3560,6 +3570,7 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (nextWordMcq != null) {
@@ -3596,6 +3607,7 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return nextWordMcq(this);
   }
@@ -3623,6 +3635,7 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return nextWordMcq?.call(this);
   }
@@ -3650,6 +3663,7 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (nextWordMcq != null) {
@@ -3667,27 +3681,23 @@ abstract class ExerciseDataDto_NextWordMcq extends ExerciseDataDto {
   }) = _$ExerciseDataDto_NextWordMcqImpl;
   const ExerciseDataDto_NextWordMcq._() : super._();
 
-  @override
   String get nodeId;
   int get contextPosition;
   List<String> get distractorNodeIds;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_NextWordMcqImplCopyWith<_$ExerciseDataDto_NextWordMcqImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_FullVerseInputImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_FullVerseInputImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_FullVerseInputImplCopyWith(
     _$ExerciseDataDto_FullVerseInputImpl value,
     $Res Function(_$ExerciseDataDto_FullVerseInputImpl) then,
   ) = __$$ExerciseDataDto_FullVerseInputImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId});
 }
@@ -3817,6 +3827,8 @@ class _$ExerciseDataDto_FullVerseInputImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return fullVerseInput(nodeId);
   }
@@ -3871,6 +3883,7 @@ class _$ExerciseDataDto_FullVerseInputImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return fullVerseInput?.call(nodeId);
   }
@@ -3924,6 +3937,7 @@ class _$ExerciseDataDto_FullVerseInputImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (fullVerseInput != null) {
@@ -3960,6 +3974,7 @@ class _$ExerciseDataDto_FullVerseInputImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return fullVerseInput(this);
   }
@@ -3987,6 +4002,7 @@ class _$ExerciseDataDto_FullVerseInputImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return fullVerseInput?.call(this);
   }
@@ -4014,6 +4030,7 @@ class _$ExerciseDataDto_FullVerseInputImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (fullVerseInput != null) {
@@ -4028,12 +4045,10 @@ abstract class ExerciseDataDto_FullVerseInput extends ExerciseDataDto {
       _$ExerciseDataDto_FullVerseInputImpl;
   const ExerciseDataDto_FullVerseInput._() : super._();
 
-  @override
   String get nodeId;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_FullVerseInputImplCopyWith<
     _$ExerciseDataDto_FullVerseInputImpl
@@ -4042,13 +4057,11 @@ abstract class ExerciseDataDto_FullVerseInput extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_AyahChainImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_AyahChainImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_AyahChainImplCopyWith(
     _$ExerciseDataDto_AyahChainImpl value,
     $Res Function(_$ExerciseDataDto_AyahChainImpl) then,
   ) = __$$ExerciseDataDto_AyahChainImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({
     String nodeId,
@@ -4224,6 +4237,8 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return ayahChain(nodeId, verseKeys, currentIndex, completedCount);
   }
@@ -4278,6 +4293,7 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return ayahChain?.call(nodeId, verseKeys, currentIndex, completedCount);
   }
@@ -4331,6 +4347,7 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (ayahChain != null) {
@@ -4367,6 +4384,7 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return ayahChain(this);
   }
@@ -4394,6 +4412,7 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return ayahChain?.call(this);
   }
@@ -4421,6 +4440,7 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (ayahChain != null) {
@@ -4439,7 +4459,6 @@ abstract class ExerciseDataDto_AyahChain extends ExerciseDataDto {
   }) = _$ExerciseDataDto_AyahChainImpl;
   const ExerciseDataDto_AyahChain._() : super._();
 
-  @override
   String get nodeId;
   List<String> get verseKeys;
   BigInt get currentIndex;
@@ -4447,20 +4466,17 @@ abstract class ExerciseDataDto_AyahChain extends ExerciseDataDto {
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_AyahChainImplCopyWith<_$ExerciseDataDto_AyahChainImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_FindMistakeImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_FindMistakeImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_FindMistakeImplCopyWith(
     _$ExerciseDataDto_FindMistakeImpl value,
     $Res Function(_$ExerciseDataDto_FindMistakeImpl) then,
   ) = __$$ExerciseDataDto_FindMistakeImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({
     String nodeId,
@@ -4628,6 +4644,8 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return findMistake(
       nodeId,
@@ -4687,6 +4705,7 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return findMistake?.call(
       nodeId,
@@ -4745,6 +4764,7 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (findMistake != null) {
@@ -4786,6 +4806,7 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return findMistake(this);
   }
@@ -4813,6 +4834,7 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return findMistake?.call(this);
   }
@@ -4840,6 +4862,7 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (findMistake != null) {
@@ -4858,7 +4881,6 @@ abstract class ExerciseDataDto_FindMistake extends ExerciseDataDto {
   }) = _$ExerciseDataDto_FindMistakeImpl;
   const ExerciseDataDto_FindMistake._() : super._();
 
-  @override
   String get nodeId;
   int get mistakePosition;
   String get correctWordNodeId;
@@ -4866,20 +4888,17 @@ abstract class ExerciseDataDto_FindMistake extends ExerciseDataDto {
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_FindMistakeImplCopyWith<_$ExerciseDataDto_FindMistakeImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_AyahSequenceImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_AyahSequenceImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_AyahSequenceImplCopyWith(
     _$ExerciseDataDto_AyahSequenceImpl value,
     $Res Function(_$ExerciseDataDto_AyahSequenceImpl) then,
   ) = __$$ExerciseDataDto_AyahSequenceImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, List<String> correctSequence});
 }
@@ -5027,6 +5046,8 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return ayahSequence(nodeId, correctSequence);
   }
@@ -5081,6 +5102,7 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return ayahSequence?.call(nodeId, correctSequence);
   }
@@ -5134,6 +5156,7 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (ayahSequence != null) {
@@ -5170,6 +5193,7 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return ayahSequence(this);
   }
@@ -5197,6 +5221,7 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return ayahSequence?.call(this);
   }
@@ -5224,6 +5249,7 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (ayahSequence != null) {
@@ -5240,13 +5266,11 @@ abstract class ExerciseDataDto_AyahSequence extends ExerciseDataDto {
   }) = _$ExerciseDataDto_AyahSequenceImpl;
   const ExerciseDataDto_AyahSequence._() : super._();
 
-  @override
   String get nodeId;
   List<String> get correctSequence;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_AyahSequenceImplCopyWith<
     _$ExerciseDataDto_AyahSequenceImpl
@@ -5255,13 +5279,11 @@ abstract class ExerciseDataDto_AyahSequence extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_IdentifyRootImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_IdentifyRootImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_IdentifyRootImplCopyWith(
     _$ExerciseDataDto_IdentifyRootImpl value,
     $Res Function(_$ExerciseDataDto_IdentifyRootImpl) then,
   ) = __$$ExerciseDataDto_IdentifyRootImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, String root});
 }
@@ -5396,6 +5418,8 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return identifyRoot(nodeId, root);
   }
@@ -5450,6 +5474,7 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return identifyRoot?.call(nodeId, root);
   }
@@ -5503,6 +5528,7 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (identifyRoot != null) {
@@ -5539,6 +5565,7 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return identifyRoot(this);
   }
@@ -5566,6 +5593,7 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return identifyRoot?.call(this);
   }
@@ -5593,6 +5621,7 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (identifyRoot != null) {
@@ -5609,13 +5638,11 @@ abstract class ExerciseDataDto_IdentifyRoot extends ExerciseDataDto {
   }) = _$ExerciseDataDto_IdentifyRootImpl;
   const ExerciseDataDto_IdentifyRoot._() : super._();
 
-  @override
   String get nodeId;
   String get root;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_IdentifyRootImplCopyWith<
     _$ExerciseDataDto_IdentifyRootImpl
@@ -5624,13 +5651,11 @@ abstract class ExerciseDataDto_IdentifyRoot extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_ReverseClozeImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_ReverseClozeImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_ReverseClozeImplCopyWith(
     _$ExerciseDataDto_ReverseClozeImpl value,
     $Res Function(_$ExerciseDataDto_ReverseClozeImpl) then,
   ) = __$$ExerciseDataDto_ReverseClozeImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, int blankPosition});
 }
@@ -5766,6 +5791,8 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return reverseCloze(nodeId, blankPosition);
   }
@@ -5820,6 +5847,7 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return reverseCloze?.call(nodeId, blankPosition);
   }
@@ -5873,6 +5901,7 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (reverseCloze != null) {
@@ -5909,6 +5938,7 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return reverseCloze(this);
   }
@@ -5936,6 +5966,7 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return reverseCloze?.call(this);
   }
@@ -5963,6 +5994,7 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (reverseCloze != null) {
@@ -5979,13 +6011,11 @@ abstract class ExerciseDataDto_ReverseCloze extends ExerciseDataDto {
   }) = _$ExerciseDataDto_ReverseClozeImpl;
   const ExerciseDataDto_ReverseCloze._() : super._();
 
-  @override
   String get nodeId;
   int get blankPosition;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_ReverseClozeImplCopyWith<
     _$ExerciseDataDto_ReverseClozeImpl
@@ -5994,13 +6024,11 @@ abstract class ExerciseDataDto_ReverseCloze extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_TranslatePhraseImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_TranslatePhraseImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_TranslatePhraseImplCopyWith(
     _$ExerciseDataDto_TranslatePhraseImpl value,
     $Res Function(_$ExerciseDataDto_TranslatePhraseImpl) then,
   ) = __$$ExerciseDataDto_TranslatePhraseImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, int translatorId});
 }
@@ -6140,6 +6168,8 @@ class _$ExerciseDataDto_TranslatePhraseImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return translatePhrase(nodeId, translatorId);
   }
@@ -6194,6 +6224,7 @@ class _$ExerciseDataDto_TranslatePhraseImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return translatePhrase?.call(nodeId, translatorId);
   }
@@ -6247,6 +6278,7 @@ class _$ExerciseDataDto_TranslatePhraseImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (translatePhrase != null) {
@@ -6283,6 +6315,7 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return translatePhrase(this);
   }
@@ -6310,6 +6343,7 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return translatePhrase?.call(this);
   }
@@ -6337,6 +6371,7 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (translatePhrase != null) {
@@ -6353,13 +6388,11 @@ abstract class ExerciseDataDto_TranslatePhrase extends ExerciseDataDto {
   }) = _$ExerciseDataDto_TranslatePhraseImpl;
   const ExerciseDataDto_TranslatePhrase._() : super._();
 
-  @override
   String get nodeId;
   int get translatorId;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_TranslatePhraseImplCopyWith<
     _$ExerciseDataDto_TranslatePhraseImpl
@@ -6368,13 +6401,11 @@ abstract class ExerciseDataDto_TranslatePhrase extends ExerciseDataDto {
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_PosTaggingImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_PosTaggingImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_PosTaggingImplCopyWith(
     _$ExerciseDataDto_PosTaggingImpl value,
     $Res Function(_$ExerciseDataDto_PosTaggingImpl) then,
   ) = __$$ExerciseDataDto_PosTaggingImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String nodeId, String correctPos, List<String> options});
 }
@@ -6531,6 +6562,8 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return posTagging(nodeId, correctPos, options);
   }
@@ -6585,6 +6618,7 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return posTagging?.call(nodeId, correctPos, options);
   }
@@ -6638,6 +6672,7 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (posTagging != null) {
@@ -6674,6 +6709,7 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return posTagging(this);
   }
@@ -6701,6 +6737,7 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return posTagging?.call(this);
   }
@@ -6728,6 +6765,7 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (posTagging != null) {
@@ -6745,27 +6783,23 @@ abstract class ExerciseDataDto_PosTagging extends ExerciseDataDto {
   }) = _$ExerciseDataDto_PosTaggingImpl;
   const ExerciseDataDto_PosTagging._() : super._();
 
-  @override
   String get nodeId;
   String get correctPos;
   List<String> get options;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_PosTaggingImplCopyWith<_$ExerciseDataDto_PosTaggingImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ExerciseDataDto_CrossVerseConnectionImplCopyWith<$Res>
-    implements $ExerciseDataDtoCopyWith<$Res> {
+abstract class _$$ExerciseDataDto_CrossVerseConnectionImplCopyWith<$Res> {
   factory _$$ExerciseDataDto_CrossVerseConnectionImplCopyWith(
     _$ExerciseDataDto_CrossVerseConnectionImpl value,
     $Res Function(_$ExerciseDataDto_CrossVerseConnectionImpl) then,
   ) = __$$ExerciseDataDto_CrossVerseConnectionImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({
     String nodeId,
@@ -6936,6 +6970,8 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
       String connectionTheme,
     )
     crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
   }) {
     return crossVerseConnection(nodeId, relatedVerseIds, connectionTheme);
   }
@@ -6990,6 +7026,7 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
   }) {
     return crossVerseConnection?.call(nodeId, relatedVerseIds, connectionTheme);
   }
@@ -7043,6 +7080,7 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
       String connectionTheme,
     )?
     crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
     required TResult orElse(),
   }) {
     if (crossVerseConnection != null) {
@@ -7079,6 +7117,7 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
     required TResult Function(ExerciseDataDto_CrossVerseConnection value)
     crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
   }) {
     return crossVerseConnection(this);
   }
@@ -7106,6 +7145,7 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
   }) {
     return crossVerseConnection?.call(this);
   }
@@ -7133,6 +7173,7 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
     TResult Function(ExerciseDataDto_CrossVerseConnection value)?
     crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
     required TResult orElse(),
   }) {
     if (crossVerseConnection != null) {
@@ -7150,17 +7191,404 @@ abstract class ExerciseDataDto_CrossVerseConnection extends ExerciseDataDto {
   }) = _$ExerciseDataDto_CrossVerseConnectionImpl;
   const ExerciseDataDto_CrossVerseConnection._() : super._();
 
-  @override
   String get nodeId;
   List<String> get relatedVerseIds;
   String get connectionTheme;
 
   /// Create a copy of ExerciseDataDto
   /// with the given fields replaced by the non-null parameter values.
-  @override
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_CrossVerseConnectionImplCopyWith<
     _$ExerciseDataDto_CrossVerseConnectionImpl
   >
+  get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ExerciseDataDto_EchoRecallImplCopyWith<$Res> {
+  factory _$$ExerciseDataDto_EchoRecallImplCopyWith(
+    _$ExerciseDataDto_EchoRecallImpl value,
+    $Res Function(_$ExerciseDataDto_EchoRecallImpl) then,
+  ) = __$$ExerciseDataDto_EchoRecallImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String userId, List<String> ayahNodeIds});
+}
+
+/// @nodoc
+class __$$ExerciseDataDto_EchoRecallImplCopyWithImpl<$Res>
+    extends
+        _$ExerciseDataDtoCopyWithImpl<$Res, _$ExerciseDataDto_EchoRecallImpl>
+    implements _$$ExerciseDataDto_EchoRecallImplCopyWith<$Res> {
+  __$$ExerciseDataDto_EchoRecallImplCopyWithImpl(
+    _$ExerciseDataDto_EchoRecallImpl _value,
+    $Res Function(_$ExerciseDataDto_EchoRecallImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? userId = null, Object? ayahNodeIds = null}) {
+    return _then(
+      _$ExerciseDataDto_EchoRecallImpl(
+        userId: null == userId
+            ? _value.userId
+            : userId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        ayahNodeIds: null == ayahNodeIds
+            ? _value._ayahNodeIds
+            : ayahNodeIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+
+class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
+  const _$ExerciseDataDto_EchoRecallImpl({
+    required this.userId,
+    required final List<String> ayahNodeIds,
+  }) : _ayahNodeIds = ayahNodeIds,
+       super._();
+
+  /// User ID for session tracking
+  @override
+  final String userId;
+
+  /// List of ayah node IDs to practice (e.g., ["VERSE:1:1", "VERSE:1:2"])
+  final List<String> _ayahNodeIds;
+
+  /// List of ayah node IDs to practice (e.g., ["VERSE:1:1", "VERSE:1:2"])
+  @override
+  List<String> get ayahNodeIds {
+    if (_ayahNodeIds is EqualUnmodifiableListView) return _ayahNodeIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_ayahNodeIds);
+  }
+
+  @override
+  String toString() {
+    return 'ExerciseDataDto.echoRecall(userId: $userId, ayahNodeIds: $ayahNodeIds)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ExerciseDataDto_EchoRecallImpl &&
+            (identical(other.userId, userId) || other.userId == userId) &&
+            const DeepCollectionEquality().equals(
+              other._ayahNodeIds,
+              _ayahNodeIds,
+            ));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    userId,
+    const DeepCollectionEquality().hash(_ayahNodeIds),
+  );
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ExerciseDataDto_EchoRecallImplCopyWith<_$ExerciseDataDto_EchoRecallImpl>
+  get copyWith =>
+      __$$ExerciseDataDto_EchoRecallImplCopyWithImpl<
+        _$ExerciseDataDto_EchoRecallImpl
+      >(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String nodeId) memorization,
+    required TResult Function(String nodeId, List<String> distractorNodeIds)
+    mcqArToEn,
+    required TResult Function(String nodeId, List<String> distractorNodeIds)
+    mcqEnToAr,
+    required TResult Function(String nodeId) translation,
+    required TResult Function(String nodeId, String verseKey)
+    contextualTranslation,
+    required TResult Function(String nodeId, int blankPosition) clozeDeletion,
+    required TResult Function(String nodeId, int wordPosition) firstLetterHint,
+    required TResult Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )
+    missingWordMcq,
+    required TResult Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )
+    nextWordMcq,
+    required TResult Function(String nodeId) fullVerseInput,
+    required TResult Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )
+    ayahChain,
+    required TResult Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )
+    findMistake,
+    required TResult Function(String nodeId, List<String> correctSequence)
+    ayahSequence,
+    required TResult Function(String nodeId, String root) identifyRoot,
+    required TResult Function(String nodeId, int blankPosition) reverseCloze,
+    required TResult Function(String nodeId, int translatorId) translatePhrase,
+    required TResult Function(
+      String nodeId,
+      String correctPos,
+      List<String> options,
+    )
+    posTagging,
+    required TResult Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )
+    crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
+  }) {
+    return echoRecall(userId, ayahNodeIds);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String nodeId)? memorization,
+    TResult? Function(String nodeId, List<String> distractorNodeIds)? mcqArToEn,
+    TResult? Function(String nodeId, List<String> distractorNodeIds)? mcqEnToAr,
+    TResult? Function(String nodeId)? translation,
+    TResult? Function(String nodeId, String verseKey)? contextualTranslation,
+    TResult? Function(String nodeId, int blankPosition)? clozeDeletion,
+    TResult? Function(String nodeId, int wordPosition)? firstLetterHint,
+    TResult? Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )?
+    missingWordMcq,
+    TResult? Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )?
+    nextWordMcq,
+    TResult? Function(String nodeId)? fullVerseInput,
+    TResult? Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )?
+    ayahChain,
+    TResult? Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )?
+    findMistake,
+    TResult? Function(String nodeId, List<String> correctSequence)?
+    ayahSequence,
+    TResult? Function(String nodeId, String root)? identifyRoot,
+    TResult? Function(String nodeId, int blankPosition)? reverseCloze,
+    TResult? Function(String nodeId, int translatorId)? translatePhrase,
+    TResult? Function(String nodeId, String correctPos, List<String> options)?
+    posTagging,
+    TResult? Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )?
+    crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
+  }) {
+    return echoRecall?.call(userId, ayahNodeIds);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String nodeId)? memorization,
+    TResult Function(String nodeId, List<String> distractorNodeIds)? mcqArToEn,
+    TResult Function(String nodeId, List<String> distractorNodeIds)? mcqEnToAr,
+    TResult Function(String nodeId)? translation,
+    TResult Function(String nodeId, String verseKey)? contextualTranslation,
+    TResult Function(String nodeId, int blankPosition)? clozeDeletion,
+    TResult Function(String nodeId, int wordPosition)? firstLetterHint,
+    TResult Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )?
+    missingWordMcq,
+    TResult Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )?
+    nextWordMcq,
+    TResult Function(String nodeId)? fullVerseInput,
+    TResult Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )?
+    ayahChain,
+    TResult Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )?
+    findMistake,
+    TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(String nodeId, String root)? identifyRoot,
+    TResult Function(String nodeId, int blankPosition)? reverseCloze,
+    TResult Function(String nodeId, int translatorId)? translatePhrase,
+    TResult Function(String nodeId, String correctPos, List<String> options)?
+    posTagging,
+    TResult Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )?
+    crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
+    required TResult orElse(),
+  }) {
+    if (echoRecall != null) {
+      return echoRecall(userId, ayahNodeIds);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ExerciseDataDto_Memorization value) memorization,
+    required TResult Function(ExerciseDataDto_McqArToEn value) mcqArToEn,
+    required TResult Function(ExerciseDataDto_McqEnToAr value) mcqEnToAr,
+    required TResult Function(ExerciseDataDto_Translation value) translation,
+    required TResult Function(ExerciseDataDto_ContextualTranslation value)
+    contextualTranslation,
+    required TResult Function(ExerciseDataDto_ClozeDeletion value)
+    clozeDeletion,
+    required TResult Function(ExerciseDataDto_FirstLetterHint value)
+    firstLetterHint,
+    required TResult Function(ExerciseDataDto_MissingWordMcq value)
+    missingWordMcq,
+    required TResult Function(ExerciseDataDto_NextWordMcq value) nextWordMcq,
+    required TResult Function(ExerciseDataDto_FullVerseInput value)
+    fullVerseInput,
+    required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
+    required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
+    required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
+    required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
+    required TResult Function(ExerciseDataDto_TranslatePhrase value)
+    translatePhrase,
+    required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
+    required TResult Function(ExerciseDataDto_CrossVerseConnection value)
+    crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
+  }) {
+    return echoRecall(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ExerciseDataDto_Memorization value)? memorization,
+    TResult? Function(ExerciseDataDto_McqArToEn value)? mcqArToEn,
+    TResult? Function(ExerciseDataDto_McqEnToAr value)? mcqEnToAr,
+    TResult? Function(ExerciseDataDto_Translation value)? translation,
+    TResult? Function(ExerciseDataDto_ContextualTranslation value)?
+    contextualTranslation,
+    TResult? Function(ExerciseDataDto_ClozeDeletion value)? clozeDeletion,
+    TResult? Function(ExerciseDataDto_FirstLetterHint value)? firstLetterHint,
+    TResult? Function(ExerciseDataDto_MissingWordMcq value)? missingWordMcq,
+    TResult? Function(ExerciseDataDto_NextWordMcq value)? nextWordMcq,
+    TResult? Function(ExerciseDataDto_FullVerseInput value)? fullVerseInput,
+    TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
+    TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
+    TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
+    TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
+    TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
+    TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
+    TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
+    crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
+  }) {
+    return echoRecall?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ExerciseDataDto_Memorization value)? memorization,
+    TResult Function(ExerciseDataDto_McqArToEn value)? mcqArToEn,
+    TResult Function(ExerciseDataDto_McqEnToAr value)? mcqEnToAr,
+    TResult Function(ExerciseDataDto_Translation value)? translation,
+    TResult Function(ExerciseDataDto_ContextualTranslation value)?
+    contextualTranslation,
+    TResult Function(ExerciseDataDto_ClozeDeletion value)? clozeDeletion,
+    TResult Function(ExerciseDataDto_FirstLetterHint value)? firstLetterHint,
+    TResult Function(ExerciseDataDto_MissingWordMcq value)? missingWordMcq,
+    TResult Function(ExerciseDataDto_NextWordMcq value)? nextWordMcq,
+    TResult Function(ExerciseDataDto_FullVerseInput value)? fullVerseInput,
+    TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
+    TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
+    TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
+    TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
+    TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
+    TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
+    TResult Function(ExerciseDataDto_CrossVerseConnection value)?
+    crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
+    required TResult orElse(),
+  }) {
+    if (echoRecall != null) {
+      return echoRecall(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ExerciseDataDto_EchoRecall extends ExerciseDataDto {
+  const factory ExerciseDataDto_EchoRecall({
+    required final String userId,
+    required final List<String> ayahNodeIds,
+  }) = _$ExerciseDataDto_EchoRecallImpl;
+  const ExerciseDataDto_EchoRecall._() : super._();
+
+  /// User ID for session tracking
+  String get userId;
+
+  /// List of ayah node IDs to practice (e.g., ["VERSE:1:1", "VERSE:1:2"])
+  List<String> get ayahNodeIds;
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ExerciseDataDto_EchoRecallImplCopyWith<_$ExerciseDataDto_EchoRecallImpl>
   get copyWith => throw _privateConstructorUsedError;
 }

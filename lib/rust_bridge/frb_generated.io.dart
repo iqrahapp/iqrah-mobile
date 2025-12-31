@@ -139,7 +139,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  EchoRecallMetricsDto dco_decode_box_autoadd_echo_recall_metrics_dto(
+    dynamic raw,
+  );
+
+  @protected
+  EchoRecallStateDto dco_decode_box_autoadd_echo_recall_state_dto(dynamic raw);
+
+  @protected
   double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
+  HintDto dco_decode_box_autoadd_hint_dto(dynamic raw);
 
   @protected
   int dco_decode_box_autoadd_i_32(dynamic raw);
@@ -163,13 +174,34 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw);
 
   @protected
+  DbHealthDto dco_decode_db_health_dto(dynamic raw);
+
+  @protected
   DbQueryResultDto dco_decode_db_query_result_dto(dynamic raw);
 
   @protected
   DebugStatsDto dco_decode_debug_stats_dto(dynamic raw);
 
   @protected
+  EchoRecallMetricsDto dco_decode_echo_recall_metrics_dto(dynamic raw);
+
+  @protected
+  EchoRecallResultDto dco_decode_echo_recall_result_dto(dynamic raw);
+
+  @protected
+  EchoRecallStateDto dco_decode_echo_recall_state_dto(dynamic raw);
+
+  @protected
+  EchoRecallStatsDto dco_decode_echo_recall_stats_dto(dynamic raw);
+
+  @protected
+  EchoRecallWordDto dco_decode_echo_recall_word_dto(dynamic raw);
+
+  @protected
   EnergySnapshotDto dco_decode_energy_snapshot_dto(dynamic raw);
+
+  @protected
+  EnergyUpdateDto dco_decode_energy_update_dto(dynamic raw);
 
   @protected
   ExerciseDataDto dco_decode_exercise_data_dto(dynamic raw);
@@ -178,13 +210,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double dco_decode_f_64(dynamic raw);
 
   @protected
+  HintDto dco_decode_hint_dto(dynamic raw);
+
+  @protected
   int dco_decode_i_32(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
   LanguageDto dco_decode_language_dto(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<EchoRecallWordDto> dco_decode_list_echo_recall_word_dto(dynamic raw);
+
+  @protected
+  List<EnergyUpdateDto> dco_decode_list_energy_update_dto(dynamic raw);
 
   @protected
   List<ExerciseDataDto> dco_decode_list_exercise_data_dto(dynamic raw);
@@ -223,6 +267,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<WordDto> dco_decode_list_word_dto(dynamic raw);
 
   @protected
+  List<WordTimingDto> dco_decode_list_word_timing_dto(dynamic raw);
+
+  @protected
   NodeData dco_decode_node_data(dynamic raw);
 
   @protected
@@ -241,6 +288,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
 
   @protected
+  HintDto? dco_decode_opt_box_autoadd_hint_dto(dynamic raw);
+
+  @protected
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
   @protected
@@ -254,6 +304,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto? dco_decode_opt_box_autoadd_word_dto(dynamic raw);
+
+  @protected
+  PropagationDiagnosticsDto dco_decode_propagation_diagnostics_dto(dynamic raw);
 
   @protected
   PropagationResultDto dco_decode_propagation_result_dto(dynamic raw);
@@ -274,6 +327,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_u_32(dynamic raw);
 
   @protected
+  BigInt dco_decode_u_64(dynamic raw);
+
+  @protected
   int dco_decode_u_8(dynamic raw);
 
   @protected
@@ -287,6 +343,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto dco_decode_word_dto(dynamic raw);
+
+  @protected
+  WordTimingDto dco_decode_word_timing_dto(dynamic raw);
+
+  @protected
+  WordVisibilityDto dco_decode_word_visibility_dto(dynamic raw);
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
@@ -387,7 +449,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  EchoRecallMetricsDto sse_decode_box_autoadd_echo_recall_metrics_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EchoRecallStateDto sse_decode_box_autoadd_echo_recall_state_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
+  HintDto sse_decode_box_autoadd_hint_dto(SseDeserializer deserializer);
 
   @protected
   int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
@@ -417,15 +492,46 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  DbHealthDto sse_decode_db_health_dto(SseDeserializer deserializer);
+
+  @protected
   DbQueryResultDto sse_decode_db_query_result_dto(SseDeserializer deserializer);
 
   @protected
   DebugStatsDto sse_decode_debug_stats_dto(SseDeserializer deserializer);
 
   @protected
+  EchoRecallMetricsDto sse_decode_echo_recall_metrics_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EchoRecallResultDto sse_decode_echo_recall_result_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EchoRecallStateDto sse_decode_echo_recall_state_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EchoRecallStatsDto sse_decode_echo_recall_stats_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  EchoRecallWordDto sse_decode_echo_recall_word_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   EnergySnapshotDto sse_decode_energy_snapshot_dto(
     SseDeserializer deserializer,
   );
+
+  @protected
+  EnergyUpdateDto sse_decode_energy_update_dto(SseDeserializer deserializer);
 
   @protected
   ExerciseDataDto sse_decode_exercise_data_dto(SseDeserializer deserializer);
@@ -434,13 +540,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  HintDto sse_decode_hint_dto(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
   LanguageDto sse_decode_language_dto(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<EchoRecallWordDto> sse_decode_list_echo_recall_word_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<EnergyUpdateDto> sse_decode_list_energy_update_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<ExerciseDataDto> sse_decode_list_exercise_data_dto(
@@ -491,6 +613,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<WordDto> sse_decode_list_word_dto(SseDeserializer deserializer);
 
   @protected
+  List<WordTimingDto> sse_decode_list_word_timing_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   NodeData sse_decode_node_data(SseDeserializer deserializer);
 
   @protected
@@ -509,6 +636,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
+  HintDto? sse_decode_opt_box_autoadd_hint_dto(SseDeserializer deserializer);
+
+  @protected
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
@@ -524,6 +654,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto? sse_decode_opt_box_autoadd_word_dto(SseDeserializer deserializer);
+
+  @protected
+  PropagationDiagnosticsDto sse_decode_propagation_diagnostics_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   PropagationResultDto sse_decode_propagation_result_dto(
@@ -550,6 +685,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_8(SseDeserializer deserializer);
 
   @protected
@@ -563,6 +701,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto sse_decode_word_dto(SseDeserializer deserializer);
+
+  @protected
+  WordTimingDto sse_decode_word_timing_dto(SseDeserializer deserializer);
+
+  @protected
+  WordVisibilityDto sse_decode_word_visibility_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   void sse_encode_AnyhowException(
@@ -681,7 +827,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_echo_recall_metrics_dto(
+    EchoRecallMetricsDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_echo_recall_state_dto(
+    EchoRecallStateDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_hint_dto(HintDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
@@ -720,6 +881,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_db_health_dto(DbHealthDto self, SseSerializer serializer);
+
+  @protected
   void sse_encode_db_query_result_dto(
     DbQueryResultDto self,
     SseSerializer serializer,
@@ -729,8 +893,44 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_debug_stats_dto(DebugStatsDto self, SseSerializer serializer);
 
   @protected
+  void sse_encode_echo_recall_metrics_dto(
+    EchoRecallMetricsDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_echo_recall_result_dto(
+    EchoRecallResultDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_echo_recall_state_dto(
+    EchoRecallStateDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_echo_recall_stats_dto(
+    EchoRecallStatsDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_echo_recall_word_dto(
+    EchoRecallWordDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_energy_snapshot_dto(
     EnergySnapshotDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_energy_update_dto(
+    EnergyUpdateDto self,
     SseSerializer serializer,
   );
 
@@ -744,13 +944,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_hint_dto(HintDto self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
   void sse_encode_language_dto(LanguageDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_echo_recall_word_dto(
+    List<EchoRecallWordDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_energy_update_dto(
+    List<EnergyUpdateDto> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_exercise_data_dto(
@@ -819,6 +1037,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_word_dto(List<WordDto> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_word_timing_dto(
+    List<WordTimingDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_node_data(NodeData self, SseSerializer serializer);
 
   @protected
@@ -835,6 +1059,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_hint_dto(
+    HintDto? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
@@ -860,6 +1090,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_word_dto(
     WordDto? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_propagation_diagnostics_dto(
+    PropagationDiagnosticsDto self,
     SseSerializer serializer,
   );
 
@@ -891,6 +1127,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_u_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
 
   @protected
@@ -904,6 +1143,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_word_dto(WordDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_word_timing_dto(WordTimingDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_word_visibility_dto(
+    WordVisibilityDto self,
+    SseSerializer serializer,
+  );
 }
 
 // Section: wire_class

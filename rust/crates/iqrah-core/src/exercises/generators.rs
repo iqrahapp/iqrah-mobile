@@ -389,6 +389,19 @@ pub async fn generate_full_verse_input(
     Ok(ExerciseData::FullVerseInput { node_id })
 }
 
+/// Generate Echo Recall exercise
+///
+/// Stores only the ayah node IDs. The UI will fetch words on demand.
+pub async fn generate_echo_recall(
+    verse_node_id: i64,
+    _ukey: &str,
+    _content_repo: &dyn ContentRepository,
+) -> Result<ExerciseData> {
+    Ok(ExerciseData::EchoRecall {
+        ayah_node_ids: vec![verse_node_id],
+    })
+}
+
 /// Generate Ayah Chain exercise
 pub async fn generate_ayah_chain(
     node_id: i64,

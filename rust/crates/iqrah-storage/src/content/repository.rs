@@ -499,6 +499,43 @@ impl ContentRepository for SqliteContentRepository {
         Ok(nodes)
     }
 
+    async fn has_nodes(&self) -> anyhow::Result<bool> {
+        // Efficient O(1) check using EXISTS or LIMIT 1
+        let result: Option<(i32,)> = query_as("SELECT 1 FROM verses LIMIT 1")
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(result.is_some())
+    }
+
+    async fn search_by_content(&self, query: &str, limit: i64) -> anyhow::Result<Vec<Node>> {
+        use iqrah_core::domain::node_id as nid;
+
+        // Search in Arabic text (text_uthmani) for verses
+        let pattern = format!("%{}%", query);
+        let rows: Vec<(String,)> = query_as(
+            "SELECT verse_key FROM verses
+             WHERE text_uthmani LIKE ?1
+             LIMIT ?2",
+        )
+        .bind(&pattern)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let nodes: Vec<Node> = rows
+            .into_iter()
+            .filter_map(|(verse_key,)| {
+                nid::parse_verse(&verse_key).ok().map(|(ch, v)| Node {
+                    id: nid::encode_verse(ch, v),
+                    ukey: nid::verse(ch, v),
+                    node_type: NodeType::Verse,
+                })
+            })
+            .collect();
+
+        Ok(nodes)
+    }
+
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>> {
         // V2 schema: Query from appropriate table based on node_type
         use iqrah_core::domain::node_id as nid;

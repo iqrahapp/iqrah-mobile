@@ -208,9 +208,15 @@ where
     }
 
     // Batch insert to database
-    tracing::info!("Inserting {} nodes into the database...", nodes.len());
+    // NOTE: Insert methods not yet implemented. The bundled content.db
+    // provides pre-populated data, so CBOR import is only a fallback.
+    tracing::info!(
+        "Parsed {} nodes, {} edges from CBOR",
+        nodes.len(),
+        edges.len()
+    );
+    // TODO: Implement insert_nodes_batch and insert_edges_batch when needed
     // repo.insert_nodes_batch(&nodes).await?;
-    tracing::info!("Inserting {} edges into the database...", edges.len());
     // repo.insert_edges_batch(&edges).await?;
 
     let duration = start_time.elapsed();

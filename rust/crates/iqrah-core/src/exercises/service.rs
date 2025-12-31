@@ -8,7 +8,9 @@ use super::mcq::McqExercise;
 use super::memorization::MemorizationExercise;
 use super::translation::{ContextualTranslationExercise, TranslationExercise};
 use super::types::{Exercise, ExerciseResponse, ExerciseType};
-use crate::domain::node_id::{PREFIX_CHAPTER, PREFIX_VERSE, PREFIX_WORD, PREFIX_WORD_INSTANCE};
+use crate::domain::node_id::{
+    self, PREFIX_CHAPTER, PREFIX_VERSE, PREFIX_WORD, PREFIX_WORD_INSTANCE,
+};
 use crate::semantic::grader::{SemanticGrader, SEMANTIC_EMBEDDER};
 use crate::semantic::SemanticEmbedder;
 use crate::{ContentRepository, KnowledgeAxis, KnowledgeNode};
@@ -162,20 +164,47 @@ impl ExerciseService {
     /// - User preferences
     /// - Exercise variety (randomization)
     pub async fn generate_exercise_v2(&self, node_id: i64, ukey: &str) -> Result<ExerciseData> {
+        let (base_ukey, axis) = if let Some(kn) = KnowledgeNode::parse(ukey) {
+            (kn.base_node_id, Some(kn.axis))
+        } else {
+            (ukey.to_string(), None)
+        };
+
+        let base_node_id = if axis.is_some() {
+            if let Some((base_id, _)) = node_id::decode_knowledge_id(node_id) {
+                base_id
+            } else if let Ok(Some(node)) = self.content_repo.get_node_by_ukey(&base_ukey).await {
+                node.id
+            } else {
+                node_id
+            }
+        } else {
+            node_id
+        };
+
         // Route based on node type prefix
-        if ukey.starts_with(PREFIX_WORD) || ukey.starts_with(PREFIX_WORD_INSTANCE) {
+        if base_ukey.starts_with(PREFIX_WORD) || base_ukey.starts_with(PREFIX_WORD_INSTANCE) {
             // Word-level exercises
-            generators::generate_memorization(node_id, ukey, &*self.content_repo).await
-        } else if ukey.starts_with(PREFIX_VERSE) {
+            generators::generate_memorization(base_node_id, &base_ukey, &*self.content_repo).await
+        } else if base_ukey.starts_with(PREFIX_VERSE) {
             // Verse-level exercises
-            generators::generate_full_verse_input(node_id, ukey, &*self.content_repo).await
-        } else if ukey.starts_with(PREFIX_CHAPTER) {
+            if matches!(
+                axis,
+                Some(KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization)
+            ) {
+                generators::generate_echo_recall(base_node_id, &base_ukey, &*self.content_repo)
+                    .await
+            } else {
+                generators::generate_full_verse_input(base_node_id, &base_ukey, &*self.content_repo)
+                    .await
+            }
+        } else if base_ukey.starts_with(PREFIX_CHAPTER) {
             // Chapter-level exercises
-            generators::generate_ayah_chain(node_id, ukey, &*self.content_repo).await
+            generators::generate_ayah_chain(base_node_id, &base_ukey, &*self.content_repo).await
         } else {
             Err(anyhow::anyhow!(
                 "Cannot determine exercise type for node: {}",
-                ukey
+                base_ukey
             ))
         }
     }
@@ -397,6 +426,14 @@ mod tests {
         }
 
         async fn get_all_nodes(&self) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
+        async fn has_nodes(&self) -> Result<bool> {
+            Ok(false)
+        }
+
+        async fn search_by_content(&self, _query: &str, _limit: i64) -> Result<Vec<Node>> {
             Ok(vec![])
         }
 
@@ -851,6 +888,14 @@ mod tests {
             Ok(vec![])
         }
 
+        async fn has_nodes(&self) -> Result<bool> {
+            Ok(false)
+        }
+
+        async fn search_by_content(&self, _query: &str, _limit: i64) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
         async fn get_nodes_by_type(&self, _node_type: NodeType) -> Result<Vec<Node>> {
             Ok(vec![])
         }
@@ -1121,6 +1166,20 @@ mod tests {
         assert_eq!(exercise.type_name(), "memorization");
         // node_id should be the base without axis
         assert_eq!(exercise.node_id(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_generate_exercise_v2_verse_node_with_mem_axis() {
+        let content_repo = Arc::new(MockContentRepoV2::new());
+        let service = ExerciseService::new(content_repo);
+
+        let exercise = service
+            .generate_exercise_v2(11, "VERSE:1:1:memorization")
+            .await
+            .unwrap();
+
+        assert_eq!(exercise.type_name(), "echo_recall");
+        assert_eq!(exercise.node_id(), 11);
     }
 
     #[tokio::test]

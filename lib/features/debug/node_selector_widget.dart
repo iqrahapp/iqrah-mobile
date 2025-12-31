@@ -273,11 +273,14 @@ class _NodeSelectorWidgetState extends State<NodeSelectorWidget> {
                 itemCount: _suggestions.length,
                 itemBuilder: (context, index) {
                   final node = _suggestions[index];
+                  final axisLabel = node.knowledgeAxis != null
+                      ? ' [${node.knowledgeAxis}]'
+                      : '';
                   return ListTile(
                     dense: true,
                     title: Text(node.nodeId),
                     subtitle: Text(
-                      '${node.nodeType} - ${node.preview}',
+                      '${node.nodeType}$axisLabel - ${node.preview}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -51,6 +51,12 @@ pub trait ContentRepository: Send + Sync {
     /// Get all nodes
     async fn get_all_nodes(&self) -> anyhow::Result<Vec<Node>>;
 
+    /// Check if any nodes exist (efficient O(1) check)
+    async fn has_nodes(&self) -> anyhow::Result<bool>;
+
+    /// Search nodes by content (Arabic text or translation)
+    async fn search_by_content(&self, query: &str, limit: i64) -> anyhow::Result<Vec<Node>>;
+
     /// Get nodes by type
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>>;
 
