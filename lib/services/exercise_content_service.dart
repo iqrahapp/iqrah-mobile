@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/services/node_id_service.dart';
+import 'package:iqrah/utils/error_mapper.dart';
+import 'package:iqrah/providers/translation_provider.dart';
 
 /// User preferences for content fetching
 class UserPreferences {
@@ -333,7 +335,10 @@ class ExerciseContentService {
       // In future, we can request specific variants or process on client
       return verse.textUthmani;
     } catch (e) {
-      return 'Error fetching verse: $e';
+      return ErrorMapper.toMessage(
+        e,
+        context: 'Unable to load verse $verseKey',
+      );
     }
   }
 
@@ -344,7 +349,10 @@ class ExerciseContentService {
 
       return word.textUthmani;
     } catch (e) {
-      return 'Error fetching word: $e';
+      return ErrorMapper.toMessage(
+        e,
+        context: 'Unable to load word $wordId',
+      );
     }
   }
 
@@ -393,7 +401,49 @@ class ExerciseContentService {
           return 'Unsupported content type: $contentKey';
       }
     } catch (e) {
-      return 'Error fetching translation: $e';
+      return ErrorMapper.toMessage(
+        e,
+        context: 'Unable to load translation',
+      );
+    }
+  }
+
+  /// Fetch base Arabic text for a node ID (verse/word/word instance).
+  Future<String> fetchNodeText(String nodeId) async {
+    _maybeClearCache();
+
+    final nodeType = NodeIdService.getBaseNodeType(nodeId);
+    switch (nodeType) {
+      case NodeType.verse:
+        final verseKey = NodeIdService.parseVerseKey(nodeId);
+        final verse = await api.getVerse(verseKey: verseKey);
+        if (verse == null) {
+          throw Exception('Verse not found: $verseKey');
+        }
+        return verse.textUthmani;
+      case NodeType.word:
+        final wordId = NodeIdService.parseWordId(nodeId);
+        final word = await api.getWord(wordId: wordId);
+        if (word == null) {
+          throw Exception('Word not found: $wordId');
+        }
+        return word.textUthmani;
+      case NodeType.wordInstance:
+        final (chapter, verse, position) =
+            NodeIdService.parseWordInstance(nodeId);
+        final word = await api.getWordAtPosition(
+          chapter: chapter,
+          verse: verse,
+          position: position,
+        );
+        if (word == null) {
+          throw Exception(
+            'Word not found at $chapter:$verse:$position',
+          );
+        }
+        return word.textUthmani;
+      default:
+        throw Exception('Unsupported node type: $nodeId');
     }
   }
 }
@@ -401,8 +451,11 @@ class ExerciseContentService {
 // ===== Riverpod Providers =====
 
 /// Provider for user preferences
-final userPreferencesProvider = StateProvider<UserPreferences>((ref) {
-  return const UserPreferences();
+final userPreferencesProvider = Provider<UserPreferences>((ref) {
+  final preferredTranslator = ref.watch(preferredTranslatorProvider);
+  final preferredId =
+      preferredTranslator.whenOrNull(data: (id) => id);
+  return UserPreferences(preferredTranslatorId: preferredId);
 });
 
 /// Provider for exercise content service

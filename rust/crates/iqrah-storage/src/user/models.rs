@@ -40,6 +40,28 @@ pub struct SessionStateRow {
 }
 
 #[derive(Debug, Clone, FromRow)]
+pub struct SessionRow {
+    pub id: String,
+    pub user_id: String,
+    pub goal_id: String,
+    pub started_at: i64,
+    pub completed_at: Option<i64>,
+    pub items_count: i64,
+    pub items_completed: i64,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct SessionItemRow {
+    pub id: i64,
+    pub session_id: String,
+    pub node_id: i64,
+    pub exercise_type: String,
+    pub grade: i64,
+    pub duration_ms: Option<i64>,
+    pub completed_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, FromRow)]
 pub struct UserStatRow {
     #[allow(dead_code)]
     pub key: String,

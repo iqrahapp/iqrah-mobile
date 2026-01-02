@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iqrah/pages/excercise_page.dart';
+import 'package:iqrah/features/session/session_screen.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/utils/error_mapper.dart';
 
 class SandboxPage extends ConsumerStatefulWidget {
   const SandboxPage({super.key});
@@ -97,7 +98,16 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
         setState(() => _preview = []);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Load exercises failed: $e')));
+        ).showSnackBar(
+          SnackBar(
+            content: Text(
+              ErrorMapper.toMessage(
+                e,
+                context: 'Unable to load exercises',
+              ),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -108,10 +118,10 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
 
   void _startOne(api.ExerciseDataDto ex) {
     HapticFeedback.lightImpact();
-    ref.read(sessionProvider.notifier).startReview([ex]);
+    ref.read(sessionProvider.notifier).startAdhocReview([ex]);
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => const ExcercisePage()));
+    ).push(MaterialPageRoute(builder: (_) => const SessionScreen()));
   }
 
   @override
@@ -226,12 +236,62 @@ class _SandboxPageState extends ConsumerState<SandboxPage> {
   }
 
   String _exerciseLabel(api.ExerciseDataDto e) {
-    // Using runtimeType or pattern matching if available, or just toString for now
-    // Since it's a sealed class, we can use map/when if generated, but simple toString is safer for quick fix
-    return e.toString().split('(').first;
+    return _exerciseTypeLabel(e);
   }
 
   String _exerciseSubtitle(api.ExerciseDataDto e) {
-    return e.toString();
+    return _exerciseSubtitleFor(e);
+  }
+
+  String _exerciseTypeLabel(api.ExerciseDataDto e) {
+    return e.map(
+      memorization: (_) => 'Memorization',
+      mcqArToEn: (_) => 'MCQ Ar to En',
+      mcqEnToAr: (_) => 'MCQ En to Ar',
+      translation: (_) => 'Translation',
+      contextualTranslation: (_) => 'Contextual Translation',
+      clozeDeletion: (_) => 'Cloze Deletion',
+      firstLetterHint: (_) => 'First Letter Hint',
+      missingWordMcq: (_) => 'Missing Word MCQ',
+      nextWordMcq: (_) => 'Next Word MCQ',
+      fullVerseInput: (_) => 'Full Verse Input',
+      ayahChain: (_) => 'Ayah Chain',
+      findMistake: (_) => 'Find the Mistake',
+      ayahSequence: (_) => 'Ayah Sequence',
+      sequenceRecall: (_) => 'Sequence Recall',
+      firstWordRecall: (_) => 'First Word Recall',
+      identifyRoot: (_) => 'Identify Root',
+      reverseCloze: (_) => 'Reverse Cloze',
+      translatePhrase: (_) => 'Translate Phrase',
+      posTagging: (_) => 'POS Tagging',
+      crossVerseConnection: (_) => 'Cross-Verse Connection',
+      echoRecall: (_) => 'Echo Recall',
+    );
+  }
+
+  String _exerciseSubtitleFor(api.ExerciseDataDto e) {
+    return e.map(
+      memorization: (e) => 'Node: ${e.nodeId}',
+      mcqArToEn: (e) => 'Node: ${e.nodeId}',
+      mcqEnToAr: (e) => 'Node: ${e.nodeId}',
+      translation: (e) => 'Node: ${e.nodeId}',
+      contextualTranslation: (e) => 'Node: ${e.nodeId}',
+      clozeDeletion: (e) => 'Node: ${e.nodeId}',
+      firstLetterHint: (e) => 'Node: ${e.nodeId}',
+      missingWordMcq: (e) => 'Node: ${e.nodeId}',
+      nextWordMcq: (e) => 'Node: ${e.nodeId}',
+      fullVerseInput: (e) => 'Node: ${e.nodeId}',
+      ayahChain: (e) => 'Verses: ${e.verseKeys.length}',
+      findMistake: (e) => 'Node: ${e.nodeId}',
+      ayahSequence: (e) => 'Sequence length: ${e.correctSequence.length}',
+      sequenceRecall: (e) => 'Options: ${e.options.length}',
+      firstWordRecall: (e) => 'Verse: ${e.verseKey}',
+      identifyRoot: (e) => 'Node: ${e.nodeId}',
+      reverseCloze: (e) => 'Node: ${e.nodeId}',
+      translatePhrase: (e) => 'Node: ${e.nodeId}',
+      posTagging: (e) => 'Node: ${e.nodeId}',
+      crossVerseConnection: (e) => 'Related: ${e.relatedVerseIds.length}',
+      echoRecall: (e) => 'Ayahs: ${e.ayahNodeIds.length}',
+    );
   }
 }

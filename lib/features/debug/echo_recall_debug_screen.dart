@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/features/exercises/widgets/echo_recall_widget.dart';
+import 'package:iqrah/providers/user_provider.dart';
 
 /// Debug screen for testing Echo Recall exercise
-class EchoRecallDebugScreen extends StatefulWidget {
+class EchoRecallDebugScreen extends ConsumerStatefulWidget {
   const EchoRecallDebugScreen({super.key});
 
   @override
-  State<EchoRecallDebugScreen> createState() => _EchoRecallDebugScreenState();
+  ConsumerState<EchoRecallDebugScreen> createState() =>
+      _EchoRecallDebugScreenState();
 }
 
-class _EchoRecallDebugScreenState extends State<EchoRecallDebugScreen> {
+class _EchoRecallDebugScreenState extends ConsumerState<EchoRecallDebugScreen> {
   final _chapterController = TextEditingController(text: '1');
   final _startVerseController = TextEditingController(text: '1');
   final _endVerseController = TextEditingController(text: '7');
@@ -69,7 +72,7 @@ class _EchoRecallDebugScreenState extends State<EchoRecallDebugScreen> {
           ),
         ),
         body: EchoRecallWidget(
-          userId: 'test_user',
+          userId: ref.read(currentUserIdProvider),
           ayahNodeIds: _buildAyahNodeIds(),
           onComplete: _onComplete,
         ),

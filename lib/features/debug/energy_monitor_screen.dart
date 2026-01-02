@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iqrah/features/debug/node_selector_widget.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/utils/app_logger.dart';
+import 'package:iqrah/widgets/error_banner.dart';
 
 /// Debug screen for monitoring energy values and simulating propagation.
 class EnergyMonitorScreen extends StatefulWidget {
@@ -113,17 +114,9 @@ class _EnergyMonitorScreenState extends State<EnergyMonitorScreen> {
                 ),
               )
             else if (_error != null)
-              Card(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    _error!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                    ),
-                  ),
-                ),
+              ErrorBanner(
+                message: _error!,
+                dense: true,
               )
             else if (_snapshot != null) ...[
               _buildSnapshotCard(),

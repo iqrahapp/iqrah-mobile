@@ -8,6 +8,7 @@ enum LogCategory {
   ffi,
   database,
   ui,
+  analytics,
 }
 
 /// Structured logging utility for the Iqrah app.
@@ -48,4 +49,10 @@ class AppLogger {
   /// Log a UI-related message
   static void ui(String msg, {Object? error}) =>
       log(LogCategory.ui, msg, error: error);
+
+  /// Log analytics-style events (local only)
+  static void analytics(String event, {Map<String, Object?>? props}) {
+    final suffix = props == null || props.isEmpty ? '' : ' $props';
+    log(LogCategory.analytics, '$event$suffix');
+  }
 }

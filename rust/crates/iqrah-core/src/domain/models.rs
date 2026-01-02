@@ -224,6 +224,41 @@ impl MemoryState {
     }
 }
 
+// Session tracking (persistent)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Session {
+    pub id: String,
+    pub user_id: String,
+    pub goal_id: String,
+    pub started_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub items_count: i32,
+    pub items_completed: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionItem {
+    pub id: i64,
+    pub session_id: String,
+    pub node_id: i64,
+    pub exercise_type: String,
+    pub grade: i32,
+    pub duration_ms: Option<i64>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionSummary {
+    pub session_id: String,
+    pub items_count: i32,
+    pub items_completed: i32,
+    pub duration_ms: i64,
+    pub again_count: i32,
+    pub hard_count: i32,
+    pub good_count: i32,
+    pub easy_count: i32,
+}
+
 // Review grades
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReviewGrade {

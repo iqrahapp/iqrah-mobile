@@ -130,7 +130,25 @@ pub enum ExerciseData {
         correct_sequence: Vec<i64>,
     },
 
-    /// Exercise 13: Identify Root - Grammar exercise for root identification
+    /// Exercise 13: Sequence Recall - Select the correct continuation sequence
+    SequenceRecall {
+        /// Verse node ID used as prompt context
+        node_id: i64,
+        /// Correct sequence of verse IDs
+        correct_sequence: Vec<i64>,
+        /// Multiple choice options (each is a sequence of verse IDs)
+        options: Vec<Vec<i64>>,
+    },
+
+    /// Exercise 14: First Word Recall - Type the first word of a verse
+    FirstWordRecall {
+        /// Verse node ID
+        node_id: i64,
+        /// Verse key (e.g., "1:1")
+        verse_key: String,
+    },
+
+    /// Exercise 15: Identify Root - Grammar exercise for root identification
     IdentifyRoot {
         /// Word node ID
         node_id: i64,
@@ -138,7 +156,7 @@ pub enum ExerciseData {
         root: String,
     },
 
-    /// Exercise 14: Reverse Cloze - Given translation, recall Arabic with blank
+    /// Exercise 16: Reverse Cloze - Given translation, recall Arabic with blank
     ReverseCloze {
         /// Verse node ID
         node_id: i64,
@@ -146,7 +164,7 @@ pub enum ExerciseData {
         blank_position: i32,
     },
 
-    /// Exercise 15: Translate Phrase - Type English translation of verse/phrase
+    /// Exercise 17: Translate Phrase - Type English translation of verse/phrase
     TranslatePhrase {
         /// Node ID (verse or word)
         node_id: i64,
@@ -168,7 +186,7 @@ pub enum ExerciseData {
     CrossVerseConnection {
         /// Primary verse node ID
         node_id: i64,
-        /// Related verse node IDs (correct answers)
+        /// Related verse node IDs (first is correct, rest are distractors)
         related_verse_ids: Vec<i64>,
         /// Theme/connection type
         connection_theme: String,
@@ -200,6 +218,8 @@ impl ExerciseData {
             | Self::AyahChain { node_id, .. }
             | Self::FindMistake { node_id, .. }
             | Self::AyahSequence { node_id, .. }
+            | Self::SequenceRecall { node_id, .. }
+            | Self::FirstWordRecall { node_id, .. }
             | Self::IdentifyRoot { node_id, .. }
             | Self::ReverseCloze { node_id, .. }
             | Self::TranslatePhrase { node_id, .. }
@@ -226,6 +246,8 @@ impl ExerciseData {
             Self::AyahChain { .. } => "ayah_chain",
             Self::FindMistake { .. } => "find_mistake",
             Self::AyahSequence { .. } => "ayah_sequence",
+            Self::SequenceRecall { .. } => "sequence_recall",
+            Self::FirstWordRecall { .. } => "first_word_recall",
             Self::IdentifyRoot { .. } => "identify_root",
             Self::ReverseCloze { .. } => "reverse_cloze",
             Self::TranslatePhrase { .. } => "translate_phrase",
@@ -248,6 +270,7 @@ impl ExerciseData {
                 | Self::McqEnToAr { .. }
                 | Self::MissingWordMcq { .. }
                 | Self::NextWordMcq { .. }
+                | Self::SequenceRecall { .. }
                 | Self::PosTagging { .. }
         )
     }
@@ -260,6 +283,7 @@ impl ExerciseData {
                 | Self::McqEnToAr { .. }
                 | Self::ClozeDeletion { .. }
                 | Self::FirstLetterHint { .. }
+                | Self::FirstWordRecall { .. }
                 | Self::FullVerseInput { .. }
                 | Self::AyahChain { .. }
                 | Self::ReverseCloze { .. }
@@ -434,6 +458,29 @@ mod tests {
         };
 
         assert_eq!(exercise.type_name(), "ayah_sequence");
+    }
+
+    #[test]
+    fn test_sequence_recall_variant() {
+        let exercise = ExerciseData::SequenceRecall {
+            node_id: 1,
+            correct_sequence: vec![2, 3],
+            options: vec![vec![2, 3], vec![4, 5]],
+        };
+
+        assert_eq!(exercise.type_name(), "sequence_recall");
+        assert!(exercise.is_mcq());
+    }
+
+    #[test]
+    fn test_first_word_recall_variant() {
+        let exercise = ExerciseData::FirstWordRecall {
+            node_id: 1,
+            verse_key: "1:1".to_string(),
+        };
+
+        assert_eq!(exercise.type_name(), "first_word_recall");
+        assert!(exercise.requires_arabic_input());
     }
 
     #[test]
@@ -728,6 +775,15 @@ mod tests {
                 node_id: 1,
                 correct_sequence: vec![],
             },
+            ExerciseData::SequenceRecall {
+                node_id: 1,
+                correct_sequence: vec![],
+                options: vec![],
+            },
+            ExerciseData::FirstWordRecall {
+                node_id: 1,
+                verse_key: "1:1".to_string(),
+            },
             ExerciseData::IdentifyRoot {
                 node_id: 1,
                 root: "كتب".to_string(),
@@ -765,7 +821,7 @@ mod tests {
             original_len,
             "All exercise types should have unique type names"
         );
-        assert_eq!(original_len, 19, "Expected 19 exercise types");
+        assert_eq!(original_len, 21, "Expected 21 exercise types");
     }
 
     #[test]
@@ -808,6 +864,11 @@ mod tests {
                 node_id: 1,
                 context_position: 1,
                 distractor_node_ids: vec![],
+            },
+            ExerciseData::SequenceRecall {
+                node_id: 1,
+                correct_sequence: vec![],
+                options: vec![],
             },
             ExerciseData::PosTagging {
                 node_id: 1,

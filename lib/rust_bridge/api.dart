@@ -10,7 +10,7 @@ part 'api.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `app`, `populate_nodes_from_content`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ExerciseDto`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// One-time setup: initializes databases and imports graph
 Future<String> setupDatabase({
@@ -39,6 +39,39 @@ Future<List<ExerciseDataDto>> getExercises({
   surahFilter: surahFilter,
   isHighYield: isHighYield,
 );
+
+/// Start a new session and persist its state
+Future<SessionDto> startSession({
+  required String userId,
+  required String goalId,
+}) => RustLib.instance.api.crateApiStartSession(userId: userId, goalId: goalId);
+
+/// Get the active (incomplete) session for a user
+Future<SessionDto?> getActiveSession({required String userId}) =>
+    RustLib.instance.api.crateApiGetActiveSession(userId: userId);
+
+/// Get the next session item (exercise) to present
+Future<SessionItemDto?> getNextSessionItem({required String sessionId}) =>
+    RustLib.instance.api.crateApiGetNextSessionItem(sessionId: sessionId);
+
+/// Submit a completed session item
+Future<String> submitSessionItem({
+  required String sessionId,
+  required String nodeId,
+  required String exerciseType,
+  required int grade,
+  required BigInt durationMs,
+}) => RustLib.instance.api.crateApiSubmitSessionItem(
+  sessionId: sessionId,
+  nodeId: nodeId,
+  exerciseType: exerciseType,
+  grade: grade,
+  durationMs: durationMs,
+);
+
+/// Complete a session and return summary
+Future<SessionSummaryDto> completeSession({required String sessionId}) =>
+    RustLib.instance.api.crateApiCompleteSession(sessionId: sessionId);
 
 /// Get exercises for a specific node (Sandbox/Preview)
 Future<List<ExerciseDataDto>> getExercisesForNode({required String nodeId}) =>
@@ -174,6 +207,36 @@ Future<String?> getVerseTranslationByTranslator({
 }) => RustLib.instance.api.crateApiGetVerseTranslationByTranslator(
   verseKey: verseKey,
   translatorId: translatorId,
+);
+
+/// List available content packages (optionally filtered)
+Future<List<ContentPackageDto>> getAvailablePackages({
+  String? packageType,
+  String? languageCode,
+}) => RustLib.instance.api.crateApiGetAvailablePackages(
+  packageType: packageType,
+  languageCode: languageCode,
+);
+
+/// List installed content packages
+Future<List<InstalledPackageDto>> getInstalledPackages() =>
+    RustLib.instance.api.crateApiGetInstalledPackages();
+
+/// Enable an installed package
+Future<String> enablePackage({required String packageId}) =>
+    RustLib.instance.api.crateApiEnablePackage(packageId: packageId);
+
+/// Disable an installed package
+Future<String> disablePackage({required String packageId}) =>
+    RustLib.instance.api.crateApiDisablePackage(packageId: packageId);
+
+/// Install a translation package from raw bytes
+Future<String> installTranslationPackFromBytes({
+  required String packageId,
+  required List<int> bytes,
+}) => RustLib.instance.api.crateApiInstallTranslationPackFromBytes(
+  packageId: packageId,
+  bytes: bytes,
 );
 
 /// Start a new Echo Recall session
@@ -319,6 +382,65 @@ abstract class ArcContentRepository implements RustOpaqueInterface {}
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>
 abstract class ArcUserRepository implements RustOpaqueInterface {}
+
+class ContentPackageDto {
+  final String packageId;
+  final String packageType;
+  final String name;
+  final String? languageCode;
+  final String? author;
+  final String version;
+  final String? description;
+  final PlatformInt64? fileSize;
+  final String? downloadUrl;
+  final String? checksum;
+  final String? license;
+
+  const ContentPackageDto({
+    required this.packageId,
+    required this.packageType,
+    required this.name,
+    this.languageCode,
+    this.author,
+    required this.version,
+    this.description,
+    this.fileSize,
+    this.downloadUrl,
+    this.checksum,
+    this.license,
+  });
+
+  @override
+  int get hashCode =>
+      packageId.hashCode ^
+      packageType.hashCode ^
+      name.hashCode ^
+      languageCode.hashCode ^
+      author.hashCode ^
+      version.hashCode ^
+      description.hashCode ^
+      fileSize.hashCode ^
+      downloadUrl.hashCode ^
+      checksum.hashCode ^
+      license.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContentPackageDto &&
+          runtimeType == other.runtimeType &&
+          packageId == other.packageId &&
+          packageType == other.packageType &&
+          name == other.name &&
+          languageCode == other.languageCode &&
+          author == other.author &&
+          version == other.version &&
+          description == other.description &&
+          fileSize == other.fileSize &&
+          downloadUrl == other.downloadUrl &&
+          checksum == other.checksum &&
+          license == other.license;
+}
 
 class DashboardStatsDto {
   final int reviewsToday;
@@ -691,6 +813,15 @@ sealed class ExerciseDataDto with _$ExerciseDataDto {
     required String nodeId,
     required List<String> correctSequence,
   }) = ExerciseDataDto_AyahSequence;
+  const factory ExerciseDataDto.sequenceRecall({
+    required String nodeId,
+    required List<String> correctSequence,
+    required List<List<String>> options,
+  }) = ExerciseDataDto_SequenceRecall;
+  const factory ExerciseDataDto.firstWordRecall({
+    required String nodeId,
+    required String verseKey,
+  }) = ExerciseDataDto_FirstWordRecall;
   const factory ExerciseDataDto.identifyRoot({
     required String nodeId,
     required String root,
@@ -749,6 +880,31 @@ class HintDto {
           hintType == other.hintType &&
           firstChar == other.firstChar &&
           lastChar == other.lastChar;
+}
+
+class InstalledPackageDto {
+  final String packageId;
+  final PlatformInt64 installedAt;
+  final bool enabled;
+
+  const InstalledPackageDto({
+    required this.packageId,
+    required this.installedAt,
+    required this.enabled,
+  });
+
+  @override
+  int get hashCode =>
+      packageId.hashCode ^ installedAt.hashCode ^ enabled.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is InstalledPackageDto &&
+          runtimeType == other.runtimeType &&
+          packageId == other.packageId &&
+          installedAt == other.installedAt &&
+          enabled == other.enabled;
 }
 
 class LanguageDto {
@@ -947,6 +1103,84 @@ class PropagationResultDto {
           diagnostics == other.diagnostics;
 }
 
+class SessionDto {
+  final String id;
+  final String userId;
+  final String goalId;
+  final PlatformInt64 startedAt;
+  final PlatformInt64? completedAt;
+  final int itemsCount;
+  final int itemsCompleted;
+
+  const SessionDto({
+    required this.id,
+    required this.userId,
+    required this.goalId,
+    required this.startedAt,
+    this.completedAt,
+    required this.itemsCount,
+    required this.itemsCompleted,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      userId.hashCode ^
+      goalId.hashCode ^
+      startedAt.hashCode ^
+      completedAt.hashCode ^
+      itemsCount.hashCode ^
+      itemsCompleted.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SessionDto &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          userId == other.userId &&
+          goalId == other.goalId &&
+          startedAt == other.startedAt &&
+          completedAt == other.completedAt &&
+          itemsCount == other.itemsCount &&
+          itemsCompleted == other.itemsCompleted;
+}
+
+class SessionItemDto {
+  final String sessionId;
+  final int position;
+  final String nodeId;
+  final String exerciseType;
+  final ExerciseDataDto exercise;
+
+  const SessionItemDto({
+    required this.sessionId,
+    required this.position,
+    required this.nodeId,
+    required this.exerciseType,
+    required this.exercise,
+  });
+
+  @override
+  int get hashCode =>
+      sessionId.hashCode ^
+      position.hashCode ^
+      nodeId.hashCode ^
+      exerciseType.hashCode ^
+      exercise.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SessionItemDto &&
+          runtimeType == other.runtimeType &&
+          sessionId == other.sessionId &&
+          position == other.position &&
+          nodeId == other.nodeId &&
+          exerciseType == other.exerciseType &&
+          exercise == other.exercise;
+}
+
 class SessionPreviewDto {
   final String nodeId;
   final String nodeType;
@@ -980,6 +1214,53 @@ class SessionPreviewDto {
           previewText == other.previewText &&
           energy == other.energy &&
           priorityScore == other.priorityScore;
+}
+
+class SessionSummaryDto {
+  final String sessionId;
+  final int itemsCount;
+  final int itemsCompleted;
+  final PlatformInt64 durationMs;
+  final int againCount;
+  final int hardCount;
+  final int goodCount;
+  final int easyCount;
+
+  const SessionSummaryDto({
+    required this.sessionId,
+    required this.itemsCount,
+    required this.itemsCompleted,
+    required this.durationMs,
+    required this.againCount,
+    required this.hardCount,
+    required this.goodCount,
+    required this.easyCount,
+  });
+
+  @override
+  int get hashCode =>
+      sessionId.hashCode ^
+      itemsCount.hashCode ^
+      itemsCompleted.hashCode ^
+      durationMs.hashCode ^
+      againCount.hashCode ^
+      hardCount.hashCode ^
+      goodCount.hashCode ^
+      easyCount.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SessionSummaryDto &&
+          runtimeType == other.runtimeType &&
+          sessionId == other.sessionId &&
+          itemsCount == other.itemsCount &&
+          itemsCompleted == other.itemsCompleted &&
+          durationMs == other.durationMs &&
+          againCount == other.againCount &&
+          hardCount == other.hardCount &&
+          goodCount == other.goodCount &&
+          easyCount == other.easyCount;
 }
 
 class SurahInfo {

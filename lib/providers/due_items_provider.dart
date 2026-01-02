@@ -1,6 +1,7 @@
 // lib/providers/due_items_provider.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/providers/user_provider.dart';
 
 // Provider for selected surah filter (null means "All")
 final surahFilterProvider = StateProvider<int?>((ref) => null);
@@ -12,10 +13,11 @@ final highYieldModeProvider = StateProvider<bool>((ref) => false);
 final exercisesProvider = FutureProvider.autoDispose<List<api.ExerciseDataDto>>((
   ref,
 ) async {
+  final userId = ref.watch(currentUserIdProvider);
   final surahFilter = ref.watch(surahFilterProvider);
   final isHighYieldMode = ref.watch(highYieldModeProvider);
   return api.getExercises(
-    userId: "test_user",
+    userId: userId,
     limit: 20,
     surahFilter: surahFilter,
     isHighYield: isHighYieldMode,
@@ -33,5 +35,6 @@ final availableSurahsProvider = FutureProvider<List<api.SurahInfo>>((
 final dashboardStatsProvider = FutureProvider.autoDispose<api.DashboardStatsDto>((
   ref,
 ) async {
-  return api.getDashboardStats(userId: "test_user");
+  final userId = ref.watch(currentUserIdProvider);
+  return api.getDashboardStats(userId: userId);
 });

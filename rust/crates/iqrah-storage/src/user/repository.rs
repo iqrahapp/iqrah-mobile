@@ -1,11 +1,12 @@
 use super::models::{
-    BanditArmRow, MemoryBasicsRow, MemoryStateRow, ParentEnergyRow, SessionStateRow, UserStatRow,
+    BanditArmRow, MemoryBasicsRow, MemoryStateRow, ParentEnergyRow, SessionRow, SessionStateRow,
+    UserStatRow,
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use iqrah_core::{
     scheduler_v2::{BanditArmState, MemoryBasics},
-    MemoryState, PropagationEvent, UserRepository,
+    MemoryState, PropagationEvent, Session, SessionItem, SessionSummary, UserRepository,
 };
 use sqlx::{query, query_as, Sqlite, SqlitePool, Transaction};
 use std::collections::HashMap;
@@ -297,6 +298,169 @@ impl UserRepository for SqliteUserRepository {
             .await?;
 
         Ok(())
+    }
+
+    async fn create_session(&self, session: &Session) -> anyhow::Result<()> {
+        query(
+            "INSERT INTO sessions (id, user_id, goal_id, started_at, completed_at, items_count, items_completed)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&session.id)
+        .bind(&session.user_id)
+        .bind(&session.goal_id)
+        .bind(session.started_at.timestamp_millis())
+        .bind(session.completed_at.map(|t| t.timestamp_millis()))
+        .bind(session.items_count)
+        .bind(session.items_completed)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn get_session(&self, session_id: &str) -> anyhow::Result<Option<Session>> {
+        let row = query_as::<_, SessionRow>(
+            "SELECT id, user_id, goal_id, started_at, completed_at, items_count, items_completed
+             FROM sessions
+             WHERE id = ?",
+        )
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Session {
+            id: r.id,
+            user_id: r.user_id,
+            goal_id: r.goal_id,
+            started_at: DateTime::from_timestamp_millis(r.started_at).unwrap_or_else(Utc::now),
+            completed_at: r.completed_at.and_then(DateTime::from_timestamp_millis),
+            items_count: r.items_count as i32,
+            items_completed: r.items_completed as i32,
+        }))
+    }
+
+    async fn get_active_session(&self, user_id: &str) -> anyhow::Result<Option<Session>> {
+        let row = query_as::<_, SessionRow>(
+            "SELECT id, user_id, goal_id, started_at, completed_at, items_count, items_completed
+             FROM sessions
+             WHERE user_id = ? AND completed_at IS NULL
+             ORDER BY started_at DESC
+             LIMIT 1",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| Session {
+            id: r.id,
+            user_id: r.user_id,
+            goal_id: r.goal_id,
+            started_at: DateTime::from_timestamp_millis(r.started_at).unwrap_or_else(Utc::now),
+            completed_at: r.completed_at.and_then(DateTime::from_timestamp_millis),
+            items_count: r.items_count as i32,
+            items_completed: r.items_completed as i32,
+        }))
+    }
+
+    async fn update_session_progress(
+        &self,
+        session_id: &str,
+        items_completed: i32,
+    ) -> anyhow::Result<()> {
+        query("UPDATE sessions SET items_completed = ? WHERE id = ?")
+            .bind(items_completed)
+            .bind(session_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn complete_session(&self, session_id: &str) -> anyhow::Result<()> {
+        let now = Utc::now().timestamp_millis();
+        query("UPDATE sessions SET completed_at = ? WHERE id = ?")
+            .bind(now)
+            .bind(session_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn insert_session_item(&self, item: &SessionItem) -> anyhow::Result<()> {
+        query(
+            "INSERT INTO session_items (session_id, node_id, exercise_type, grade, duration_ms, completed_at)
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&item.session_id)
+        .bind(item.node_id)
+        .bind(&item.exercise_type)
+        .bind(item.grade)
+        .bind(item.duration_ms)
+        .bind(item.completed_at.map(|t| t.timestamp_millis()))
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn get_session_summary(&self, session_id: &str) -> anyhow::Result<SessionSummary> {
+        let row = query_as::<_, SessionRow>(
+            "SELECT id, user_id, goal_id, started_at, completed_at, items_count, items_completed
+             FROM sessions
+             WHERE id = ?",
+        )
+        .bind(session_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            return Err(anyhow::anyhow!("Session not found"));
+        };
+
+        let started_at = DateTime::from_timestamp_millis(row.started_at).unwrap_or_else(Utc::now);
+        let completed_at = row
+            .completed_at
+            .and_then(DateTime::from_timestamp_millis)
+            .unwrap_or_else(Utc::now);
+
+        let duration_ms = completed_at
+            .signed_duration_since(started_at)
+            .num_milliseconds()
+            .max(0);
+
+        let grade_rows = query_as::<_, (i64, i64)>(
+            "SELECT grade, COUNT(*) FROM session_items WHERE session_id = ? GROUP BY grade",
+        )
+        .bind(session_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut again_count = 0;
+        let mut hard_count = 0;
+        let mut good_count = 0;
+        let mut easy_count = 0;
+
+        for (grade, count) in grade_rows {
+            match grade {
+                1 => again_count = count as i32,
+                2 => hard_count = count as i32,
+                3 => good_count = count as i32,
+                4 => easy_count = count as i32,
+                _ => {}
+            }
+        }
+
+        Ok(SessionSummary {
+            session_id: row.id,
+            items_count: row.items_count as i32,
+            items_completed: row.items_completed as i32,
+            duration_ms,
+            again_count,
+            hard_count,
+            good_count,
+            easy_count,
+        })
     }
 
     async fn get_stat(&self, key: &str) -> anyhow::Result<Option<String>> {

@@ -6,7 +6,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use iqrah_core::domain::{MemoryState, PropagationEvent};
+use iqrah_core::domain::{MemoryState, PropagationEvent, Session, SessionItem, SessionSummary};
 use iqrah_core::ports::UserRepository;
 use iqrah_core::scheduler_v2::bandit::BanditArmState;
 use iqrah_core::scheduler_v2::profiles::ProfileName;
@@ -28,6 +28,12 @@ pub struct InMemoryUserRepository {
     /// Session state (current session node IDs)
     session_state: RwLock<Vec<i64>>,
 
+    /// Session records keyed by session_id
+    sessions: RwLock<HashMap<String, Session>>,
+
+    /// Session items for completed reviews
+    session_items: RwLock<Vec<SessionItem>>,
+
     /// User stats indexed by key
     stats: RwLock<HashMap<String, String>>,
 
@@ -45,6 +51,8 @@ impl InMemoryUserRepository {
             memory_states: RwLock::new(HashMap::new()),
             bandit_arms: RwLock::new(HashMap::new()),
             session_state: RwLock::new(Vec::new()),
+            sessions: RwLock::new(HashMap::new()),
+            session_items: RwLock::new(Vec::new()),
             stats: RwLock::new(HashMap::new()),
             settings: RwLock::new(HashMap::new()),
             propagation_log: RwLock::new(Vec::new()),
@@ -80,6 +88,19 @@ impl InMemoryUserRepository {
         {
             let mut arms = self.bandit_arms.write().unwrap();
             arms.retain(|(uid, _, _), _| uid != user_id);
+        }
+        {
+            let mut sessions = self.sessions.write().unwrap();
+            let session_ids: Vec<String> = sessions
+                .iter()
+                .filter(|(_, session)| session.user_id == user_id)
+                .map(|(id, _)| id.clone())
+                .collect();
+            sessions.retain(|_, session| session.user_id != user_id);
+            if !session_ids.is_empty() {
+                let mut items = self.session_items.write().unwrap();
+                items.retain(|item| !session_ids.contains(&item.session_id));
+            }
         }
     }
 
@@ -232,6 +253,88 @@ impl UserRepository for InMemoryUserRepository {
         let mut session = self.session_state.write().unwrap();
         session.clear();
         Ok(())
+    }
+
+    async fn create_session(&self, session: &Session) -> Result<()> {
+        let mut sessions = self.sessions.write().unwrap();
+        sessions.insert(session.id.clone(), session.clone());
+        Ok(())
+    }
+
+    async fn get_session(&self, session_id: &str) -> Result<Option<Session>> {
+        let sessions = self.sessions.read().unwrap();
+        Ok(sessions.get(session_id).cloned())
+    }
+
+    async fn get_active_session(&self, user_id: &str) -> Result<Option<Session>> {
+        let sessions = self.sessions.read().unwrap();
+        let active = sessions
+            .values()
+            .filter(|s| s.user_id == user_id && s.completed_at.is_none())
+            .max_by_key(|s| s.started_at)
+            .cloned();
+        Ok(active)
+    }
+
+    async fn update_session_progress(&self, session_id: &str, items_completed: i32) -> Result<()> {
+        let mut sessions = self.sessions.write().unwrap();
+        if let Some(session) = sessions.get_mut(session_id) {
+            session.items_completed = items_completed;
+        }
+        Ok(())
+    }
+
+    async fn complete_session(&self, session_id: &str) -> Result<()> {
+        let mut sessions = self.sessions.write().unwrap();
+        if let Some(session) = sessions.get_mut(session_id) {
+            session.completed_at = Some(Utc::now());
+        }
+        Ok(())
+    }
+
+    async fn insert_session_item(&self, item: &SessionItem) -> Result<()> {
+        let mut items = self.session_items.write().unwrap();
+        items.push(item.clone());
+        Ok(())
+    }
+
+    async fn get_session_summary(&self, session_id: &str) -> Result<SessionSummary> {
+        let sessions = self.sessions.read().unwrap();
+        let session = sessions
+            .get(session_id)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
+        drop(sessions);
+
+        let items = self.session_items.read().unwrap();
+        let mut again_count = 0;
+        let mut hard_count = 0;
+        let mut good_count = 0;
+        let mut easy_count = 0;
+
+        for item in items.iter().filter(|i| i.session_id == session_id) {
+            match item.grade {
+                1 => again_count += 1,
+                2 => hard_count += 1,
+                3 => good_count += 1,
+                4 => easy_count += 1,
+                _ => {}
+            }
+        }
+
+        let end_time = session.completed_at.unwrap_or_else(Utc::now);
+        let duration_ms = end_time.timestamp_millis() - session.started_at.timestamp_millis();
+
+        Ok(SessionSummary {
+            session_id: session.id,
+            items_count: session.items_count,
+            items_completed: session.items_completed,
+            duration_ms,
+            again_count,
+            hard_count,
+            good_count,
+            easy_count,
+        })
     }
 
     async fn get_stat(&self, key: &str) -> Result<Option<String>> {

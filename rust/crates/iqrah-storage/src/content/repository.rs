@@ -356,7 +356,7 @@ impl ContentRepository for SqliteContentRepository {
                 let verse_key = format!("{}:{}", chapter, verse);
 
                 // Need to find word_id first for word instance
-                let word_row = query_as::<_, (i32,)>(
+                let word_row = query_as::<_, (i64,)>(
                     "SELECT word_id FROM words WHERE verse_key = ? AND position = ?",
                 )
                 .bind(&verse_key)
@@ -558,16 +558,17 @@ impl ContentRepository for SqliteContentRepository {
                     .collect())
             }
             NodeType::Word => {
-                let rows = query_as::<_, (i32, i64)>("SELECT word_id, created_at FROM words")
+                // word_id in database is already an encoded WordInstance node_id
+                let rows = query_as::<_, (i64, i64)>("SELECT word_id, created_at FROM words")
                     .fetch_all(&self.pool)
                     .await?;
 
                 Ok(rows
                     .into_iter()
                     .map(|(word_id, _created_at)| Node {
-                        id: nid::encode_word(word_id as i64),
-                        ukey: nid::word(word_id as i64),
-                        node_type: NodeType::Word,
+                        id: word_id, // Already encoded as WordInstance
+                        ukey: nid::to_ukey(word_id).unwrap_or_default(),
+                        node_type: NodeType::WordInstance,
                     })
                     .collect())
             }
@@ -611,7 +612,7 @@ impl ContentRepository for SqliteContentRepository {
             let verse_key = format!("{}:{}", chapter, verse);
 
             // Query words for this verse_key
-            let rows = query_as::<_, (i32, i64)>(
+            let rows = query_as::<_, (i64, i64)>(
                 "SELECT word_id, created_at FROM words WHERE verse_key = ? ORDER BY position",
             )
             .bind(&verse_key)
@@ -619,10 +620,11 @@ impl ContentRepository for SqliteContentRepository {
             .await?;
 
             for (word_id, _created_at) in rows {
+                // word_id is already an encoded WordInstance node_id
                 all_words.push(Node {
-                    id: nid::encode_word(word_id as i64),
-                    ukey: nid::word(word_id as i64),
-                    node_type: NodeType::Word,
+                    id: word_id,
+                    ukey: nid::to_ukey(word_id).unwrap_or_default(),
+                    node_type: NodeType::WordInstance,
                 });
             }
         }
@@ -638,8 +640,8 @@ impl ContentRepository for SqliteContentRepository {
         use iqrah_core::domain::node_id as nid;
 
         // Decode word_id
-        let word_id = nid::decode_word(word_node_id)
-            .ok_or_else(|| anyhow::anyhow!("Invalid word ID"))? as i32;
+        let word_id =
+            nid::decode_word(word_node_id).ok_or_else(|| anyhow::anyhow!("Invalid word ID"))?;
 
         // Get current word's verse_key and position
         let current_word =
@@ -654,7 +656,7 @@ impl ContentRepository for SqliteContentRepository {
         };
 
         // Try to get previous word (position - 1 in same verse)
-        let prev_word = query_as::<_, (i32, i64)>(
+        let prev_word = query_as::<_, (i64, i64)>(
             "SELECT word_id, created_at FROM words WHERE verse_key = ? AND position = ?",
         )
         .bind(&verse_key)
@@ -662,9 +664,9 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_optional(&self.pool)
         .await?
         .map(|(wid, _)| Node {
-            id: nid::encode_word(wid as i64),
-            ukey: nid::word(wid as i64),
-            node_type: NodeType::Word,
+            id: wid, // Already encoded as WordInstance
+            ukey: nid::to_ukey(wid).unwrap_or_default(),
+            node_type: NodeType::WordInstance,
         });
 
         // If no previous word in current verse, try last word of previous verse
@@ -675,16 +677,16 @@ impl ContentRepository for SqliteContentRepository {
             if let Ok((chapter, verse_num)) = nid::parse_verse(&verse_key) {
                 if verse_num > 1 {
                     let prev_verse_key = format!("{}:{}", chapter, verse_num - 1);
-                    query_as::<_, (i32, i64)>(
+                    query_as::<_, (i64, i64)>(
                         "SELECT word_id, created_at FROM words WHERE verse_key = ? ORDER BY position DESC LIMIT 1"
                     )
                     .bind(&prev_verse_key)
                     .fetch_optional(&self.pool)
                     .await?
                     .map(|(wid, _)| Node {
-                        id: nid::encode_word(wid as i64),
-                        ukey: nid::word(wid as i64),
-                        node_type: NodeType::Word,
+                        id: wid, // Already encoded as WordInstance
+                        ukey: nid::to_ukey(wid).unwrap_or_default(),
+                        node_type: NodeType::WordInstance,
                     })
                 } else {
                     None
@@ -697,7 +699,7 @@ impl ContentRepository for SqliteContentRepository {
         };
 
         // Try to get next word (position + 1 in same verse)
-        let next_word = query_as::<_, (i32, i64)>(
+        let next_word = query_as::<_, (i64, i64)>(
             "SELECT word_id, created_at FROM words WHERE verse_key = ? AND position = ?",
         )
         .bind(&verse_key)
@@ -705,9 +707,9 @@ impl ContentRepository for SqliteContentRepository {
         .fetch_optional(&self.pool)
         .await?
         .map(|(wid, _)| Node {
-            id: nid::encode_word(wid as i64),
-            ukey: nid::word(wid as i64),
-            node_type: NodeType::Word,
+            id: wid, // Already encoded as WordInstance
+            ukey: nid::to_ukey(wid).unwrap_or_default(),
+            node_type: NodeType::WordInstance,
         });
 
         // If no next word in current verse, try first word of next verse
@@ -715,16 +717,16 @@ impl ContentRepository for SqliteContentRepository {
             if let Ok((chapter, verse_num)) = nid::parse_verse(&verse_key) {
                 let next_verse_key = format!("{}:{}", chapter, verse_num + 1);
 
-                query_as::<_, (i32, i64)>(
+                query_as::<_, (i64, i64)>(
                     "SELECT word_id, created_at FROM words WHERE verse_key = ? ORDER BY position ASC LIMIT 1"
                 )
                 .bind(&next_verse_key)
                 .fetch_optional(&self.pool)
                 .await?
                 .map(|(wid, _)| Node {
-                    id: nid::encode_word(wid as i64),
-                    ukey: nid::word(wid as i64),
-                    node_type: NodeType::Word,
+                    id: wid, // Already encoded as WordInstance
+                    ukey: nid::to_ukey(wid).unwrap_or_default(),
+                    node_type: NodeType::WordInstance,
                 })
             } else {
                 None

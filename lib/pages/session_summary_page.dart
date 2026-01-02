@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
-import 'package:iqrah/utils/app_logger.dart';
+import 'package:iqrah/utils/error_mapper.dart';
+import 'package:iqrah/widgets/error_banner.dart';
 
 class SessionSummaryPage extends ConsumerStatefulWidget {
   final int reviewCount;
+  final api.SessionSummaryDto? summary;
 
-  const SessionSummaryPage({super.key, required this.reviewCount});
+  const SessionSummaryPage({
+    super.key,
+    required this.reviewCount,
+    this.summary,
+  });
 
   @override
   ConsumerState<SessionSummaryPage> createState() => _SessionSummaryPageState();
@@ -15,24 +21,11 @@ class SessionSummaryPage extends ConsumerStatefulWidget {
 
 class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
   @override
-  void initState() {
-    super.initState();
-    // Clear session state when summary is shown
-    _clearSession();
-  }
-
-  Future<void> _clearSession() async {
-    try {
-      // Clear the session from the database
-      await api.clearSession();
-    } catch (e) {
-      AppLogger.session('Error clearing session', error: e);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final summary = widget.summary;
+    final reviewCount =
+        summary?.itemsCompleted ?? widget.reviewCount;
 
     return Scaffold(
       appBar: AppBar(
@@ -60,9 +53,56 @@ class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                'You reviewed ${widget.reviewCount} item${widget.reviewCount == 1 ? '' : 's'}',
+                'You reviewed $reviewCount item${reviewCount == 1 ? '' : 's'}',
                 style: const TextStyle(fontSize: 20),
               ),
+              if (summary != null) ...[
+                const SizedBox(height: 24),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        _buildStatRow(
+                          'Session Duration',
+                          _formatDuration(summary.durationMs.toInt()),
+                          Icons.schedule,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildStatRow(
+                          'Items Completed',
+                          '${summary.itemsCompleted}/${summary.itemsCount}',
+                          Icons.check_circle,
+                        ),
+                        const Divider(height: 24),
+                        _buildStatRow(
+                          'Easy',
+                          '${summary.easyCount}',
+                          Icons.thumb_up,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildStatRow(
+                          'Good',
+                          '${summary.goodCount}',
+                          Icons.sentiment_satisfied,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildStatRow(
+                          'Hard',
+                          '${summary.hardCount}',
+                          Icons.sentiment_dissatisfied,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildStatRow(
+                          'Again',
+                          '${summary.againCount}',
+                          Icons.refresh,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 32),
               statsAsync.when(
                 data: (stats) {
@@ -88,7 +128,13 @@ class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
                   );
                 },
                 loading: () => const CircularProgressIndicator(),
-                error: (e, st) => Text('Error loading stats: $e'),
+                error: (e, st) => ErrorBanner(
+                  message: ErrorMapper.toMessage(
+                    e,
+                    context: 'Unable to load stats',
+                  ),
+                  dense: true,
+                ),
               ),
               const SizedBox(height: 40),
               ElevatedButton(
@@ -101,9 +147,13 @@ class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
                     vertical: 16,
                   ),
                 ),
-                child: const Text(
-                  'Back to Dashboard',
-                  style: TextStyle(fontSize: 18),
+                child: Semantics(
+                  button: true,
+                  label: 'Back to dashboard',
+                  child: const Text(
+                    'Back to Dashboard',
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ),
               ),
             ],
@@ -136,5 +186,14 @@ class _SessionSummaryPageState extends ConsumerState<SessionSummaryPage> {
         ),
       ],
     );
+  }
+
+  String _formatDuration(int durationMs) {
+    if (durationMs <= 0) return '0s';
+    final totalSeconds = (durationMs / 1000).round();
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (minutes == 0) return '${seconds}s';
+    return '${minutes}m ${seconds.toString().padLeft(2, '0')}s';
   }
 }

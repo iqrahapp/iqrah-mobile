@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/features/debug/exercise_type_dropdown.dart';
 import 'package:iqrah/features/debug/node_selector_widget.dart';
-import 'package:iqrah/pages/excercise_page.dart';
+import 'package:iqrah/features/session/session_screen.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/utils/app_logger.dart';
@@ -124,15 +124,14 @@ class _ExerciseDebugScreenState extends ConsumerState<ExerciseDebugScreen> {
     HapticFeedback.lightImpact();
     AppLogger.exercise('Launching exercise for $_selectedNodeId');
 
-    ref.read(sessionProvider.notifier).startReview([_generatedExercise!]);
+    ref.read(sessionProvider.notifier).startAdhocReview([_generatedExercise!]);
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ExcercisePage()),
+      MaterialPageRoute(builder: (_) => const SessionScreen()),
     );
   }
 
   String _exerciseTypeName(api.ExerciseDataDto exercise) {
-    // Extract the type name from the exercise variant
-    return exercise.toString().split('(').first.split('.').last;
+    return _exerciseTypeLabel(exercise);
   }
 
   String _exerciseTypeKey(api.ExerciseDataDto exercise) {
@@ -148,6 +147,32 @@ class _ExerciseDebugScreenState extends ConsumerState<ExerciseDebugScreen> {
     final types = _availableExercises.map(_exerciseTypeKey).toSet().toList()
       ..sort();
     return [_autoType, ...types];
+  }
+
+  String _exerciseTypeLabel(api.ExerciseDataDto e) {
+    return e.map(
+      memorization: (_) => 'Memorization',
+      mcqArToEn: (_) => 'MCQ Ar to En',
+      mcqEnToAr: (_) => 'MCQ En to Ar',
+      translation: (_) => 'Translation',
+      contextualTranslation: (_) => 'Contextual Translation',
+      clozeDeletion: (_) => 'Cloze Deletion',
+      firstLetterHint: (_) => 'First Letter Hint',
+      missingWordMcq: (_) => 'Missing Word MCQ',
+      nextWordMcq: (_) => 'Next Word MCQ',
+      fullVerseInput: (_) => 'Full Verse Input',
+      ayahChain: (_) => 'Ayah Chain',
+      findMistake: (_) => 'Find the Mistake',
+      ayahSequence: (_) => 'Ayah Sequence',
+      sequenceRecall: (_) => 'Sequence Recall',
+      firstWordRecall: (_) => 'First Word Recall',
+      identifyRoot: (_) => 'Identify Root',
+      reverseCloze: (_) => 'Reverse Cloze',
+      translatePhrase: (_) => 'Translate Phrase',
+      posTagging: (_) => 'POS Tagging',
+      crossVerseConnection: (_) => 'Cross-Verse Connection',
+      echoRecall: (_) => 'Echo Recall',
+    );
   }
 
   @override

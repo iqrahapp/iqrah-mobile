@@ -1,4 +1,4 @@
-use crate::domain::{MemoryState, PropagationEvent};
+use crate::domain::{MemoryState, PropagationEvent, Session, SessionItem, SessionSummary};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
@@ -42,6 +42,31 @@ pub trait UserRepository: Send + Sync {
 
     /// Clear session state
     async fn clear_session_state(&self) -> anyhow::Result<()>;
+
+    /// Create a new session record
+    async fn create_session(&self, session: &Session) -> anyhow::Result<()>;
+
+    /// Get a session by ID
+    async fn get_session(&self, session_id: &str) -> anyhow::Result<Option<Session>>;
+
+    /// Get the active (incomplete) session for a user
+    async fn get_active_session(&self, user_id: &str) -> anyhow::Result<Option<Session>>;
+
+    /// Update session progress (items completed)
+    async fn update_session_progress(
+        &self,
+        session_id: &str,
+        items_completed: i32,
+    ) -> anyhow::Result<()>;
+
+    /// Mark session as completed
+    async fn complete_session(&self, session_id: &str) -> anyhow::Result<()>;
+
+    /// Insert a session item (result)
+    async fn insert_session_item(&self, item: &SessionItem) -> anyhow::Result<()>;
+
+    /// Get a summary for a session
+    async fn get_session_summary(&self, session_id: &str) -> anyhow::Result<SessionSummary>;
 
     /// Get user stat
     async fn get_stat(&self, key: &str) -> anyhow::Result<Option<String>>;

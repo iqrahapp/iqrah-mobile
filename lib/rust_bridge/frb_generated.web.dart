@@ -158,10 +158,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_box_autoadd_i_32(dynamic raw);
 
   @protected
+  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
+
+  @protected
   NodeData dco_decode_box_autoadd_node_data(dynamic raw);
 
   @protected
   NodeFilterDto dco_decode_box_autoadd_node_filter_dto(dynamic raw);
+
+  @protected
+  SessionDto dco_decode_box_autoadd_session_dto(dynamic raw);
+
+  @protected
+  SessionItemDto dco_decode_box_autoadd_session_item_dto(dynamic raw);
 
   @protected
   TranslatorDto dco_decode_box_autoadd_translator_dto(dynamic raw);
@@ -171,6 +180,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto dco_decode_box_autoadd_word_dto(dynamic raw);
+
+  @protected
+  ContentPackageDto dco_decode_content_package_dto(dynamic raw);
 
   @protected
   DashboardStatsDto dco_decode_dashboard_stats_dto(dynamic raw);
@@ -221,10 +233,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
+  InstalledPackageDto dco_decode_installed_package_dto(dynamic raw);
+
+  @protected
   LanguageDto dco_decode_language_dto(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<ContentPackageDto> dco_decode_list_content_package_dto(dynamic raw);
 
   @protected
   List<EchoRecallWordDto> dco_decode_list_echo_recall_word_dto(dynamic raw);
@@ -234,6 +252,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ExerciseDataDto> dco_decode_list_exercise_data_dto(dynamic raw);
+
+  @protected
+  List<InstalledPackageDto> dco_decode_list_installed_package_dto(dynamic raw);
 
   @protected
   List<LanguageDto> dco_decode_list_language_dto(dynamic raw);
@@ -296,7 +317,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
   @protected
+  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
+
+  @protected
   NodeData? dco_decode_opt_box_autoadd_node_data(dynamic raw);
+
+  @protected
+  SessionDto? dco_decode_opt_box_autoadd_session_dto(dynamic raw);
+
+  @protected
+  SessionItemDto? dco_decode_opt_box_autoadd_session_item_dto(dynamic raw);
 
   @protected
   TranslatorDto? dco_decode_opt_box_autoadd_translator_dto(dynamic raw);
@@ -317,7 +347,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
+  SessionDto dco_decode_session_dto(dynamic raw);
+
+  @protected
+  SessionItemDto dco_decode_session_item_dto(dynamic raw);
+
+  @protected
   SessionPreviewDto dco_decode_session_preview_dto(dynamic raw);
+
+  @protected
+  SessionSummaryDto dco_decode_session_summary_dto(dynamic raw);
 
   @protected
   SurahInfo dco_decode_surah_info(dynamic raw);
@@ -470,10 +509,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   NodeData sse_decode_box_autoadd_node_data(SseDeserializer deserializer);
 
   @protected
   NodeFilterDto sse_decode_box_autoadd_node_filter_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SessionDto sse_decode_box_autoadd_session_dto(SseDeserializer deserializer);
+
+  @protected
+  SessionItemDto sse_decode_box_autoadd_session_item_dto(
     SseDeserializer deserializer,
   );
 
@@ -487,6 +537,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WordDto sse_decode_box_autoadd_word_dto(SseDeserializer deserializer);
+
+  @protected
+  ContentPackageDto sse_decode_content_package_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   DashboardStatsDto sse_decode_dashboard_stats_dto(
@@ -551,10 +606,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
+  InstalledPackageDto sse_decode_installed_package_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   LanguageDto sse_decode_language_dto(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<ContentPackageDto> sse_decode_list_content_package_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<EchoRecallWordDto> sse_decode_list_echo_recall_word_dto(
@@ -568,6 +633,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ExerciseDataDto> sse_decode_list_exercise_data_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<InstalledPackageDto> sse_decode_list_installed_package_dto(
     SseDeserializer deserializer,
   );
 
@@ -644,7 +714,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
+  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
+
+  @protected
   NodeData? sse_decode_opt_box_autoadd_node_data(SseDeserializer deserializer);
+
+  @protected
+  SessionDto? sse_decode_opt_box_autoadd_session_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SessionItemDto? sse_decode_opt_box_autoadd_session_item_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   TranslatorDto? sse_decode_opt_box_autoadd_translator_dto(
@@ -673,7 +756,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  SessionDto sse_decode_session_dto(SseDeserializer deserializer);
+
+  @protected
+  SessionItemDto sse_decode_session_item_dto(SseDeserializer deserializer);
+
+  @protected
   SessionPreviewDto sse_decode_session_preview_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SessionSummaryDto sse_decode_session_summary_dto(
     SseDeserializer deserializer,
   );
 
@@ -850,6 +944,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_i_64(
+    PlatformInt64 self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_node_data(
     NodeData self,
     SseSerializer serializer,
@@ -858,6 +958,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_node_filter_dto(
     NodeFilterDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_session_dto(
+    SessionDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_session_item_dto(
+    SessionItemDto self,
     SseSerializer serializer,
   );
 
@@ -875,6 +987,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_word_dto(WordDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_content_package_dto(
+    ContentPackageDto self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_dashboard_stats_dto(
@@ -955,10 +1073,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
+  void sse_encode_installed_package_dto(
+    InstalledPackageDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_language_dto(LanguageDto self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_content_package_dto(
+    List<ContentPackageDto> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_echo_recall_word_dto(
@@ -975,6 +1105,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_exercise_data_dto(
     List<ExerciseDataDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_installed_package_dto(
+    List<InstalledPackageDto> self,
     SseSerializer serializer,
   );
 
@@ -1072,8 +1208,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_i_64(
+    PlatformInt64? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_node_data(
     NodeData? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_session_dto(
+    SessionDto? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_session_item_dto(
+    SessionItemDto? self,
     SseSerializer serializer,
   );
 
@@ -1114,8 +1268,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_session_dto(SessionDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_session_item_dto(
+    SessionItemDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_session_preview_dto(
     SessionPreviewDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_session_summary_dto(
+    SessionSummaryDto self,
     SseSerializer serializer,
   );
 

@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/features/debug/debug_home_screen.dart';
-import 'package:iqrah/pages/excercise_page.dart';
+import 'package:iqrah/features/session/session_screen.dart';
 import 'package:iqrah/pages/sandbox_page.dart';
 import 'package:iqrah/pages/settings_page.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
 import 'package:iqrah/providers/session_provider.dart';
+import 'package:iqrah/providers/user_provider.dart';
 import 'package:iqrah/widgets/surah_dropdown.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -16,6 +17,8 @@ class DashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dueItemsAsync = ref.watch(exercisesProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
+    final userId = ref.watch(currentUserIdProvider);
+    final goalId = ref.watch(currentGoalIdProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -131,27 +134,30 @@ class DashboardPage extends ConsumerWidget {
                           style: const TextStyle(fontSize: 20),
                         ),
                         const SizedBox(height: 20),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 40,
-                              vertical: 20,
-                            ),
-                            textStyle: const TextStyle(fontSize: 20),
-                          ),
-                          onPressed: () {
-                            // 1. Tell the SessionNotifier to start a review with these items
-                            ref
-                                .read(sessionProvider.notifier)
-                                .startReview(items);
-                            // 2. Navigate to the ExcercisePage
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const ExcercisePage(),
+                        Semantics(
+                          button: true,
+                          label: 'Start review session',
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 40,
+                                vertical: 20,
                               ),
-                            );
-                          },
-                          child: const Text('Start Review'),
+                              textStyle: const TextStyle(fontSize: 20),
+                            ),
+                            onPressed: () {
+                              ref.read(sessionProvider.notifier).startSession(
+                                    userId: userId,
+                                    goalId: goalId,
+                                  );
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SessionScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text('Start Review'),
+                          ),
                         ),
                       ],
                     );

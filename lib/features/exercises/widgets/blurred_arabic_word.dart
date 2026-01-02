@@ -64,17 +64,21 @@ class BlurredArabicWord extends StatelessWidget {
           height: 1.8,
         );
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: _getBackgroundColor(theme),
-          borderRadius: BorderRadius.circular(4),
+    return Semantics(
+      button: onTap != null,
+      label: onTap != null ? 'Tap to mark word as recalled' : null,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: _getBackgroundColor(theme),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: _buildWordContent(arabicStyle),
         ),
-        child: _buildWordContent(arabicStyle),
       ),
     );
   }

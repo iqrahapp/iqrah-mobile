@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:iqrah/features/exercises/widgets/blurred_arabic_word.dart';
 import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/utils/app_logger.dart';
+import 'package:iqrah/widgets/error_banner.dart';
 
 /// Echo Recall exercise widget with progressive blur, word timing, and struggle detection.
 ///
@@ -372,28 +373,18 @@ class _EchoRecallWidgetState extends State<EchoRecallWidget>
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'Error: $_error',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
+              ErrorBanner(
+                message: _error!,
+                onRetry: _initializeSession,
               ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton(
-                    onPressed: _initializeSession,
-                    child: const Text('Retry'),
-                  ),
-                  const SizedBox(width: 16),
-                  TextButton(
-                    onPressed: widget.onComplete,
-                    child: const Text('Skip'),
-                  ),
-                ],
+              const SizedBox(height: 12),
+              Semantics(
+                button: true,
+                label: 'Skip this exercise',
+                child: TextButton(
+                  onPressed: widget.onComplete,
+                  child: const Text('Skip'),
+                ),
               ),
             ],
           ),
@@ -504,18 +495,22 @@ class _EchoRecallWidgetState extends State<EchoRecallWidget>
               ),
               const SizedBox(height: 12),
               // Explicit help request button (Phase 3 spec requirement)
-              TextButton.icon(
-                onPressed: _onHelpRequested,
-                icon: Icon(
-                  Icons.help_outline,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-                label: Text(
-                  'Need a hint?',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+              Semantics(
+                button: true,
+                label: 'Request a hint',
+                child: TextButton.icon(
+                  onPressed: _onHelpRequested,
+                  icon: Icon(
+                    Icons.help_outline,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  label: Text(
+                    'Need a hint?',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                  ),
                 ),
               ),
             ],

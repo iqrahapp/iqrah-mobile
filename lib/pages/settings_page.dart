@@ -1,53 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iqrah/rust_bridge/api.dart';
-
-/// Provider for available languages
-final languagesProvider = FutureProvider<List<LanguageDto>>((ref) async {
-  return await getLanguages();
-});
-
-/// Provider for translators for a selected language
-final translatorsProvider =
-    FutureProvider.family<List<TranslatorDto>, String>((ref, languageCode) async {
-  return await getTranslatorsForLanguage(languageCode: languageCode);
-});
-
-/// Provider for the preferred translator ID
-final preferredTranslatorIdProvider = FutureProvider<int>((ref) async {
-  return await getPreferredTranslatorId();
-});
-
-/// State notifier for managing the preferred translator
-class PreferredTranslatorNotifier extends StateNotifier<AsyncValue<int>> {
-  PreferredTranslatorNotifier() : super(const AsyncValue.loading()) {
-    _loadPreferredTranslator();
-  }
-
-  Future<void> _loadPreferredTranslator() async {
-    try {
-      final translatorId = await getPreferredTranslatorId();
-      state = AsyncValue.data(translatorId);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  Future<void> setPreferredTranslator(int translatorId) async {
-    state = const AsyncValue.loading();
-    try {
-      await setPreferredTranslatorId(translatorId: translatorId);
-      state = AsyncValue.data(translatorId);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-}
-
-final preferredTranslatorProvider =
-    StateNotifierProvider<PreferredTranslatorNotifier, AsyncValue<int>>((ref) {
-  return PreferredTranslatorNotifier();
-});
+import 'package:iqrah/utils/error_mapper.dart';
+import 'package:iqrah/widgets/error_banner.dart';
+import 'package:iqrah/providers/translation_provider.dart';
+import 'package:iqrah/features/translation/translation_selector_screen.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -62,23 +18,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final languagesAsync = ref.watch(languagesProvider);
-    final translatorsAsync = ref.watch(translatorsProvider(_selectedLanguageCode));
+    final translatorsAsync = ref.watch(
+      translatorsProvider(_selectedLanguageCode),
+    );
     final preferredTranslatorAsync = ref.watch(preferredTranslatorProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           // Translation Settings Section
           const Text(
             'Translation Settings',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
@@ -91,10 +44,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: [
                   const Text(
                     'Language',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
                   languagesAsync.when(
@@ -123,10 +73,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       );
                     },
                     loading: () => const CircularProgressIndicator(),
-                    error: (error, stack) => Text('Error loading languages: $error'),
+                    error: (error, stack) => ErrorBanner(
+                      message: ErrorMapper.toMessage(
+                        error,
+                        context: 'Unable to load languages',
+                      ),
+                      dense: true,
+                    ),
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Card(
+            child: ListTile(
+              title: const Text('Translations'),
+              subtitle: const Text('Manage packs and preferred translator'),
+              leading: const Icon(Icons.translate),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TranslationSelectorScreen(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
@@ -140,16 +113,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: [
                   const Text(
                     'Preferred Translator',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
                   translatorsAsync.when(
                     data: (translators) {
                       if (translators.isEmpty) {
-                        return const Text('No translators available for this language');
+                        return const Text(
+                          'No translators available for this language',
+                        );
                       }
 
                       return preferredTranslatorAsync.when(
@@ -161,7 +133,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                    'Translator changed to ${translators.firstWhere((t) => t.id == id).fullName}'),
+                                  'Translator changed to ${translators.firstWhere((t) => t.id == id).fullName}',
+                                ),
                                 duration: const Duration(seconds: 2),
                               ),
                             );
@@ -179,9 +152,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                 final isSelected = translator.id == preferredId;
                                 return Card(
                                   color: isSelected
-                                      ? Theme.of(context)
-                                          .colorScheme
-                                          .primaryContainer
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.primaryContainer
                                       : null,
                                   child: RadioListTile<int>(
                                     value: translator.id,
@@ -202,13 +175,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                           Text(translator.description!),
                                         if (translator.license != null)
                                           Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 4.0),
+                                            padding: const EdgeInsets.only(
+                                              top: 4.0,
+                                            ),
                                             child: Text(
                                               'License: ${translator.license}',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall,
+                                              style: Theme.of(
+                                                context,
+                                              ).textTheme.bodySmall,
                                             ),
                                           ),
                                       ],
@@ -220,12 +194,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           );
                         },
                         loading: () => const CircularProgressIndicator(),
-                        error: (error, stack) =>
-                            Text('Error loading preference: $error'),
+                        error: (error, stack) => ErrorBanner(
+                          message: ErrorMapper.toMessage(
+                            error,
+                            context: 'Unable to load preference',
+                          ),
+                          dense: true,
+                        ),
                       );
                     },
                     loading: () => const CircularProgressIndicator(),
-                    error: (error, stack) => Text('Error loading translators: $error'),
+                    error: (error, stack) => ErrorBanner(
+                      message: ErrorMapper.toMessage(
+                        error,
+                        context: 'Unable to load translators',
+                      ),
+                      dense: true,
+                    ),
                   ),
                 ],
               ),
@@ -237,10 +222,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           // Additional Settings can go here
           const Text(
             'About',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Card(

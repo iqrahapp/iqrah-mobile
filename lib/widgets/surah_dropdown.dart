@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/providers/due_items_provider.dart';
+import 'package:iqrah/utils/error_mapper.dart';
+import 'package:iqrah/widgets/error_banner.dart';
 
 class SurahDropdown extends ConsumerWidget {
   const SurahDropdown({super.key});
@@ -13,12 +15,14 @@ class SurahDropdown extends ConsumerWidget {
     return availableSurahs.when(
       loading: () =>
           const SizedBox(width: 200, child: LinearProgressIndicator()),
-      error: (error, _) => Container(
-        width: 200,
-        padding: const EdgeInsets.all(8),
-        child: Text(
-          'Error loading Sūrahs: $error',
-          style: TextStyle(color: Colors.red[300]),
+      error: (error, _) => SizedBox(
+        width: 220,
+        child: ErrorBanner(
+          message: ErrorMapper.toMessage(
+            error,
+            context: 'Unable to load surahs',
+          ),
+          dense: true,
         ),
       ),
       data: (surahs) {

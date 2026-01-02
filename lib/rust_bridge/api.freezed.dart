@@ -58,6 +58,13 @@ mixin _$ExerciseDataDto {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -114,6 +121,13 @@ mixin _$ExerciseDataDto {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -164,6 +178,13 @@ mixin _$ExerciseDataDto {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -198,6 +219,10 @@ mixin _$ExerciseDataDto {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -223,6 +248,8 @@ mixin _$ExerciseDataDto {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -247,6 +274,8 @@ mixin _$ExerciseDataDto {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -395,6 +424,13 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -455,6 +491,13 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -509,6 +552,13 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -550,6 +600,10 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -579,6 +633,8 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -607,6 +663,8 @@ class _$ExerciseDataDto_MemorizationImpl extends ExerciseDataDto_Memorization {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -775,6 +833,13 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -835,6 +900,13 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -889,6 +961,13 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -930,6 +1009,10 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -959,6 +1042,8 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -987,6 +1072,8 @@ class _$ExerciseDataDto_McqArToEnImpl extends ExerciseDataDto_McqArToEn {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -1156,6 +1243,13 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -1216,6 +1310,13 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -1270,6 +1371,13 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -1311,6 +1419,10 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -1340,6 +1452,8 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -1368,6 +1482,8 @@ class _$ExerciseDataDto_McqEnToArImpl extends ExerciseDataDto_McqEnToAr {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -1514,6 +1630,13 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -1574,6 +1697,13 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -1628,6 +1758,13 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -1669,6 +1806,10 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -1698,6 +1839,8 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -1726,6 +1869,8 @@ class _$ExerciseDataDto_TranslationImpl extends ExerciseDataDto_Translation {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -1886,6 +2031,13 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -1946,6 +2098,13 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -2000,6 +2159,13 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -2041,6 +2207,10 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -2070,6 +2240,8 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -2098,6 +2270,8 @@ class _$ExerciseDataDto_ContextualTranslationImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -2260,6 +2434,13 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -2320,6 +2501,13 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -2374,6 +2562,13 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -2415,6 +2610,10 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -2444,6 +2643,8 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -2472,6 +2673,8 @@ class _$ExerciseDataDto_ClozeDeletionImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -2637,6 +2840,13 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -2697,6 +2907,13 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -2751,6 +2968,13 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -2792,6 +3016,10 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -2821,6 +3049,8 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -2849,6 +3079,8 @@ class _$ExerciseDataDto_FirstLetterHintImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -3041,6 +3273,13 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -3101,6 +3340,13 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -3155,6 +3401,13 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -3196,6 +3449,10 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -3225,6 +3482,8 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -3253,6 +3512,8 @@ class _$ExerciseDataDto_MissingWordMcqImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -3445,6 +3706,13 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -3505,6 +3773,13 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -3559,6 +3834,13 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -3600,6 +3882,10 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -3629,6 +3915,8 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -3657,6 +3945,8 @@ class _$ExerciseDataDto_NextWordMcqImpl extends ExerciseDataDto_NextWordMcq {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -3812,6 +4102,13 @@ class _$ExerciseDataDto_FullVerseInputImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -3872,6 +4169,13 @@ class _$ExerciseDataDto_FullVerseInputImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -3926,6 +4230,13 @@ class _$ExerciseDataDto_FullVerseInputImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -3967,6 +4278,10 @@ class _$ExerciseDataDto_FullVerseInputImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -3996,6 +4311,8 @@ class _$ExerciseDataDto_FullVerseInputImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -4024,6 +4341,8 @@ class _$ExerciseDataDto_FullVerseInputImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -4222,6 +4541,13 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -4282,6 +4608,13 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -4336,6 +4669,13 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -4377,6 +4717,10 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -4406,6 +4750,8 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -4434,6 +4780,8 @@ class _$ExerciseDataDto_AyahChainImpl extends ExerciseDataDto_AyahChain {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -4629,6 +4977,13 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -4694,6 +5049,13 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -4753,6 +5115,13 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -4799,6 +5168,10 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -4828,6 +5201,8 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -4856,6 +5231,8 @@ class _$ExerciseDataDto_FindMistakeImpl extends ExerciseDataDto_FindMistake {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -5031,6 +5408,13 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -5091,6 +5475,13 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -5145,6 +5536,13 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -5186,6 +5584,10 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -5215,6 +5617,8 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -5243,6 +5647,8 @@ class _$ExerciseDataDto_AyahSequenceImpl extends ExerciseDataDto_AyahSequence {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -5274,6 +5680,856 @@ abstract class ExerciseDataDto_AyahSequence extends ExerciseDataDto {
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$ExerciseDataDto_AyahSequenceImplCopyWith<
     _$ExerciseDataDto_AyahSequenceImpl
+  >
+  get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ExerciseDataDto_SequenceRecallImplCopyWith<$Res> {
+  factory _$$ExerciseDataDto_SequenceRecallImplCopyWith(
+    _$ExerciseDataDto_SequenceRecallImpl value,
+    $Res Function(_$ExerciseDataDto_SequenceRecallImpl) then,
+  ) = __$$ExerciseDataDto_SequenceRecallImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({
+    String nodeId,
+    List<String> correctSequence,
+    List<List<String>> options,
+  });
+}
+
+/// @nodoc
+class __$$ExerciseDataDto_SequenceRecallImplCopyWithImpl<$Res>
+    extends
+        _$ExerciseDataDtoCopyWithImpl<
+          $Res,
+          _$ExerciseDataDto_SequenceRecallImpl
+        >
+    implements _$$ExerciseDataDto_SequenceRecallImplCopyWith<$Res> {
+  __$$ExerciseDataDto_SequenceRecallImplCopyWithImpl(
+    _$ExerciseDataDto_SequenceRecallImpl _value,
+    $Res Function(_$ExerciseDataDto_SequenceRecallImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? nodeId = null,
+    Object? correctSequence = null,
+    Object? options = null,
+  }) {
+    return _then(
+      _$ExerciseDataDto_SequenceRecallImpl(
+        nodeId: null == nodeId
+            ? _value.nodeId
+            : nodeId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        correctSequence: null == correctSequence
+            ? _value._correctSequence
+            : correctSequence // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        options: null == options
+            ? _value._options
+            : options // ignore: cast_nullable_to_non_nullable
+                  as List<List<String>>,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+
+class _$ExerciseDataDto_SequenceRecallImpl
+    extends ExerciseDataDto_SequenceRecall {
+  const _$ExerciseDataDto_SequenceRecallImpl({
+    required this.nodeId,
+    required final List<String> correctSequence,
+    required final List<List<String>> options,
+  }) : _correctSequence = correctSequence,
+       _options = options,
+       super._();
+
+  @override
+  final String nodeId;
+  final List<String> _correctSequence;
+  @override
+  List<String> get correctSequence {
+    if (_correctSequence is EqualUnmodifiableListView) return _correctSequence;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_correctSequence);
+  }
+
+  final List<List<String>> _options;
+  @override
+  List<List<String>> get options {
+    if (_options is EqualUnmodifiableListView) return _options;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_options);
+  }
+
+  @override
+  String toString() {
+    return 'ExerciseDataDto.sequenceRecall(nodeId: $nodeId, correctSequence: $correctSequence, options: $options)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ExerciseDataDto_SequenceRecallImpl &&
+            (identical(other.nodeId, nodeId) || other.nodeId == nodeId) &&
+            const DeepCollectionEquality().equals(
+              other._correctSequence,
+              _correctSequence,
+            ) &&
+            const DeepCollectionEquality().equals(other._options, _options));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    nodeId,
+    const DeepCollectionEquality().hash(_correctSequence),
+    const DeepCollectionEquality().hash(_options),
+  );
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ExerciseDataDto_SequenceRecallImplCopyWith<
+    _$ExerciseDataDto_SequenceRecallImpl
+  >
+  get copyWith =>
+      __$$ExerciseDataDto_SequenceRecallImplCopyWithImpl<
+        _$ExerciseDataDto_SequenceRecallImpl
+      >(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String nodeId) memorization,
+    required TResult Function(String nodeId, List<String> distractorNodeIds)
+    mcqArToEn,
+    required TResult Function(String nodeId, List<String> distractorNodeIds)
+    mcqEnToAr,
+    required TResult Function(String nodeId) translation,
+    required TResult Function(String nodeId, String verseKey)
+    contextualTranslation,
+    required TResult Function(String nodeId, int blankPosition) clozeDeletion,
+    required TResult Function(String nodeId, int wordPosition) firstLetterHint,
+    required TResult Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )
+    missingWordMcq,
+    required TResult Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )
+    nextWordMcq,
+    required TResult Function(String nodeId) fullVerseInput,
+    required TResult Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )
+    ayahChain,
+    required TResult Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )
+    findMistake,
+    required TResult Function(String nodeId, List<String> correctSequence)
+    ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
+    required TResult Function(String nodeId, String root) identifyRoot,
+    required TResult Function(String nodeId, int blankPosition) reverseCloze,
+    required TResult Function(String nodeId, int translatorId) translatePhrase,
+    required TResult Function(
+      String nodeId,
+      String correctPos,
+      List<String> options,
+    )
+    posTagging,
+    required TResult Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )
+    crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
+  }) {
+    return sequenceRecall(nodeId, correctSequence, options);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String nodeId)? memorization,
+    TResult? Function(String nodeId, List<String> distractorNodeIds)? mcqArToEn,
+    TResult? Function(String nodeId, List<String> distractorNodeIds)? mcqEnToAr,
+    TResult? Function(String nodeId)? translation,
+    TResult? Function(String nodeId, String verseKey)? contextualTranslation,
+    TResult? Function(String nodeId, int blankPosition)? clozeDeletion,
+    TResult? Function(String nodeId, int wordPosition)? firstLetterHint,
+    TResult? Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )?
+    missingWordMcq,
+    TResult? Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )?
+    nextWordMcq,
+    TResult? Function(String nodeId)? fullVerseInput,
+    TResult? Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )?
+    ayahChain,
+    TResult? Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )?
+    findMistake,
+    TResult? Function(String nodeId, List<String> correctSequence)?
+    ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
+    TResult? Function(String nodeId, String root)? identifyRoot,
+    TResult? Function(String nodeId, int blankPosition)? reverseCloze,
+    TResult? Function(String nodeId, int translatorId)? translatePhrase,
+    TResult? Function(String nodeId, String correctPos, List<String> options)?
+    posTagging,
+    TResult? Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )?
+    crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
+  }) {
+    return sequenceRecall?.call(nodeId, correctSequence, options);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String nodeId)? memorization,
+    TResult Function(String nodeId, List<String> distractorNodeIds)? mcqArToEn,
+    TResult Function(String nodeId, List<String> distractorNodeIds)? mcqEnToAr,
+    TResult Function(String nodeId)? translation,
+    TResult Function(String nodeId, String verseKey)? contextualTranslation,
+    TResult Function(String nodeId, int blankPosition)? clozeDeletion,
+    TResult Function(String nodeId, int wordPosition)? firstLetterHint,
+    TResult Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )?
+    missingWordMcq,
+    TResult Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )?
+    nextWordMcq,
+    TResult Function(String nodeId)? fullVerseInput,
+    TResult Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )?
+    ayahChain,
+    TResult Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )?
+    findMistake,
+    TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
+    TResult Function(String nodeId, String root)? identifyRoot,
+    TResult Function(String nodeId, int blankPosition)? reverseCloze,
+    TResult Function(String nodeId, int translatorId)? translatePhrase,
+    TResult Function(String nodeId, String correctPos, List<String> options)?
+    posTagging,
+    TResult Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )?
+    crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
+    required TResult orElse(),
+  }) {
+    if (sequenceRecall != null) {
+      return sequenceRecall(nodeId, correctSequence, options);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ExerciseDataDto_Memorization value) memorization,
+    required TResult Function(ExerciseDataDto_McqArToEn value) mcqArToEn,
+    required TResult Function(ExerciseDataDto_McqEnToAr value) mcqEnToAr,
+    required TResult Function(ExerciseDataDto_Translation value) translation,
+    required TResult Function(ExerciseDataDto_ContextualTranslation value)
+    contextualTranslation,
+    required TResult Function(ExerciseDataDto_ClozeDeletion value)
+    clozeDeletion,
+    required TResult Function(ExerciseDataDto_FirstLetterHint value)
+    firstLetterHint,
+    required TResult Function(ExerciseDataDto_MissingWordMcq value)
+    missingWordMcq,
+    required TResult Function(ExerciseDataDto_NextWordMcq value) nextWordMcq,
+    required TResult Function(ExerciseDataDto_FullVerseInput value)
+    fullVerseInput,
+    required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
+    required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
+    required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
+    required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
+    required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
+    required TResult Function(ExerciseDataDto_TranslatePhrase value)
+    translatePhrase,
+    required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
+    required TResult Function(ExerciseDataDto_CrossVerseConnection value)
+    crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
+  }) {
+    return sequenceRecall(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ExerciseDataDto_Memorization value)? memorization,
+    TResult? Function(ExerciseDataDto_McqArToEn value)? mcqArToEn,
+    TResult? Function(ExerciseDataDto_McqEnToAr value)? mcqEnToAr,
+    TResult? Function(ExerciseDataDto_Translation value)? translation,
+    TResult? Function(ExerciseDataDto_ContextualTranslation value)?
+    contextualTranslation,
+    TResult? Function(ExerciseDataDto_ClozeDeletion value)? clozeDeletion,
+    TResult? Function(ExerciseDataDto_FirstLetterHint value)? firstLetterHint,
+    TResult? Function(ExerciseDataDto_MissingWordMcq value)? missingWordMcq,
+    TResult? Function(ExerciseDataDto_NextWordMcq value)? nextWordMcq,
+    TResult? Function(ExerciseDataDto_FullVerseInput value)? fullVerseInput,
+    TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
+    TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
+    TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
+    TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
+    TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
+    TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
+    TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
+    TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
+    crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
+  }) {
+    return sequenceRecall?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ExerciseDataDto_Memorization value)? memorization,
+    TResult Function(ExerciseDataDto_McqArToEn value)? mcqArToEn,
+    TResult Function(ExerciseDataDto_McqEnToAr value)? mcqEnToAr,
+    TResult Function(ExerciseDataDto_Translation value)? translation,
+    TResult Function(ExerciseDataDto_ContextualTranslation value)?
+    contextualTranslation,
+    TResult Function(ExerciseDataDto_ClozeDeletion value)? clozeDeletion,
+    TResult Function(ExerciseDataDto_FirstLetterHint value)? firstLetterHint,
+    TResult Function(ExerciseDataDto_MissingWordMcq value)? missingWordMcq,
+    TResult Function(ExerciseDataDto_NextWordMcq value)? nextWordMcq,
+    TResult Function(ExerciseDataDto_FullVerseInput value)? fullVerseInput,
+    TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
+    TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
+    TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
+    TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
+    TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
+    TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
+    TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
+    TResult Function(ExerciseDataDto_CrossVerseConnection value)?
+    crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
+    required TResult orElse(),
+  }) {
+    if (sequenceRecall != null) {
+      return sequenceRecall(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ExerciseDataDto_SequenceRecall extends ExerciseDataDto {
+  const factory ExerciseDataDto_SequenceRecall({
+    required final String nodeId,
+    required final List<String> correctSequence,
+    required final List<List<String>> options,
+  }) = _$ExerciseDataDto_SequenceRecallImpl;
+  const ExerciseDataDto_SequenceRecall._() : super._();
+
+  String get nodeId;
+  List<String> get correctSequence;
+  List<List<String>> get options;
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ExerciseDataDto_SequenceRecallImplCopyWith<
+    _$ExerciseDataDto_SequenceRecallImpl
+  >
+  get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ExerciseDataDto_FirstWordRecallImplCopyWith<$Res> {
+  factory _$$ExerciseDataDto_FirstWordRecallImplCopyWith(
+    _$ExerciseDataDto_FirstWordRecallImpl value,
+    $Res Function(_$ExerciseDataDto_FirstWordRecallImpl) then,
+  ) = __$$ExerciseDataDto_FirstWordRecallImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String nodeId, String verseKey});
+}
+
+/// @nodoc
+class __$$ExerciseDataDto_FirstWordRecallImplCopyWithImpl<$Res>
+    extends
+        _$ExerciseDataDtoCopyWithImpl<
+          $Res,
+          _$ExerciseDataDto_FirstWordRecallImpl
+        >
+    implements _$$ExerciseDataDto_FirstWordRecallImplCopyWith<$Res> {
+  __$$ExerciseDataDto_FirstWordRecallImplCopyWithImpl(
+    _$ExerciseDataDto_FirstWordRecallImpl _value,
+    $Res Function(_$ExerciseDataDto_FirstWordRecallImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? nodeId = null, Object? verseKey = null}) {
+    return _then(
+      _$ExerciseDataDto_FirstWordRecallImpl(
+        nodeId: null == nodeId
+            ? _value.nodeId
+            : nodeId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        verseKey: null == verseKey
+            ? _value.verseKey
+            : verseKey // ignore: cast_nullable_to_non_nullable
+                  as String,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+
+class _$ExerciseDataDto_FirstWordRecallImpl
+    extends ExerciseDataDto_FirstWordRecall {
+  const _$ExerciseDataDto_FirstWordRecallImpl({
+    required this.nodeId,
+    required this.verseKey,
+  }) : super._();
+
+  @override
+  final String nodeId;
+  @override
+  final String verseKey;
+
+  @override
+  String toString() {
+    return 'ExerciseDataDto.firstWordRecall(nodeId: $nodeId, verseKey: $verseKey)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ExerciseDataDto_FirstWordRecallImpl &&
+            (identical(other.nodeId, nodeId) || other.nodeId == nodeId) &&
+            (identical(other.verseKey, verseKey) ||
+                other.verseKey == verseKey));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, nodeId, verseKey);
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ExerciseDataDto_FirstWordRecallImplCopyWith<
+    _$ExerciseDataDto_FirstWordRecallImpl
+  >
+  get copyWith =>
+      __$$ExerciseDataDto_FirstWordRecallImplCopyWithImpl<
+        _$ExerciseDataDto_FirstWordRecallImpl
+      >(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String nodeId) memorization,
+    required TResult Function(String nodeId, List<String> distractorNodeIds)
+    mcqArToEn,
+    required TResult Function(String nodeId, List<String> distractorNodeIds)
+    mcqEnToAr,
+    required TResult Function(String nodeId) translation,
+    required TResult Function(String nodeId, String verseKey)
+    contextualTranslation,
+    required TResult Function(String nodeId, int blankPosition) clozeDeletion,
+    required TResult Function(String nodeId, int wordPosition) firstLetterHint,
+    required TResult Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )
+    missingWordMcq,
+    required TResult Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )
+    nextWordMcq,
+    required TResult Function(String nodeId) fullVerseInput,
+    required TResult Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )
+    ayahChain,
+    required TResult Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )
+    findMistake,
+    required TResult Function(String nodeId, List<String> correctSequence)
+    ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
+    required TResult Function(String nodeId, String root) identifyRoot,
+    required TResult Function(String nodeId, int blankPosition) reverseCloze,
+    required TResult Function(String nodeId, int translatorId) translatePhrase,
+    required TResult Function(
+      String nodeId,
+      String correctPos,
+      List<String> options,
+    )
+    posTagging,
+    required TResult Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )
+    crossVerseConnection,
+    required TResult Function(String userId, List<String> ayahNodeIds)
+    echoRecall,
+  }) {
+    return firstWordRecall(nodeId, verseKey);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String nodeId)? memorization,
+    TResult? Function(String nodeId, List<String> distractorNodeIds)? mcqArToEn,
+    TResult? Function(String nodeId, List<String> distractorNodeIds)? mcqEnToAr,
+    TResult? Function(String nodeId)? translation,
+    TResult? Function(String nodeId, String verseKey)? contextualTranslation,
+    TResult? Function(String nodeId, int blankPosition)? clozeDeletion,
+    TResult? Function(String nodeId, int wordPosition)? firstLetterHint,
+    TResult? Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )?
+    missingWordMcq,
+    TResult? Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )?
+    nextWordMcq,
+    TResult? Function(String nodeId)? fullVerseInput,
+    TResult? Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )?
+    ayahChain,
+    TResult? Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )?
+    findMistake,
+    TResult? Function(String nodeId, List<String> correctSequence)?
+    ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
+    TResult? Function(String nodeId, String root)? identifyRoot,
+    TResult? Function(String nodeId, int blankPosition)? reverseCloze,
+    TResult? Function(String nodeId, int translatorId)? translatePhrase,
+    TResult? Function(String nodeId, String correctPos, List<String> options)?
+    posTagging,
+    TResult? Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )?
+    crossVerseConnection,
+    TResult? Function(String userId, List<String> ayahNodeIds)? echoRecall,
+  }) {
+    return firstWordRecall?.call(nodeId, verseKey);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String nodeId)? memorization,
+    TResult Function(String nodeId, List<String> distractorNodeIds)? mcqArToEn,
+    TResult Function(String nodeId, List<String> distractorNodeIds)? mcqEnToAr,
+    TResult Function(String nodeId)? translation,
+    TResult Function(String nodeId, String verseKey)? contextualTranslation,
+    TResult Function(String nodeId, int blankPosition)? clozeDeletion,
+    TResult Function(String nodeId, int wordPosition)? firstLetterHint,
+    TResult Function(
+      String nodeId,
+      int blankPosition,
+      List<String> distractorNodeIds,
+    )?
+    missingWordMcq,
+    TResult Function(
+      String nodeId,
+      int contextPosition,
+      List<String> distractorNodeIds,
+    )?
+    nextWordMcq,
+    TResult Function(String nodeId)? fullVerseInput,
+    TResult Function(
+      String nodeId,
+      List<String> verseKeys,
+      BigInt currentIndex,
+      BigInt completedCount,
+    )?
+    ayahChain,
+    TResult Function(
+      String nodeId,
+      int mistakePosition,
+      String correctWordNodeId,
+      String incorrectWordNodeId,
+    )?
+    findMistake,
+    TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
+    TResult Function(String nodeId, String root)? identifyRoot,
+    TResult Function(String nodeId, int blankPosition)? reverseCloze,
+    TResult Function(String nodeId, int translatorId)? translatePhrase,
+    TResult Function(String nodeId, String correctPos, List<String> options)?
+    posTagging,
+    TResult Function(
+      String nodeId,
+      List<String> relatedVerseIds,
+      String connectionTheme,
+    )?
+    crossVerseConnection,
+    TResult Function(String userId, List<String> ayahNodeIds)? echoRecall,
+    required TResult orElse(),
+  }) {
+    if (firstWordRecall != null) {
+      return firstWordRecall(nodeId, verseKey);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ExerciseDataDto_Memorization value) memorization,
+    required TResult Function(ExerciseDataDto_McqArToEn value) mcqArToEn,
+    required TResult Function(ExerciseDataDto_McqEnToAr value) mcqEnToAr,
+    required TResult Function(ExerciseDataDto_Translation value) translation,
+    required TResult Function(ExerciseDataDto_ContextualTranslation value)
+    contextualTranslation,
+    required TResult Function(ExerciseDataDto_ClozeDeletion value)
+    clozeDeletion,
+    required TResult Function(ExerciseDataDto_FirstLetterHint value)
+    firstLetterHint,
+    required TResult Function(ExerciseDataDto_MissingWordMcq value)
+    missingWordMcq,
+    required TResult Function(ExerciseDataDto_NextWordMcq value) nextWordMcq,
+    required TResult Function(ExerciseDataDto_FullVerseInput value)
+    fullVerseInput,
+    required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
+    required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
+    required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
+    required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
+    required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
+    required TResult Function(ExerciseDataDto_TranslatePhrase value)
+    translatePhrase,
+    required TResult Function(ExerciseDataDto_PosTagging value) posTagging,
+    required TResult Function(ExerciseDataDto_CrossVerseConnection value)
+    crossVerseConnection,
+    required TResult Function(ExerciseDataDto_EchoRecall value) echoRecall,
+  }) {
+    return firstWordRecall(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ExerciseDataDto_Memorization value)? memorization,
+    TResult? Function(ExerciseDataDto_McqArToEn value)? mcqArToEn,
+    TResult? Function(ExerciseDataDto_McqEnToAr value)? mcqEnToAr,
+    TResult? Function(ExerciseDataDto_Translation value)? translation,
+    TResult? Function(ExerciseDataDto_ContextualTranslation value)?
+    contextualTranslation,
+    TResult? Function(ExerciseDataDto_ClozeDeletion value)? clozeDeletion,
+    TResult? Function(ExerciseDataDto_FirstLetterHint value)? firstLetterHint,
+    TResult? Function(ExerciseDataDto_MissingWordMcq value)? missingWordMcq,
+    TResult? Function(ExerciseDataDto_NextWordMcq value)? nextWordMcq,
+    TResult? Function(ExerciseDataDto_FullVerseInput value)? fullVerseInput,
+    TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
+    TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
+    TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
+    TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
+    TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
+    TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
+    TResult? Function(ExerciseDataDto_PosTagging value)? posTagging,
+    TResult? Function(ExerciseDataDto_CrossVerseConnection value)?
+    crossVerseConnection,
+    TResult? Function(ExerciseDataDto_EchoRecall value)? echoRecall,
+  }) {
+    return firstWordRecall?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ExerciseDataDto_Memorization value)? memorization,
+    TResult Function(ExerciseDataDto_McqArToEn value)? mcqArToEn,
+    TResult Function(ExerciseDataDto_McqEnToAr value)? mcqEnToAr,
+    TResult Function(ExerciseDataDto_Translation value)? translation,
+    TResult Function(ExerciseDataDto_ContextualTranslation value)?
+    contextualTranslation,
+    TResult Function(ExerciseDataDto_ClozeDeletion value)? clozeDeletion,
+    TResult Function(ExerciseDataDto_FirstLetterHint value)? firstLetterHint,
+    TResult Function(ExerciseDataDto_MissingWordMcq value)? missingWordMcq,
+    TResult Function(ExerciseDataDto_NextWordMcq value)? nextWordMcq,
+    TResult Function(ExerciseDataDto_FullVerseInput value)? fullVerseInput,
+    TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
+    TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
+    TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
+    TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
+    TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
+    TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
+    TResult Function(ExerciseDataDto_PosTagging value)? posTagging,
+    TResult Function(ExerciseDataDto_CrossVerseConnection value)?
+    crossVerseConnection,
+    TResult Function(ExerciseDataDto_EchoRecall value)? echoRecall,
+    required TResult orElse(),
+  }) {
+    if (firstWordRecall != null) {
+      return firstWordRecall(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ExerciseDataDto_FirstWordRecall extends ExerciseDataDto {
+  const factory ExerciseDataDto_FirstWordRecall({
+    required final String nodeId,
+    required final String verseKey,
+  }) = _$ExerciseDataDto_FirstWordRecallImpl;
+  const ExerciseDataDto_FirstWordRecall._() : super._();
+
+  String get nodeId;
+  String get verseKey;
+
+  /// Create a copy of ExerciseDataDto
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ExerciseDataDto_FirstWordRecallImplCopyWith<
+    _$ExerciseDataDto_FirstWordRecallImpl
   >
   get copyWith => throw _privateConstructorUsedError;
 }
@@ -5403,6 +6659,13 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -5463,6 +6726,13 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -5517,6 +6787,13 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -5558,6 +6835,10 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -5587,6 +6868,8 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -5615,6 +6898,8 @@ class _$ExerciseDataDto_IdentifyRootImpl extends ExerciseDataDto_IdentifyRoot {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -5776,6 +7061,13 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -5836,6 +7128,13 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -5890,6 +7189,13 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -5931,6 +7237,10 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -5960,6 +7270,8 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -5988,6 +7300,8 @@ class _$ExerciseDataDto_ReverseClozeImpl extends ExerciseDataDto_ReverseCloze {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -6153,6 +7467,13 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -6213,6 +7534,13 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -6267,6 +7595,13 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -6308,6 +7643,10 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -6337,6 +7676,8 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -6365,6 +7706,8 @@ class _$ExerciseDataDto_TranslatePhraseImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -6547,6 +7890,13 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -6607,6 +7957,13 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -6661,6 +8018,13 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -6702,6 +8066,10 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -6731,6 +8099,8 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -6759,6 +8129,8 @@ class _$ExerciseDataDto_PosTaggingImpl extends ExerciseDataDto_PosTagging {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -6955,6 +8327,13 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -7015,6 +8394,13 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -7069,6 +8455,13 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -7110,6 +8503,10 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -7139,6 +8536,8 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -7167,6 +8566,8 @@ class _$ExerciseDataDto_CrossVerseConnectionImpl
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -7345,6 +8746,13 @@ class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
     findMistake,
     required TResult Function(String nodeId, List<String> correctSequence)
     ayahSequence,
+    required TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )
+    sequenceRecall,
+    required TResult Function(String nodeId, String verseKey) firstWordRecall,
     required TResult Function(String nodeId, String root) identifyRoot,
     required TResult Function(String nodeId, int blankPosition) reverseCloze,
     required TResult Function(String nodeId, int translatorId) translatePhrase,
@@ -7405,6 +8813,13 @@ class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
     findMistake,
     TResult? Function(String nodeId, List<String> correctSequence)?
     ayahSequence,
+    TResult? Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult? Function(String nodeId, String verseKey)? firstWordRecall,
     TResult? Function(String nodeId, String root)? identifyRoot,
     TResult? Function(String nodeId, int blankPosition)? reverseCloze,
     TResult? Function(String nodeId, int translatorId)? translatePhrase,
@@ -7459,6 +8874,13 @@ class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
     )?
     findMistake,
     TResult Function(String nodeId, List<String> correctSequence)? ayahSequence,
+    TResult Function(
+      String nodeId,
+      List<String> correctSequence,
+      List<List<String>> options,
+    )?
+    sequenceRecall,
+    TResult Function(String nodeId, String verseKey)? firstWordRecall,
     TResult Function(String nodeId, String root)? identifyRoot,
     TResult Function(String nodeId, int blankPosition)? reverseCloze,
     TResult Function(String nodeId, int translatorId)? translatePhrase,
@@ -7500,6 +8922,10 @@ class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
     required TResult Function(ExerciseDataDto_AyahChain value) ayahChain,
     required TResult Function(ExerciseDataDto_FindMistake value) findMistake,
     required TResult Function(ExerciseDataDto_AyahSequence value) ayahSequence,
+    required TResult Function(ExerciseDataDto_SequenceRecall value)
+    sequenceRecall,
+    required TResult Function(ExerciseDataDto_FirstWordRecall value)
+    firstWordRecall,
     required TResult Function(ExerciseDataDto_IdentifyRoot value) identifyRoot,
     required TResult Function(ExerciseDataDto_ReverseCloze value) reverseCloze,
     required TResult Function(ExerciseDataDto_TranslatePhrase value)
@@ -7529,6 +8955,8 @@ class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
     TResult? Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult? Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult? Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult? Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult? Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult? Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult? Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult? Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,
@@ -7557,6 +8985,8 @@ class _$ExerciseDataDto_EchoRecallImpl extends ExerciseDataDto_EchoRecall {
     TResult Function(ExerciseDataDto_AyahChain value)? ayahChain,
     TResult Function(ExerciseDataDto_FindMistake value)? findMistake,
     TResult Function(ExerciseDataDto_AyahSequence value)? ayahSequence,
+    TResult Function(ExerciseDataDto_SequenceRecall value)? sequenceRecall,
+    TResult Function(ExerciseDataDto_FirstWordRecall value)? firstWordRecall,
     TResult Function(ExerciseDataDto_IdentifyRoot value)? identifyRoot,
     TResult Function(ExerciseDataDto_ReverseCloze value)? reverseCloze,
     TResult Function(ExerciseDataDto_TranslatePhrase value)? translatePhrase,

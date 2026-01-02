@@ -8,6 +8,8 @@ import 'package:iqrah/features/debug/energy_monitor_screen.dart';
 import 'package:iqrah/features/debug/db_inspector_screen.dart';
 import 'package:iqrah/features/debug/echo_recall_debug_screen.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
+import 'package:iqrah/utils/error_mapper.dart';
+import 'package:iqrah/widgets/error_banner.dart';
 
 const contentDbAssetPath = "rust/content.db";
 
@@ -112,7 +114,7 @@ class _DebugHomeScreenState extends State<DebugHomeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(ErrorMapper.toMessage(e)),
             backgroundColor: Colors.red,
           ),
         );
@@ -185,7 +187,7 @@ class _DebugHomeScreenState extends State<DebugHomeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(ErrorMapper.toMessage(e)),
             backgroundColor: Colors.red,
           ),
         );
@@ -283,18 +285,10 @@ class _DebugHomeScreenState extends State<DebugHomeScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.error, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Error: $_error')),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: _loadHealth,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+              ErrorBanner(
+                message: _error!,
+                onRetry: _loadHealth,
+                dense: true,
               ),
             ],
           ),

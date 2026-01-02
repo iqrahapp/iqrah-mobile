@@ -28,6 +28,22 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
   bool _showOverrideOptions = false;
   bool _isSubmittingAutoGrade = false;
 
+  static const _timingQuick = _TimingProfile(
+    easy: Duration(seconds: 3),
+    good: Duration(seconds: 7),
+    hard: Duration(seconds: 12),
+  );
+  static const _timingStandard = _TimingProfile(
+    easy: Duration(seconds: 6),
+    good: Duration(seconds: 12),
+    hard: Duration(seconds: 20),
+  );
+  static const _timingExtended = _TimingProfile(
+    easy: Duration(seconds: 10),
+    good: Duration(seconds: 20),
+    hard: Duration(seconds: 35),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -44,17 +60,20 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
         return;
       }
 
-      if ((!prev.isCompleted() && next.isCompleted()) ||
-          next.exercises.isEmpty) {
+      if (!prev.isCompleted() && next.isCompleted()) {
         _stopTimer();
+        final reviewCount = next.mode == SessionMode.adhoc
+            ? next.adhocExercises.length
+            : (next.summary?.itemsCompleted ?? 0);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => SessionSummaryPage(
-              reviewCount: next.exercises.length,
+              reviewCount: reviewCount,
+              summary: next.summary,
             ),
           ),
         );
-      } else if (prev.currentIndex != next.currentIndex) {
+      } else if (prev.currentExercise != next.currentExercise) {
         _handleExerciseChange(next);
       }
     });
@@ -157,7 +176,8 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
 
   void _handleCompletion(bool isCorrect) {
     final elapsedNow = _stopwatch.elapsed;
-    final grade = _computeAutoGrade(isCorrect, elapsedNow);
+    final exercise = ref.read(sessionProvider).currentExercise;
+    final grade = _computeAutoGrade(isCorrect, elapsedNow, exercise);
     final feedback = _feedbackTextFor(grade, isCorrect: isCorrect);
     final feedbackColor = _colorForGrade(grade);
 
@@ -201,7 +221,9 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
           break;
       }
 
-      await ref.read(sessionProvider.notifier).submitReview(gradeInt);
+      await ref
+          .read(sessionProvider.notifier)
+          .submitReview(gradeInt, _elapsed.inMilliseconds);
     } finally {
       if (mounted) {
         setState(() {
@@ -252,7 +274,7 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
       key: const ValueKey('content'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildTimerIndicator(theme),
+        _buildTimerIndicator(theme, currentItem),
         const SizedBox(height: 16),
         Expanded(
           child: Card(
@@ -274,14 +296,20 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     );
   }
 
-  ReviewGrade _gradeForElapsed(Duration elapsed) {
-    if (elapsed < const Duration(seconds: 3)) {
+  ReviewGrade _gradeForElapsed(Duration elapsed, api.ExerciseDataDto? exercise) {
+    final profile = exercise == null
+        ? _timingStandard
+        : _timingProfileFor(exercise);
+    if (elapsed <= profile.easy) {
       return ReviewGrade.easy;
     }
-    if (elapsed <= const Duration(seconds: 10)) {
+    if (elapsed <= profile.good) {
       return ReviewGrade.good;
     }
-    return ReviewGrade.hard;
+    if (elapsed <= profile.hard) {
+      return ReviewGrade.hard;
+    }
+    return ReviewGrade.again;
   }
 
   Color _colorForGrade(ReviewGrade grade) {
@@ -315,17 +343,21 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     return seconds.toStringAsFixed(1);
   }
 
-  ReviewGrade _computeAutoGrade(bool isCorrect, Duration elapsed) {
+  ReviewGrade _computeAutoGrade(
+    bool isCorrect,
+    Duration elapsed,
+    api.ExerciseDataDto? exercise,
+  ) {
     if (!isCorrect) {
       return ReviewGrade.again;
     }
-    return _gradeForElapsed(elapsed);
+    return _gradeForElapsed(elapsed, exercise);
   }
 
   String _feedbackTextFor(ReviewGrade grade, {required bool isCorrect}) {
     switch (grade) {
       case ReviewGrade.again:
-        return isCorrect ? 'Again' : 'Again…';
+        return isCorrect ? 'Too slow' : 'Again…';
       case ReviewGrade.hard:
         return 'Hard!';
       case ReviewGrade.good:
@@ -335,8 +367,12 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     }
   }
 
-  Widget _buildTimerIndicator(ThemeData theme) {
-    final projectedGrade = _autoGrade ?? _gradeForElapsed(_elapsed);
+  Widget _buildTimerIndicator(
+    ThemeData theme,
+    api.ExerciseDataDto currentItem,
+  ) {
+    final projectedGrade =
+        _autoGrade ?? _gradeForElapsed(_elapsed, currentItem);
     final color = _colorForGrade(projectedGrade);
     final background = color.withValues(alpha: 0.12);
     final timeLabel = _formatElapsed(_elapsed);
@@ -407,20 +443,25 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     return SizedBox(
       key: const ValueKey('showAnswer'),
       width: double.infinity,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: Semantics(
+        button: true,
+        label: 'Show answer',
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () {
+            HapticFeedback.mediumImpact();
+            _stopTimer();
+            setState(() {
+              _elapsed = _stopwatch.elapsed;
+              _isAnswerVisible = true;
+            });
+          },
+          child: const Text("Show Answer"),
         ),
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          _stopTimer();
-          setState(() {
-            _elapsed = _stopwatch.elapsed;
-            _isAnswerVisible = true;
-          });
-        },
-        child: const Text("Show Answer"),
       ),
     );
   }
@@ -460,7 +501,11 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
             ),
           ),
           onPressed: _submitAutoGrade,
-          child: Text('Continue (${_labelForGrade(grade)})'),
+          child: Semantics(
+            button: true,
+            label: 'Continue with ${_labelForGrade(grade)}',
+            child: Text('Continue (${_labelForGrade(grade)})'),
+          ),
         ),
         TextButton(
           onPressed: () {
@@ -491,37 +536,81 @@ class _ExcercisePageState extends ConsumerState<ExcercisePage>
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        child: Semantics(
+          button: true,
+          label: 'Grade as $title',
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
+            onPressed: () async {
+              // Map ReviewGrade to int
+              int gradeInt = 3;
+              switch (grade) {
+                case ReviewGrade.again:
+                  gradeInt = 1;
+                  break;
+                case ReviewGrade.hard:
+                  gradeInt = 2;
+                  break;
+                case ReviewGrade.good:
+                  gradeInt = 3;
+                  break;
+                case ReviewGrade.easy:
+                  gradeInt = 4;
+                  break;
+              }
+              await ref
+                  .read(sessionProvider.notifier)
+                  .submitReview(gradeInt, _elapsed.inMilliseconds);
+            },
+            child: Text(title),
           ),
-          onPressed: () async {
-            // Map ReviewGrade to int
-            int gradeInt = 3;
-            switch (grade) {
-              case ReviewGrade.again:
-                gradeInt = 1;
-                break;
-              case ReviewGrade.hard:
-                gradeInt = 2;
-                break;
-              case ReviewGrade.good:
-                gradeInt = 3;
-                break;
-              case ReviewGrade.easy:
-                gradeInt = 4;
-                break;
-            }
-            await ref.read(sessionProvider.notifier).submitReview(gradeInt);
-          },
-          child: Text(title),
         ),
       ),
     );
   }
+
+  _TimingProfile _timingProfileFor(api.ExerciseDataDto exercise) {
+    return exercise.map(
+      memorization: (_) => _timingExtended,
+      mcqArToEn: (_) => _timingQuick,
+      mcqEnToAr: (_) => _timingQuick,
+      translation: (_) => _timingStandard,
+      contextualTranslation: (_) => _timingStandard,
+      clozeDeletion: (_) => _timingStandard,
+      firstLetterHint: (_) => _timingQuick,
+      missingWordMcq: (_) => _timingQuick,
+      nextWordMcq: (_) => _timingQuick,
+      fullVerseInput: (_) => _timingExtended,
+      ayahChain: (_) => _timingExtended,
+      findMistake: (_) => _timingStandard,
+      ayahSequence: (_) => _timingStandard,
+      sequenceRecall: (_) => _timingStandard,
+      firstWordRecall: (_) => _timingQuick,
+      identifyRoot: (_) => _timingQuick,
+      reverseCloze: (_) => _timingStandard,
+      translatePhrase: (_) => _timingStandard,
+      posTagging: (_) => _timingQuick,
+      crossVerseConnection: (_) => _timingStandard,
+      echoRecall: (_) => _timingExtended,
+    );
+  }
+}
+
+class _TimingProfile {
+  final Duration easy;
+  final Duration good;
+  final Duration hard;
+
+  const _TimingProfile({
+    required this.easy,
+    required this.good,
+    required this.hard,
+  });
 }

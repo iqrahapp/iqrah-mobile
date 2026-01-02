@@ -41,6 +41,12 @@ dependencies:
   flutter_riverpod: ^2.6.1
   intl: ^0.20.0
   freezed_annotation: ^2.4.1
+  google_fonts: ^6.1.0
+  fl_chart: ^0.68.0
+  percent_indicator: ^4.2.3
+  just_audio: ^0.9.36
+  flutter_animate: ^4.5.0
+  glassmorphism_ui: ^0.3.0
 
 dev_dependencies:
   flutter_test:

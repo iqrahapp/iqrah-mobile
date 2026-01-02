@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iqrah/pages/app_initializer.dart';
 import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/rust_bridge/frb_generated.dart';
+import 'package:iqrah/theme/app_theme.dart';
 import 'package:iqrah/utils/database_path.dart';
 
 const graphAssetPath = "assets/knowledge-graph.cbor.zst";
@@ -87,7 +88,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Iqrah MVP',
-      theme: ThemeData.dark(useMaterial3: true),
+      theme: AppTheme.dark(),
       home: const AppInitializer(),
     );
   }

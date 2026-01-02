@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/utils/app_logger.dart';
+import 'package:iqrah/widgets/error_banner.dart';
 
 /// Debug screen for executing SQL queries and viewing results.
 class DbInspectorScreen extends StatefulWidget {
@@ -152,28 +153,9 @@ class _DbInspectorScreenState extends State<DbInspectorScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              child: ErrorBanner(
+                message: _error!,
+                dense: true,
               ),
             ),
           if (_result != null) ...[

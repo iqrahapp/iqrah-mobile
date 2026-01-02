@@ -3,13 +3,17 @@ use anyhow::Result;
 use iqrah_core::domain::node_id as nid;
 pub use iqrah_core::exercises::{ExerciseData, ExerciseService};
 use iqrah_core::{import_cbor_graph_from_bytes, KnowledgeNode, ReviewGrade};
+use iqrah_core::{ContentPackage, InstalledPackage, PackageService, PackageType};
 pub use iqrah_core::{ContentRepository, LearningService, SessionService, UserRepository};
 use iqrah_storage::{
     create_content_repository, init_content_db, init_user_db, SqliteUserRepository,
 };
 use once_cell::sync::OnceCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use uuid::Uuid;
+
+const SESSION_ITEM_LIMIT: u32 = 20;
 
 pub struct AppState {
     pub content_repo: Arc<dyn ContentRepository>,
@@ -182,7 +186,7 @@ pub async fn setup_database_in_memory(kg_bytes: Vec<u8>) -> Result<String> {
 pub async fn get_exercises(
     user_id: String,
     limit: u32,
-    _surah_filter: Option<i32>,
+    surah_filter: Option<i32>,
     is_high_yield: bool,
 ) -> Result<Vec<ExerciseDataDto>> {
     let app = app();
@@ -210,6 +214,13 @@ pub async fn get_exercises(
             _ => base_ukey,
         };
 
+        if let Some(surah_number) = surah_filter {
+            let chapter = chapter_for_ukey(app, &ukey).await?;
+            if chapter != Some(surah_number) {
+                continue;
+            }
+        }
+
         // Generate V2 exercise
         match app
             .exercise_service
@@ -235,15 +246,371 @@ pub async fn get_exercises(
     Ok(exercises)
 }
 
+/// Start a new session and persist its state
+pub async fn start_session(user_id: String, goal_id: String) -> Result<SessionDto> {
+    let app = app();
+
+    let due_items = app
+        .session_service
+        .get_due_items(&user_id, SESSION_ITEM_LIMIT, false, None)
+        .await?;
+
+    let node_ids: Vec<i64> = due_items.into_iter().map(|item| item.node.id).collect();
+    app.session_service.save_session_state(&node_ids).await?;
+
+    let session = iqrah_core::Session {
+        id: Uuid::new_v4().to_string(),
+        user_id: user_id.clone(),
+        goal_id,
+        started_at: chrono::Utc::now(),
+        completed_at: None,
+        items_count: node_ids.len() as i32,
+        items_completed: 0,
+    };
+
+    app.user_repo.create_session(&session).await?;
+
+    Ok(SessionDto {
+        id: session.id,
+        user_id: session.user_id,
+        goal_id: session.goal_id,
+        started_at: session.started_at.timestamp_millis(),
+        completed_at: None,
+        items_count: session.items_count,
+        items_completed: session.items_completed,
+    })
+}
+
+/// Get the active (incomplete) session for a user
+pub async fn get_active_session(user_id: String) -> Result<Option<SessionDto>> {
+    let app = app();
+    let session = app.user_repo.get_active_session(&user_id).await?;
+    Ok(session.map(|s| SessionDto {
+        id: s.id,
+        user_id: s.user_id,
+        goal_id: s.goal_id,
+        started_at: s.started_at.timestamp_millis(),
+        completed_at: s.completed_at.map(|t| t.timestamp_millis()),
+        items_count: s.items_count,
+        items_completed: s.items_completed,
+    }))
+}
+
+/// Get the next session item (exercise) to present
+pub async fn get_next_session_item(session_id: String) -> Result<Option<SessionItemDto>> {
+    let app = app();
+    let session = app
+        .user_repo
+        .get_session(&session_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
+
+    let node_ids = app.session_service.get_session_state().await?;
+    let index = session.items_completed as usize;
+    if index >= node_ids.len() {
+        return Ok(None);
+    }
+
+    let node_id = node_ids[index];
+    let ukey = nid::to_ukey(node_id).unwrap_or_default();
+    let data = app
+        .exercise_service
+        .generate_exercise_v2(node_id, &ukey)
+        .await?;
+    let exercise_type = data.type_name().to_string();
+    let mut dto: ExerciseDataDto = data.into();
+    if let ExerciseDataDto::EchoRecall {
+        user_id: ref mut uid,
+        ..
+    } = dto
+    {
+        *uid = session.user_id.clone();
+    }
+
+    Ok(Some(SessionItemDto {
+        session_id,
+        position: index as i32,
+        node_id: ukey,
+        exercise_type,
+        exercise: dto,
+    }))
+}
+
+/// Submit a completed session item
+pub async fn submit_session_item(
+    session_id: String,
+    node_id: String,
+    exercise_type: String,
+    grade: u8,
+    duration_ms: u64,
+) -> Result<String> {
+    let app = app();
+    let session = app
+        .user_repo
+        .get_session(&session_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
+
+    let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
+
+    let item = iqrah_core::SessionItem {
+        id: 0,
+        session_id: session_id.clone(),
+        node_id: nid_val,
+        exercise_type: exercise_type.clone(),
+        grade: grade as i32,
+        duration_ms: Some(duration_ms as i64),
+        completed_at: Some(chrono::Utc::now()),
+    };
+
+    app.user_repo.insert_session_item(&item).await?;
+    app.user_repo
+        .update_session_progress(&session_id, session.items_completed + 1)
+        .await?;
+
+    if exercise_type != "echo_recall" {
+        let review_grade = ReviewGrade::from(grade);
+        app.learning_service
+            .process_review(&session.user_id, nid_val, review_grade)
+            .await?;
+        let _ = app.session_service.increment_stat("reviews_today").await;
+    }
+
+    Ok("Session item recorded".to_string())
+}
+
+/// Complete a session and return summary
+pub async fn complete_session(session_id: String) -> Result<SessionSummaryDto> {
+    let app = app();
+    app.user_repo.complete_session(&session_id).await?;
+    app.session_service.clear_session_state().await?;
+
+    let summary = app.user_repo.get_session_summary(&session_id).await?;
+    Ok(SessionSummaryDto {
+        session_id: summary.session_id,
+        items_count: summary.items_count,
+        items_completed: summary.items_completed,
+        duration_ms: summary.duration_ms,
+        again_count: summary.again_count,
+        hard_count: summary.hard_count,
+        good_count: summary.good_count,
+        easy_count: summary.easy_count,
+    })
+}
+
 /// Get exercises for a specific node (Sandbox/Preview)
 pub async fn get_exercises_for_node(node_id: String) -> Result<Vec<ExerciseDataDto>> {
     let app = app();
     let nid_val = nid::from_ukey(&node_id).ok_or_else(|| anyhow::anyhow!("Invalid node ID"))?;
-    let ex = app
+    let base_ukey = KnowledgeNode::parse(&node_id)
+        .map(|kn| kn.base_node_id)
+        .unwrap_or_else(|| node_id.clone());
+    let base_node_id = nid::from_ukey(&base_ukey).unwrap_or(nid_val);
+
+    let mut exercises = Vec::new();
+    let mut seen = HashSet::new();
+
+    let mut push_unique = |exercise: ExerciseData| {
+        let name = exercise.type_name();
+        if seen.insert(name) {
+            exercises.push(exercise.into());
+        }
+    };
+
+    let default_ex = app
         .exercise_service
-        .generate_exercise_v2(nid_val, &node_id)
+        .generate_exercise_v2(base_node_id, &base_ukey)
         .await?;
-    Ok(vec![ex.into()])
+    push_unique(default_ex);
+
+    if base_ukey.starts_with(nid::PREFIX_WORD) || base_ukey.starts_with(nid::PREFIX_WORD_INSTANCE) {
+        if let Ok(ex) = iqrah_core::exercises::generate_translation(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_contextual_translation(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_identify_root(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_pos_tagging(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+    }
+
+    if base_ukey.starts_with(nid::PREFIX_VERSE) {
+        if let Ok(ex) = iqrah_core::exercises::generate_sequence_recall(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_first_word_recall(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_find_mistake(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_ayah_sequence(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_cloze_deletion(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_first_letter_hint(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_missing_word_mcq(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_next_word_mcq(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_reverse_cloze(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_translate_phrase(
+            base_node_id,
+            &base_ukey,
+            1,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_full_verse_input(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_cross_verse_connection(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+    }
+
+    if base_ukey.starts_with(nid::PREFIX_CHAPTER) {
+        if let Ok(ex) = iqrah_core::exercises::generate_ayah_chain(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+
+        if let Ok(ex) = iqrah_core::exercises::generate_ayah_sequence(
+            base_node_id,
+            &base_ukey,
+            app.content_repo.as_ref(),
+        )
+        .await
+        {
+            push_unique(ex);
+        }
+    }
+
+    Ok(exercises)
 }
 
 /// Fetch node with metadata for Sandbox
@@ -489,13 +856,17 @@ pub async fn get_db_health() -> Result<DbHealthDto> {
 /// Close database pools (release stub - returns error)
 #[cfg(not(debug_assertions))]
 pub async fn close_databases() -> Result<String> {
-    Err(anyhow::anyhow!("close_databases is only available in debug builds"))
+    Err(anyhow::anyhow!(
+        "close_databases is only available in debug builds"
+    ))
 }
 
 /// Get database health status (release stub - returns error)
 #[cfg(not(debug_assertions))]
 pub async fn get_db_health() -> Result<DbHealthDto> {
-    Err(anyhow::anyhow!("get_db_health is only available in debug builds"))
+    Err(anyhow::anyhow!(
+        "get_db_health is only available in debug builds"
+    ))
 }
 
 /// Reset user progress
@@ -552,6 +923,40 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
     let app = app();
     let limit_i64 = limit as i64;
 
+    let mut seen = std::collections::HashSet::new();
+    let mut combined_ids = Vec::new();
+
+    if nid::node_type(&query).is_ok() {
+        if let Some(node) = app.content_repo.get_node_by_ukey(&query).await? {
+            if seen.insert(node.id) {
+                combined_ids.push(node.id);
+            }
+        }
+    }
+
+    if query.contains(':') {
+        #[cfg(debug_assertions)]
+        {
+            if let Some(pool) = DEBUG_CONTENT_POOL.get() {
+                let pattern = format!("{}%", query);
+                let rows: Vec<(i64,)> = sqlx::query_as(
+                    "SELECT id FROM nodes WHERE ukey LIKE ?1 LIMIT ?2",
+                )
+                .bind(&pattern)
+                .bind(limit_i64)
+                .fetch_all(pool)
+                .await
+                .unwrap_or_default();
+
+                for (id,) in rows {
+                    if seen.insert(id) && combined_ids.len() < limit as usize {
+                        combined_ids.push(id);
+                    }
+                }
+            }
+        }
+    }
+
     // Search by content (Arabic text) - primary search method
     let content_results = app
         .content_repo
@@ -559,7 +964,7 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
         .await?;
 
     // Also search by node ID prefix (for power users who know IDs like "VERSE:1:1")
-    let id_results: Vec<_> = if query.starts_with("VERSE:") || query.starts_with("WORD:") {
+    let id_results: Vec<_> = if query.starts_with("VERSE:") {
         app.content_repo
             .get_all_nodes()
             .await?
@@ -576,27 +981,26 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
     };
 
     // Combine results, content search first
-    let mut seen = std::collections::HashSet::new();
-    let mut combined = Vec::new();
-
     for node in content_results.into_iter().chain(id_results.into_iter()) {
-        if seen.insert(node.id) && combined.len() < limit as usize {
-            combined.push(node);
+        if seen.insert(node.id) && combined_ids.len() < limit as usize {
+            combined_ids.push(node.id);
         }
     }
 
     // Build DTOs with preview text
     let mut dtos = Vec::new();
-    for node in combined {
+    for node_id in combined_ids {
         let arabic = app
             .content_repo
-            .get_quran_text(node.id)
+            .get_quran_text(node_id)
             .await?
             .unwrap_or_default();
-        let knowledge_axis = nid::decode_knowledge_id(node.id).map(|(_, axis)| axis.to_string());
+        let knowledge_axis = nid::decode_knowledge_id(node_id).map(|(_, axis)| axis.to_string());
         dtos.push(NodeSearchDto {
-            node_id: nid::to_ukey(node.id).unwrap_or_default(),
-            node_type: format!("{:?}", node.node_type),
+            node_id: nid::to_ukey(node_id).unwrap_or_default(),
+            node_type: nid::decode_type(node_id)
+                .map(|t| format!("{:?}", t))
+                .unwrap_or_else(|| "Unknown".to_string()),
             knowledge_axis,
             preview: arabic.chars().take(100).collect(),
         });
@@ -607,9 +1011,60 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
 
 /// Get available surahs
 pub async fn get_available_surahs() -> Result<Vec<SurahInfo>> {
-    // TODO: Implement surah listing from database
-    // For now return empty - needs to query chapters from content.db
-    Ok(Vec::new())
+    let app = app();
+    let chapters = app.content_repo.get_chapters().await?;
+    let surahs = chapters
+        .into_iter()
+        .map(|chapter| {
+            let name = if !chapter.name_translation.trim().is_empty() {
+                chapter.name_translation
+            } else if !chapter.name_transliteration.trim().is_empty() {
+                chapter.name_transliteration
+            } else {
+                chapter.name_arabic
+            };
+            SurahInfo {
+                number: chapter.number,
+                name,
+            }
+        })
+        .collect();
+    Ok(surahs)
+}
+
+async fn chapter_for_ukey(app: &AppState, ukey: &str) -> Result<Option<i32>> {
+    let base_ukey = KnowledgeNode::parse(ukey)
+        .map(|kn| kn.base_node_id)
+        .unwrap_or_else(|| ukey.to_string());
+
+    if base_ukey.starts_with(nid::PREFIX_VERSE) {
+        let (chapter, _) = nid::parse_verse(&base_ukey)?;
+        return Ok(Some(chapter as i32));
+    }
+
+    if base_ukey.starts_with(nid::PREFIX_WORD_INSTANCE) {
+        let (chapter, _, _) = nid::parse_word_instance(&base_ukey)?;
+        return Ok(Some(chapter as i32));
+    }
+
+    if base_ukey.starts_with(nid::PREFIX_CHAPTER) {
+        let chapter = nid::parse_chapter(&base_ukey)?;
+        return Ok(Some(chapter as i32));
+    }
+
+    if base_ukey.starts_with(nid::PREFIX_WORD) {
+        let word_id = nid::parse_word(&base_ukey)?;
+        if let Some(word) = app.content_repo.get_word(word_id as i64).await? {
+            let parts: Vec<&str> = word.verse_key.split(':').collect();
+            if parts.len() == 2 {
+                if let Ok(chapter) = parts[0].parse::<i32>() {
+                    return Ok(Some(chapter));
+                }
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 // ========================================================================
@@ -700,6 +1155,64 @@ pub async fn get_verse_translation_by_translator(
     app.content_repo
         .get_verse_translation(&verse_key, translator_id)
         .await
+}
+
+// ========================================================================
+// Translation Package Management API
+// ========================================================================
+
+/// List available content packages (optionally filtered)
+pub async fn get_available_packages(
+    package_type: Option<String>,
+    language_code: Option<String>,
+) -> Result<Vec<ContentPackageDto>> {
+    let app = app();
+    let package_type = match package_type {
+        Some(pt) => Some(pt.parse::<PackageType>()?),
+        None => None,
+    };
+
+    let packages = app
+        .content_repo
+        .get_available_packages(package_type, language_code)
+        .await?;
+
+    Ok(packages.into_iter().map(ContentPackageDto::from).collect())
+}
+
+/// List installed content packages
+pub async fn get_installed_packages() -> Result<Vec<InstalledPackageDto>> {
+    let app = app();
+    let packages = app.content_repo.get_installed_packages().await?;
+    Ok(packages
+        .into_iter()
+        .map(InstalledPackageDto::from)
+        .collect())
+}
+
+/// Enable an installed package
+pub async fn enable_package(package_id: String) -> Result<String> {
+    let app = app();
+    app.content_repo.enable_package(&package_id).await?;
+    Ok(format!("Package enabled: {}", package_id))
+}
+
+/// Disable an installed package
+pub async fn disable_package(package_id: String) -> Result<String> {
+    let app = app();
+    app.content_repo.disable_package(&package_id).await?;
+    Ok(format!("Package disabled: {}", package_id))
+}
+
+/// Install a translation package from raw bytes
+pub async fn install_translation_pack_from_bytes(
+    package_id: String,
+    bytes: Vec<u8>,
+) -> Result<String> {
+    let app = app();
+    let service = PackageService::new(Arc::clone(&app.content_repo));
+    service.install_package(&package_id, bytes).await?;
+    Ok(format!("Package installed: {}", package_id))
 }
 
 /// Initialize app (for Flutter bridge)
@@ -813,6 +1326,38 @@ pub struct SessionPreviewDto {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SessionDto {
+    pub id: String,
+    pub user_id: String,
+    pub goal_id: String,
+    pub started_at: i64,
+    pub completed_at: Option<i64>,
+    pub items_count: i32,
+    pub items_completed: i32,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SessionItemDto {
+    pub session_id: String,
+    pub position: i32,
+    pub node_id: String,
+    pub exercise_type: String,
+    pub exercise: ExerciseDataDto,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SessionSummaryDto {
+    pub session_id: String,
+    pub items_count: i32,
+    pub items_completed: i32,
+    pub duration_ms: i64,
+    pub again_count: i32,
+    pub hard_count: i32,
+    pub good_count: i32,
+    pub easy_count: i32,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct NodeSearchDto {
     pub node_id: String,
     pub node_type: String,
@@ -842,6 +1387,56 @@ pub struct TranslatorDto {
     pub language_code: String,
     pub description: Option<String>,
     pub license: Option<String>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ContentPackageDto {
+    pub package_id: String,
+    pub package_type: String,
+    pub name: String,
+    pub language_code: Option<String>,
+    pub author: Option<String>,
+    pub version: String,
+    pub description: Option<String>,
+    pub file_size: Option<i64>,
+    pub download_url: Option<String>,
+    pub checksum: Option<String>,
+    pub license: Option<String>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct InstalledPackageDto {
+    pub package_id: String,
+    pub installed_at: i64,
+    pub enabled: bool,
+}
+
+impl From<ContentPackage> for ContentPackageDto {
+    fn from(value: ContentPackage) -> Self {
+        Self {
+            package_id: value.package_id,
+            package_type: value.package_type.to_string(),
+            name: value.name,
+            language_code: value.language_code,
+            author: value.author,
+            version: value.version,
+            description: value.description,
+            file_size: value.file_size,
+            download_url: value.download_url,
+            checksum: value.checksum,
+            license: value.license,
+        }
+    }
+}
+
+impl From<InstalledPackage> for InstalledPackageDto {
+    fn from(value: InstalledPackage) -> Self {
+        Self {
+            package_id: value.package_id,
+            installed_at: value.installed_at.timestamp_millis(),
+            enabled: value.enabled,
+        }
+    }
 }
 
 // Lightweight node + metadata surface for sandbox / previews
@@ -907,6 +1502,15 @@ pub enum ExerciseDataDto {
     AyahSequence {
         node_id: String,
         correct_sequence: Vec<String>,
+    },
+    SequenceRecall {
+        node_id: String,
+        correct_sequence: Vec<String>,
+        options: Vec<Vec<String>>,
+    },
+    FirstWordRecall {
+        node_id: String,
+        verse_key: String,
     },
     IdentifyRoot {
         node_id: String,
@@ -1047,6 +1651,30 @@ impl From<iqrah_core::exercises::ExerciseData> for ExerciseDataDto {
                     .into_iter()
                     .map(|id| nid::to_ukey(id).unwrap_or_default())
                     .collect(),
+            },
+            SequenceRecall {
+                node_id,
+                correct_sequence,
+                options,
+            } => ExerciseDataDto::SequenceRecall {
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                correct_sequence: correct_sequence
+                    .into_iter()
+                    .map(|id| nid::to_ukey(id).unwrap_or_default())
+                    .collect(),
+                options: options
+                    .into_iter()
+                    .map(|sequence| {
+                        sequence
+                            .into_iter()
+                            .map(|id| nid::to_ukey(id).unwrap_or_default())
+                            .collect()
+                    })
+                    .collect(),
+            },
+            FirstWordRecall { node_id, verse_key } => ExerciseDataDto::FirstWordRecall {
+                node_id: nid::to_ukey(node_id).unwrap_or_default(),
+                verse_key,
             },
             IdentifyRoot { node_id, root } => ExerciseDataDto::IdentifyRoot {
                 node_id: nid::to_ukey(node_id).unwrap_or_default(),
@@ -1531,7 +2159,9 @@ pub fn debug_emit_test_event() -> Result<String> {
 /// Debug: manually emit a test event (release stub - returns error)
 #[cfg(not(debug_assertions))]
 pub fn debug_emit_test_event() -> Result<String> {
-    Err(anyhow::anyhow!("debug_emit_test_event is only available in debug builds"))
+    Err(anyhow::anyhow!(
+        "debug_emit_test_event is only available in debug builds"
+    ))
 }
 
 // ========================================================================
@@ -1873,5 +2503,7 @@ pub async fn execute_debug_query(sql: String) -> Result<DbQueryResultDto> {
 /// Execute a debug SQL query (release stub - returns error)
 #[cfg(not(debug_assertions))]
 pub async fn execute_debug_query(_sql: String) -> Result<DbQueryResultDto> {
-    Err(anyhow::anyhow!("execute_debug_query is only available in debug builds"))
+    Err(anyhow::anyhow!(
+        "execute_debug_query is only available in debug builds"
+    ))
 }
