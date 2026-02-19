@@ -28,7 +28,10 @@ pub struct SyncPullRequest {
     /// Timestamp in milliseconds since epoch. Returns changes after this time.
     #[validate(range(min = 0))]
     pub since: i64,
-    /// Max records per batch. Default: 1000, Maximum allowed: 10000.
+    /// Max records per batch across all entity types combined (global cap).
+    ///
+    /// The server merges changes from all categories and stops when the total
+    /// payload reaches `limit`. Default: 1000, Maximum allowed: 10000.
     #[validate(range(min = 1, max = 10000))]
     #[serde(default = "default_limit")]
     pub limit: Option<usize>,
