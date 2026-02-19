@@ -28,3 +28,6 @@ google-jwt-verify = "0.3.0"
 iqrah-backend-config = { path = "../config" }
 iqrah-backend-domain = { path = "../domain" }
 iqrah-backend-storage = { path = "../storage" }
+
+[dev-dependencies]
+tempfile = "3"
