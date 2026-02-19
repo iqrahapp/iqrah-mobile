@@ -49,8 +49,7 @@ async fn main() -> anyhow::Result<()> {
         start_time: Instant::now(),
     });
 
-    // NOTE: Router wiring is centralized in `iqrah_backend_api::build_router`
-    // to keep integration tests and runtime bootstrap in sync.
+    // Build router from shared library surface used by integration tests.
     let app = build_router(state);
     let listener = tokio::net::TcpListener::bind(&config.bind_address).await?;
     tracing::info!("Server listening on {}", config.bind_address);

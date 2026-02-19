@@ -6,8 +6,8 @@
 
 //! Postgres-only integration tests.
 //!
-//! Kept separate from SQLite default test suite to avoid external DB dependency
-//! during regular `cargo test` runs.
+//! Kept separate from the default SQLite suite so regular `cargo test`
+//! stays sandbox-safe and deterministic.
 
 use serde_json::json;
 use sqlx::{PgPool, Row};
