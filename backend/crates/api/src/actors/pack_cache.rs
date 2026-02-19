@@ -22,14 +22,9 @@ impl Default for PackCacheActor {
     }
 }
 
-pub struct Query {
-    pub pack_version_id: i32,
-}
+pub struct Query(pub i32);
 
-pub struct Insert {
-    pub pack_version_id: i32,
-    pub is_verified: bool,
-}
+pub struct Insert(pub i32);
 
 pub struct Invalidate(pub i32);
 
@@ -39,7 +34,7 @@ impl Message<Query> for PackCacheActor {
     type Reply = Option<bool>;
 
     async fn handle(&mut self, msg: Query, _ctx: &mut Context<Self, Self::Reply>) -> Self::Reply {
-        self.cache.get(&msg.pack_version_id).copied()
+        self.cache.get(&msg.0).copied()
     }
 }
 
@@ -47,7 +42,7 @@ impl Message<Insert> for PackCacheActor {
     type Reply = ();
 
     async fn handle(&mut self, msg: Insert, _ctx: &mut Context<Self, Self::Reply>) -> Self::Reply {
-        self.cache.insert(msg.pack_version_id, msg.is_verified);
+        self.cache.insert(msg.0, true);
     }
 }
 
