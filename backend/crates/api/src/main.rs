@@ -5,33 +5,13 @@ use std::time::Instant;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use iqrah_backend_api::actors::pack_cache::PackCacheActor;
+use iqrah_backend_api::cache::pack_verification_cache::PackVerificationCache;
 use iqrah_backend_api::handlers::auth::{GoogleIdTokenVerifier, IdTokenVerifier};
 use iqrah_backend_api::{AppState, build_router};
 use iqrah_backend_config::AppConfig;
 use iqrah_backend_storage::{
     PackRepository, SyncRepository, UserRepository, create_pool, run_migrations,
 };
-use kameo::actor::Spawn;
-
-trait SpawnOutcomeExt {
-    fn into_pack_cache_actor_ref(self) -> anyhow::Result<kameo::actor::ActorRef<PackCacheActor>>;
-}
-
-impl SpawnOutcomeExt for kameo::actor::ActorRef<PackCacheActor> {
-    fn into_pack_cache_actor_ref(self) -> anyhow::Result<kameo::actor::ActorRef<PackCacheActor>> {
-        Ok(self)
-    }
-}
-
-impl<E> SpawnOutcomeExt for Result<kameo::actor::ActorRef<PackCacheActor>, E>
-where
-    E: std::fmt::Display,
-{
-    fn into_pack_cache_actor_ref(self) -> anyhow::Result<kameo::actor::ActorRef<PackCacheActor>> {
-        self.map_err(|err| anyhow::anyhow!("{err}"))
-    }
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -60,25 +40,17 @@ async fn main() -> anyhow::Result<()> {
     let id_token_verifier: Arc<dyn IdTokenVerifier> =
         Arc::new(GoogleIdTokenVerifier::new(&config.google_client_id));
 
-    let pack_cache = PackCacheActor::spawn(PackCacheActor::new())
-        .into_pack_cache_actor_ref()
-        .map_err(|err| {
-            tracing::error!(%err, "Failed to start pack cache actor");
-            err
-        })?;
-
     let state = Arc::new(AppState {
         pool,
         pack_repo,
         user_repo,
         sync_repo,
         id_token_verifier,
-        pack_cache,
+        pack_cache: PackVerificationCache::new(),
         config: config.clone(),
         start_time: Instant::now(),
     });
 
-    // Build router from shared library surface used by integration tests.
     let app = build_router(state);
     let listener = tokio::net::TcpListener::bind(&config.bind_address).await?;
     tracing::info!("Server listening on {}", config.bind_address);

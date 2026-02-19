@@ -619,7 +619,6 @@ impl SyncRepository {
             })
             .collect();
 
-
         // Get memory states
         let memory_states_raw = if let Some(cursor) =
             cursor.as_ref().and_then(|c| c.memory_states.as_ref())
@@ -674,7 +673,6 @@ impl SyncRepository {
             })
             .collect();
 
-
         // Get sessions
         let sessions_raw = if let Some(cursor) = cursor.as_ref().and_then(|c| c.sessions.as_ref()) {
             let cursor_time = Utc.timestamp_millis_opt(cursor.updated_at).unwrap();
@@ -725,7 +723,6 @@ impl SyncRepository {
                 client_updated_at: r.updated_at.timestamp_millis(),
             })
             .collect();
-
 
         // Get session items (direct query via user_id — no JOIN needed)
         let session_items_raw =
@@ -781,8 +778,10 @@ impl SyncRepository {
             })
             .collect();
 
-        let has_more =
-            settings_has_more || memory_states_has_more || sessions_has_more || session_items_has_more;
+        let has_more = settings_has_more
+            || memory_states_has_more
+            || sessions_has_more
+            || session_items_has_more;
 
         let next_cursor = if has_more {
             Some(SyncPullCursor {

@@ -21,8 +21,7 @@ use iqrah_backend_domain::{DomainError, PackManifestEntry, PackManifestResponse}
 use iqrah_backend_storage::PackInfo;
 
 use crate::AppState;
-use crate::actors::pack_cache::{Insert, PackCacheActor, Query};
-use kameo::actor::ActorRef;
+use crate::cache::pack_verification_cache::PackVerificationCache;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RangeParseError {
@@ -178,7 +177,7 @@ pub async fn download_pack(
         &package_id,
         pack.version_id,
         &pack.sha256,
-        state.pack_cache.clone(),
+        &state.pack_cache,
     )
     .await
     {
@@ -207,18 +206,9 @@ async fn verify_pack_integrity(
     package_id: &str,
     version_id: i32,
     expected_sha256: &str,
-    pack_cache: ActorRef<PackCacheActor>,
+    pack_cache: &PackVerificationCache,
 ) -> Result<(), Response> {
-    let is_cached = pack_cache.ask(Query(version_id)).await.map_err(|err| {
-        tracing::warn!(%err, version_id, "Failed to query pack cache");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"error": "Failed to verify pack integrity"})),
-        )
-            .into_response()
-    })?;
-
-    if is_cached.unwrap_or(false) {
+    if pack_cache.is_verified(version_id) {
         return Ok(());
     }
 
@@ -246,9 +236,7 @@ async fn verify_pack_integrity(
             .into_response());
     }
 
-    if let Err(err) = pack_cache.tell(Insert(version_id)).await {
-        tracing::warn!(%err, version_id, "Failed to update pack cache");
-    }
+    pack_cache.mark_verified(version_id);
     Ok(())
 }
 
@@ -456,7 +444,6 @@ pub async fn get_manifest(
 mod tests {
     use super::*;
     use axum::http::HeaderValue;
-    use kameo::actor::Spawn;
     use tokio::io::AsyncWriteExt;
 
     fn headers_with_range(value: &str) -> HeaderMap {
@@ -518,33 +505,32 @@ mod tests {
     #[tokio::test]
     async fn verify_pack_integrity_accepts_matching_hash() {
         let temp = write_temp_file(b"abc").await;
-        let cache = PackCacheActor::spawn(PackCacheActor::new());
+        let cache = PackVerificationCache::new();
 
         let result = verify_pack_integrity(
             &temp.path().to_path_buf(),
             "pkg",
             1,
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-            cache.clone(),
+            &cache,
         )
         .await;
 
         assert!(result.is_ok());
-        let cached = cache.ask(Query(1)).await.unwrap();
-        assert_eq!(cached, Some(true));
+        assert!(cache.is_verified(1));
     }
 
     #[tokio::test]
     async fn verify_pack_integrity_rejects_tampered_file() {
         let temp = write_temp_file(b"abc").await;
-        let cache = PackCacheActor::spawn(PackCacheActor::new());
+        let cache = PackVerificationCache::new();
 
         let response = verify_pack_integrity(
             &temp.path().to_path_buf(),
             "pkg",
             2,
             "0000000000000000000000000000000000000000000000000000000000000000",
-            cache.clone(),
+            &cache,
         )
         .await
         .unwrap_err();
@@ -556,14 +542,14 @@ mod tests {
     async fn verify_pack_integrity_uses_cache_on_second_request() {
         let temp = write_temp_file(b"abc").await;
         let path = temp.path().to_path_buf();
-        let cache = PackCacheActor::spawn(PackCacheActor::new());
+        let cache = PackVerificationCache::new();
 
         verify_pack_integrity(
             &path,
             "pkg",
             3,
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-            cache.clone(),
+            &cache,
         )
         .await
         .unwrap();
@@ -575,14 +561,13 @@ mod tests {
             "pkg",
             3,
             "0000000000000000000000000000000000000000000000000000000000000000",
-            cache.clone(),
+            &cache,
         )
         .await;
 
         assert!(second.is_ok());
 
-        let cached = cache.ask(Query(3)).await.unwrap();
-        assert_eq!(cached, Some(true));
+        assert!(cache.is_verified(3));
     }
 
     #[tokio::test]
