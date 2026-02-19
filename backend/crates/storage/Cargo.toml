@@ -12,3 +12,6 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
 iqrah-backend-domain = { path = "../domain" }
+
+[features]
+postgres-tests = []
