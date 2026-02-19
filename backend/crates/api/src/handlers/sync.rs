@@ -2,14 +2,18 @@
 
 use std::sync::Arc;
 
-use axum::{Json, extract::State};
+use axum::{
+    Json,
+    extract::{Path, Query, State},
+};
 use chrono::Utc;
 use validator::Validate;
 
 use crate::AppState;
-use crate::middleware::auth::AuthUser;
+use crate::middleware::auth::{AdminApiKey, AuthUser};
 use iqrah_backend_domain::{
-    DomainError, SyncPullRequest, SyncPullResponse, SyncPushRequest, SyncPushResponse,
+    AdminConflictListResponse, AdminConflictRecord, DomainError, SyncPullRequest, SyncPullResponse,
+    SyncPushRequest, SyncPushResponse,
 };
 
 /// Push local changes to server.
@@ -142,5 +146,41 @@ pub async fn sync_pull(
         changes,
         has_more,
         next_cursor,
+    }))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ConflictQuery {
+    pub limit: Option<usize>,
+}
+
+/// Admin-only conflict inspection endpoint.
+pub async fn admin_recent_conflicts(
+    State(state): State<Arc<AppState>>,
+    _admin: AdminApiKey,
+    Path(user_id): Path<uuid::Uuid>,
+    Query(query): Query<ConflictQuery>,
+) -> Result<Json<AdminConflictListResponse>, DomainError> {
+    let limit = query.limit.unwrap_or(50).min(200);
+
+    let rows = state
+        .sync_repo
+        .list_recent_conflicts(user_id, limit)
+        .await
+        .map_err(|e| DomainError::Database(e.to_string()))?;
+
+    Ok(Json(AdminConflictListResponse {
+        conflicts: rows
+            .into_iter()
+            .map(|row| AdminConflictRecord {
+                id: row.id,
+                user_id: row.user_id,
+                entity_type: row.entity_type,
+                entity_key: row.entity_key,
+                incoming_metadata: row.incoming_metadata,
+                winning_metadata: row.winning_metadata,
+                resolved_at: row.resolved_at.timestamp_millis(),
+            })
+            .collect(),
     }))
 }
