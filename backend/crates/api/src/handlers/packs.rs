@@ -7,7 +7,7 @@ use axum::{
     Json,
     body::Body,
     extract::{Path, Query, State},
-    http::{HeaderMap, StatusCode, header},
+    http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
@@ -136,7 +136,10 @@ pub async fn download_pack(
     let file_size = pack.size_bytes as u64;
 
     // Parse Range header
-    let (start, end) = parse_range_header(&headers, file_size);
+    let (start, end) = match parse_range_header(&headers, file_size) {
+        Ok(range) => range,
+        Err(()) => return Ok(range_not_satisfiable_response(file_size)),
+    };
     let content_length = end - start + 1;
 
     // Seek to start position
@@ -184,22 +187,60 @@ pub async fn download_pack(
 }
 
 /// Parse Range header, returns (start, end) byte positions.
-fn parse_range_header(headers: &HeaderMap, file_size: u64) -> (u64, u64) {
-    if let Some(range) = headers.get(header::RANGE)
-        && let Ok(range_str) = range.to_str()
-        && let Some(bytes_range) = range_str.strip_prefix("bytes=")
-    {
-        let parts: Vec<&str> = bytes_range.split('-').collect();
-        if parts.len() == 2 {
-            let start = parts[0].parse::<u64>().unwrap_or(0);
-            let end = parts[1]
-                .parse::<u64>()
-                .unwrap_or(file_size - 1)
-                .min(file_size - 1);
-            return (start, end);
-        }
+fn parse_range_header(headers: &HeaderMap, file_size: u64) -> Result<(u64, u64), ()> {
+    let Some(range) = headers.get(header::RANGE) else {
+        return Ok((0, file_size.saturating_sub(1)));
+    };
+
+    let range_str = range.to_str().map_err(|_| ())?;
+    let bytes_range = range_str.strip_prefix("bytes=").ok_or(())?;
+
+    if bytes_range.contains(',') {
+        return Err(());
     }
-    (0, file_size - 1)
+
+    let (start_str, end_str) = bytes_range.split_once('-').ok_or(())?;
+    let last_byte = file_size.saturating_sub(1);
+
+    if start_str.is_empty() {
+        let suffix_length = end_str.parse::<u64>().map_err(|_| ())?;
+        if suffix_length == 0 {
+            return Err(());
+        }
+
+        let start = if suffix_length >= file_size {
+            0
+        } else {
+            file_size - suffix_length
+        };
+        return Ok((start, last_byte));
+    }
+
+    let start = start_str.parse::<u64>().map_err(|_| ())?;
+    if start >= file_size {
+        return Err(());
+    }
+
+    if end_str.is_empty() {
+        return Ok((start, last_byte));
+    }
+
+    let end = end_str.parse::<u64>().map_err(|_| ())?;
+    if end < start {
+        return Err(());
+    }
+
+    Ok((start, end.min(last_byte)))
+}
+
+fn range_not_satisfiable_response(file_size: u64) -> Response {
+    Response::builder()
+        .status(StatusCode::RANGE_NOT_SATISFIABLE)
+        .header(header::ACCEPT_RANGES, "bytes")
+        .header(header::CONTENT_RANGE, format!("bytes */{}", file_size))
+        .header(header::CONTENT_LENGTH, HeaderValue::from_static("0"))
+        .body(Body::empty())
+        .expect("building range-not-satisfiable response should not fail")
 }
 
 /// Get pack manifest only.
@@ -224,4 +265,71 @@ pub async fn get_manifest(
 
     let base_url = &state.config.base_url;
     Ok(Json(PackDto::from_info(pack, base_url)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn headers_with_range(range: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::RANGE, HeaderValue::from_str(range).unwrap());
+        headers
+    }
+
+    #[test]
+    fn parse_range_header_accepts_partial_range() {
+        let headers = headers_with_range("bytes=100-199");
+
+        let parsed = parse_range_header(&headers, 1_000);
+
+        assert_eq!(parsed, Ok((100, 199)));
+    }
+
+    #[test]
+    fn parse_range_header_accepts_open_ended_range() {
+        let headers = headers_with_range("bytes=100-");
+
+        let parsed = parse_range_header(&headers, 1_000);
+
+        assert_eq!(parsed, Ok((100, 999)));
+    }
+
+    #[test]
+    fn parse_range_header_accepts_suffix_range() {
+        let headers = headers_with_range("bytes=-200");
+
+        let parsed = parse_range_header(&headers, 1_000);
+
+        assert_eq!(parsed, Ok((800, 999)));
+    }
+
+    #[test]
+    fn parse_range_header_rejects_malformed_range() {
+        let headers = headers_with_range("bytes=abc");
+
+        let parsed = parse_range_header(&headers, 1_000);
+
+        assert_eq!(parsed, Err(()));
+    }
+
+    #[test]
+    fn parse_range_header_rejects_out_of_bounds_range() {
+        let headers = headers_with_range("bytes=2000-3000");
+
+        let parsed = parse_range_header(&headers, 1_000);
+
+        assert_eq!(parsed, Err(()));
+    }
+
+    #[test]
+    fn range_not_satisfiable_response_sets_required_content_range() {
+        let response = range_not_satisfiable_response(1_000);
+
+        assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        assert_eq!(
+            response.headers().get(header::CONTENT_RANGE).unwrap(),
+            "bytes */1000"
+        );
+    }
 }
