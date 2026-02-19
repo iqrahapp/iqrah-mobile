@@ -160,3 +160,180 @@ async fn lww_prefers_newer_updates(pool: PgPool) -> Result<(), sqlx::Error> {
 
     Ok(())
 }
+
+fn total_changes_count(changes: &SyncChanges) -> usize {
+    changes.settings.len()
+        + changes.memory_states.len()
+        + changes.sessions.len()
+        + changes.session_items.len()
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn pull_limit_is_global_and_cursor_advances_precisely(
+    pool: PgPool,
+) -> Result<(), sqlx::Error> {
+    let user_id = Uuid::new_v4();
+    let device_id = Uuid::new_v4();
+
+    sqlx::query("INSERT INTO users (id, oauth_sub) VALUES ($1, $2)")
+        .bind(user_id)
+        .bind(format!("sub-{}", user_id))
+        .execute(&pool)
+        .await?;
+
+    let repo = SyncRepository::new(pool.clone());
+    repo.touch_device(user_id, device_id, None, None, None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(format!("touch_device failed: {e}")))?;
+
+    let session_ids = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
+    let item_ids = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
+
+    let changes = SyncChanges {
+        settings: vec![
+            SettingChange {
+                key: "a".to_string(),
+                value: json!(1),
+                client_updated_at: 1,
+            },
+            SettingChange {
+                key: "b".to_string(),
+                value: json!(2),
+                client_updated_at: 1,
+            },
+            SettingChange {
+                key: "c".to_string(),
+                value: json!(3),
+                client_updated_at: 1,
+            },
+        ],
+        memory_states: vec![
+            MemoryStateChange {
+                node_id: 10,
+                energy: 0.2,
+                fsrs_stability: None,
+                fsrs_difficulty: None,
+                last_reviewed_at: None,
+                next_review_at: None,
+                client_updated_at: 1,
+            },
+            MemoryStateChange {
+                node_id: 20,
+                energy: 0.3,
+                fsrs_stability: None,
+                fsrs_difficulty: None,
+                last_reviewed_at: None,
+                next_review_at: None,
+                client_updated_at: 1,
+            },
+            MemoryStateChange {
+                node_id: 30,
+                energy: 0.4,
+                fsrs_stability: None,
+                fsrs_difficulty: None,
+                last_reviewed_at: None,
+                next_review_at: None,
+                client_updated_at: 1,
+            },
+        ],
+        sessions: vec![
+            SessionChange {
+                id: session_ids[0],
+                goal_id: None,
+                started_at: 1,
+                completed_at: None,
+                items_completed: 1,
+                client_updated_at: 1,
+            },
+            SessionChange {
+                id: session_ids[1],
+                goal_id: None,
+                started_at: 1,
+                completed_at: None,
+                items_completed: 1,
+                client_updated_at: 1,
+            },
+            SessionChange {
+                id: session_ids[2],
+                goal_id: None,
+                started_at: 1,
+                completed_at: None,
+                items_completed: 1,
+                client_updated_at: 1,
+            },
+        ],
+        session_items: vec![
+            SessionItemChange {
+                id: item_ids[0],
+                session_id: session_ids[0],
+                node_id: 10,
+                exercise_type: "translate".to_string(),
+                grade: Some(3),
+                duration_ms: Some(1000),
+                client_updated_at: 1,
+            },
+            SessionItemChange {
+                id: item_ids[1],
+                session_id: session_ids[1],
+                node_id: 20,
+                exercise_type: "translate".to_string(),
+                grade: Some(3),
+                duration_ms: Some(1000),
+                client_updated_at: 1,
+            },
+            SessionItemChange {
+                id: item_ids[2],
+                session_id: session_ids[2],
+                node_id: 30,
+                exercise_type: "translate".to_string(),
+                grade: Some(3),
+                duration_ms: Some(1000),
+                client_updated_at: 1,
+            },
+        ],
+    };
+
+    repo.apply_changes(user_id, device_id, &changes)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(format!("apply_changes failed: {e}")))?;
+
+    let limit = 5;
+    let (first_page, has_more, next_cursor) = repo
+        .get_changes_since(user_id, 0, limit, None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(format!("get_changes_since failed: {e}")))?;
+
+    assert!(has_more);
+    assert!(total_changes_count(&first_page) <= limit);
+
+    let cursor = next_cursor.expect("next cursor required for partial page");
+    assert_eq!(cursor.settings.as_ref().map(|c| c.key.as_str()), Some("c"));
+    assert_eq!(cursor.memory_states.as_ref().map(|c| c.node_id), Some(20));
+    assert!(cursor.sessions.is_none());
+    assert!(cursor.session_items.is_none());
+
+    let (second_page, has_more, next_cursor) = repo
+        .get_changes_since(user_id, 0, limit, Some(&cursor))
+        .await
+        .map_err(|e| sqlx::Error::Protocol(format!("get_changes_since failed: {e}")))?;
+
+    assert!(has_more);
+    assert!(total_changes_count(&second_page) <= limit);
+
+    let next_cursor = next_cursor.expect("next cursor required for remaining records");
+    let (third_page, has_more, next_cursor) = repo
+        .get_changes_since(user_id, 0, limit, Some(&next_cursor))
+        .await
+        .map_err(|e| sqlx::Error::Protocol(format!("get_changes_since failed: {e}")))?;
+
+    assert!(!has_more);
+    assert!(next_cursor.is_none());
+    assert!(total_changes_count(&third_page) <= limit);
+
+    let total = total_changes_count(&first_page)
+        + total_changes_count(&second_page)
+        + total_changes_count(&third_page);
+    assert_eq!(total, 12);
+
+    Ok(())
+}
