@@ -585,12 +585,15 @@ mod tests {
             &path,
             "pkg",
             3,
-            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            "0000000000000000000000000000000000000000000000000000000000000000",
             cache.clone(),
         )
         .await;
 
         assert!(second.is_ok());
+
+        let cached = cache.ask(CacheQuery { pack_version_id: 3 }).await.unwrap();
+        assert_eq!(cached, Some(true));
     }
 
     #[tokio::test]
