@@ -66,7 +66,7 @@ flutter_rust_bridge_codegen generate
 | 6 | `#[allow(dead_code)]` requires an inline comment explaining why. Never suppress silently. |
 | 7 | `unwrap()` / `expect()` in non-test code is **BANNED**. Propagate with `?` or convert to `DomainError`. |
 | 8 | `Arc<Mutex<T>>`, `Arc<RwLock<T>>`, and `DashMap` for shared mutable state are **BANNED**. |
-| 9 | All shared mutable state must use an actor. Use `ractor` when the caller needs a response (RPC via `call!`); use a plain `tokio::mpsc` task for fire-and-forget. Handlers hold a cloneable `ActorRef<A>` or `Sender<Msg>` in `AppState`. All actors live under `backend/crates/api/src/actors/`. See `docs/backend/CONCURRENCY.md` for the full pattern and rework spec. |
+| 9 | All shared mutable state must use a `kameo` actor. RPC (caller needs a return value) uses `actor_ref.ask(msg).await`; fire-and-forget uses `actor_ref.tell(msg).await`. Handlers hold a cloneable `ActorRef<A>` in `AppState`. All actors live under `backend/crates/api/src/actors/`. See `docs/backend/CONCURRENCY.md` for the full pattern and rework spec. |
 
 ### Flutter / Dart
 

@@ -13,7 +13,7 @@ The backend has **one shared mutable primitive** that uses the wrong model:
 
 Everything else — repositories, pool, trait objects, DB transactions — is correctly designed and must not be changed.
 
-**Verdict:** Replace `Arc<DashMap>` with a `PackCacheActor` using `ractor`. This eliminates internal shard locks, centralises cache ownership, and establishes the pattern all future shared state must follow.
+**Verdict:** Replace `Arc<DashMap>` with a `PackCacheActor` using `kameo`. This eliminates internal shard locks, centralises cache ownership, and establishes the pattern all future shared state must follow.
 
 ---
 
@@ -21,7 +21,7 @@ Everything else — repositories, pool, trait objects, DB transactions — is co
 
 | Primitive | Location | Verdict |
 |-----------|----------|---------|
-| `Arc<DashMap<i32, bool>>` (`verified_packs`) | `lib.rs:38`, `packs.rs:180,209,211,239`, `main.rs:49` | **REPLACE** with ractor actor |
+| `Arc<DashMap<i32, bool>>` (`verified_packs`) | `lib.rs:38`, `packs.rs:180,209,211,239`, `main.rs:49` | **REPLACE** with kameo actor |
 | `Arc<dyn IdTokenVerifier>` | `lib.rs:37`, `auth.rs:138` | OK — shared immutable trait object |
 | `Arc<AppState>` | every handler via Axum `State` extractor | OK — Axum standard, read-only after init |
 | `spawn_blocking` (Google JWT verify) | `auth.rs:140` | OK — correct use for sync crypto call |
@@ -67,7 +67,7 @@ No single file owns the cache. Adding a new operation (e.g. a TTL eviction) requ
 3. insert(version_id, true)   →  write to map
 ```
 
-Steps 1–3 are not atomic. If N concurrent requests arrive for the same version_id on a cold cache, all N pass the `contains_key` check and all N compute the SHA256. An actor serialises the check-and-insert, so only the first request computes the hash — all others wait for the actor's `Query` response and get `true` on their second call.
+Steps 1–3 are not atomic. If N concurrent requests arrive for the same version_id on a cold cache, all N pass the `contains_key` check and all N compute the SHA256. An actor serialises the check-and-insert, so only the first request computes the hash — all others wait for the actor's `ask` response and get `true` on their second call.
 
 **4. Wrong precedent**
 
@@ -81,64 +81,54 @@ DashMap for the pack cache today means developers reach for `Arc<DashMap>` (or w
 
 > A single Tokio task owns the state. Everything else communicates with it by sending messages. No shared reference to the state exists outside the task.
 
-### When to use ractor vs custom mpsc
+### Tool: kameo
 
-| Situation | Tool |
-|-----------|------|
-| Caller needs a return value (RPC) | `ractor` — `call!` macro handles the oneshot pairing |
-| Fire-and-forget, no response needed | `tokio::mpsc` task or `ractor` with `cast!` |
-| Actor needs supervision / restart | `ractor` |
-| Simple, isolated, no RPC | plain `tokio::mpsc` task |
+`kameo` is a Tokio-native actor framework (v0.19, MSRV 1.88). It uses native async traits (no `async_trait` macro), per-message structs with associated reply types, and a clean `ask`/`tell` API.
 
-The pack cache needs RPC (`"is this version already verified?"` → `bool`), so `ractor` is the right choice.
+| Operation | Method | Use when |
+|-----------|--------|----------|
+| RPC — caller needs a return value | `actor_ref.ask(msg).await` | Query operations |
+| Fire-and-forget — no reply needed | `actor_ref.tell(msg).await` | Mutations, invalidations |
 
-### ractor API recap
+`ActorRef<A>` is `Clone` — store one in `AppState`, clone cheaply per handler.
+
+### kameo API recap
 
 ```rust
-use ractor::{Actor, ActorRef, ActorProcessingErr, RpcReplyPort};
+use kameo::Actor;
+use kameo::message::{Context, Message};
 
-// 1. Message enum
-#[derive(Debug)]
-pub enum MyMsg {
-    Query(SomeKey, RpcReplyPort<bool>),   // RPC: caller awaits reply
-    Insert(SomeKey),                       // fire-and-forget
+// 1. Actor struct — owns its state directly
+#[derive(Actor)]
+struct MyActor {
+    cache: HashMap<i32, bool>,
 }
-impl ractor::Message for MyMsg {}
 
-// 2. Actor impl
-pub struct MyActor;
+// 2. One message struct per operation
+struct Query(i32);   // RPC
+struct Insert(i32);  // fire-and-forget
 
-impl Actor for MyActor {
-    type Msg   = MyMsg;
-    type State = HashMap<SomeKey, bool>;
-    type Arguments = ();
-
-    async fn pre_start(
-        &self, _myself: ActorRef<Self::Msg>, _args: ()
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(HashMap::new())
-    }
-
-    async fn handle(
-        &self, _myself: ActorRef<Self::Msg>,
-        msg: Self::Msg, state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        match msg {
-            MyMsg::Query(key, reply) => {
-                let _ = reply.send(state.contains_key(&key));
-            }
-            MyMsg::Insert(key) => { state.insert(key, true); }
-        }
-        Ok(())
+// 3. Implement Message<M> for each
+impl Message<Query> for MyActor {
+    type Reply = bool;
+    async fn handle(&mut self, msg: Query, _: &mut Context<Self, Self::Reply>) -> bool {
+        self.cache.contains_key(&msg.0)
     }
 }
 
-// 3. Spawn (once, at startup) — returns (ActorRef, JoinHandle)
-let (actor_ref, _handle) = Actor::spawn(None, MyActor, ()).await?;
+impl Message<Insert> for MyActor {
+    type Reply = ();
+    async fn handle(&mut self, msg: Insert, _: &mut Context<Self, Self::Reply>) {
+        self.cache.insert(msg.0, true);
+    }
+}
 
-// 4. Usage from handlers (ActorRef is Clone)
-let is_cached = call!(actor_ref, MyMsg::Query, key)?;   // RPC
-cast!(actor_ref, MyMsg::Insert(key))?;                  // fire-and-forget
+// 4. Spawn — returns ActorRef<A> directly (not a tuple)
+let actor_ref = MyActor::spawn(MyActor { cache: HashMap::new() });
+
+// 5. Usage from handlers (ActorRef is Clone)
+let found: bool = actor_ref.ask(Query(42)).await?;     // RPC
+actor_ref.tell(Insert(42)).await?;                      // fire-and-forget
 ```
 
 All actors live under `backend/crates/api/src/actors/`.
@@ -152,64 +142,64 @@ All actors live under `backend/crates/api/src/actors/`.
 Add to `backend/crates/api/Cargo.toml`:
 
 ```toml
-ractor = "0.15"
+kameo = "0.19"
 ```
 
 ### New file: `backend/crates/api/src/actors/pack_cache.rs`
 
 ```rust
 use std::collections::HashMap;
-use ractor::{Actor, ActorProcessingErr, ActorRef, RpcReplyPort};
+use kameo::Actor;
+use kameo::message::{Context, Message};
 
-#[derive(Debug)]
-pub enum PackCacheMsg {
-    /// RPC: returns true if version_id is already verified.
-    Query(i32, RpcReplyPort<bool>),
-    /// Mark version_id as verified.
-    Insert(i32),
-    /// Remove a single version from the cache (on pack version invalidation).
-    Invalidate(i32),
-    /// Drop all entries (called when a new pack version is registered).
-    Clear,
+#[derive(Actor)]
+pub struct PackCacheActor {
+    cache: HashMap<i32, bool>,
 }
-impl ractor::Message for PackCacheMsg {}
 
-pub struct PackCacheActor;
-
-impl Actor for PackCacheActor {
-    type Msg       = PackCacheMsg;
-    type State     = HashMap<i32, bool>;
-    type Arguments = ();
-
-    async fn pre_start(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        _args: (),
-    ) -> Result<Self::State, ActorProcessingErr> {
-        Ok(HashMap::new())
+impl PackCacheActor {
+    pub fn new() -> Self {
+        Self { cache: HashMap::new() }
     }
+}
 
-    async fn handle(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        msg: Self::Msg,
-        state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        match msg {
-            PackCacheMsg::Query(version_id, reply) => {
-                let _ = reply.send(state.contains_key(&version_id));
-            }
-            PackCacheMsg::Insert(version_id) => {
-                state.insert(version_id, true);
-            }
-            PackCacheMsg::Invalidate(version_id) => {
-                state.remove(&version_id);
-            }
-            PackCacheMsg::Clear => {
-                state.clear();
-            }
-        }
-        Ok(())
+/// RPC: returns true if version_id is already verified.
+pub struct Query(pub i32);
+
+/// Mark version_id as verified.
+pub struct Insert(pub i32);
+
+/// Remove a single version from the cache (on pack version invalidation).
+pub struct Invalidate(pub i32);
+
+/// Drop all entries (called when a new pack version is registered).
+pub struct Clear;
+
+impl Message<Query> for PackCacheActor {
+    type Reply = bool;
+    async fn handle(&mut self, msg: Query, _: &mut Context<Self, Self::Reply>) -> bool {
+        self.cache.contains_key(&msg.0)
+    }
+}
+
+impl Message<Insert> for PackCacheActor {
+    type Reply = ();
+    async fn handle(&mut self, msg: Insert, _: &mut Context<Self, Self::Reply>) {
+        self.cache.insert(msg.0, true);
+    }
+}
+
+impl Message<Invalidate> for PackCacheActor {
+    type Reply = ();
+    async fn handle(&mut self, msg: Invalidate, _: &mut Context<Self, Self::Reply>) {
+        self.cache.remove(&msg.0);
+    }
+}
+
+impl Message<Clear> for PackCacheActor {
+    type Reply = ();
+    async fn handle(&mut self, _: Clear, _: &mut Context<Self, Self::Reply>) {
+        self.cache.clear();
     }
 }
 ```
@@ -229,7 +219,7 @@ pub mod pack_cache;
 pub verified_packs: Arc<DashMap<i32, bool>>,
 
 // After
-pub pack_cache: ActorRef<PackCacheMsg>,
+pub pack_cache: ActorRef<PackCacheActor>,
 ```
 
 **`invalidate_pack_cache`** — replace:
@@ -239,7 +229,7 @@ pub pack_cache: ActorRef<PackCacheMsg>,
 self.verified_packs.remove(&pack_version_id);
 
 // After
-cast!(self.pack_cache, PackCacheMsg::Invalidate(pack_version_id))?;
+let _ = self.pack_cache.tell(Invalidate(pack_version_id)).await;
 ```
 
 **`add_pack_version`** — replace:
@@ -249,7 +239,7 @@ cast!(self.pack_cache, PackCacheMsg::Invalidate(pack_version_id))?;
 self.verified_packs.clear();
 
 // After
-cast!(self.pack_cache, PackCacheMsg::Clear)?;
+let _ = self.pack_cache.tell(Clear).await;
 ```
 
 Remove `use dashmap::DashMap;` import.
@@ -262,10 +252,8 @@ Remove `use dashmap::DashMap;` import.
 // Before
 verified_packs: Arc::new(DashMap::new()),
 
-// After — spawn returns (ActorRef, JoinHandle)
-let (pack_cache, _handle) = Actor::spawn(None, PackCacheActor, ())
-    .await
-    .expect("failed to start PackCacheActor");
+// After — spawn returns ActorRef<PackCacheActor> directly
+let pack_cache = PackCacheActor::spawn(PackCacheActor::new());
 // ...
 pack_cache,
 ```
@@ -274,7 +262,7 @@ Remove `use dashmap::DashMap;` import.
 
 ### Change: `backend/crates/api/src/handlers/packs.rs`
 
-**`verify_pack_integrity` signature** — replace `&DashMap<i32, bool>` parameter with `ActorRef<PackCacheMsg>`.
+**`verify_pack_integrity` signature** — replace `&DashMap<i32, bool>` parameter with `ActorRef<PackCacheActor>`.
 
 **Cache read** — replace:
 
@@ -287,47 +275,37 @@ if verified_packs.contains_key(&version_id) {
 verified_packs.insert(version_id, true);
 
 // After
-if call!(pack_cache, PackCacheMsg::Query, version_id)? {
+let is_cached = pack_cache
+    .ask(Query(version_id))
+    .await
+    .map_err(|e| DomainError::Internal(anyhow::anyhow!("pack cache: {}", e)))?;
+
+if is_cached {
     return Ok(());
 }
 // ...
-cast!(pack_cache, PackCacheMsg::Insert(version_id))?;
+let _ = pack_cache.tell(Insert(version_id)).await;
 ```
 
 Remove `use dashmap::DashMap;` import.
 
-### Error mapping
+### Error handling note
 
-`call!` and `cast!` return ractor-specific errors (`ractor::RactorErr`, `ractor::MessagingErr`). Handlers return `DomainError`. Add a `From` impl in `domain/src/errors.rs` or map inline:
+`ask` returns `Result<Reply, SendError<M, E>>`. Map this to `DomainError::Internal` inline in the `api` crate — do not add a `From` impl in `domain` as that would couple the domain crate to kameo.
 
-```rust
-// Option A: From impl (preferred — keeps handlers clean)
-impl From<ractor::RactorErr<PackCacheMsg>> for DomainError {
-    fn from(err: ractor::RactorErr<PackCacheMsg>) -> Self {
-        DomainError::Internal(anyhow::anyhow!("actor error: {}", err))
-    }
-}
-
-// Option B: inline .map_err (if you want to avoid coupling domain to ractor)
-call!(pack_cache, PackCacheMsg::Query, version_id)
-    .map_err(|e| DomainError::Internal(anyhow::anyhow!("pack cache actor: {}", e)))?;
-```
-
-Option B is recommended — it keeps the `domain` crate free of ractor dependency. The `map_err` lives in the `api` crate where ractor is already a dependency.
+`tell` returns `Result<(), SendError<M>>`. For fire-and-forget cache mutations (Insert, Invalidate, Clear), swallowing the error with `let _ = ...` is acceptable — if the actor has crashed the request can still succeed (the next download will re-verify).
 
 ### `AppState` Clone
 
-`ActorRef<PackCacheMsg>` implements `Clone`, so `#[derive(Clone)]` on `AppState` continues to work with no changes.
+`ActorRef<PackCacheActor>` implements `Clone`, so `#[derive(Clone)]` on `AppState` continues to work with no changes.
 
 ### Change: `backend/Cargo.toml`
 
-Remove `dashmap` if it was declared (it was a transitive dep via AppState — check after removing all usages).
+Remove `dashmap` if it was declared (it was pulled as a transitive dep — verify after removing all usages).
 
 ---
 
 ## What Must Not Change
-
-These patterns are correct and must be preserved:
 
 | Component | Why it is correct |
 |-----------|-------------------|
@@ -343,8 +321,8 @@ These patterns are correct and must be preserved:
 
 Before adding any field to `AppState` that is mutated after startup, ask:
 
-1. Does a handler need a response from the operation? → use `ractor` + `call!`
-2. Is it fire-and-forget? → `ractor` with `cast!` or a plain `tokio::mpsc` task
+1. Does a handler need a response from the operation? → use `actor_ref.ask(msg).await`
+2. Is it fire-and-forget? → use `actor_ref.tell(msg).await`
 3. Is the state truly read-only after init? → `Arc<T>` or a plain field is fine
 
 `Arc<Mutex<T>>`, `Arc<RwLock<T>>`, and `Arc<DashMap<K,V>>` for mutable state are never acceptable.
@@ -355,9 +333,9 @@ Before adding any field to `AppState` that is mutated after startup, ask:
 
 For the scheduling agent — execute in order, each is independently verifiable:
 
-**Task 1 — Add ractor dependency**
+**Task 1 — Add kameo dependency**
 - File: `backend/crates/api/Cargo.toml`
-- Add `ractor = "0.15"` under `[dependencies]`
+- Add `kameo = "0.19"` under `[dependencies]`
 - Run `cargo build -p iqrah-backend-api` to confirm it resolves
 
 **Task 2 — Create `PackCacheActor`**
@@ -368,8 +346,8 @@ For the scheduling agent — execute in order, each is independently verifiable:
 
 **Task 3 — Update `AppState`**
 - File: `backend/crates/api/src/lib.rs`
-- Replace `verified_packs: Arc<DashMap<i32, bool>>` with `pack_cache: ActorRef<PackCacheMsg>`
-- Update `invalidate_pack_cache` and `add_pack_version` to use `cast!`
+- Replace `verified_packs: Arc<DashMap<i32, bool>>` with `pack_cache: ActorRef<PackCacheActor>`
+- Update `invalidate_pack_cache` and `add_pack_version` to use `tell`
 - Remove `use dashmap::DashMap`
 
 **Task 4 — Update `main.rs`**
@@ -380,8 +358,8 @@ For the scheduling agent — execute in order, each is independently verifiable:
 
 **Task 5 — Update `packs.rs`**
 - File: `backend/crates/api/src/handlers/packs.rs`
-- Change `verify_pack_integrity` signature: replace `&DashMap<i32, bool>` with `ActorRef<PackCacheMsg>`
-- Replace `contains_key` with `call!` and `insert` with `cast!`
+- Change `verify_pack_integrity` signature: replace `&DashMap<i32, bool>` with `ActorRef<PackCacheActor>`
+- Replace `contains_key` + `insert` with `ask(Query(...))` + `tell(Insert(...))`
 - Remove `use dashmap::DashMap`
 - Update call sites to pass `state.pack_cache.clone()`
 
