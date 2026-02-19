@@ -1,80 +1,40 @@
 # iqrah-backend-storage
 
-Storage layer for the Iqrah backend, providing PostgreSQL repositories for users, packs, and sync operations.
+Storage layer for the Iqrah backend, providing repositories for users, packs, and sync operations.
 
-## Testing
+## Testing Strategy
 
-This crate uses `sqlx::test` macro for integration tests, which requires a PostgreSQL database to run.
+### Default: SQLite integration tests (fast, sandbox-safe)
 
-### Prerequisites
-
-1. **PostgreSQL Server**: You need a running PostgreSQL instance
-2. **Test Database**: A database for running tests (will be created automatically by sqlx::test)
-3. **DATABASE_URL Environment Variable**: Must be set before running tests
-
-### Setting Up Tests
+Run:
 
 ```bash
-# Option 1: Set DATABASE_URL for a local PostgreSQL instance
-export DATABASE_URL="postgresql://postgres:password@localhost/iqrah_test"
-
-# Option 2: Use a temporary PostgreSQL instance (Docker)
-docker run --name postgres-test -e POSTGRES_PASSWORD=testpass -p 5432:5432 -d postgres:15
-export DATABASE_URL="postgresql://postgres:testpass@localhost/iqrah_test"
-
-# Run tests
-cargo test --package iqrah-backend-storage
-
-# Or run all backend tests
 cd backend
-cargo test --all-features
+cargo test -p iqrah-backend-storage --test integration_sqlite_tests
 ```
 
-### How sqlx::test Works
+These tests use `tests/integration_sqlite/test_support.rs`, which:
+- creates a unique file-backed SQLite DB per test
+- runs migrations automatically from `migrations_sqlite/` using `sqlx::migrate!`
+- enables `PRAGMA foreign_keys=ON`
+- sets WAL mode for local concurrency friendliness
+- removes DB files after test completion
 
-The `#[sqlx::test(migrations = "../../migrations")]` macro:
-1. Creates a fresh test database for each test function
-2. Runs all migrations from the specified directory
-3. Provides an isolated `PgPool` to the test
-4. Cleans up after the test completes
+To keep DB files for debugging:
 
-This ensures tests are:
-- **Isolated**: Each test gets a clean database
-- **Repeatable**: No state leakage between tests
-- **Migration-validated**: Tests run against the actual schema
-
-### CI/CD Setup
-
-For continuous integration, ensure `DATABASE_URL` is configured in your CI environment:
-
-```yaml
-# Example GitHub Actions
-env:
-  DATABASE_URL: postgresql://postgres:postgres@localhost/test_db
-
-services:
-  postgres:
-    image: postgres:15
-    env:
-      POSTGRES_PASSWORD: postgres
-    options: >-
-      --health-cmd pg_isready
-      --health-interval 10s
-      --health-timeout 5s
-      --health-retries 5
+```bash
+TEST_KEEP_DB=1 cargo test -p iqrah-backend-storage --test integration_sqlite_tests
 ```
 
-### Without DATABASE_URL
+### Existing Postgres tests
 
-If `DATABASE_URL` is not set, tests will fail with:
+Postgres-specific tests are feature-gated and disabled by default.
+
+```bash
+RUN_PG_TESTS=1 DATABASE_URL=postgres://... cargo test -p iqrah-backend-storage --tests --features postgres-tests
 ```
-error: DATABASE_URL environment variable required
-```
 
-This is intentional - storage tests require a real database to verify SQL queries and data integrity.
+## Future Postgres expansion (placeholder)
 
-## Repository Structure
-
-- `pack/` - Content pack storage and retrieval
-- `sync/` - Multi-device sync with last-write-wins (LWW)
-- `user/` - User and device management
+`tests/integration_postgres/` is reserved for future Postgres-specific integration tests.
+The intended gate is `RUN_PG_TESTS=1` once those are added.

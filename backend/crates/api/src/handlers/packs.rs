@@ -159,7 +159,7 @@ async fn build_download_response(
     package_id: &str,
 ) -> Result<Response, DomainError> {
     // Parse Range header
-    let parsed_range = match parse_range_header(&headers, file_size) {
+    let parsed_range = match parse_range_header(headers, file_size) {
         Ok(range) => range,
         Err(RangeParseError::Invalid | RangeParseError::Unsatisfiable) => {
             let response = Response::builder()
@@ -294,6 +294,30 @@ fn parse_range_header(
     };
 
     Ok(Some(range))
+}
+
+/// Get pack manifest only.
+pub async fn get_manifest(
+    State(state): State<Arc<AppState>>,
+    Path(package_id): Path<String>,
+) -> Result<Json<PackDto>, DomainError> {
+    tracing::info!(package_id = %package_id, "Getting pack manifest");
+
+    let pack = state
+        .pack_repo
+        .get_pack(&package_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get pack {}: {}", package_id, e);
+            DomainError::Database(e.to_string())
+        })?
+        .ok_or_else(|| {
+            tracing::warn!(package_id = %package_id, "Pack not found");
+            DomainError::NotFound(format!("Pack '{}' not found", package_id))
+        })?;
+
+    let base_url = &state.config.base_url;
+    Ok(Json(PackDto::from_info(pack, base_url)))
 }
 
 #[cfg(test)]
@@ -437,28 +461,4 @@ mod tests {
             .unwrap();
         assert!(body.is_empty());
     }
-}
-
-/// Get pack manifest only.
-pub async fn get_manifest(
-    State(state): State<Arc<AppState>>,
-    Path(package_id): Path<String>,
-) -> Result<Json<PackDto>, DomainError> {
-    tracing::info!(package_id = %package_id, "Getting pack manifest");
-
-    let pack = state
-        .pack_repo
-        .get_pack(&package_id)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to get pack {}: {}", package_id, e);
-            DomainError::Database(e.to_string())
-        })?
-        .ok_or_else(|| {
-            tracing::warn!(package_id = %package_id, "Pack not found");
-            DomainError::NotFound(format!("Pack '{}' not found", package_id))
-        })?;
-
-    let base_url = &state.config.base_url;
-    Ok(Json(PackDto::from_info(pack, base_url)))
 }

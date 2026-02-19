@@ -15,7 +15,7 @@ env:
 
 jobs:
   check:
-    name: Check & Test
+    name: Check, Test & Coverage
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -47,6 +47,9 @@ jobs:
         with:
           workspaces: backend
 
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -58,3 +61,9 @@ jobs:
           DATABASE_URL: postgres://test:test@localhost:5432/test
           JWT_SECRET: test-secret
         run: cargo test --all
+
+      - name: Run backend coverage (85% line minimum)
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/test
+          JWT_SECRET: test-secret
+        run: cargo llvm-cov --workspace --summary-only --fail-under-lines 85
