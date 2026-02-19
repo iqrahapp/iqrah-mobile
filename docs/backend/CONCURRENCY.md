@@ -305,6 +305,32 @@ Remove `dashmap` if it was declared (it was pulled as a transitive dep — verif
 
 ---
 
+## Pack Cache Actor: Deduplication Limitation
+
+The design above replaces `DashMap` with an actor that caches SHA256 *results*. It does not deduplicate concurrent *computations*. Under N concurrent first-requests for the same cold version_id, all N will:
+
+1. `ask(Query(id))` → `false`
+2. Start computing SHA256 independently
+3. `tell(Insert(id))` when done (idempotent, all N writes are no-ops after the first)
+
+This is the same race as with DashMap — the actor just owns the state more cleanly.
+
+**If deduplication of work matters** (large pack files, heavy SHA256 load), the actor can be extended to track in-flight computations. The actor would hold a `HashMap<i32, Vec<oneshot::Sender<bool>>>`: on a `Query` for an in-flight version_id, the actor parks the reply sender and resolves all of them when `Insert` arrives. This is a future improvement, not a blocker for the initial rework.
+
+---
+
+## Future Actor Candidates
+
+The following features are currently absent from the backend (documented in `docs/backend/AUDIT.md`). When they are implemented, they **must** use actors for any shared mutable state — do not reach for `Mutex` or `DashMap`.
+
+| Feature | Why an actor | When triggered |
+|---------|-------------|----------------|
+| Rate limiting | Per-IP or per-user request counters are shared mutable state | When `tower_governor` (already in deps) is wired up, or a custom rate limiter is built |
+| JWT token cache | Caching verified tokens to avoid re-running `decode` on every request is shared mutable state | If JWT verification becomes a latency bottleneck |
+| In-flight download tracking | Tracking active streams to enforce per-user concurrency limits or cancel on disconnect | If download concurrency control is needed |
+
+---
+
 ## What Must Not Change
 
 | Component | Why it is correct |
