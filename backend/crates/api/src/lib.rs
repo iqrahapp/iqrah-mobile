@@ -21,7 +21,7 @@ use iqrah_backend_storage::{PackRepository, SyncRepository, UserRepository, chec
 use sqlx::PgPool;
 
 use handlers::auth::IdTokenVerifier;
-use handlers::packs::{download_pack, get_manifest, list_packs};
+use handlers::packs::{download_pack, get_global_manifest, get_manifest, list_packs};
 use handlers::sync::{admin_recent_conflicts, sync_pull, sync_push};
 
 /// Application state shared across handlers.
@@ -42,6 +42,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/v1/ready", get(ready))
         .route("/v1/auth/google", post(handlers::auth::google_auth))
         .route("/v1/packs/available", get(list_packs))
+        .route("/v1/packs/manifest", get(get_global_manifest))
         .route("/v1/packs/{id}/download", get(download_pack))
         .route("/v1/packs/{id}/manifest", get(get_manifest))
         .route("/v1/sync/push", post(sync_push))

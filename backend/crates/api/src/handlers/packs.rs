@@ -15,7 +15,7 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
-use iqrah_backend_domain::DomainError;
+use iqrah_backend_domain::{DomainError, PackManifestEntry, PackManifestResponse};
 use iqrah_backend_storage::PackInfo;
 
 use crate::AppState;
@@ -101,6 +101,41 @@ pub async fn list_packs(
     Ok(Json(ListPacksResponse { packs: dtos }))
 }
 
+/// Get global manifest for all published active packs.
+pub async fn get_global_manifest(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<PackManifestResponse>, DomainError> {
+    tracing::info!("Getting global pack manifest");
+
+    let packs = state
+        .pack_repo
+        .list_active_pack_versions()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to list active pack versions: {}", e);
+            DomainError::Database(e.to_string())
+        })?;
+
+    let base_url = &state.config.base_url;
+    let manifest_entries = packs
+        .into_iter()
+        .map(|pack| PackManifestEntry {
+            id: pack.id.clone(),
+            name: pack.name,
+            description: pack.description,
+            pack_type: pack.pack_type,
+            version: pack.version,
+            sha256: pack.sha256,
+            file_size_bytes: pack.file_size_bytes,
+            created_at: pack.created_at,
+            download_url: format!("{}/v1/packs/{}/download", base_url, pack.id),
+        })
+        .collect();
+
+    Ok(Json(PackManifestResponse {
+        packs: manifest_entries,
+    }))
+}
 /// Download a pack file with range support.
 pub async fn download_pack(
     State(state): State<Arc<AppState>>,

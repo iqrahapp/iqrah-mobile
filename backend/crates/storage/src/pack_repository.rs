@@ -43,6 +43,19 @@ pub struct PackInfo {
     pub file_path: String,
 }
 
+/// Active pack version info for global manifest responses.
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct PackVersionInfo {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub pack_type: String,
+    pub version: String,
+    pub sha256: String,
+    pub file_size_bytes: i64,
+    pub created_at: DateTime<Utc>,
+}
+
 /// Pack repository.
 #[derive(Clone)]
 pub struct PackRepository {
@@ -114,6 +127,30 @@ impl PackRepository {
         .map_err(StorageError::Query)?;
 
         Ok(row.map(|r| r.into()))
+    }
+
+    /// List all active versions for published packs.
+    pub async fn list_active_pack_versions(&self) -> Result<Vec<PackVersionInfo>, StorageError> {
+        sqlx::query_as::<_, PackVersionInfo>(
+            r#"
+            SELECT
+                p.package_id AS id,
+                COALESCE(p.name, p.package_id) AS name,
+                p.description,
+                p.pack_type,
+                pv.version,
+                pv.sha256,
+                pv.size_bytes AS file_size_bytes,
+                pv.published_at AS created_at
+            FROM packs p
+            JOIN pack_versions pv ON p.package_id = pv.package_id
+            WHERE p.status = 'published' AND pv.is_active = true
+            ORDER BY p.package_id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(StorageError::Query)
     }
 
     /// Register a new pack.

@@ -51,6 +51,25 @@ pub struct Pack {
     pub created_at: DateTime<Utc>,
 }
 
+/// Global manifest entry for a published active pack.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PackManifestEntry {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub pack_type: String,
+    pub version: String,
+    pub sha256: String,
+    pub file_size_bytes: i64,
+    pub created_at: DateTime<Utc>,
+    pub download_url: String,
+}
+
+/// Global pack manifest response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PackManifestResponse {
+    pub packs: Vec<PackManifestEntry>,
+}
 /// Health check response.
 #[derive(Debug, Serialize)]
 pub struct HealthResponse {

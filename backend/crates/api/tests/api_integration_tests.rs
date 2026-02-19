@@ -44,6 +44,7 @@ fn test_state(pool: PgPool, pack_dir: String) -> Arc<AppState> {
             google_client_id: "test-client-id".to_string(),
             bind_address: "127.0.0.1:0".to_string(),
             base_url: "http://localhost:8080".to_string(),
+            admin_api_key: "".to_string(),
         },
         start_time: Instant::now(),
     })
@@ -225,6 +226,138 @@ async fn auth_pack_sync_and_error_paths(pool: PgPool) -> Result<(), Box<dyn std:
         )
         .await?;
     assert_eq!(invalid_pull.status(), StatusCode::BAD_REQUEST);
+
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn global_manifest_returns_200_and_expected_shape(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = build_router(test_state(
+        pool.clone(),
+        tempfile::tempdir()?.path().display().to_string(),
+    ));
+
+    sqlx::query(
+        "INSERT INTO packs (package_id, pack_type, language, name, description, status) VALUES ($1,$2,$3,$4,$5,'published')",
+    )
+    .bind("quran-fr")
+    .bind("quran")
+    .bind("fr")
+    .bind("French Quran")
+    .bind("French translation")
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        "INSERT INTO pack_versions (package_id, version, file_path, size_bytes, sha256, is_active) VALUES ($1,$2,$3,$4,$5,true)",
+    )
+    .bind("quran-fr")
+    .bind("1.5.0")
+    .bind("quran-fr-v1.pack")
+    .bind(777_i64)
+    .bind("sha-fr")
+    .execute(&pool)
+    .await?;
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/packs/manifest")
+                .body(Body::empty())?,
+        )
+        .await?;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await?)?;
+    let packs = body["packs"].as_array().expect("packs should be array");
+    assert_eq!(packs.len(), 1);
+
+    let pack = &packs[0];
+    assert_eq!(pack["id"], "quran-fr");
+    assert_eq!(pack["name"], "French Quran");
+    assert_eq!(pack["pack_type"], "quran");
+    assert_eq!(pack["version"], "1.5.0");
+    assert_eq!(pack["sha256"], "sha-fr");
+    assert_eq!(pack["file_size_bytes"], 777);
+    assert!(pack["created_at"].is_string());
+    assert_eq!(
+        pack["download_url"],
+        "http://localhost:8080/v1/packs/quran-fr/download"
+    );
+
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn global_manifest_returns_empty_array_when_no_packs(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = build_router(test_state(
+        pool,
+        tempfile::tempdir()?.path().display().to_string(),
+    ));
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/packs/manifest")
+                .body(Body::empty())?,
+        )
+        .await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await?)?;
+    assert_eq!(body, json!({"packs": []}));
+
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn global_manifest_download_url_uses_pack_download_route(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = build_router(test_state(
+        pool.clone(),
+        tempfile::tempdir()?.path().display().to_string(),
+    ));
+
+    sqlx::query(
+        "INSERT INTO packs (package_id, pack_type, language, name, description, status) VALUES ($1,$2,$3,$4,$5,'published')",
+    )
+    .bind("recitation-ar")
+    .bind("recitation")
+    .bind("ar")
+    .bind("Arabic Recitation")
+    .bind("recitation pack")
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        "INSERT INTO pack_versions (package_id, version, file_path, size_bytes, sha256, is_active) VALUES ($1,$2,$3,$4,$5,true)",
+    )
+    .bind("recitation-ar")
+    .bind("3.0.0")
+    .bind("recitation-ar-v3.pack")
+    .bind(123_i64)
+    .bind("sha-rec")
+    .execute(&pool)
+    .await?;
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/packs/manifest")
+                .body(Body::empty())?,
+        )
+        .await?;
+
+    let body: Value = serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await?)?;
+    assert_eq!(
+        body["packs"][0]["download_url"],
+        "http://localhost:8080/v1/packs/recitation-ar/download"
+    );
 
     Ok(())
 }
