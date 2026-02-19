@@ -9,7 +9,7 @@ pub mod sync_repository;
 pub mod user_repository;
 
 pub use error::StorageError;
-pub use pack_repository::{PackInfo, PackRepository};
+pub use pack_repository::{PackInfo, PackRepository, PackVersionInfo};
 pub use sync_repository::{ConflictLogEntry, SyncRepository};
 pub use user_repository::{UserRepository, UserRow};
 
