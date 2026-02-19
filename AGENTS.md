@@ -72,8 +72,8 @@ flutter_rust_bridge_codegen generate
 | 5 | `println!` / `eprintln!` in backend code is **BANNED**. Use `tracing` macros. |
 | 6 | `#[allow(dead_code)]` requires an inline comment explaining why. Never suppress silently. |
 | 7 | `unwrap()` / `expect()` in non-test code is **BANNED**. Propagate with `?` or convert to `DomainError`. |
-| 8 | Naked raw shared-state primitives in `AppState`/handlers are **BANNED** (`Arc<Mutex<T>>`, `Arc<RwLock<T>>`, `Arc<DashMap<K,V>>`). Wrap mutable shared state behind a typed API/module first. |
-| 9 | Choose concurrency model by coordination needs: use a typed wrapper for independent operations; use a `kameo` actor when operations require cross-operation coordination, mailbox semantics, or supervision. For actors, RPC uses `actor_ref.ask(msg).await` and fire-and-forget uses `actor_ref.tell(msg).await`. See `docs/backend/CONCURRENCY.md`. |
+| 8 | Raw `Arc<Mutex<T>>`, `Arc<RwLock<T>>`, and `Arc<DashMap<K,V>>` directly in `AppState` or handler signatures are **BANNED**. All shared mutable state must be encapsulated in a named struct with a typed API, or in a `kameo` actor. |
+| 9 | Choose the right primitive: use a **wrapper struct** for simple read-heavy caches (gets/sets, no cross-operation invariants); use a **`kameo` actor** when operations must be coordinated (rate limiting, in-flight deduplication, complex state transitions, mailbox semantics, supervision). All actors live under `backend/crates/api/src/actors/`. For actors, RPC uses `actor_ref.ask(msg).await` and fire-and-forget uses `actor_ref.tell(msg).await`. See `docs/backend/CONCURRENCY.md` for the decision guide and rework spec. |
 
 ### Flutter / Dart
 
