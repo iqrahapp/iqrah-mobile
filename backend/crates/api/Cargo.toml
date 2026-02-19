@@ -26,7 +26,6 @@ jsonwebtoken = "9"
 google-jwt-verify = "0.3.0"
 sha2 = "0.10"
 dashmap = "6"
-kameo = "0.19"
 
 iqrah-backend-config = { path = "../config" }
 iqrah-backend-domain = { path = "../domain" }
