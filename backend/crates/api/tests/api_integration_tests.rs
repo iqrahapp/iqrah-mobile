@@ -6,13 +6,14 @@ use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode, header},
 };
-use dashmap::DashMap;
+use iqrah_backend_api::actors::pack_cache::PackCacheActor;
 use iqrah_backend_api::handlers::auth::IdTokenVerifier;
 use iqrah_backend_api::{AppState, build_router};
 use iqrah_backend_config::AppConfig;
 use iqrah_backend_domain::Claims;
 use iqrah_backend_storage::{PackRepository, SyncRepository, UserRepository};
 use jsonwebtoken::{EncodingKey, Header, encode};
+use kameo::actor::Spawn;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tower::ServiceExt;
@@ -32,13 +33,15 @@ impl IdTokenVerifier for FakeVerifier {
 }
 
 fn test_state(pool: PgPool, pack_dir: String) -> Arc<AppState> {
+    let pack_cache = PackCacheActor::spawn(PackCacheActor::new());
+
     Arc::new(AppState {
         pool: pool.clone(),
         pack_repo: PackRepository::new(pool.clone()),
         user_repo: UserRepository::new(pool.clone()),
         sync_repo: SyncRepository::new(pool),
         id_token_verifier: Arc::new(FakeVerifier),
-        verified_packs: Arc::new(DashMap::new()),
+        pack_cache,
         config: AppConfig {
             database_url: "postgres://unused".to_string(),
             jwt_secret: "test-secret".to_string(),

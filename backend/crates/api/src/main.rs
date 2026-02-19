@@ -3,15 +3,16 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use dashmap::DashMap;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use iqrah_backend_api::actors::pack_cache::PackCacheActor;
 use iqrah_backend_api::handlers::auth::{GoogleIdTokenVerifier, IdTokenVerifier};
 use iqrah_backend_api::{AppState, build_router};
 use iqrah_backend_config::AppConfig;
 use iqrah_backend_storage::{
     PackRepository, SyncRepository, UserRepository, create_pool, run_migrations,
 };
+use kameo::actor::Spawn;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -40,13 +41,15 @@ async fn main() -> anyhow::Result<()> {
     let id_token_verifier: Arc<dyn IdTokenVerifier> =
         Arc::new(GoogleIdTokenVerifier::new(&config.google_client_id));
 
+    let pack_cache = PackCacheActor::spawn(PackCacheActor::new());
+
     let state = Arc::new(AppState {
         pool,
         pack_repo,
         user_repo,
         sync_repo,
         id_token_verifier,
-        verified_packs: Arc::new(DashMap::new()),
+        pack_cache,
         config: config.clone(),
         start_time: Instant::now(),
     });
