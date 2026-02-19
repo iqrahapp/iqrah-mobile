@@ -13,6 +13,7 @@ Canonical guidance for AI coding agents. Overrides `CLAUDE.md` and `.github/copi
 | | DB schema | `backend/migrations/` |
 | | Sync conflict logic | `backend/crates/storage/src/sync_repository.rs` |
 | | Config & env vars | `backend/crates/config/src/lib.rs` |
+| | Concurrency / actor pattern | `docs/backend/CONCURRENCY.md` |
 | **Flutter / Rust core** | Architecture & data flow | `.github/copilot-instructions.md` |
 | | Rust functions exposed to Flutter | `rust/src/api/` |
 

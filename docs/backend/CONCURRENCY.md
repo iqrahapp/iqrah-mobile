@@ -108,7 +108,6 @@ impl ractor::Message for MyMsg {}
 // 2. Actor impl
 pub struct MyActor;
 
-#[async_trait::async_trait]
 impl Actor for MyActor {
     type Msg   = MyMsg;
     type State = HashMap<SomeKey, bool>;
@@ -134,8 +133,8 @@ impl Actor for MyActor {
     }
 }
 
-// 3. Spawn (once, at startup)
-let (_, actor_ref) = Actor::spawn(None, MyActor, ()).await?;
+// 3. Spawn (once, at startup) — returns (ActorRef, JoinHandle)
+let (actor_ref, _handle) = Actor::spawn(None, MyActor, ()).await?;
 
 // 4. Usage from handlers (ActorRef is Clone)
 let is_cached = call!(actor_ref, MyMsg::Query, key)?;   // RPC
@@ -177,7 +176,6 @@ impl ractor::Message for PackCacheMsg {}
 
 pub struct PackCacheActor;
 
-#[async_trait::async_trait]
 impl Actor for PackCacheActor {
     type Msg       = PackCacheMsg;
     type State     = HashMap<i32, bool>;
@@ -264,8 +262,8 @@ Remove `use dashmap::DashMap;` import.
 // Before
 verified_packs: Arc::new(DashMap::new()),
 
-// After
-let (_, pack_cache) = Actor::spawn(None, PackCacheActor, ())
+// After — spawn returns (ActorRef, JoinHandle)
+let (pack_cache, _handle) = Actor::spawn(None, PackCacheActor, ())
     .await
     .expect("failed to start PackCacheActor");
 // ...
@@ -297,6 +295,29 @@ cast!(pack_cache, PackCacheMsg::Insert(version_id))?;
 ```
 
 Remove `use dashmap::DashMap;` import.
+
+### Error mapping
+
+`call!` and `cast!` return ractor-specific errors (`ractor::RactorErr`, `ractor::MessagingErr`). Handlers return `DomainError`. Add a `From` impl in `domain/src/errors.rs` or map inline:
+
+```rust
+// Option A: From impl (preferred — keeps handlers clean)
+impl From<ractor::RactorErr<PackCacheMsg>> for DomainError {
+    fn from(err: ractor::RactorErr<PackCacheMsg>) -> Self {
+        DomainError::Internal(anyhow::anyhow!("actor error: {}", err))
+    }
+}
+
+// Option B: inline .map_err (if you want to avoid coupling domain to ractor)
+call!(pack_cache, PackCacheMsg::Query, version_id)
+    .map_err(|e| DomainError::Internal(anyhow::anyhow!("pack cache actor: {}", e)))?;
+```
+
+Option B is recommended — it keeps the `domain` crate free of ractor dependency. The `map_err` lives in the `api` crate where ractor is already a dependency.
+
+### `AppState` Clone
+
+`ActorRef<PackCacheMsg>` implements `Clone`, so `#[derive(Clone)]` on `AppState` continues to work with no changes.
 
 ### Change: `backend/Cargo.toml`
 
