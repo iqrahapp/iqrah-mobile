@@ -32,6 +32,7 @@ pub struct PackVersionRow {
 /// Combined pack info for API responses.
 #[derive(Debug, Clone)]
 pub struct PackInfo {
+    pub version_id: i32,
     pub package_id: String,
     pub pack_type: String,
     pub version: String,
@@ -63,6 +64,7 @@ impl PackRepository {
         let rows = sqlx::query_as::<_, PackInfoRow>(
             r#"
             SELECT 
+                pv.id as version_id,
                 p.package_id,
                 p.pack_type,
                 pv.version,
@@ -94,6 +96,7 @@ impl PackRepository {
         let row = sqlx::query_as::<_, PackInfoRow>(
             r#"
             SELECT 
+                pv.id as version_id,
                 p.package_id,
                 p.pack_type,
                 pv.version,
@@ -198,6 +201,7 @@ impl PackRepository {
 /// Internal row type for query mapping.
 #[derive(sqlx::FromRow)]
 struct PackInfoRow {
+    version_id: i32,
     package_id: String,
     pack_type: String,
     version: String,
@@ -212,6 +216,7 @@ struct PackInfoRow {
 impl From<PackInfoRow> for PackInfo {
     fn from(row: PackInfoRow) -> Self {
         Self {
+            version_id: row.version_id,
             package_id: row.package_id,
             pack_type: row.pack_type,
             version: row.version,

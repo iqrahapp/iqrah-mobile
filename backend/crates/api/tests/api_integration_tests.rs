@@ -6,6 +6,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode, header},
 };
+use dashmap::DashMap;
 use iqrah_backend_api::handlers::auth::IdTokenVerifier;
 use iqrah_backend_api::{AppState, build_router};
 use iqrah_backend_config::AppConfig;
@@ -37,6 +38,7 @@ fn test_state(pool: PgPool, pack_dir: String) -> Arc<AppState> {
         user_repo: UserRepository::new(pool.clone()),
         sync_repo: SyncRepository::new(pool),
         id_token_verifier: Arc::new(FakeVerifier),
+        verified_packs: Arc::new(DashMap::new()),
         config: AppConfig {
             database_url: "postgres://unused".to_string(),
             jwt_secret: "test-secret".to_string(),
@@ -90,7 +92,31 @@ async fn auth_pack_sync_and_error_paths(pool: PgPool) -> Result<(), Box<dyn std:
     .bind("1.0.0")
     .bind("quran-en-v1.pack")
     .bind(10_i64)
-    .bind("sha-test")
+    .bind("72399361da6a7754fec986df5b956c7e9d41a7fd0d03f233663d0c074f3babc3")
+    .execute(&pool)
+    .await?;
+
+    tokio::fs::write(tmp.path().join("quran-ar-v1.pack"), b"mismatch-content").await?;
+
+    sqlx::query(
+        "INSERT INTO packs (package_id, pack_type, language, name, description, status) VALUES ($1,$2,$3,$4,$5,'published')",
+    )
+    .bind("quran-ar")
+    .bind("quran")
+    .bind("ar")
+    .bind("Arabic Quran")
+    .bind("tampered pack")
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        "INSERT INTO pack_versions (package_id, version, file_path, size_bytes, sha256, is_active) VALUES ($1,$2,$3,$4,$5,true)",
+    )
+    .bind("quran-ar")
+    .bind("1.0.0")
+    .bind("quran-ar-v1.pack")
+    .bind(16_i64)
+    .bind("0000000000000000000000000000000000000000000000000000000000000000")
     .execute(&pool)
     .await?;
 
@@ -145,6 +171,21 @@ async fn auth_pack_sync_and_error_paths(pool: PgPool) -> Result<(), Box<dyn std:
     let full_bytes = to_bytes(full_download.into_body(), 1024 * 1024).await?;
     assert_eq!(from_utf8(&full_bytes)?, "abcdefghij");
 
+    tokio::fs::write(tmp.path().join("quran-en-v1.pack"), b"XXXXXXXXXX").await?;
+
+    let cached_download = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/packs/quran-en/download")
+                .body(Body::empty())?,
+        )
+        .await?;
+    assert_eq!(cached_download.status(), StatusCode::OK);
+
+    let cached_bytes = to_bytes(cached_download.into_body(), 1024 * 1024).await?;
+    assert_eq!(from_utf8(&cached_bytes)?, "XXXXXXXXXX");
+
     let range_download = app
         .clone()
         .oneshot(
@@ -161,6 +202,19 @@ async fn auth_pack_sync_and_error_paths(pool: PgPool) -> Result<(), Box<dyn std:
     );
     let range_bytes = to_bytes(range_download.into_body(), 1024 * 1024).await?;
     assert_eq!(from_utf8(&range_bytes)?, "cdef");
+
+    let tampered_pack = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/packs/quran-ar/download")
+                .body(Body::empty())?,
+        )
+        .await?;
+    assert_eq!(tampered_pack.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let tampered_json: Value =
+        serde_json::from_slice(&to_bytes(tampered_pack.into_body(), 1024 * 1024).await?)?;
+    assert_eq!(tampered_json["error"], "Pack integrity check failed");
 
     let missing_pack = app
         .clone()
