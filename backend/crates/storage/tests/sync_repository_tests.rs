@@ -4,6 +4,11 @@
 //! stays sandbox-safe and deterministic.
 #![cfg(feature = "postgres-tests")]
 
+//! Postgres-only integration tests.
+//!
+//! Kept separate from SQLite default test suite to avoid external DB dependency
+//! during regular `cargo test` runs.
+
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use std::time::Duration;
