@@ -524,7 +524,7 @@ impl SyncRepository {
             SELECT id, user_id, entity_type, entity_key, incoming_metadata, winning_metadata, resolved_at
             FROM conflict_logs
             WHERE user_id = $1
-            ORDER BY resolved_at DESC
+            ORDER BY resolved_at DESC, id DESC
             LIMIT $2
             "#,
         )

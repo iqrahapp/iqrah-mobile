@@ -161,7 +161,7 @@ pub async fn admin_recent_conflicts(
     Path(user_id): Path<uuid::Uuid>,
     Query(query): Query<ConflictQuery>,
 ) -> Result<Json<AdminConflictListResponse>, DomainError> {
-    let limit = query.limit.unwrap_or(50).min(200);
+    let limit = query.limit.unwrap_or(50).clamp(1, 200);
 
     let rows = state
         .sync_repo
