@@ -139,7 +139,14 @@ pub async fn download_pack(
         DomainError::Internal(anyhow::anyhow!("Failed to open pack file: {}", e))
     })?;
 
-    let file_size = pack.size_bytes as u64;
+    let file_size = file
+        .metadata()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to stat pack file: {}", e);
+            DomainError::Internal(anyhow::anyhow!("Failed to stat pack file: {}", e))
+        })?
+        .len();
 
     build_download_response(file, file_size, &pack.sha256, &headers, &package_id).await
 }
@@ -311,6 +318,12 @@ mod tests {
 
         let headers = headers_with_range("bytes=-15");
         assert_eq!(parse_range_header(&headers, 100), Ok(Some((85, 99))));
+    }
+
+    #[test]
+    fn parse_range_caps_end_to_file_size() {
+        let headers = headers_with_range("bytes=90-150");
+        assert_eq!(parse_range_header(&headers, 100), Ok(Some((90, 99))));
     }
 
     #[test]
