@@ -11,7 +11,6 @@
 
 use serde_json::json;
 use sqlx::{PgPool, Row};
-use std::time::Duration;
 use uuid::Uuid;
 
 use iqrah_backend_domain::{
@@ -41,7 +40,6 @@ async fn sync_push_then_pull_returns_changes(pool: PgPool) -> Result<(), sqlx::E
         settings: vec![SettingChange {
             key: "theme".to_string(),
             value: json!({ "mode": "dark" }),
-            client_updated_at: 1_700_000_000_000,
         }],
         memory_states: vec![MemoryStateChange {
             node_id: 42,
@@ -50,7 +48,6 @@ async fn sync_push_then_pull_returns_changes(pool: PgPool) -> Result<(), sqlx::E
             fsrs_difficulty: Some(4.2),
             last_reviewed_at: Some(1_700_000_000_000),
             next_review_at: Some(1_700_000_100_000),
-            client_updated_at: 1_700_000_000_000,
         }],
         sessions: vec![SessionChange {
             id: session_id,
@@ -58,7 +55,6 @@ async fn sync_push_then_pull_returns_changes(pool: PgPool) -> Result<(), sqlx::E
             started_at: 1_700_000_000_000,
             completed_at: Some(1_700_000_120_000),
             items_completed: 1,
-            client_updated_at: 1_700_000_000_000,
         }],
         session_items: vec![SessionItemChange {
             id: item_id,
@@ -67,7 +63,6 @@ async fn sync_push_then_pull_returns_changes(pool: PgPool) -> Result<(), sqlx::E
             exercise_type: "translate".to_string(),
             grade: Some(3),
             duration_ms: Some(1200),
-            client_updated_at: 1_700_000_000_000,
         }],
     };
 
@@ -109,7 +104,9 @@ async fn sync_push_then_pull_returns_changes(pool: PgPool) -> Result<(), sqlx::E
 }
 
 #[sqlx::test(migrations = "../../migrations")]
-async fn lww_prefers_newer_updates(pool: PgPool) -> Result<(), sqlx::Error> {
+async fn server_timestamp_policy_accepts_late_arrivals_across_devices(
+    pool: PgPool,
+) -> Result<(), sqlx::Error> {
     let user_id = Uuid::new_v4();
     let device_a = Uuid::new_v4();
     let device_b = Uuid::new_v4();
@@ -128,11 +125,11 @@ async fn lww_prefers_newer_updates(pool: PgPool) -> Result<(), sqlx::Error> {
         .await
         .map_err(|e| sqlx::Error::Protocol(format!("touch_device failed: {e}")))?;
 
+    // Device A sends a logically newer value first.
     let first = SyncChanges {
         settings: vec![SettingChange {
             key: "mode".to_string(),
-            value: json!("early"),
-            client_updated_at: 1_700_000_000_000,
+            value: json!("newer-but-arrived-first"),
         }],
         ..SyncChanges::default()
     };
@@ -140,19 +137,21 @@ async fn lww_prefers_newer_updates(pool: PgPool) -> Result<(), sqlx::Error> {
         .await
         .map_err(|e| sqlx::Error::Protocol(format!("apply_changes failed: {e}")))?;
 
-    tokio::time::sleep(Duration::from_millis(2)).await;
-
+    // Device B delivers an older logical change later; server timestamp policy still applies it.
     let second = SyncChanges {
         settings: vec![SettingChange {
             key: "mode".to_string(),
-            value: json!("later"),
-            client_updated_at: 1_700_000_000_100,
+            value: json!("older-but-arrived-later"),
         }],
         ..SyncChanges::default()
     };
-    repo.apply_changes(user_id, device_b, &second)
+    let (applied, skipped) = repo
+        .apply_changes(user_id, device_b, &second)
         .await
         .map_err(|e| sqlx::Error::Protocol(format!("apply_changes failed: {e}")))?;
+
+    assert_eq!(applied, 1);
+    assert_eq!(skipped, 0);
 
     let row = sqlx::query(
         r#"
@@ -167,7 +166,7 @@ async fn lww_prefers_newer_updates(pool: PgPool) -> Result<(), sqlx::Error> {
     .await?;
 
     let value: serde_json::Value = row.try_get("value")?;
-    assert_eq!(value, json!("later"));
+    assert_eq!(value, json!("older-but-arrived-later"));
 
     Ok(())
 }

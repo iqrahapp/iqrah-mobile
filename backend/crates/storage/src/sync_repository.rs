@@ -71,11 +71,11 @@ impl SyncRepository {
         Ok(())
     }
 
-    /// Apply sync changes with LWW in a single transaction.
+    /// Apply sync changes with server-timestamp LWW in a single transaction.
     ///
     /// Returns `(applied, skipped)` counts:
     /// - `applied`: rows written (new inserts or LWW-winning updates)
-    /// - `skipped`: rows the server already had a newer version of (LWW rejected)
+    /// - `skipped`: rows rejected because `existing.updated_at >= incoming.updated_at`
     pub async fn apply_changes(
         &self,
         user_id: Uuid,
@@ -84,6 +84,8 @@ impl SyncRepository {
     ) -> Result<(u64, u64), StorageError> {
         // Begin transaction to ensure atomicity
         let mut tx = self.pool.begin().await.map_err(StorageError::Query)?;
+        // Conflict policy: server-assigned timestamp decides LWW ordering.
+        // Client-provided logical timestamps are ignored by the repository.
         let now = Utc::now();
         let mut applied: u64 = 0;
         let mut skipped: u64 = 0;
@@ -599,6 +601,25 @@ impl SyncRepository {
             .map_err(StorageError::Query)?
         };
 
+        let settings_has_more = settings_raw.len() > limit;
+        let settings_cursor =
+            settings_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorSetting {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    key: row.key.clone(),
+                });
+        let settings: Vec<SettingChange> = settings_raw
+            .into_iter()
+            .take(limit)
+            .map(|r| SettingChange {
+                key: r.key,
+                value: r.value,
+                client_updated_at: r.updated_at.timestamp_millis(),
+            })
+            .collect();
+
+
         // Get memory states
         let memory_states_raw = if let Some(cursor) =
             cursor.as_ref().and_then(|c| c.memory_states.as_ref())
@@ -631,6 +652,29 @@ impl SyncRepository {
             .map_err(StorageError::Query)?
         };
 
+        let memory_states_has_more = memory_states_raw.len() > limit;
+        let memory_states_cursor =
+            memory_states_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorMemoryState {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    node_id: row.node_id,
+                });
+        let memory_states: Vec<MemoryStateChange> = memory_states_raw
+            .into_iter()
+            .take(limit)
+            .map(|r| MemoryStateChange {
+                node_id: r.node_id,
+                energy: r.energy,
+                fsrs_stability: r.fsrs_stability,
+                fsrs_difficulty: r.fsrs_difficulty,
+                last_reviewed_at: r.last_reviewed_at.map(|t| t.timestamp_millis()),
+                next_review_at: r.next_review_at.map(|t| t.timestamp_millis()),
+                client_updated_at: r.updated_at.timestamp_millis(),
+            })
+            .collect();
+
+
         // Get sessions
         let sessions_raw = if let Some(cursor) = cursor.as_ref().and_then(|c| c.sessions.as_ref()) {
             let cursor_time = Utc.timestamp_millis_opt(cursor.updated_at).unwrap();
@@ -660,6 +704,28 @@ impl SyncRepository {
             .await
             .map_err(StorageError::Query)?
         };
+
+        let sessions_has_more = sessions_raw.len() > limit;
+        let sessions_cursor =
+            sessions_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorSession {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    id: row.id,
+                });
+        let sessions: Vec<SessionChange> = sessions_raw
+            .into_iter()
+            .take(limit)
+            .map(|r| SessionChange {
+                id: r.id,
+                goal_id: r.goal_id,
+                started_at: r.started_at.timestamp_millis(),
+                completed_at: r.completed_at.map(|t| t.timestamp_millis()),
+                items_completed: r.items_completed,
+                client_updated_at: r.updated_at.timestamp_millis(),
+            })
+            .collect();
+
 
         // Get session items (direct query via user_id — no JOIN needed)
         let session_items_raw =
@@ -693,153 +759,30 @@ impl SyncRepository {
                 .map_err(StorageError::Query)?
             };
 
-        let mut settings_index = 0usize;
-        let mut memory_states_index = 0usize;
-        let mut sessions_index = 0usize;
-        let mut session_items_index = 0usize;
+        let session_items_has_more = session_items_raw.len() > limit;
+        let session_items_cursor =
+            session_items_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorSessionItem {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    id: row.id,
+                });
+        let session_items: Vec<SessionItemChange> = session_items_raw
+            .into_iter()
+            .take(limit)
+            .map(|r| SessionItemChange {
+                id: r.id,
+                session_id: r.session_id,
+                node_id: r.node_id,
+                exercise_type: r.exercise_type,
+                grade: r.grade,
+                duration_ms: r.duration_ms,
+                client_updated_at: r.updated_at.timestamp_millis(),
+            })
+            .collect();
 
-        let mut settings = Vec::new();
-        let mut memory_states = Vec::new();
-        let mut sessions = Vec::new();
-        let mut session_items = Vec::new();
-
-        while settings.len() + memory_states.len() + sessions.len() + session_items.len() < limit {
-            enum NextEntity {
-                Settings,
-                MemoryStates,
-                Sessions,
-                SessionItems,
-            }
-
-            let mut next_entity: Option<(i64, i32, NextEntity)> = None;
-
-            if let Some(row) = settings_raw.get(settings_index) {
-                next_entity = Some((row.updated_at.timestamp_millis(), 0, NextEntity::Settings));
-            }
-            if let Some(row) = memory_states_raw.get(memory_states_index) {
-                let candidate = (
-                    row.updated_at.timestamp_millis(),
-                    1,
-                    NextEntity::MemoryStates,
-                );
-                if next_entity
-                    .as_ref()
-                    .map(|current| {
-                        candidate.0 < current.0
-                            || (candidate.0 == current.0 && candidate.1 < current.1)
-                    })
-                    .unwrap_or(true)
-                {
-                    next_entity = Some(candidate);
-                }
-            }
-            if let Some(row) = sessions_raw.get(sessions_index) {
-                let candidate = (row.updated_at.timestamp_millis(), 2, NextEntity::Sessions);
-                if next_entity
-                    .as_ref()
-                    .map(|current| {
-                        candidate.0 < current.0
-                            || (candidate.0 == current.0 && candidate.1 < current.1)
-                    })
-                    .unwrap_or(true)
-                {
-                    next_entity = Some(candidate);
-                }
-            }
-            if let Some(row) = session_items_raw.get(session_items_index) {
-                let candidate = (
-                    row.updated_at.timestamp_millis(),
-                    3,
-                    NextEntity::SessionItems,
-                );
-                if next_entity
-                    .as_ref()
-                    .map(|current| {
-                        candidate.0 < current.0
-                            || (candidate.0 == current.0 && candidate.1 < current.1)
-                    })
-                    .unwrap_or(true)
-                {
-                    next_entity = Some(candidate);
-                }
-            }
-
-            let Some((_, _, entity)) = next_entity else {
-                break;
-            };
-
-            match entity {
-                NextEntity::Settings => {
-                    let row = &settings_raw[settings_index];
-                    settings.push(SettingChange {
-                        key: row.key.clone(),
-                        value: row.value.clone(),
-                        client_updated_at: row.updated_at.timestamp_millis(),
-                    });
-                    settings_index += 1;
-                }
-                NextEntity::MemoryStates => {
-                    let row = &memory_states_raw[memory_states_index];
-                    memory_states.push(MemoryStateChange {
-                        node_id: row.node_id,
-                        energy: row.energy,
-                        fsrs_stability: row.fsrs_stability,
-                        fsrs_difficulty: row.fsrs_difficulty,
-                        last_reviewed_at: row.last_reviewed_at.map(|t| t.timestamp_millis()),
-                        next_review_at: row.next_review_at.map(|t| t.timestamp_millis()),
-                        client_updated_at: row.updated_at.timestamp_millis(),
-                    });
-                    memory_states_index += 1;
-                }
-                NextEntity::Sessions => {
-                    let row = &sessions_raw[sessions_index];
-                    sessions.push(SessionChange {
-                        id: row.id,
-                        goal_id: row.goal_id.clone(),
-                        started_at: row.started_at.timestamp_millis(),
-                        completed_at: row.completed_at.map(|t| t.timestamp_millis()),
-                        items_completed: row.items_completed,
-                        client_updated_at: row.updated_at.timestamp_millis(),
-                    });
-                    sessions_index += 1;
-                }
-                NextEntity::SessionItems => {
-                    let row = &session_items_raw[session_items_index];
-                    session_items.push(SessionItemChange {
-                        id: row.id,
-                        session_id: row.session_id,
-                        node_id: row.node_id,
-                        exercise_type: row.exercise_type.clone(),
-                        grade: row.grade,
-                        duration_ms: row.duration_ms,
-                        client_updated_at: row.updated_at.timestamp_millis(),
-                    });
-                    session_items_index += 1;
-                }
-            }
-        }
-
-        let has_more = settings_index < settings_raw.len()
-            || memory_states_index < memory_states_raw.len()
-            || sessions_index < sessions_raw.len()
-            || session_items_index < session_items_raw.len();
-
-        let settings_cursor = settings.last().map(|setting| SyncCursorSetting {
-            updated_at: setting.client_updated_at,
-            key: setting.key.clone(),
-        });
-        let memory_states_cursor = memory_states.last().map(|state| SyncCursorMemoryState {
-            updated_at: state.client_updated_at,
-            node_id: state.node_id,
-        });
-        let sessions_cursor = sessions.last().map(|session| SyncCursorSession {
-            updated_at: session.client_updated_at,
-            id: session.id,
-        });
-        let session_items_cursor = session_items.last().map(|item| SyncCursorSessionItem {
-            updated_at: item.client_updated_at,
-            id: item.id,
-        });
+        let has_more =
+            settings_has_more || memory_states_has_more || sessions_has_more || session_items_has_more;
 
         let next_cursor = if has_more {
             Some(SyncPullCursor {

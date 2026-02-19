@@ -51,7 +51,7 @@ Authorization: Bearer <token>
 ```
 Response:
 ```
-{ "applied": true, "server_time": 1735344000000 }
+{ "applied": 4, "skipped": 0, "server_time": 1735344000000 }
 ```
 
 ### Sync Pull
@@ -86,9 +86,10 @@ Response:
 ```
 
 ## Conflict Resolution
-- Last-write-wins by `updated_at` (server time).
-- Server stores `updated_at` and `updated_by_device`.
-- Client sends `client_updated_at` to aid debugging (not authoritative).
+- Last-write-wins by server-assigned `updated_at` only.
+- The server ignores client logical timestamps for conflict resolution.
+- Tie-break rule: updates are applied only when `existing.updated_at < incoming.updated_at`; equal timestamps keep the existing row.
+- Server stores `updated_at` and `updated_by_device` for auditability.
 
 ## DB Schema (v1)
 - `users` (id, oauth_sub, created_at, last_seen_at)
@@ -113,9 +114,9 @@ Indexes:
 - Add middleware to guard `/v1/*` endpoints.
 
 ### Task 2.3: Sync Push/Pull
-- Implement LWW logic in repositories.
-- Store `updated_at` server timestamp on write.
-- Pull changes since `since` timestamp.
+- Implement LWW logic in repositories using server write time.
+- Store `updated_at` server timestamp on every accepted write.
+- Pull changes since `since` timestamp using per-entity cursors (`updated_at`, primary key).
 
 ### Task 2.4: Device Tracking
 - Register device on first sync.
@@ -124,7 +125,7 @@ Indexes:
 ## Testing Requirements
 - Auth tests: valid/invalid ID token.
 - Sync tests: push then pull returns expected changes.
-- LWW test: newer update wins across devices.
+- LWW test: later server write wins across devices (arrival order under server timestamps).
 
 ## Local Testing (Docker)
 Use the existing backend compose file for Postgres only:
