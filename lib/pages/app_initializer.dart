@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:iqrah/pages/dashboard_page.dart';
 import 'package:iqrah/widgets/nav_shell.dart';
 import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/providers/user_provider.dart';
+import 'package:iqrah/providers/auth_provider.dart';
+import 'package:iqrah/providers/sync_provider.dart';
+import 'package:iqrah/features/session/session_screen.dart';
 
 /// Checks for existing session and navigates appropriately on app startup
 class AppInitializer extends ConsumerStatefulWidget {
@@ -19,6 +21,11 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   @override
   void initState() {
     super.initState();
+    // Initialize auth provider (triggers loading stored auth)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authProvider);
+      ref.read(syncProvider);
+    });
     _resumeSessionIfNeeded();
   }
 
@@ -29,7 +36,7 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
     if (!mounted) return;
     if (resumed) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const SessionScreen()),
+        MaterialPageRoute(builder: (_) => SessionScreen()),
       );
       return;
     }

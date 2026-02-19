@@ -58,11 +58,31 @@ Response:
 ```
 POST /v1/sync/pull
 Authorization: Bearer <token>
-{ "device_id": "uuid", "since": 1735340000000 }
+{
+  "device_id": "uuid",
+  "since": 1735340000000,
+  "limit": 1000,
+  "cursor": {
+    "settings": { "updated_at": 1735340000000, "key": "theme" },
+    "memory_states": { "updated_at": 1735340000000, "node_id": 42 },
+    "sessions": { "updated_at": 1735340000000, "id": "uuid" },
+    "session_items": { "updated_at": 1735340000000, "id": "uuid" }
+  }
+}
 ```
 Response:
 ```
-{ "server_time": 1735344000000, "changes": { ... } }
+{
+  "server_time": 1735344000000,
+  "changes": { ... },
+  "has_more": false,
+  "next_cursor": {
+    "settings": { "updated_at": 1735340000000, "key": "theme" },
+    "memory_states": { "updated_at": 1735340000000, "node_id": 42 },
+    "sessions": { "updated_at": 1735340000000, "id": "uuid" },
+    "session_items": { "updated_at": 1735340000000, "id": "uuid" }
+  }
+}
 ```
 
 ## Conflict Resolution
@@ -105,6 +125,13 @@ Indexes:
 - Auth tests: valid/invalid ID token.
 - Sync tests: push then pull returns expected changes.
 - LWW test: newer update wins across devices.
+
+## Local Testing (Docker)
+Use the existing backend compose file for Postgres only:
+```
+docker compose -f backend/docker-compose.yml up -d postgres
+DATABASE_URL=postgres://iqrah:iqrah@localhost:5432/iqrah cargo test -p iqrah-backend-storage -p iqrah-backend-api
+```
 
 ## Estimated Effort
 - 7 to 10 days.

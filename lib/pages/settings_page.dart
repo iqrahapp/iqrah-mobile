@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:iqrah/pages/auth/sign_in_page.dart';
+import 'package:iqrah/providers/auth_provider.dart';
+import 'package:iqrah/providers/sync_provider.dart';
 import 'package:iqrah/utils/error_mapper.dart';
 import 'package:iqrah/widgets/error_banner.dart';
 import 'package:iqrah/providers/translation_provider.dart';
@@ -17,17 +20,107 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final languagesAsync = ref.watch(languagesProvider);
     final translatorsAsync = ref.watch(
       translatorsProvider(_selectedLanguageCode),
     );
     final preferredTranslatorAsync = ref.watch(preferredTranslatorProvider);
+    final authState = ref.watch(authProvider);
+    final syncState = ref.watch(syncProvider);
+    final lastSyncLabel = syncState.lastSyncTime == null
+        ? 'Never'
+        : syncState.lastSyncTime!
+            .toLocal()
+            .toIso8601String()
+            .replaceFirst('T', ' ')
+            .split('.')
+            .first;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          const Text(
+            'Cloud Sync',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      authState.isAuthenticated
+                          ? Icons.cloud_done
+                          : Icons.cloud_off,
+                    ),
+                    title: Text(
+                      authState.isAuthenticated
+                          ? 'Cloud sync enabled'
+                          : 'Cloud sync disabled',
+                    ),
+                    subtitle: Text(
+                      authState.isAuthenticated
+                          ? 'Signed in as ${authState.userId}'
+                          : 'Sign in to enable cloud sync',
+                    ),
+                    trailing: ElevatedButton(
+                      onPressed: authState.isAuthenticated
+                          ? (syncState.isSyncing
+                              ? null
+                              : () => ref
+                                  .read(syncProvider.notifier)
+                                  .fullSync())
+                          : () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SignInPage(),
+                                ),
+                              ),
+                      child: Text(
+                        authState.isAuthenticated
+                            ? (syncState.isSyncing ? 'Syncing...' : 'Sync Now')
+                            : 'Sign In',
+                      ),
+                    ),
+                  ),
+                  if (authState.isAuthenticated) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Last synced: $lastSyncLabel',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () =>
+                          ref.read(authProvider.notifier).signOut(),
+                      icon: const Icon(Icons.logout, size: 16),
+                      label: const Text('Sign out'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
+                    ),
+                  ],
+                  if (syncState.error != null) ...[
+                    const SizedBox(height: 12),
+                    ErrorBanner(
+                      message: syncState.error!,
+                      onRetry: () =>
+                          ref.read(syncProvider.notifier).fullSync(),
+                      dense: true,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+
           // Translation Settings Section
           const Text(
             'Translation Settings',

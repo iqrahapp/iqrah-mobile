@@ -1,6 +1,6 @@
 use super::models::{
-    BanditArmRow, MemoryBasicsRow, MemoryStateRow, ParentEnergyRow, SessionRow, SessionStateRow,
-    UserStatRow,
+    BanditArmRow, MemoryBasicsRow, MemoryStateRow, ParentEnergyRow, SessionItemRow, SessionRow,
+    SessionStateRow, UserStatRow,
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -123,6 +123,196 @@ impl SqliteUserRepository {
         .await?;
 
         Ok(rows.into_iter().map(|(id,)| id).collect())
+    }
+
+    // ========================================================================
+    // Sync helpers (Phase 2)
+    // ========================================================================
+
+    pub async fn get_memory_states_since(
+        &self,
+        user_id: &str,
+        since_millis: i64,
+    ) -> anyhow::Result<Vec<MemoryState>> {
+        let rows = query_as::<_, MemoryStateRow>(
+            "SELECT user_id, content_key, stability, difficulty, energy,
+                    last_reviewed, due_at, review_count
+             FROM user_memory_states
+             WHERE user_id = ? AND last_reviewed > ?
+             ORDER BY last_reviewed ASC",
+        )
+        .bind(user_id)
+        .bind(since_millis)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| MemoryState {
+                user_id: r.user_id,
+                node_id: r.content_key,
+                stability: r.stability,
+                difficulty: r.difficulty,
+                energy: r.energy,
+                last_reviewed: DateTime::from_timestamp_millis(r.last_reviewed)
+                    .unwrap_or_else(Utc::now),
+                due_at: DateTime::from_timestamp_millis(r.due_at).unwrap_or_else(Utc::now),
+                review_count: r.review_count as u32,
+            })
+            .collect())
+    }
+
+    pub async fn get_sessions_since(
+        &self,
+        user_id: &str,
+        since_millis: i64,
+    ) -> anyhow::Result<Vec<Session>> {
+        let rows = query_as::<_, SessionRow>(
+            "SELECT id, user_id, goal_id, started_at, completed_at, items_count, items_completed
+             FROM sessions
+             WHERE user_id = ? AND (started_at > ? OR completed_at > ?)
+             ORDER BY started_at ASC",
+        )
+        .bind(user_id)
+        .bind(since_millis)
+        .bind(since_millis)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| Session {
+                id: r.id,
+                user_id: r.user_id,
+                goal_id: r.goal_id,
+                started_at: DateTime::from_timestamp_millis(r.started_at)
+                    .unwrap_or_else(Utc::now),
+                completed_at: r.completed_at.and_then(DateTime::from_timestamp_millis),
+                items_count: r.items_count as i32,
+                items_completed: r.items_completed as i32,
+            })
+            .collect())
+    }
+
+    pub async fn get_session_items_since(
+        &self,
+        user_id: &str,
+        since_millis: i64,
+    ) -> anyhow::Result<Vec<SessionItem>> {
+        let rows = query_as::<_, SessionItemRow>(
+            "SELECT si.id, si.session_id, si.node_id, si.exercise_type, si.grade, si.duration_ms, si.completed_at
+             FROM session_items si
+             JOIN sessions s ON s.id = si.session_id
+             WHERE s.user_id = ? AND si.completed_at IS NOT NULL AND si.completed_at > ?
+             ORDER BY si.completed_at ASC",
+        )
+        .bind(user_id)
+        .bind(since_millis)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| SessionItem {
+                id: r.id,
+                session_id: r.session_id,
+                node_id: r.node_id,
+                exercise_type: r.exercise_type,
+                grade: r.grade as i32,
+                duration_ms: r.duration_ms,
+                completed_at: r.completed_at.and_then(DateTime::from_timestamp_millis),
+            })
+            .collect())
+    }
+
+    pub async fn upsert_memory_state_if_newer(&self, state: &MemoryState) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO user_memory_states
+             (user_id, content_key, stability, difficulty, energy, last_reviewed, due_at, review_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(user_id, content_key) DO UPDATE SET
+                stability = excluded.stability,
+                difficulty = excluded.difficulty,
+                energy = excluded.energy,
+                last_reviewed = excluded.last_reviewed,
+                due_at = excluded.due_at,
+                review_count = user_memory_states.review_count
+             WHERE excluded.last_reviewed > user_memory_states.last_reviewed",
+        )
+        .bind(&state.user_id)
+        .bind(state.node_id)
+        .bind(state.stability)
+        .bind(state.difficulty)
+        .bind(state.energy)
+        .bind(state.last_reviewed.timestamp_millis())
+        .bind(state.due_at.timestamp_millis())
+        .bind(state.review_count as i64)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn upsert_session_if_newer(&self, session: &Session) -> anyhow::Result<()> {
+        let existing = self.get_session(&session.id).await?;
+
+        let incoming_updated = session
+            .completed_at
+            .unwrap_or(session.started_at)
+            .timestamp_millis();
+
+        if let Some(existing) = existing {
+            let existing_updated = existing
+                .completed_at
+                .unwrap_or(existing.started_at)
+                .timestamp_millis();
+
+            if incoming_updated <= existing_updated {
+                return Ok(());
+            }
+
+            query(
+                "UPDATE sessions SET goal_id = ?, started_at = ?, completed_at = ?, items_count = ?, items_completed = ?
+                 WHERE id = ?",
+            )
+            .bind(&session.goal_id)
+            .bind(session.started_at.timestamp_millis())
+            .bind(session.completed_at.map(|t| t.timestamp_millis()))
+            .bind(session.items_count)
+            .bind(session.items_completed)
+            .bind(&session.id)
+            .execute(&self.pool)
+            .await?;
+        } else {
+            self.create_session(session).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn insert_session_item_if_absent(
+        &self,
+        item: &SessionItem,
+    ) -> anyhow::Result<bool> {
+        let completed_at = item.completed_at.map(|t| t.timestamp_millis());
+        let existing = query_as::<_, (i64,)>(
+            "SELECT id FROM session_items
+             WHERE session_id = ? AND node_id = ? AND exercise_type = ? AND completed_at = ?
+             LIMIT 1",
+        )
+        .bind(&item.session_id)
+        .bind(item.node_id)
+        .bind(&item.exercise_type)
+        .bind(completed_at)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if existing.is_none() {
+            self.insert_session_item(item).await?;
+            return Ok(true);
+        }
+
+        Ok(false)
     }
 }
 

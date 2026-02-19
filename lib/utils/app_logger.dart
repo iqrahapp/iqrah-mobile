@@ -9,6 +9,9 @@ enum LogCategory {
   database,
   ui,
   analytics,
+  auth,
+  sync,
+  http,
 }
 
 /// Structured logging utility for the Iqrah app.
@@ -55,4 +58,16 @@ class AppLogger {
     final suffix = props == null || props.isEmpty ? '' : ' $props';
     log(LogCategory.analytics, '$event$suffix');
   }
+
+  /// Log authentication-related message
+  static void logAuth(String msg, {Object? error}) =>
+      log(LogCategory.auth, msg, error: error);
+
+  /// Log sync-related message
+  static void logSync(String msg, {Object? error}) =>
+      log(LogCategory.sync, msg, error: error);
+
+  /// Log HTTP-related message
+  static void logHTTP(String msg, {Object? error}) =>
+      log(LogCategory.http, msg, error: error);
 }

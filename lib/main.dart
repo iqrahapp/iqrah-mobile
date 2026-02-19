@@ -9,6 +9,8 @@ import 'package:iqrah/rust_bridge/api.dart';
 import 'package:iqrah/rust_bridge/frb_generated.dart';
 import 'package:iqrah/theme/app_theme.dart';
 import 'package:iqrah/utils/database_path.dart';
+import 'package:iqrah/utils/rust_bridge_state.dart';
+import 'package:media_kit/media_kit.dart';
 
 const graphAssetPath = "assets/knowledge-graph.cbor.zst";
 const contentDbAssetPath = "rust/content.db";
@@ -35,7 +37,9 @@ Future<void> _ensureContentDb(String contentDbPath) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await RustLib.init();
+  RustBridgeState.isInitialized = true;
 
   final dbDir = await getDatabasePath();
   debugPrint('db directory: $dbDir');

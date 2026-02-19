@@ -21,6 +21,7 @@ pub struct AppState {
     pub learning_service: Arc<LearningService>,
     pub session_service: Arc<SessionService>,
     pub exercise_service: Arc<ExerciseService>,
+    user_repo_sqlite: Arc<SqliteUserRepository>,
 }
 
 static APP: OnceCell<AppState> = OnceCell::new();
@@ -35,6 +36,20 @@ static DEBUG_USER_POOL: OnceCell<sqlx::SqlitePool> = OnceCell::new();
 fn app() -> &'static AppState {
     APP.get()
         .expect("App not initialized - call setup_database first")
+}
+
+fn sync_setting_key(user_id: &str) -> String {
+    format!("sync_last_timestamp:{}", user_id)
+}
+
+fn stable_session_item_id(
+    session_id: &str,
+    node_id: i64,
+    exercise_type: &str,
+    completed_at_ms: i64,
+) -> String {
+    let key = format!("{session_id}:{node_id}:{exercise_type}:{completed_at_ms}");
+    Uuid::new_v5(&Uuid::NAMESPACE_URL, key.as_bytes()).to_string()
 }
 
 /// Populate the nodes table from existing verses/words/chapters data.
@@ -126,7 +141,8 @@ pub async fn setup_database(
     // Create repositories
     let content_repo: Arc<dyn ContentRepository> =
         Arc::new(create_content_repository(content_pool));
-    let user_repo: Arc<dyn UserRepository> = Arc::new(SqliteUserRepository::new(user_pool));
+    let user_repo_sqlite = Arc::new(SqliteUserRepository::new(user_pool));
+    let user_repo: Arc<dyn UserRepository> = user_repo_sqlite.clone();
 
     // Check if data already imported (efficient O(1) check)
     let has_data = content_repo.has_nodes().await?;
@@ -171,6 +187,7 @@ pub async fn setup_database(
         learning_service,
         session_service,
         exercise_service,
+        user_repo_sqlite,
     })
     .map_err(|_| anyhow::anyhow!("App already initialized"))?;
 
@@ -396,6 +413,213 @@ pub async fn complete_session(session_id: String) -> Result<SessionSummaryDto> {
         good_count: summary.good_count,
         easy_count: summary.easy_count,
     })
+}
+
+// ========================================================================
+// Sync (Phase 2)
+// ========================================================================
+
+pub async fn get_memory_states_since(
+    user_id: String,
+    since_millis: i64,
+) -> Result<Vec<SyncMemoryStateDto>> {
+    let app = app();
+    let states = app
+        .user_repo_sqlite
+        .get_memory_states_since(&user_id, since_millis)
+        .await?;
+
+    Ok(states
+        .into_iter()
+        .map(|state| SyncMemoryStateDto {
+            node_id: state.node_id,
+            energy: state.energy,
+            fsrs_stability: Some(state.stability),
+            fsrs_difficulty: Some(state.difficulty),
+            last_reviewed_at: Some(state.last_reviewed.timestamp_millis()),
+            next_review_at: Some(state.due_at.timestamp_millis()),
+            client_updated_at: state.last_reviewed.timestamp_millis(),
+        })
+        .collect())
+}
+
+pub async fn get_sessions_since(
+    user_id: String,
+    since_millis: i64,
+) -> Result<Vec<SyncSessionDto>> {
+    let app = app();
+    let sessions = app
+        .user_repo_sqlite
+        .get_sessions_since(&user_id, since_millis)
+        .await?;
+
+    Ok(sessions
+        .into_iter()
+        .map(|session| {
+            let completed_at = session.completed_at.map(|t| t.timestamp_millis());
+            let updated_at = completed_at.unwrap_or_else(|| session.started_at.timestamp_millis());
+            SyncSessionDto {
+                id: session.id,
+                goal_id: Some(session.goal_id),
+                started_at: session.started_at.timestamp_millis(),
+                completed_at,
+                items_completed: session.items_completed,
+                client_updated_at: updated_at,
+            }
+        })
+        .collect())
+}
+
+pub async fn get_session_items_since(
+    user_id: String,
+    since_millis: i64,
+) -> Result<Vec<SyncSessionItemDto>> {
+    let app = app();
+    let items = app
+        .user_repo_sqlite
+        .get_session_items_since(&user_id, since_millis)
+        .await?;
+
+    let mut result = Vec::new();
+    for item in items {
+        let Some(completed_at) = item.completed_at else { continue };
+        let completed_ms = completed_at.timestamp_millis();
+        result.push(SyncSessionItemDto {
+            id: stable_session_item_id(
+                &item.session_id,
+                item.node_id,
+                &item.exercise_type,
+                completed_ms,
+            ),
+            session_id: item.session_id,
+            node_id: item.node_id,
+            exercise_type: item.exercise_type,
+            grade: Some(item.grade),
+            duration_ms: item.duration_ms,
+            completed_at: Some(completed_ms),
+            client_updated_at: completed_ms,
+        });
+    }
+
+    Ok(result)
+}
+
+pub async fn upsert_memory_states_from_remote(
+    user_id: String,
+    states: Vec<SyncMemoryStateDto>,
+) -> Result<String> {
+    let app = app();
+
+    for state in states {
+        let last_reviewed_ms = state
+            .last_reviewed_at
+            .filter(|ts| *ts > 0)
+            .unwrap_or(state.client_updated_at);
+        let due_at_ms = state
+            .next_review_at
+            .filter(|ts| *ts > 0)
+            .unwrap_or(last_reviewed_ms);
+
+        let last_reviewed = chrono::DateTime::from_timestamp_millis(last_reviewed_ms)
+            .unwrap_or_else(chrono::Utc::now);
+        let due_at =
+            chrono::DateTime::from_timestamp_millis(due_at_ms).unwrap_or_else(chrono::Utc::now);
+
+        let memory_state = iqrah_core::MemoryState {
+            user_id: user_id.clone(),
+            node_id: state.node_id,
+            stability: state.fsrs_stability.unwrap_or(0.0),
+            difficulty: state.fsrs_difficulty.unwrap_or(0.0),
+            energy: state.energy,
+            last_reviewed,
+            due_at,
+            review_count: 0,
+        };
+
+        app.user_repo_sqlite
+            .upsert_memory_state_if_newer(&memory_state)
+            .await?;
+    }
+
+    Ok("ok".to_string())
+}
+
+pub async fn upsert_sessions_from_remote(
+    user_id: String,
+    sessions: Vec<SyncSessionDto>,
+) -> Result<String> {
+    let app = app();
+
+    for session in sessions {
+        let started_at = chrono::DateTime::from_timestamp_millis(session.started_at)
+            .unwrap_or_else(chrono::Utc::now);
+        let completed_at = session
+            .completed_at
+            .and_then(chrono::DateTime::from_timestamp_millis);
+        let items_completed = session.items_completed.max(0);
+
+        let session = iqrah_core::Session {
+            id: session.id,
+            user_id: user_id.clone(),
+            goal_id: session.goal_id.unwrap_or_default(),
+            started_at,
+            completed_at,
+            items_count: items_completed,
+            items_completed,
+        };
+
+        app.user_repo_sqlite.upsert_session_if_newer(&session).await?;
+    }
+
+    Ok("ok".to_string())
+}
+
+pub async fn upsert_session_items_from_remote(
+    user_id: String,
+    items: Vec<SyncSessionItemDto>,
+) -> Result<String> {
+    let app = app();
+    let _ = &user_id;
+
+    for item in items {
+        let Some(completed_at_ms) = item.completed_at else { continue };
+        let completed_at =
+            chrono::DateTime::from_timestamp_millis(completed_at_ms).unwrap_or_else(chrono::Utc::now);
+
+        let session_item = iqrah_core::SessionItem {
+            id: 0,
+            session_id: item.session_id,
+            node_id: item.node_id,
+            exercise_type: item.exercise_type,
+            grade: item.grade.unwrap_or(0),
+            duration_ms: item.duration_ms,
+            completed_at: Some(completed_at),
+        };
+
+        app.user_repo_sqlite
+            .insert_session_item_if_absent(&session_item)
+            .await?;
+    }
+
+    Ok("ok".to_string())
+}
+
+pub async fn get_last_sync_timestamp(user_id: String) -> Result<i64> {
+    let app = app();
+    let key = sync_setting_key(&user_id);
+    let value = app.user_repo.get_setting(&key).await?;
+    Ok(value
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0))
+}
+
+pub async fn set_last_sync_timestamp(user_id: String, timestamp: i64) -> Result<String> {
+    let app = app();
+    let key = sync_setting_key(&user_id);
+    app.user_repo
+        .set_setting(&key, &timestamp.to_string())
+        .await?;
+    Ok("ok".to_string())
 }
 
 /// Get exercises for a specific node (Sandbox/Preview)
@@ -754,6 +978,34 @@ pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStatsDto> {
     })
 }
 
+/// Get detailed stats for charts
+pub async fn get_detailed_stats(_user_id: String) -> Result<DetailedStatsDto> {
+    use chrono::{Duration, Utc};
+    
+    let mut activity_history = Vec::new();
+    let now = Utc::now();
+    
+    // Generate last 7 days of activity (simulated)
+    for i in 0..7 {
+        let date = now - Duration::days(6 - i);
+        let count = 10 + (date.timestamp() % 20) as i32;
+        
+        activity_history.push(ActivityPointDto {
+            date: date.format("%Y-%m-%d").to_string(),
+            count,
+        });
+    }
+
+    Ok(DetailedStatsDto {
+        activity_history,
+        comprehension: ComprehensionDto {
+            memorization: 0.75, // 75%
+            understanding: 0.45,
+            context: 0.30,
+        },
+    })
+}
+
 /// Get debug stats
 pub async fn get_debug_stats(user_id: String) -> Result<DebugStatsDto> {
     let app = app();
@@ -1017,19 +1269,49 @@ pub async fn get_available_surahs() -> Result<Vec<SurahInfo>> {
         .into_iter()
         .map(|chapter| {
             let name = if !chapter.name_translation.trim().is_empty() {
-                chapter.name_translation
+                chapter.name_translation.clone()
             } else if !chapter.name_transliteration.trim().is_empty() {
-                chapter.name_transliteration
+                chapter.name_transliteration.clone()
             } else {
-                chapter.name_arabic
+                chapter.name_arabic.clone()
             };
             SurahInfo {
                 number: chapter.number,
                 name,
+                name_arabic: chapter.name_arabic,
+                name_transliteration: chapter.name_transliteration,
+                name_translation: chapter.name_translation,
+                verse_count: chapter.verse_count,
+                revelation_place: chapter.revelation_place,
             }
         })
         .collect();
     Ok(surahs)
+}
+
+/// Get all verses for a specific surah with user's preferred translation
+pub async fn get_surah_verses(chapter_number: i32) -> Result<Vec<VerseWithTranslationDto>> {
+    let app = app();
+    let translator_id = get_preferred_translator_id().await?;
+    
+    let verses = app.content_repo.get_verses_for_chapter(chapter_number).await?;
+    let mut results = Vec::new();
+
+    for verse in verses {
+        let translation = app
+            .content_repo
+            .get_verse_translation(&verse.key, translator_id)
+            .await?;
+            
+        results.push(VerseWithTranslationDto {
+            key: verse.key,
+            text_uthmani: verse.text_uthmani,
+            translation,
+            number: verse.verse_number,
+        });
+    }
+    
+    Ok(results)
 }
 
 async fn chapter_for_ukey(app: &AppState, ukey: &str) -> Result<Option<i32>> {
@@ -1358,6 +1640,39 @@ pub struct SessionSummaryDto {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SyncMemoryStateDto {
+    pub node_id: i64,
+    pub energy: f64,
+    pub fsrs_stability: Option<f64>,
+    pub fsrs_difficulty: Option<f64>,
+    pub last_reviewed_at: Option<i64>,
+    pub next_review_at: Option<i64>,
+    pub client_updated_at: i64,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SyncSessionDto {
+    pub id: String,
+    pub goal_id: Option<String>,
+    pub started_at: i64,
+    pub completed_at: Option<i64>,
+    pub items_completed: i32,
+    pub client_updated_at: i64,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct SyncSessionItemDto {
+    pub id: String,
+    pub session_id: String,
+    pub node_id: i64,
+    pub exercise_type: String,
+    pub grade: Option<i32>,
+    pub duration_ms: Option<i64>,
+    pub completed_at: Option<i64>,
+    pub client_updated_at: i64,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct NodeSearchDto {
     pub node_id: String,
     pub node_type: String,
@@ -1369,6 +1684,11 @@ pub struct NodeSearchDto {
 pub struct SurahInfo {
     pub number: i32,
     pub name: String,
+    pub name_arabic: String,
+    pub name_transliteration: String,
+    pub name_translation: String,
+    pub verse_count: i32,
+    pub revelation_place: Option<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -1816,6 +2136,14 @@ pub struct EchoRecallStatsDto {
 pub struct EnergyUpdateDto {
     pub node_id: String,
     pub energy: f64,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct VerseWithTranslationDto {
+    pub key: String,
+    pub text_uthmani: String,
+    pub translation: Option<String>,
+    pub number: i32,
 }
 
 /// Per-word timing for metrics
@@ -2506,4 +2834,26 @@ pub async fn execute_debug_query(_sql: String) -> Result<DbQueryResultDto> {
     Err(anyhow::anyhow!(
         "execute_debug_query is only available in debug builds"
     ))
+}
+// ========================================================================
+// Stats DTOs
+// ========================================================================
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct DetailedStatsDto {
+    pub activity_history: Vec<ActivityPointDto>,
+    pub comprehension: ComprehensionDto,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ActivityPointDto {
+    pub date: String,
+    pub count: i32,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ComprehensionDto {
+    pub memorization: f64,
+    pub understanding: f64,
+    pub context: f64,
 }

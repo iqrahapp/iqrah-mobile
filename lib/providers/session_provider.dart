@@ -4,6 +4,7 @@ import 'package:iqrah/providers/user_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/services/session_service.dart';
 import 'package:iqrah/utils/app_logger.dart';
+import 'package:iqrah/utils/rust_bridge_state.dart';
 
 enum SessionMode { idle, adhoc, persistent }
 
@@ -102,7 +103,11 @@ class SessionNotifier extends Notifier<SessionState> {
       state = state.copyWith(session: session, isLoading: false);
       await _loadNextItem();
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        mode: SessionMode.idle,
+        isLoading: false,
+        error: e.toString(),
+      );
       AppLogger.session('Failed to start session', error: e);
     }
   }
@@ -181,6 +186,11 @@ class SessionNotifier extends Notifier<SessionState> {
     int grade,
   ) async {
     try {
+      if (!RustBridgeState.isInitialized ||
+          const bool.fromEnvironment('FLUTTER_TEST')) {
+        return;
+      }
+
       final userId = ref.read(currentUserIdProvider);
       final nodeId = exercise.map(
         memorization: (e) => e.nodeId,
@@ -219,6 +229,9 @@ class SessionNotifier extends Notifier<SessionState> {
       ref.invalidate(dashboardStatsProvider);
       ref.invalidate(exercisesProvider);
     } catch (e) {
+      if (e.toString().contains('flutter_rust_bridge has not been initialized')) {
+        return;
+      }
       AppLogger.session('Failed to submit adhoc review', error: e);
     }
   }

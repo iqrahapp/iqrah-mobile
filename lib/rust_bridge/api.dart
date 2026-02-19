@@ -8,9 +8,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'api.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `app`, `populate_nodes_from_content`
+// These functions are ignored because they are not marked as `pub`: `app`, `chapter_for_ukey`, `populate_nodes_from_content`, `stable_session_item_id`, `sync_setting_key`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `ExerciseDto`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`, `from`
 
 /// One-time setup: initializes databases and imports graph
 Future<String> setupDatabase({
@@ -72,6 +72,65 @@ Future<String> submitSessionItem({
 /// Complete a session and return summary
 Future<SessionSummaryDto> completeSession({required String sessionId}) =>
     RustLib.instance.api.crateApiCompleteSession(sessionId: sessionId);
+
+Future<List<SyncMemoryStateDto>> getMemoryStatesSince({
+  required String userId,
+  required PlatformInt64 sinceMillis,
+}) => RustLib.instance.api.crateApiGetMemoryStatesSince(
+  userId: userId,
+  sinceMillis: sinceMillis,
+);
+
+Future<List<SyncSessionDto>> getSessionsSince({
+  required String userId,
+  required PlatformInt64 sinceMillis,
+}) => RustLib.instance.api.crateApiGetSessionsSince(
+  userId: userId,
+  sinceMillis: sinceMillis,
+);
+
+Future<List<SyncSessionItemDto>> getSessionItemsSince({
+  required String userId,
+  required PlatformInt64 sinceMillis,
+}) => RustLib.instance.api.crateApiGetSessionItemsSince(
+  userId: userId,
+  sinceMillis: sinceMillis,
+);
+
+Future<String> upsertMemoryStatesFromRemote({
+  required String userId,
+  required List<SyncMemoryStateDto> states,
+}) => RustLib.instance.api.crateApiUpsertMemoryStatesFromRemote(
+  userId: userId,
+  states: states,
+);
+
+Future<String> upsertSessionsFromRemote({
+  required String userId,
+  required List<SyncSessionDto> sessions,
+}) => RustLib.instance.api.crateApiUpsertSessionsFromRemote(
+  userId: userId,
+  sessions: sessions,
+);
+
+Future<String> upsertSessionItemsFromRemote({
+  required String userId,
+  required List<SyncSessionItemDto> items,
+}) => RustLib.instance.api.crateApiUpsertSessionItemsFromRemote(
+  userId: userId,
+  items: items,
+);
+
+Future<PlatformInt64> getLastSyncTimestamp({required String userId}) =>
+    RustLib.instance.api.crateApiGetLastSyncTimestamp(userId: userId);
+
+Future<String> setLastSyncTimestamp({
+  required String userId,
+  required PlatformInt64 timestamp,
+}) => RustLib.instance.api.crateApiSetLastSyncTimestamp(
+  userId: userId,
+  timestamp: timestamp,
+);
 
 /// Get exercises for a specific node (Sandbox/Preview)
 Future<List<ExerciseDataDto>> getExercisesForNode({required String nodeId}) =>
@@ -135,6 +194,10 @@ Future<String> processReview({
 Future<DashboardStatsDto> getDashboardStats({required String userId}) =>
     RustLib.instance.api.crateApiGetDashboardStats(userId: userId);
 
+/// Get detailed stats for charts
+Future<DetailedStatsDto> getDetailedStats({required String userId}) =>
+    RustLib.instance.api.crateApiGetDetailedStats(userId: userId);
+
 /// Get debug stats
 Future<DebugStatsDto> getDebugStats({required String userId}) =>
     RustLib.instance.api.crateApiGetDebugStats(userId: userId);
@@ -174,6 +237,11 @@ Future<List<NodeSearchDto>> searchNodes({
 /// Get available surahs
 Future<List<SurahInfo>> getAvailableSurahs() =>
     RustLib.instance.api.crateApiGetAvailableSurahs();
+
+/// Get all verses for a specific surah with user's preferred translation
+Future<List<VerseWithTranslationDto>> getSurahVerses({
+  required int chapterNumber,
+}) => RustLib.instance.api.crateApiGetSurahVerses(chapterNumber: chapterNumber);
 
 /// Get all available languages
 Future<List<LanguageDto>> getLanguages() =>
@@ -383,6 +451,49 @@ abstract class ArcContentRepository implements RustOpaqueInterface {}
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Arc < dyn UserRepository >>>
 abstract class ArcUserRepository implements RustOpaqueInterface {}
 
+class ActivityPointDto {
+  final String date;
+  final int count;
+
+  const ActivityPointDto({required this.date, required this.count});
+
+  @override
+  int get hashCode => date.hashCode ^ count.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ActivityPointDto &&
+          runtimeType == other.runtimeType &&
+          date == other.date &&
+          count == other.count;
+}
+
+class ComprehensionDto {
+  final double memorization;
+  final double understanding;
+  final double context;
+
+  const ComprehensionDto({
+    required this.memorization,
+    required this.understanding,
+    required this.context,
+  });
+
+  @override
+  int get hashCode =>
+      memorization.hashCode ^ understanding.hashCode ^ context.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ComprehensionDto &&
+          runtimeType == other.runtimeType &&
+          memorization == other.memorization &&
+          understanding == other.understanding &&
+          context == other.context;
+}
+
 class ContentPackageDto {
   final String packageId;
   final String packageType;
@@ -555,6 +666,27 @@ class DebugStatsDto {
           totalNodesCount == other.totalNodesCount &&
           totalEdgesCount == other.totalEdgesCount &&
           dueCount == other.dueCount;
+}
+
+class DetailedStatsDto {
+  final List<ActivityPointDto> activityHistory;
+  final ComprehensionDto comprehension;
+
+  const DetailedStatsDto({
+    required this.activityHistory,
+    required this.comprehension,
+  });
+
+  @override
+  int get hashCode => activityHistory.hashCode ^ comprehension.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DetailedStatsDto &&
+          runtimeType == other.runtimeType &&
+          activityHistory == other.activityHistory &&
+          comprehension == other.comprehension;
 }
 
 /// Complete metrics for an Echo Recall session
@@ -1266,11 +1398,31 @@ class SessionSummaryDto {
 class SurahInfo {
   final int number;
   final String name;
+  final String nameArabic;
+  final String nameTransliteration;
+  final String nameTranslation;
+  final int verseCount;
+  final String? revelationPlace;
 
-  const SurahInfo({required this.number, required this.name});
+  const SurahInfo({
+    required this.number,
+    required this.name,
+    required this.nameArabic,
+    required this.nameTransliteration,
+    required this.nameTranslation,
+    required this.verseCount,
+    this.revelationPlace,
+  });
 
   @override
-  int get hashCode => number.hashCode ^ name.hashCode;
+  int get hashCode =>
+      number.hashCode ^
+      name.hashCode ^
+      nameArabic.hashCode ^
+      nameTransliteration.hashCode ^
+      nameTranslation.hashCode ^
+      verseCount.hashCode ^
+      revelationPlace.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -1278,7 +1430,141 @@ class SurahInfo {
       other is SurahInfo &&
           runtimeType == other.runtimeType &&
           number == other.number &&
-          name == other.name;
+          name == other.name &&
+          nameArabic == other.nameArabic &&
+          nameTransliteration == other.nameTransliteration &&
+          nameTranslation == other.nameTranslation &&
+          verseCount == other.verseCount &&
+          revelationPlace == other.revelationPlace;
+}
+
+class SyncMemoryStateDto {
+  final PlatformInt64 nodeId;
+  final double energy;
+  final double? fsrsStability;
+  final double? fsrsDifficulty;
+  final PlatformInt64? lastReviewedAt;
+  final PlatformInt64? nextReviewAt;
+  final PlatformInt64 clientUpdatedAt;
+
+  const SyncMemoryStateDto({
+    required this.nodeId,
+    required this.energy,
+    this.fsrsStability,
+    this.fsrsDifficulty,
+    this.lastReviewedAt,
+    this.nextReviewAt,
+    required this.clientUpdatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      nodeId.hashCode ^
+      energy.hashCode ^
+      fsrsStability.hashCode ^
+      fsrsDifficulty.hashCode ^
+      lastReviewedAt.hashCode ^
+      nextReviewAt.hashCode ^
+      clientUpdatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SyncMemoryStateDto &&
+          runtimeType == other.runtimeType &&
+          nodeId == other.nodeId &&
+          energy == other.energy &&
+          fsrsStability == other.fsrsStability &&
+          fsrsDifficulty == other.fsrsDifficulty &&
+          lastReviewedAt == other.lastReviewedAt &&
+          nextReviewAt == other.nextReviewAt &&
+          clientUpdatedAt == other.clientUpdatedAt;
+}
+
+class SyncSessionDto {
+  final String id;
+  final String? goalId;
+  final PlatformInt64 startedAt;
+  final PlatformInt64? completedAt;
+  final int itemsCompleted;
+  final PlatformInt64 clientUpdatedAt;
+
+  const SyncSessionDto({
+    required this.id,
+    this.goalId,
+    required this.startedAt,
+    this.completedAt,
+    required this.itemsCompleted,
+    required this.clientUpdatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      goalId.hashCode ^
+      startedAt.hashCode ^
+      completedAt.hashCode ^
+      itemsCompleted.hashCode ^
+      clientUpdatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SyncSessionDto &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          goalId == other.goalId &&
+          startedAt == other.startedAt &&
+          completedAt == other.completedAt &&
+          itemsCompleted == other.itemsCompleted &&
+          clientUpdatedAt == other.clientUpdatedAt;
+}
+
+class SyncSessionItemDto {
+  final String id;
+  final String sessionId;
+  final PlatformInt64 nodeId;
+  final String exerciseType;
+  final int? grade;
+  final PlatformInt64? durationMs;
+  final PlatformInt64? completedAt;
+  final PlatformInt64 clientUpdatedAt;
+
+  const SyncSessionItemDto({
+    required this.id,
+    required this.sessionId,
+    required this.nodeId,
+    required this.exerciseType,
+    this.grade,
+    this.durationMs,
+    this.completedAt,
+    required this.clientUpdatedAt,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      sessionId.hashCode ^
+      nodeId.hashCode ^
+      exerciseType.hashCode ^
+      grade.hashCode ^
+      durationMs.hashCode ^
+      completedAt.hashCode ^
+      clientUpdatedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SyncSessionItemDto &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          sessionId == other.sessionId &&
+          nodeId == other.nodeId &&
+          exerciseType == other.exerciseType &&
+          grade == other.grade &&
+          durationMs == other.durationMs &&
+          completedAt == other.completedAt &&
+          clientUpdatedAt == other.clientUpdatedAt;
 }
 
 class TranslatorDto {
@@ -1349,6 +1635,37 @@ class VerseDto {
           textUthmani == other.textUthmani &&
           chapterNumber == other.chapterNumber &&
           verseNumber == other.verseNumber;
+}
+
+class VerseWithTranslationDto {
+  final String key;
+  final String textUthmani;
+  final String? translation;
+  final int number;
+
+  const VerseWithTranslationDto({
+    required this.key,
+    required this.textUthmani,
+    this.translation,
+    required this.number,
+  });
+
+  @override
+  int get hashCode =>
+      key.hashCode ^
+      textUthmani.hashCode ^
+      translation.hashCode ^
+      number.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is VerseWithTranslationDto &&
+          runtimeType == other.runtimeType &&
+          key == other.key &&
+          textUthmani == other.textUthmani &&
+          translation == other.translation &&
+          number == other.number;
 }
 
 class WordDto {

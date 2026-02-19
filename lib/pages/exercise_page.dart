@@ -9,14 +9,14 @@ import 'package:iqrah/providers/session_provider.dart';
 import 'package:iqrah/rust_bridge/api.dart' as api;
 import 'package:iqrah/rust_bridge/repository.dart';
 
-class ExcercisePage extends ConsumerStatefulWidget {
-  const ExcercisePage({super.key});
+class ExercisePage extends ConsumerStatefulWidget {
+  const ExercisePage({super.key});
 
   @override
-  ConsumerState<ExcercisePage> createState() => _ExcercisePageState();
+  ConsumerState<ExercisePage> createState() => _ExercisePageState();
 }
 
-class _ExcercisePageState extends ConsumerState<ExcercisePage>
+class _ExercisePageState extends ConsumerState<ExercisePage>
     with WidgetsBindingObserver {
   bool _isAnswerVisible = false;
   final Stopwatch _stopwatch = Stopwatch();

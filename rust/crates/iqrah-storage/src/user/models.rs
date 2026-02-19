@@ -50,6 +50,7 @@ pub struct SessionRow {
     pub items_completed: i64,
 }
 
+#[allow(dead_code)] // Will be used in Phase 2 sync implementation
 #[derive(Debug, Clone, FromRow)]
 pub struct SessionItemRow {
     pub id: i64,

@@ -138,6 +138,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  ActivityPointDto dco_decode_activity_point_dto(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
@@ -182,6 +185,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WordDto dco_decode_box_autoadd_word_dto(dynamic raw);
 
   @protected
+  ComprehensionDto dco_decode_comprehension_dto(dynamic raw);
+
+  @protected
   ContentPackageDto dco_decode_content_package_dto(dynamic raw);
 
   @protected
@@ -195,6 +201,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DebugStatsDto dco_decode_debug_stats_dto(dynamic raw);
+
+  @protected
+  DetailedStatsDto dco_decode_detailed_stats_dto(dynamic raw);
 
   @protected
   EchoRecallMetricsDto dco_decode_echo_recall_metrics_dto(dynamic raw);
@@ -242,6 +251,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<ActivityPointDto> dco_decode_list_activity_point_dto(dynamic raw);
+
+  @protected
   List<ContentPackageDto> dco_decode_list_content_package_dto(dynamic raw);
 
   @protected
@@ -284,7 +296,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SurahInfo> dco_decode_list_surah_info(dynamic raw);
 
   @protected
+  List<SyncMemoryStateDto> dco_decode_list_sync_memory_state_dto(dynamic raw);
+
+  @protected
+  List<SyncSessionDto> dco_decode_list_sync_session_dto(dynamic raw);
+
+  @protected
+  List<SyncSessionItemDto> dco_decode_list_sync_session_item_dto(dynamic raw);
+
+  @protected
   List<TranslatorDto> dco_decode_list_translator_dto(dynamic raw);
+
+  @protected
+  List<VerseWithTranslationDto> dco_decode_list_verse_with_translation_dto(
+    dynamic raw,
+  );
 
   @protected
   List<WordDto> dco_decode_list_word_dto(dynamic raw);
@@ -362,6 +388,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SurahInfo dco_decode_surah_info(dynamic raw);
 
   @protected
+  SyncMemoryStateDto dco_decode_sync_memory_state_dto(dynamic raw);
+
+  @protected
+  SyncSessionDto dco_decode_sync_session_dto(dynamic raw);
+
+  @protected
+  SyncSessionItemDto dco_decode_sync_session_item_dto(dynamic raw);
+
+  @protected
   TranslatorDto dco_decode_translator_dto(dynamic raw);
 
   @protected
@@ -381,6 +416,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   VerseDto dco_decode_verse_dto(dynamic raw);
+
+  @protected
+  VerseWithTranslationDto dco_decode_verse_with_translation_dto(dynamic raw);
 
   @protected
   WordDto dco_decode_word_dto(dynamic raw);
@@ -487,6 +525,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  ActivityPointDto sse_decode_activity_point_dto(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
@@ -539,6 +580,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   WordDto sse_decode_box_autoadd_word_dto(SseDeserializer deserializer);
 
   @protected
+  ComprehensionDto sse_decode_comprehension_dto(SseDeserializer deserializer);
+
+  @protected
   ContentPackageDto sse_decode_content_package_dto(
     SseDeserializer deserializer,
   );
@@ -556,6 +600,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DebugStatsDto sse_decode_debug_stats_dto(SseDeserializer deserializer);
+
+  @protected
+  DetailedStatsDto sse_decode_detailed_stats_dto(SseDeserializer deserializer);
 
   @protected
   EchoRecallMetricsDto sse_decode_echo_recall_metrics_dto(
@@ -615,6 +662,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<ActivityPointDto> sse_decode_list_activity_point_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<ContentPackageDto> sse_decode_list_content_package_dto(
@@ -677,7 +729,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SurahInfo> sse_decode_list_surah_info(SseDeserializer deserializer);
 
   @protected
+  List<SyncMemoryStateDto> sse_decode_list_sync_memory_state_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<SyncSessionDto> sse_decode_list_sync_session_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<SyncSessionItemDto> sse_decode_list_sync_session_item_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<TranslatorDto> sse_decode_list_translator_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<VerseWithTranslationDto> sse_decode_list_verse_with_translation_dto(
     SseDeserializer deserializer,
   );
 
@@ -775,6 +847,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SurahInfo sse_decode_surah_info(SseDeserializer deserializer);
 
   @protected
+  SyncMemoryStateDto sse_decode_sync_memory_state_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  SyncSessionDto sse_decode_sync_session_dto(SseDeserializer deserializer);
+
+  @protected
+  SyncSessionItemDto sse_decode_sync_session_item_dto(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   TranslatorDto sse_decode_translator_dto(SseDeserializer deserializer);
 
   @protected
@@ -794,6 +879,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   VerseDto sse_decode_verse_dto(SseDeserializer deserializer);
+
+  @protected
+  VerseWithTranslationDto sse_decode_verse_with_translation_dto(
+    SseDeserializer deserializer,
+  );
 
   @protected
   WordDto sse_decode_word_dto(SseDeserializer deserializer);
@@ -920,6 +1010,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_activity_point_dto(
+    ActivityPointDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
@@ -989,6 +1085,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_word_dto(WordDto self, SseSerializer serializer);
 
   @protected
+  void sse_encode_comprehension_dto(
+    ComprehensionDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_content_package_dto(
     ContentPackageDto self,
     SseSerializer serializer,
@@ -1011,6 +1113,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_debug_stats_dto(DebugStatsDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_detailed_stats_dto(
+    DetailedStatsDto self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_echo_recall_metrics_dto(
@@ -1083,6 +1191,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_activity_point_dto(
+    List<ActivityPointDto> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_content_package_dto(
@@ -1166,8 +1280,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_sync_memory_state_dto(
+    List<SyncMemoryStateDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_sync_session_dto(
+    List<SyncSessionDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_sync_session_item_dto(
+    List<SyncSessionItemDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_translator_dto(
     List<TranslatorDto> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_verse_with_translation_dto(
+    List<VerseWithTranslationDto> self,
     SseSerializer serializer,
   );
 
@@ -1292,6 +1430,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_surah_info(SurahInfo self, SseSerializer serializer);
 
   @protected
+  void sse_encode_sync_memory_state_dto(
+    SyncMemoryStateDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_sync_session_dto(
+    SyncSessionDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_sync_session_item_dto(
+    SyncSessionItemDto self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_translator_dto(TranslatorDto self, SseSerializer serializer);
 
   @protected
@@ -1311,6 +1467,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_verse_dto(VerseDto self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_verse_with_translation_dto(
+    VerseWithTranslationDto self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_word_dto(WordDto self, SseSerializer serializer);

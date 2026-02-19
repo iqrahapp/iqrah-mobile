@@ -1,0 +1,68 @@
+//! Domain types for Iqrah backend.
+
+pub mod auth;
+pub mod errors;
+pub mod sync;
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+pub use auth::*;
+pub use errors::*;
+pub use sync::*;
+
+/// User entity.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct User {
+    pub id: Uuid,
+    pub oauth_sub: String,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Pack type (translation, recitation, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PackType {
+    Translation,
+    Recitation,
+    Tafsir,
+}
+
+/// Pack status.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PackStatus {
+    Draft,
+    Published,
+    Deprecated,
+}
+
+/// Content pack entity.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Pack {
+    pub package_id: String,
+    pub pack_type: PackType,
+    pub version: String,
+    pub language: String,
+    pub status: PackStatus,
+    pub file_path: Option<String>,
+    pub sha256: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Health check response.
+#[derive(Debug, Serialize)]
+pub struct HealthResponse {
+    pub status: String,
+    pub version: String,
+    pub build_sha: String,
+    pub uptime_seconds: u64,
+}
+
+/// Ready check response.
+#[derive(Debug, Serialize)]
+pub struct ReadyResponse {
+    pub status: String,
+    pub database: String,
+}

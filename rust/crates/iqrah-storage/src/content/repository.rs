@@ -798,7 +798,7 @@ impl ContentRepository for SqliteContentRepository {
                     v.sajdah_type, v.sajdah_number,
                     v.letter_count as letter_count, v.word_count as word_count, 0 as created_at
              FROM verses v
-             LEFT JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN nodes n ON (n.ukey = 'VERSE:' || v.verse_key OR n.ukey = v.verse_key)
              LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
              LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
              LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
@@ -830,7 +830,7 @@ impl ContentRepository for SqliteContentRepository {
                     v.sajdah_type, v.sajdah_number,
                     v.letter_count as letter_count, v.word_count as word_count, 0 as created_at
              FROM verses v
-             LEFT JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             LEFT JOIN nodes n ON (n.ukey = 'VERSE:' || v.verse_key OR n.ukey = v.verse_key)
              LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
              LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
              LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'
@@ -864,7 +864,7 @@ impl ContentRepository for SqliteContentRepository {
                     sc_tr.text_content as transliteration,
                     w.letter_count, w.created_at
              FROM words w
-             JOIN nodes n ON n.ukey = 'WORD:' || w.word_id
+             JOIN nodes n ON (n.ukey = 'WORD:' || w.word_id OR n.ukey = CAST(w.word_id AS TEXT))
              LEFT JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
              LEFT JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
              LEFT JOIN script_resources sr_sim ON sr_sim.slug = 'simple'

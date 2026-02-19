@@ -26,9 +26,7 @@ class AppTheme {
         fontWeight: FontWeight.bold,
         color: _textPrimary,
       ),
-      iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(foregroundColor: _goldPrimary),
-      ),
+
       titleLarge: GoogleFonts.outfit(
         fontSize: 22,
         fontWeight: FontWeight.w600,
@@ -68,11 +66,11 @@ class AppTheme {
       textTheme: textTheme,
       cardTheme: CardThemeData(
         color: _darkSurface,
-        shadowColor: Colors.black.withOpacity(0.4),
+        shadowColor: Colors.black.withValues(alpha: 0.4),
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1),
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -96,6 +94,9 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 10,
       ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(foregroundColor: _goldPrimary),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: _goldPrimary,
@@ -114,7 +115,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

@@ -11,7 +11,6 @@ class QuranPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final surahsAsync = ref.watch(surahsProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -70,12 +69,12 @@ class _SurahCard extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: colorScheme.primary.withOpacity(0.5), width: 1.5),
-                  color: colorScheme.primary.withOpacity(0.1),
+                  border: Border.all(color: colorScheme.primary.withValues(alpha: 0.5), width: 1.5),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  '${surah.surahNumber}',
+                  '${surah.number}',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -89,16 +88,16 @@ class _SurahCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      surah.transliteration ?? 'Surah ${surah.surahNumber}',
+                  surah.nameTransliteration,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${surah.englishName ?? ""} • ${surah.verseCount} Verses',
+                      '${surah.nameTranslation} • ${surah.verseCount} Verses',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -106,7 +105,7 @@ class _SurahCard extends StatelessWidget {
               ),
               // Arabic Name
               Text(
-                surah.arabicName ?? '',
+                surah.nameArabic,
                 style: GoogleFonts.amiri( // Use Amiri for Arabic if available, or fallback
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
