@@ -22,7 +22,7 @@ use sqlx::PgPool;
 
 use handlers::auth::IdTokenVerifier;
 use handlers::packs::{download_pack, get_manifest, list_packs};
-use handlers::sync::{sync_pull, sync_push};
+use handlers::sync::{admin_recent_conflicts, sync_pull, sync_push};
 
 /// Application state shared across handlers.
 #[derive(Clone)]
@@ -47,6 +47,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/v1/sync/push", post(sync_push))
         .route("/v1/sync/pull", post(sync_pull))
         .route("/v1/users/me", get(handlers::auth::get_me))
+        .route(
+            "/v1/admin/sync/conflicts/{user_id}",
+            get(admin_recent_conflicts),
+        )
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(TraceLayer::new_for_http())
