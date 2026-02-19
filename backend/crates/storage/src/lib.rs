@@ -10,7 +10,7 @@ pub mod user_repository;
 
 pub use error::StorageError;
 pub use pack_repository::{PackInfo, PackRepository};
-pub use sync_repository::SyncRepository;
+pub use sync_repository::{ConflictLogEntry, SyncRepository};
 pub use user_repository::{UserRepository, UserRow};
 
 /// Create a PostgreSQL connection pool.

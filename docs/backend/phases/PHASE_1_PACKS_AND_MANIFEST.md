@@ -74,16 +74,23 @@ Tables:
   - `package_id` (PK)
   - `package_type`
   - `language_code`
+  - `status`
   - `name`
   - `description`
+  - `created_at`
+  - Legacy payload columns (`legacy_version`, `legacy_file_path`, `legacy_sha256`) are deprecated and retained only for migration safety.
 - `pack_versions`:
+  - `id` (PK)
   - `package_id` (FK)
   - `version`
   - `file_path`
   - `size_bytes`
   - `sha256`
+  - `min_app_version`
   - `published_at`
   - `is_active`
+
+`pack_versions` is the runtime source of truth for version/file metadata used by listing and download APIs. Published packs must have an active `pack_versions` row.
 
 ## Task Breakdown
 

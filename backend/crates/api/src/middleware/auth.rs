@@ -60,3 +60,34 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         Ok(AuthUser(user_id))
     }
 }
+
+/// Extractor that enforces admin key for observability endpoints.
+pub struct AdminApiKey;
+
+impl FromRequestParts<Arc<AppState>> for AdminApiKey {
+    type Rejection = DomainError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<AppState>,
+    ) -> Result<Self, Self::Rejection> {
+        let expected = state.config.admin_api_key.as_str();
+        if expected.is_empty() {
+            return Err(DomainError::Forbidden(
+                "Admin observability endpoint is disabled".to_string(),
+            ));
+        }
+
+        let provided = parts
+            .headers
+            .get("x-admin-key")
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| DomainError::Unauthorized("Missing admin key".to_string()))?;
+
+        if provided != expected {
+            return Err(DomainError::Forbidden("Invalid admin key".to_string()));
+        }
+
+        Ok(Self)
+    }
+}

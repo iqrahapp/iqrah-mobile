@@ -28,7 +28,10 @@ pub struct SyncPullRequest {
     /// Timestamp in milliseconds since epoch. Returns changes after this time.
     #[validate(range(min = 0))]
     pub since: i64,
-    /// Max records per batch. Default: 1000, Maximum allowed: 10000.
+    /// Max records per batch across all entity types combined (global cap).
+    ///
+    /// The server merges changes from all categories and stops when the total
+    /// payload reaches `limit`. Default: 1000, Maximum allowed: 10000.
     #[validate(range(min = 1, max = 10000))]
     #[serde(default = "default_limit")]
     pub limit: Option<usize>,
@@ -120,6 +123,8 @@ pub struct SettingChange {
     #[validate(length(min = 1, max = 255))]
     pub key: String,
     pub value: serde_json::Value,
+    #[validate(range(min = 0))]
+    pub client_updated_at: i64,
 }
 
 /// Memory state change.
@@ -136,6 +141,8 @@ pub struct MemoryStateChange {
     pub last_reviewed_at: Option<i64>,
     #[validate(range(min = 0))]
     pub next_review_at: Option<i64>,
+    #[validate(range(min = 0))]
+    pub client_updated_at: i64,
 }
 
 /// Session change.
@@ -150,6 +157,8 @@ pub struct SessionChange {
     pub completed_at: Option<i64>,
     #[validate(range(min = 0))]
     pub items_completed: i32,
+    #[validate(range(min = 0))]
+    pub client_updated_at: i64,
 }
 
 /// Session item change.
@@ -164,6 +173,26 @@ pub struct SessionItemChange {
     pub grade: Option<i32>,
     #[validate(range(min = 0))]
     pub duration_ms: Option<i32>,
+    #[validate(range(min = 0))]
+    pub client_updated_at: i64,
+}
+
+/// Admin conflict log record.
+#[derive(Debug, Serialize)]
+pub struct AdminConflictRecord {
+    pub id: i64,
+    pub user_id: Uuid,
+    pub entity_type: String,
+    pub entity_key: String,
+    pub incoming_metadata: serde_json::Value,
+    pub winning_metadata: serde_json::Value,
+    pub resolved_at: i64,
+}
+
+/// Admin conflict inspection response.
+#[derive(Debug, Serialize)]
+pub struct AdminConflictListResponse {
+    pub conflicts: Vec<AdminConflictRecord>,
 }
 
 /// Sync push response.

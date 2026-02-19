@@ -27,6 +27,8 @@ pub struct AppConfig {
     pub bind_address: String,
     /// Base URL for API (used in download URLs)
     pub base_url: String,
+    /// Shared admin key for observability endpoints. Empty disables admin endpoints.
+    pub admin_api_key: String,
 }
 
 impl AppConfig {
@@ -41,6 +43,7 @@ impl AppConfig {
             google_client_id: env_var_or("GOOGLE_CLIENT_ID", ""),
             bind_address: env_var_or("BIND_ADDRESS", "0.0.0.0:8080"),
             base_url: env_var_or("BASE_URL", "http://localhost:8080"),
+            admin_api_key: env_var_or("ADMIN_API_KEY", ""),
         })
     }
 }

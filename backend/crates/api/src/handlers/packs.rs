@@ -20,6 +20,12 @@ use iqrah_backend_storage::PackInfo;
 
 use crate::AppState;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RangeParseError {
+    Invalid,
+    Unsatisfiable,
+}
+
 /// Query parameters for pack listing.
 #[derive(Debug, Deserialize)]
 pub struct ListPacksQuery {
@@ -128,19 +134,59 @@ pub async fn download_pack(
         )));
     }
 
-    let mut file = File::open(&file_path).await.map_err(|e| {
+    let file = File::open(&file_path).await.map_err(|e| {
         tracing::error!("Failed to open pack file: {}", e);
         DomainError::Internal(anyhow::anyhow!("Failed to open pack file: {}", e))
     })?;
 
-    let file_size = pack.size_bytes as u64;
+    let file_size = file
+        .metadata()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to stat pack file: {}", e);
+            DomainError::Internal(anyhow::anyhow!("Failed to stat pack file: {}", e))
+        })?
+        .len();
 
+    build_download_response(file, file_size, &pack.sha256, &headers, &package_id).await
+}
+
+async fn build_download_response(
+    mut file: File,
+    file_size: u64,
+    sha256: &str,
+    headers: &HeaderMap,
+    package_id: &str,
+) -> Result<Response, DomainError> {
     // Parse Range header
-    let (start, end) = parse_range_header(&headers, file_size);
-    let content_length = end - start + 1;
+    let parsed_range = match parse_range_header(headers, file_size) {
+        Ok(range) => range,
+        Err(RangeParseError::Invalid | RangeParseError::Unsatisfiable) => {
+            let response = Response::builder()
+                .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                .header(header::CONTENT_RANGE, format!("bytes */{}", file_size))
+                .header(header::ACCEPT_RANGES, "bytes")
+                .header("X-Pack-SHA256", sha256)
+                .body(Body::empty())
+                .map_err(|e| {
+                    tracing::error!("Failed to build 416 response: {}", e);
+                    DomainError::Internal(anyhow::anyhow!("Failed to build 416 response: {}", e))
+                })?;
+            return Ok(response);
+        }
+    };
+
+    let (start, end) = parsed_range.unwrap_or_else(|| {
+        if file_size == 0 {
+            (0, 0)
+        } else {
+            (0, file_size - 1)
+        }
+    });
+    let content_length = if file_size == 0 { 0 } else { end - start + 1 };
 
     // Seek to start position
-    if start > 0 {
+    if content_length > 0 && start > 0 {
         file.seek(std::io::SeekFrom::Start(start))
             .await
             .map_err(|e| {
@@ -159,9 +205,9 @@ pub async fn download_pack(
         .header(header::CONTENT_TYPE, "application/octet-stream")
         .header(header::CONTENT_LENGTH, content_length)
         .header(header::ACCEPT_RANGES, "bytes")
-        .header("X-Pack-SHA256", &pack.sha256);
+        .header("X-Pack-SHA256", sha256);
 
-    if start > 0 || end < file_size - 1 {
+    if content_length > 0 && (start > 0 || end < file_size - 1) {
         // Partial content
         response = response.status(StatusCode::PARTIAL_CONTENT).header(
             header::CONTENT_RANGE,
@@ -184,22 +230,70 @@ pub async fn download_pack(
 }
 
 /// Parse Range header, returns (start, end) byte positions.
-fn parse_range_header(headers: &HeaderMap, file_size: u64) -> (u64, u64) {
-    if let Some(range) = headers.get(header::RANGE)
-        && let Ok(range_str) = range.to_str()
-        && let Some(bytes_range) = range_str.strip_prefix("bytes=")
-    {
-        let parts: Vec<&str> = bytes_range.split('-').collect();
-        if parts.len() == 2 {
-            let start = parts[0].parse::<u64>().unwrap_or(0);
-            let end = parts[1]
-                .parse::<u64>()
-                .unwrap_or(file_size - 1)
-                .min(file_size - 1);
-            return (start, end);
-        }
+fn parse_range_header(
+    headers: &HeaderMap,
+    file_size: u64,
+) -> Result<Option<(u64, u64)>, RangeParseError> {
+    let Some(raw_range) = headers.get(header::RANGE) else {
+        return Ok(None);
+    };
+
+    let range_str = raw_range.to_str().map_err(|_| RangeParseError::Invalid)?;
+    let bytes_range = range_str
+        .strip_prefix("bytes=")
+        .ok_or(RangeParseError::Invalid)?;
+
+    if bytes_range.contains(',') {
+        return Err(RangeParseError::Invalid);
     }
-    (0, file_size - 1)
+
+    let (start_str, end_str) = bytes_range
+        .split_once('-')
+        .ok_or(RangeParseError::Invalid)?;
+
+    let range = match (start_str.is_empty(), end_str.is_empty()) {
+        (false, false) => {
+            let start = start_str
+                .parse::<u64>()
+                .map_err(|_| RangeParseError::Invalid)?;
+            let end = end_str
+                .parse::<u64>()
+                .map_err(|_| RangeParseError::Invalid)?;
+
+            if start > end {
+                return Err(RangeParseError::Invalid);
+            }
+            if start >= file_size {
+                return Err(RangeParseError::Unsatisfiable);
+            }
+
+            (start, end.min(file_size.saturating_sub(1)))
+        }
+        (false, true) => {
+            let start = start_str
+                .parse::<u64>()
+                .map_err(|_| RangeParseError::Invalid)?;
+            if start >= file_size {
+                return Err(RangeParseError::Unsatisfiable);
+            }
+
+            (start, file_size.saturating_sub(1))
+        }
+        (true, false) => {
+            let suffix_len = end_str
+                .parse::<u64>()
+                .map_err(|_| RangeParseError::Invalid)?;
+            if suffix_len == 0 || file_size == 0 {
+                return Err(RangeParseError::Unsatisfiable);
+            }
+
+            let len = suffix_len.min(file_size);
+            (file_size - len, file_size - 1)
+        }
+        (true, true) => return Err(RangeParseError::Invalid),
+    };
+
+    Ok(Some(range))
 }
 
 /// Get pack manifest only.
@@ -224,4 +318,147 @@ pub async fn get_manifest(
 
     let base_url = &state.config.base_url;
     Ok(Json(PackDto::from_info(pack, base_url)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderValue;
+    use tokio::io::AsyncWriteExt;
+
+    fn headers_with_range(value: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::RANGE, HeaderValue::from_str(value).unwrap());
+        headers
+    }
+
+    #[test]
+    fn parse_range_supports_standard_forms() {
+        let headers = headers_with_range("bytes=10-20");
+        assert_eq!(parse_range_header(&headers, 100), Ok(Some((10, 20))));
+
+        let headers = headers_with_range("bytes=10-");
+        assert_eq!(parse_range_header(&headers, 100), Ok(Some((10, 99))));
+
+        let headers = headers_with_range("bytes=-15");
+        assert_eq!(parse_range_header(&headers, 100), Ok(Some((85, 99))));
+    }
+
+    #[test]
+    fn parse_range_caps_end_to_file_size() {
+        let headers = headers_with_range("bytes=90-150");
+        assert_eq!(parse_range_header(&headers, 100), Ok(Some((90, 99))));
+    }
+
+    #[test]
+    fn parse_range_rejects_invalid_and_unsatisfiable_ranges() {
+        assert_eq!(
+            parse_range_header(&headers_with_range("bytes=20-10"), 100),
+            Err(RangeParseError::Invalid)
+        );
+        assert_eq!(
+            parse_range_header(&headers_with_range("bytes=100-120"), 100),
+            Err(RangeParseError::Unsatisfiable)
+        );
+        assert_eq!(
+            parse_range_header(&headers_with_range("bytes=-0"), 100),
+            Err(RangeParseError::Unsatisfiable)
+        );
+        assert_eq!(
+            parse_range_header(&headers_with_range("bytes=0-1,4-5"), 100),
+            Err(RangeParseError::Invalid)
+        );
+    }
+
+    #[test]
+    fn parse_range_without_header_is_none() {
+        assert_eq!(parse_range_header(&HeaderMap::new(), 100), Ok(None));
+    }
+
+    async fn write_temp_file(content: &[u8]) -> tempfile::NamedTempFile {
+        let temp = tempfile::NamedTempFile::new().unwrap();
+        let mut file = File::create(temp.path()).await.unwrap();
+        file.write_all(content).await.unwrap();
+        temp
+    }
+
+    #[tokio::test]
+    async fn download_response_full_request_returns_200_with_full_body() {
+        let temp = write_temp_file(b"abcdefghijklmnopqrstuvwxyz").await;
+        let file = File::open(temp.path()).await.unwrap();
+
+        let response = build_download_response(file, 26, "abc123", &HeaderMap::new(), "pkg")
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::ACCEPT_RANGES], "bytes");
+        assert_eq!(response.headers()["X-Pack-SHA256"], "abc123");
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"abcdefghijklmnopqrstuvwxyz");
+    }
+
+    #[tokio::test]
+    async fn download_response_zero_length_file_is_safe() {
+        let temp = write_temp_file(b"").await;
+        let file = File::open(temp.path()).await.unwrap();
+
+        let response = build_download_response(file, 0, "abc123", &HeaderMap::new(), "pkg")
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_LENGTH], "0");
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert!(body.is_empty());
+    }
+
+    #[tokio::test]
+    async fn download_response_partial_request_returns_206() {
+        let temp = write_temp_file(b"abcdefghijklmnopqrstuvwxyz").await;
+        let file = File::open(temp.path()).await.unwrap();
+
+        let response =
+            build_download_response(file, 26, "abc123", &headers_with_range("bytes=5-9"), "pkg")
+                .await
+                .unwrap();
+
+        assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(response.headers()[header::CONTENT_RANGE], "bytes 5-9/26");
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert_eq!(&body[..], b"fghij");
+    }
+
+    #[tokio::test]
+    async fn download_response_invalid_range_returns_416() {
+        let temp = write_temp_file(b"abcdefghijklmnopqrstuvwxyz").await;
+        let file = File::open(temp.path()).await.unwrap();
+
+        let response = build_download_response(
+            file,
+            26,
+            "abc123",
+            &headers_with_range("bytes=30-35"),
+            "pkg",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+        assert_eq!(response.headers()[header::CONTENT_RANGE], "bytes */26");
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        assert!(body.is_empty());
+    }
 }
