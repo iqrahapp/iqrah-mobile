@@ -16,6 +16,12 @@ impl PackCacheActor {
     }
 }
 
+impl Default for PackCacheActor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Query {
     pub pack_version_id: i32,
 }
@@ -25,9 +31,7 @@ pub struct Insert {
     pub is_verified: bool,
 }
 
-pub struct Invalidate {
-    pub pack_version_id: i32,
-}
+pub struct Invalidate(pub i32);
 
 pub struct Clear;
 
@@ -55,7 +59,7 @@ impl Message<Invalidate> for PackCacheActor {
         msg: Invalidate,
         _ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
-        self.cache.remove(&msg.pack_version_id);
+        self.cache.remove(&msg.0);
     }
 }
 

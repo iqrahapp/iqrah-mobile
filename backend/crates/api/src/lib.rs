@@ -12,7 +12,7 @@ use axum::{
     extract::State,
     routing::{get, post},
 };
-use dashmap::DashMap;
+use kameo::actor::ActorRef;
 use tower_http::cors::CorsLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
@@ -28,6 +28,8 @@ use handlers::auth::IdTokenVerifier;
 use handlers::packs::{download_pack, get_global_manifest, get_manifest, list_packs};
 use handlers::sync::{admin_recent_conflicts, sync_pull, sync_push};
 
+use crate::actors::pack_cache::{Clear, Invalidate, PackCacheActor};
+
 /// Application state shared across handlers.
 #[derive(Clone)]
 pub struct AppState {
@@ -36,14 +38,16 @@ pub struct AppState {
     pub user_repo: UserRepository,
     pub sync_repo: SyncRepository,
     pub id_token_verifier: Arc<dyn IdTokenVerifier>,
-    pub verified_packs: Arc<DashMap<i32, bool>>,
+    pub pack_cache: ActorRef<PackCacheActor>,
     pub config: AppConfig,
     pub start_time: Instant,
 }
 
 impl AppState {
-    pub fn invalidate_pack_cache(&self, pack_version_id: i32) {
-        self.verified_packs.remove(&pack_version_id);
+    pub async fn invalidate_pack_cache(&self, pack_version_id: i32) {
+        if let Err(err) = self.pack_cache.tell(Invalidate(pack_version_id)).await {
+            tracing::warn!(%err, pack_version_id, "Failed to invalidate pack cache entry");
+        }
     }
 
     pub async fn add_pack_version(
@@ -66,7 +70,9 @@ impl AppState {
             )
             .await?;
 
-        self.verified_packs.clear();
+        if let Err(err) = self.pack_cache.tell(Clear).await {
+            tracing::warn!(%err, "Failed to clear pack cache after adding a version");
+        }
         Ok(())
     }
 }
