@@ -6,7 +6,7 @@ use std::sync::Arc;
 use axum::{
     Json,
     body::Body,
-    extract::{Path, Query, State},
+    extract::{Path, Query as AxumQuery, State},
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
@@ -21,7 +21,7 @@ use iqrah_backend_domain::{DomainError, PackManifestEntry, PackManifestResponse}
 use iqrah_backend_storage::PackInfo;
 
 use crate::AppState;
-use crate::actors::pack_cache::{Insert, PackCacheActor, Query as CacheQuery};
+use crate::actors::pack_cache::{Insert, PackCacheActor, Query};
 use kameo::actor::ActorRef;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,7 +78,7 @@ pub struct ListPacksResponse {
 /// List available packs.
 pub async fn list_packs(
     State(state): State<Arc<AppState>>,
-    Query(query): Query<ListPacksQuery>,
+    AxumQuery(query): AxumQuery<ListPacksQuery>,
 ) -> Result<Json<ListPacksResponse>, DomainError> {
     tracing::info!(
         pack_type = ?query.pack_type,
@@ -209,19 +209,14 @@ async fn verify_pack_integrity(
     expected_sha256: &str,
     pack_cache: ActorRef<PackCacheActor>,
 ) -> Result<(), Response> {
-    let is_cached = pack_cache
-        .ask(CacheQuery {
-            pack_version_id: version_id,
-        })
-        .await
-        .map_err(|err| {
-            tracing::warn!(%err, version_id, "Failed to query pack cache");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": "Failed to verify pack integrity"})),
-            )
-                .into_response()
-        })?;
+    let is_cached = pack_cache.ask(Query(version_id)).await.map_err(|err| {
+        tracing::warn!(%err, version_id, "Failed to query pack cache");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "Failed to verify pack integrity"})),
+        )
+            .into_response()
+    })?;
 
     if is_cached.unwrap_or(false) {
         return Ok(());
@@ -251,13 +246,7 @@ async fn verify_pack_integrity(
             .into_response());
     }
 
-    if let Err(err) = pack_cache
-        .tell(Insert {
-            pack_version_id: version_id,
-            is_verified: true,
-        })
-        .await
-    {
+    if let Err(err) = pack_cache.tell(Insert(version_id)).await {
         tracing::warn!(%err, version_id, "Failed to update pack cache");
     }
     Ok(())
@@ -541,7 +530,7 @@ mod tests {
         .await;
 
         assert!(result.is_ok());
-        let cached = cache.ask(CacheQuery { pack_version_id: 1 }).await.unwrap();
+        let cached = cache.ask(Query(1)).await.unwrap();
         assert_eq!(cached, Some(true));
     }
 
@@ -592,7 +581,7 @@ mod tests {
 
         assert!(second.is_ok());
 
-        let cached = cache.ask(CacheQuery { pack_version_id: 3 }).await.unwrap();
+        let cached = cache.ask(Query(3)).await.unwrap();
         assert_eq!(cached, Some(true));
     }
 
