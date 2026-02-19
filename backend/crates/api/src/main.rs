@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
+use dashmap::DashMap;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use iqrah_backend_api::handlers::auth::{GoogleIdTokenVerifier, IdTokenVerifier};
@@ -45,6 +46,7 @@ async fn main() -> anyhow::Result<()> {
         user_repo,
         sync_repo,
         id_token_verifier,
+        verified_packs: Arc::new(DashMap::new()),
         config: config.clone(),
         start_time: Instant::now(),
     });

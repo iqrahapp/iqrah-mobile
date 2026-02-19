@@ -24,6 +24,8 @@ validator = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 jsonwebtoken = "9"
 google-jwt-verify = "0.3.0"
+sha2 = "0.10"
+dashmap = "6"
 
 iqrah-backend-config = { path = "../config" }
 iqrah-backend-domain = { path = "../domain" }

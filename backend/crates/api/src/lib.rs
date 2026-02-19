@@ -11,13 +11,16 @@ use axum::{
     extract::State,
     routing::{get, post},
 };
+use dashmap::DashMap;
 use tower_http::cors::CorsLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 
 use iqrah_backend_config::AppConfig;
 use iqrah_backend_domain::{HealthResponse, ReadyResponse};
-use iqrah_backend_storage::{PackRepository, SyncRepository, UserRepository, check_connection};
+use iqrah_backend_storage::{
+    PackRepository, StorageError, SyncRepository, UserRepository, check_connection,
+};
 use sqlx::PgPool;
 
 use handlers::auth::IdTokenVerifier;
@@ -32,8 +35,39 @@ pub struct AppState {
     pub user_repo: UserRepository,
     pub sync_repo: SyncRepository,
     pub id_token_verifier: Arc<dyn IdTokenVerifier>,
+    pub verified_packs: Arc<DashMap<i32, bool>>,
     pub config: AppConfig,
     pub start_time: Instant,
+}
+
+impl AppState {
+    pub fn invalidate_pack_cache(&self, pack_version_id: i32) {
+        self.verified_packs.remove(&pack_version_id);
+    }
+
+    pub async fn add_pack_version(
+        &self,
+        package_id: &str,
+        version: &str,
+        file_path: &str,
+        size_bytes: i64,
+        sha256: &str,
+        min_app_version: Option<&str>,
+    ) -> Result<(), StorageError> {
+        self.pack_repo
+            .add_version(
+                package_id,
+                version,
+                file_path,
+                size_bytes,
+                sha256,
+                min_app_version,
+            )
+            .await?;
+
+        self.verified_packs.clear();
+        Ok(())
+    }
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {

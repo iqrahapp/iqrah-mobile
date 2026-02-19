@@ -10,7 +10,10 @@ use axum::{
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sha2::{Digest, Sha256};
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
@@ -169,6 +172,18 @@ pub async fn download_pack(
         )));
     }
 
+    if let Err(response) = verify_pack_integrity(
+        &file_path,
+        &package_id,
+        pack.version_id,
+        &pack.sha256,
+        &state.verified_packs,
+    )
+    .await
+    {
+        return Ok(response);
+    }
+
     let file = File::open(&file_path).await.map_err(|e| {
         tracing::error!("Failed to open pack file: {}", e);
         DomainError::Internal(anyhow::anyhow!("Failed to open pack file: {}", e))
@@ -184,6 +199,76 @@ pub async fn download_pack(
         .len();
 
     build_download_response(file, file_size, &pack.sha256, &headers, &package_id).await
+}
+
+async fn verify_pack_integrity(
+    file_path: &PathBuf,
+    package_id: &str,
+    version_id: i32,
+    expected_sha256: &str,
+    verified_packs: &DashMap<i32, bool>,
+) -> Result<(), Response> {
+    if verified_packs.contains_key(&version_id) {
+        return Ok(());
+    }
+
+    let computed_hash = compute_pack_sha256(file_path).await.map_err(|error| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": error.to_string()})),
+        )
+            .into_response()
+    })?;
+
+    if !computed_hash.eq_ignore_ascii_case(expected_sha256) {
+        tracing::error!(
+            package_id = %package_id,
+            version_id,
+            expected_sha256 = %expected_sha256,
+            actual_sha256 = %computed_hash,
+            "Pack integrity check failed"
+        );
+
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "Pack integrity check failed"})),
+        )
+            .into_response());
+    }
+
+    verified_packs.insert(version_id, true);
+    Ok(())
+}
+
+async fn compute_pack_sha256(file_path: &PathBuf) -> Result<String, DomainError> {
+    let mut file = File::open(file_path).await.map_err(|e| {
+        tracing::error!("Failed to open pack file for hashing: {}", e);
+        DomainError::Internal(anyhow::anyhow!(
+            "Failed to open pack file for hashing: {}",
+            e
+        ))
+    })?;
+
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 8192];
+
+    loop {
+        let read = file.read(&mut buffer).await.map_err(|e| {
+            tracing::error!("Failed to read pack file for hashing: {}", e);
+            DomainError::Internal(anyhow::anyhow!(
+                "Failed to read pack file for hashing: {}",
+                e
+            ))
+        })?;
+
+        if read == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..read]);
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 async fn build_download_response(
@@ -415,6 +500,72 @@ mod tests {
         let mut file = File::create(temp.path()).await.unwrap();
         file.write_all(content).await.unwrap();
         temp
+    }
+
+    #[tokio::test]
+    async fn verify_pack_integrity_accepts_matching_hash() {
+        let temp = write_temp_file(b"abc").await;
+        let cache = DashMap::new();
+
+        let result = verify_pack_integrity(
+            &temp.path().to_path_buf(),
+            "pkg",
+            1,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            &cache,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        assert!(cache.contains_key(&1));
+    }
+
+    #[tokio::test]
+    async fn verify_pack_integrity_rejects_tampered_file() {
+        let temp = write_temp_file(b"abc").await;
+        let cache = DashMap::new();
+
+        let response = verify_pack_integrity(
+            &temp.path().to_path_buf(),
+            "pkg",
+            2,
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            &cache,
+        )
+        .await
+        .unwrap_err();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[tokio::test]
+    async fn verify_pack_integrity_uses_cache_on_second_request() {
+        let temp = write_temp_file(b"abc").await;
+        let path = temp.path().to_path_buf();
+        let cache = DashMap::new();
+
+        verify_pack_integrity(
+            &path,
+            "pkg",
+            3,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            &cache,
+        )
+        .await
+        .unwrap();
+
+        tokio::fs::write(&path, b"mutated").await.unwrap();
+
+        let second = verify_pack_integrity(
+            &path,
+            "pkg",
+            3,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            &cache,
+        )
+        .await;
+
+        assert!(second.is_ok());
     }
 
     #[tokio::test]
