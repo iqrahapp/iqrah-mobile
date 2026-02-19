@@ -44,6 +44,7 @@ fn test_state(pool: PgPool, pack_dir: String) -> Arc<AppState> {
             google_client_id: "test-client-id".to_string(),
             bind_address: "127.0.0.1:0".to_string(),
             base_url: "http://localhost:8080".to_string(),
+            admin_api_key: "".to_string(),
         },
         start_time: Instant::now(),
     })
@@ -63,6 +64,26 @@ fn auth_header(user_id: Uuid) -> String {
     .unwrap();
 
     format!("Bearer {token}")
+}
+
+async fn authenticate_user(
+    app: &axum::Router,
+) -> Result<(Uuid, String), Box<dyn std::error::Error>> {
+    let auth_req = Request::builder()
+        .method("POST")
+        .uri("/v1/auth/google")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(serde_json::to_vec(
+            &json!({"id_token":"valid-google-token"}),
+        )?))?;
+    let auth_resp = app.clone().oneshot(auth_req).await?;
+    assert_eq!(auth_resp.status(), StatusCode::OK);
+    let auth_body: Value =
+        serde_json::from_slice(&to_bytes(auth_resp.into_body(), 1024 * 1024).await?)?;
+    let user_id = Uuid::parse_str(auth_body["user_id"].as_str().unwrap())?;
+    let access_token = auth_body["access_token"].as_str().unwrap().to_string();
+
+    Ok((user_id, access_token))
 }
 
 #[sqlx::test(migrations = "../../migrations")]
@@ -225,6 +246,77 @@ async fn auth_pack_sync_and_error_paths(pool: PgPool) -> Result<(), Box<dyn std:
         )
         .await?;
     assert_eq!(invalid_pull.status(), StatusCode::BAD_REQUEST);
+
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn sync_push_rejects_payloads_larger_than_1mb(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let tmp = tempfile::tempdir()?;
+    let app = build_router(test_state(pool, tmp.path().display().to_string()));
+    let (_user_id, access_token) = authenticate_user(&app).await?;
+
+    let oversized_value = "x".repeat((1024 * 1024) + 1);
+    let oversized_payload = serde_json::to_vec(&json!({
+        "device_id": Uuid::new_v4(),
+        "changes": {
+            "settings": [{"key": "oversized", "value": oversized_value, "client_updated_at": 1}]
+        },
+        "device_os": "android",
+        "device_model": "pixel",
+        "app_version": "1.0.0"
+    }))?;
+
+    let push_resp = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/sync/push")
+                .header(header::AUTHORIZATION, format!("Bearer {access_token}"))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(oversized_payload))?,
+        )
+        .await?;
+
+    assert_eq!(push_resp.status(), StatusCode::PAYLOAD_TOO_LARGE);
+
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn sync_push_accepts_payloads_up_to_1mb(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let tmp = tempfile::tempdir()?;
+    let app = build_router(test_state(pool, tmp.path().display().to_string()));
+    let (user_id, _access_token) = authenticate_user(&app).await?;
+
+    let near_limit_value = "x".repeat((1024 * 1024) - 2_000);
+    let near_limit_payload = serde_json::to_vec(&json!({
+        "device_id": Uuid::new_v4(),
+        "changes": {
+            "settings": [{"key": "near-limit", "value": near_limit_value, "client_updated_at": 1}]
+        },
+        "device_os": "android",
+        "device_model": "pixel",
+        "app_version": "1.0.0"
+    }))?;
+    assert!(near_limit_payload.len() <= 1024 * 1024);
+
+    let push_resp = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/sync/push")
+                .header(header::AUTHORIZATION, auth_header(user_id))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(near_limit_payload))?,
+        )
+        .await?;
+
+    assert_eq!(push_resp.status(), StatusCode::OK);
 
     Ok(())
 }

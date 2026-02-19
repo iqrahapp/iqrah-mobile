@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     routing::{get, post},
 };
 use tower_http::cors::CorsLayer;
@@ -44,7 +44,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/v1/packs/available", get(list_packs))
         .route("/v1/packs/{id}/download", get(download_pack))
         .route("/v1/packs/{id}/manifest", get(get_manifest))
-        .route("/v1/sync/push", post(sync_push))
+        .route(
+            "/v1/sync/push",
+            post(sync_push).layer(DefaultBodyLimit::max(1 * 1024 * 1024)),
+        )
         .route("/v1/sync/pull", post(sync_pull))
         .route("/v1/users/me", get(handlers::auth::get_me))
         .route(
