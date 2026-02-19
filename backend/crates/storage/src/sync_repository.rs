@@ -485,6 +485,7 @@ impl SyncRepository {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn log_conflict_tx(
         &self,
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
