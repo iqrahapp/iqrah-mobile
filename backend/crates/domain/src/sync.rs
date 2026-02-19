@@ -177,6 +177,24 @@ pub struct SessionItemChange {
     pub client_updated_at: i64,
 }
 
+/// Admin conflict log record.
+#[derive(Debug, Serialize)]
+pub struct AdminConflictRecord {
+    pub id: i64,
+    pub user_id: Uuid,
+    pub entity_type: String,
+    pub entity_key: String,
+    pub incoming_metadata: serde_json::Value,
+    pub winning_metadata: serde_json::Value,
+    pub resolved_at: i64,
+}
+
+/// Admin conflict inspection response.
+#[derive(Debug, Serialize)]
+pub struct AdminConflictListResponse {
+    pub conflicts: Vec<AdminConflictRecord>,
+}
+
 /// Sync push response.
 #[derive(Debug, Serialize)]
 pub struct SyncPushResponse {
