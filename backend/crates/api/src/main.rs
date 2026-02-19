@@ -14,6 +14,25 @@ use iqrah_backend_storage::{
 };
 use kameo::actor::Spawn;
 
+trait SpawnOutcomeExt {
+    fn into_pack_cache_actor_ref(self) -> anyhow::Result<kameo::actor::ActorRef<PackCacheActor>>;
+}
+
+impl SpawnOutcomeExt for kameo::actor::ActorRef<PackCacheActor> {
+    fn into_pack_cache_actor_ref(self) -> anyhow::Result<kameo::actor::ActorRef<PackCacheActor>> {
+        Ok(self)
+    }
+}
+
+impl<E> SpawnOutcomeExt for Result<kameo::actor::ActorRef<PackCacheActor>, E>
+where
+    E: std::fmt::Display,
+{
+    fn into_pack_cache_actor_ref(self) -> anyhow::Result<kameo::actor::ActorRef<PackCacheActor>> {
+        self.map_err(|err| anyhow::anyhow!("{err}"))
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
@@ -41,7 +60,12 @@ async fn main() -> anyhow::Result<()> {
     let id_token_verifier: Arc<dyn IdTokenVerifier> =
         Arc::new(GoogleIdTokenVerifier::new(&config.google_client_id));
 
-    let pack_cache = PackCacheActor::spawn(PackCacheActor::new());
+    let pack_cache = PackCacheActor::spawn(PackCacheActor::new())
+        .into_pack_cache_actor_ref()
+        .map_err(|err| {
+            tracing::error!(%err, "Failed to start pack cache actor");
+            err
+        })?;
 
     let state = Arc::new(AppState {
         pool,
