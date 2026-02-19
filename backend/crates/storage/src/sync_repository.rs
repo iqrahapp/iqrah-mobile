@@ -60,11 +60,11 @@ impl SyncRepository {
         Ok(())
     }
 
-    /// Apply sync changes with LWW in a single transaction.
+    /// Apply sync changes with server-timestamp LWW in a single transaction.
     ///
     /// Returns `(applied, skipped)` counts:
     /// - `applied`: rows written (new inserts or LWW-winning updates)
-    /// - `skipped`: rows the server already had a newer version of (LWW rejected)
+    /// - `skipped`: rows rejected because `existing.updated_at >= incoming.updated_at`
     pub async fn apply_changes(
         &self,
         user_id: Uuid,
@@ -73,6 +73,8 @@ impl SyncRepository {
     ) -> Result<(u64, u64), StorageError> {
         // Begin transaction to ensure atomicity
         let mut tx = self.pool.begin().await.map_err(StorageError::Query)?;
+        // Conflict policy: server-assigned timestamp decides LWW ordering.
+        // Client-provided logical timestamps are ignored by the repository.
         let now = Utc::now();
         let mut applied: u64 = 0;
         let mut skipped: u64 = 0;
@@ -336,19 +338,21 @@ impl SyncRepository {
         };
 
         let settings_has_more = settings_raw.len() > limit;
+        let settings_cursor =
+            settings_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorSetting {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    key: row.key.clone(),
+                });
         let settings: Vec<SettingChange> = settings_raw
             .into_iter()
             .take(limit)
             .map(|r| SettingChange {
                 key: r.key,
                 value: r.value,
-                client_updated_at: r.updated_at.timestamp_millis(),
             })
             .collect();
-        let settings_cursor = settings.last().map(|setting| SyncCursorSetting {
-            updated_at: setting.client_updated_at,
-            key: setting.key.clone(),
-        });
 
         // Get memory states
         let memory_states_raw = if let Some(cursor) =
@@ -383,6 +387,13 @@ impl SyncRepository {
         };
 
         let memory_states_has_more = memory_states_raw.len() > limit;
+        let memory_states_cursor =
+            memory_states_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorMemoryState {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    node_id: row.node_id,
+                });
         let memory_states: Vec<MemoryStateChange> = memory_states_raw
             .into_iter()
             .take(limit)
@@ -393,13 +404,8 @@ impl SyncRepository {
                 fsrs_difficulty: r.fsrs_difficulty,
                 last_reviewed_at: r.last_reviewed_at.map(|t| t.timestamp_millis()),
                 next_review_at: r.next_review_at.map(|t| t.timestamp_millis()),
-                client_updated_at: r.updated_at.timestamp_millis(),
             })
             .collect();
-        let memory_states_cursor = memory_states.last().map(|state| SyncCursorMemoryState {
-            updated_at: state.client_updated_at,
-            node_id: state.node_id,
-        });
 
         // Get sessions
         let sessions_raw = if let Some(cursor) = cursor.as_ref().and_then(|c| c.sessions.as_ref()) {
@@ -432,6 +438,13 @@ impl SyncRepository {
         };
 
         let sessions_has_more = sessions_raw.len() > limit;
+        let sessions_cursor =
+            sessions_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorSession {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    id: row.id,
+                });
         let sessions: Vec<SessionChange> = sessions_raw
             .into_iter()
             .take(limit)
@@ -441,13 +454,8 @@ impl SyncRepository {
                 started_at: r.started_at.timestamp_millis(),
                 completed_at: r.completed_at.map(|t| t.timestamp_millis()),
                 items_completed: r.items_completed,
-                client_updated_at: r.updated_at.timestamp_millis(),
             })
             .collect();
-        let sessions_cursor = sessions.last().map(|session| SyncCursorSession {
-            updated_at: session.client_updated_at,
-            id: session.id,
-        });
 
         // Get session items (direct query via user_id — no JOIN needed)
         let session_items_raw =
@@ -482,6 +490,13 @@ impl SyncRepository {
             };
 
         let session_items_has_more = session_items_raw.len() > limit;
+        let session_items_cursor =
+            session_items_raw
+                .get(limit.saturating_sub(1))
+                .map(|row| SyncCursorSessionItem {
+                    updated_at: row.updated_at.timestamp_millis(),
+                    id: row.id,
+                });
         let session_items: Vec<SessionItemChange> = session_items_raw
             .into_iter()
             .take(limit)
@@ -492,13 +507,8 @@ impl SyncRepository {
                 exercise_type: r.exercise_type,
                 grade: r.grade,
                 duration_ms: r.duration_ms,
-                client_updated_at: r.updated_at.timestamp_millis(),
             })
             .collect();
-        let session_items_cursor = session_items.last().map(|item| SyncCursorSessionItem {
-            updated_at: item.client_updated_at,
-            id: item.id,
-        });
 
         // Check if any category hit the limit
         let has_more = settings_has_more

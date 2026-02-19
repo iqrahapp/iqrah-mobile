@@ -120,8 +120,6 @@ pub struct SettingChange {
     #[validate(length(min = 1, max = 255))]
     pub key: String,
     pub value: serde_json::Value,
-    #[validate(range(min = 0))]
-    pub client_updated_at: i64,
 }
 
 /// Memory state change.
@@ -138,8 +136,6 @@ pub struct MemoryStateChange {
     pub last_reviewed_at: Option<i64>,
     #[validate(range(min = 0))]
     pub next_review_at: Option<i64>,
-    #[validate(range(min = 0))]
-    pub client_updated_at: i64,
 }
 
 /// Session change.
@@ -154,8 +150,6 @@ pub struct SessionChange {
     pub completed_at: Option<i64>,
     #[validate(range(min = 0))]
     pub items_completed: i32,
-    #[validate(range(min = 0))]
-    pub client_updated_at: i64,
 }
 
 /// Session item change.
@@ -170,8 +164,6 @@ pub struct SessionItemChange {
     pub grade: Option<i32>,
     #[validate(range(min = 0))]
     pub duration_ms: Option<i32>,
-    #[validate(range(min = 0))]
-    pub client_updated_at: i64,
 }
 
 /// Sync push response.
