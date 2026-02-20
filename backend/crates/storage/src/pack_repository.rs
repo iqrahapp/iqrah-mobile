@@ -156,6 +156,51 @@ impl PackRepository {
         .map_err(StorageError::Query)
     }
 
+    /// List latest versions for all packs regardless of publish state.
+    pub async fn list_all_packs(&self) -> Result<Vec<PackVersionInfo>, StorageError> {
+        sqlx::query_as::<_, PackVersionInfo>(
+            r#"
+            SELECT
+                p.package_id AS id,
+                COALESCE(p.name, p.package_id) AS name,
+                p.description,
+                p.pack_type,
+                pv.version,
+                pv.sha256,
+                pv.size_bytes AS file_size_bytes,
+                pv.published_at AS created_at
+            FROM packs p
+            JOIN LATERAL (
+                SELECT version, sha256, size_bytes, published_at
+                FROM pack_versions
+                WHERE package_id = p.package_id
+                ORDER BY published_at DESC, id DESC
+                LIMIT 1
+            ) pv ON true
+            ORDER BY p.package_id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(StorageError::Query)
+    }
+
+    /// Return the currently active version id for a pack, if present.
+    pub async fn get_active_version_id(
+        &self,
+        package_id: &str,
+    ) -> Result<Option<i32>, StorageError> {
+        let row = sqlx::query_scalar::<_, i32>(
+            "SELECT id FROM pack_versions WHERE package_id = $1 AND is_active = true LIMIT 1",
+        )
+        .bind(package_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(StorageError::Query)?;
+
+        Ok(row)
+    }
+
     /// Register a new pack.
     pub async fn register_pack(
         &self,

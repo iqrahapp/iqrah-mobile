@@ -5,12 +5,15 @@ pub mod handlers;
 pub mod middleware;
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     routing::{get, post},
+};
+use tower_governor::{
+    GovernorLayer, governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor,
 };
 use tower_http::cors::CorsLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
@@ -23,6 +26,7 @@ use iqrah_backend_storage::{
 };
 use sqlx::PgPool;
 
+use handlers::admin_packs::{add_version, list_all_packs, publish_pack, register_pack};
 use handlers::auth::IdTokenVerifier;
 use handlers::packs::{download_pack, get_global_manifest, get_manifest, list_packs};
 use handlers::sync::{admin_recent_conflicts, sync_pull, sync_push};
@@ -56,6 +60,10 @@ impl AppState {
         sha256: &str,
         min_app_version: Option<&str>,
     ) -> Result<(), StorageError> {
+        if let Some(active_version_id) = self.pack_repo.get_active_version_id(package_id).await? {
+            self.invalidate_pack_cache(active_version_id);
+        }
+
         self.pack_repo
             .add_version(
                 package_id,
@@ -65,25 +73,48 @@ impl AppState {
                 sha256,
                 min_app_version,
             )
-            .await?;
-
-        self.pack_cache.clear();
-        Ok(())
+            .await
     }
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {
+    let auth_rate_limit = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
+        .period(Duration::from_secs(60))
+        .burst_size(10)
+        .finish()
+        .expect("valid auth governor config");
+
+    let sync_push_rate_limit = GovernorConfigBuilder::default()
+        .key_extractor(SmartIpKeyExtractor)
+        .period(Duration::from_secs(60))
+        .burst_size(30)
+        .finish()
+        .expect("valid sync governor config");
+
     Router::new()
         .route("/v1/health", get(health))
         .route("/v1/ready", get(ready))
-        .route("/v1/auth/google", post(handlers::auth::google_auth))
+        .route(
+            "/v1/auth/google",
+            post(handlers::auth::google_auth).route_layer(GovernorLayer::new(auth_rate_limit)),
+        )
         .route("/v1/packs/available", get(list_packs))
         .route("/v1/packs/manifest", get(get_global_manifest))
         .route("/v1/packs/{id}/download", get(download_pack))
         .route("/v1/packs/{id}/manifest", get(get_manifest))
-        .route("/v1/sync/push", post(sync_push))
+        .route(
+            "/v1/sync/push",
+            post(sync_push)
+                .route_layer(DefaultBodyLimit::max(1024 * 1024))
+                .route_layer(GovernorLayer::new(sync_push_rate_limit)),
+        )
         .route("/v1/sync/pull", post(sync_pull))
         .route("/v1/users/me", get(handlers::auth::get_me))
+        .route("/v1/admin/packs", post(register_pack))
+        .route("/v1/admin/packs", get(list_all_packs))
+        .route("/v1/admin/packs/{id}/versions", post(add_version))
+        .route("/v1/admin/packs/{id}/publish", post(publish_pack))
         .route(
             "/v1/admin/sync/conflicts/{user_id}",
             get(admin_recent_conflicts),

@@ -113,3 +113,82 @@ async fn list_active_pack_versions_returns_sha_and_version(
 
     Ok(())
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn list_all_packs_returns_latest_version_for_draft_and_published(
+    pool: PgPool,
+) -> Result<(), sqlx::Error> {
+    let repo = PackRepository::new(pool);
+
+    repo.register_pack("draft-pack", "quran", "en", "Draft Pack", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    repo.add_version("draft-pack", "0.1.0", "draft-v1.pack", 11, "sha-d1", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    repo.add_version("draft-pack", "0.2.0", "draft-v2.pack", 22, "sha-d2", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+
+    repo.register_pack("published-pack", "quran", "ar", "Published Pack", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    repo.add_version(
+        "published-pack",
+        "1.0.0",
+        "published-v1.pack",
+        33,
+        "sha-p1",
+        None,
+    )
+    .await
+    .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    repo.publish_pack("published-pack")
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+
+    let packs = repo
+        .list_all_packs()
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+
+    assert_eq!(packs.len(), 2);
+    assert_eq!(packs[0].id, "draft-pack");
+    assert_eq!(packs[0].version, "0.2.0");
+    assert_eq!(packs[1].id, "published-pack");
+    assert_eq!(packs[1].version, "1.0.0");
+
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn get_active_version_id_returns_current_version_id(pool: PgPool) -> Result<(), sqlx::Error> {
+    let repo = PackRepository::new(pool);
+
+    repo.register_pack("cache-pack", "quran", "en", "Cache Pack", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+    repo.add_version("cache-pack", "1.0.0", "cache-v1.pack", 10, "sha-1", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+
+    let first_id = repo
+        .get_active_version_id("cache-pack")
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?
+        .expect("active version id");
+
+    repo.add_version("cache-pack", "1.1.0", "cache-v2.pack", 11, "sha-2", None)
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+
+    let second_id = repo
+        .get_active_version_id("cache-pack")
+        .await
+        .map_err(|e| sqlx::Error::Protocol(e.to_string()))?
+        .expect("active version id");
+
+    assert_ne!(first_id, second_id);
+
+    Ok(())
+}

@@ -417,3 +417,148 @@ async fn global_manifest_download_url_uses_pack_download_route(
 
     Ok(())
 }
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn auth_google_is_rate_limited_on_11th_request(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = build_router(test_state(
+        pool,
+        tempfile::tempdir()?.path().display().to_string(),
+    ));
+
+    for _ in 0..10 {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v1/auth/google")
+                    .header("x-forwarded-for", "203.0.113.8")
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(serde_json::to_vec(
+                        &json!({"id_token": "valid-google-token"}),
+                    )?))?,
+            )
+            .await?;
+        assert_ne!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    }
+
+    let throttled = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/auth/google")
+                .header("x-forwarded-for", "203.0.113.8")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_vec(
+                    &json!({"id_token": "valid-google-token"}),
+                )?))?,
+        )
+        .await?;
+
+    assert_eq!(throttled.status(), StatusCode::TOO_MANY_REQUESTS);
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn sync_push_body_above_1mb_returns_413(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = build_router(test_state(
+        pool.clone(),
+        tempfile::tempdir()?.path().display().to_string(),
+    ));
+
+    let auth_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/auth/google")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_vec(
+                    &json!({"id_token":"valid-google-token"}),
+                )?))?,
+        )
+        .await?;
+    let auth_body: Value =
+        serde_json::from_slice(&to_bytes(auth_resp.into_body(), 1024 * 1024).await?)?;
+    let token = auth_body["access_token"].as_str().unwrap();
+
+    let oversized = "x".repeat(1_100_000);
+    let req_body = json!({
+        "device_id": Uuid::new_v4(),
+        "changes": {
+            "settings": [{"key": "blob", "value": oversized, "client_updated_at": 1}],
+            "memory_states": [],
+            "sessions": [],
+            "session_items": []
+        }
+    });
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/sync/push")
+                .header(header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_vec(&req_body)?))?,
+        )
+        .await?;
+
+    assert_eq!(resp.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    Ok(())
+}
+
+#[sqlx::test(migrations = "../../migrations")]
+async fn sync_push_body_under_1mb_is_accepted(
+    pool: PgPool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let app = build_router(test_state(
+        pool,
+        tempfile::tempdir()?.path().display().to_string(),
+    ));
+
+    let auth_resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/auth/google")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_vec(
+                    &json!({"id_token":"valid-google-token"}),
+                )?))?,
+        )
+        .await?;
+    let auth_body: Value =
+        serde_json::from_slice(&to_bytes(auth_resp.into_body(), 1024 * 1024).await?)?;
+    let token = auth_body["access_token"].as_str().unwrap();
+
+    let ok_value = "x".repeat(100_000);
+    let req_body = json!({
+        "device_id": Uuid::new_v4(),
+        "changes": {
+            "settings": [{"key": "blob", "value": ok_value, "client_updated_at": 1}],
+            "memory_states": [],
+            "sessions": [],
+            "session_items": []
+        }
+    });
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/sync/push")
+                .header(header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(serde_json::to_vec(&req_body)?))?,
+        )
+        .await?;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    Ok(())
+}
