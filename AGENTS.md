@@ -23,18 +23,25 @@ Canonical guidance for AI coding agents. Overrides `CLAUDE.md` and `.github/copi
 
 ### Backend (run from `backend/`)
 
-All three must pass before every push:
+All four must pass before every push (no environment variables or external services required):
 
 ```bash
 cargo fmt --all -- --check
 cargo clippy --all -- -D warnings
 cargo test --all
+cargo llvm-cov --workspace --summary-only --fail-under-lines 85
 ```
 
 SQLite integration tests (no external services):
 
 ```bash
 cargo test -p iqrah-backend-storage --test integration_sqlite_tests
+```
+
+Postgres-dependent integration tests are optional and must be gated behind the feature below so default local/CI runs stay machine-independent:
+
+```bash
+cargo test --all --features postgres-tests
 ```
 
 ### Flutter / Rust core (run from repo root)
@@ -80,7 +87,7 @@ flutter_rust_bridge_codegen generate
 
 ## 4. Testing (Backend)
 
-**85 % line coverage is a hard gate.** CI fails below this threshold. Do not merge code that drops coverage.
+**85 % line coverage is a hard gate.** CI fails below this threshold. Do not merge code that drops coverage. Enforce it with `cargo llvm-cov --workspace --summary-only --fail-under-lines 85` in backend validation.
 
 ### Trait pattern (mandatory for all external dependencies)
 

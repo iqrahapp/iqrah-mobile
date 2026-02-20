@@ -890,3 +890,108 @@ fn json_type_name(value: &serde_json::Value) -> &'static str {
         serde_json::Value::Object(_) => "object",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::postgres::PgPoolOptions;
+    use std::time::Duration;
+
+    fn unreachable_pool() -> PgPool {
+        PgPoolOptions::new()
+            .acquire_timeout(Duration::from_millis(100))
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1:1/iqrah")
+            .expect("lazy pool should be created")
+    }
+
+    #[tokio::test]
+    async fn connectionless_repository_methods_surface_query_errors() {
+        let repo = SyncRepository::new(unreachable_pool());
+        let user_id = Uuid::new_v4();
+        let device_id = Uuid::new_v4();
+
+        assert!(matches!(
+            repo.touch_device(user_id, device_id, None, None, None)
+                .await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.list_recent_conflicts(user_id, 10).await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.get_changes_since(user_id, 0, 10, None).await,
+            Err(StorageError::Query(_))
+        ));
+    }
+
+    #[tokio::test]
+    async fn apply_changes_errors_for_each_change_group_without_database() {
+        let repo = SyncRepository::new(unreachable_pool());
+        let user_id = Uuid::new_v4();
+        let device_id = Uuid::new_v4();
+
+        let settings = SyncChanges {
+            settings: vec![SettingChange {
+                key: "k".to_string(),
+                value: serde_json::json!("v"),
+                client_updated_at: 1,
+            }],
+            ..SyncChanges::default()
+        };
+        assert!(matches!(
+            repo.apply_changes(user_id, device_id, &settings).await,
+            Err(StorageError::Query(_))
+        ));
+
+        let memory_states = SyncChanges {
+            memory_states: vec![MemoryStateChange {
+                node_id: 1,
+                energy: 0.5,
+                fsrs_stability: None,
+                fsrs_difficulty: None,
+                last_reviewed_at: None,
+                next_review_at: None,
+                client_updated_at: 1,
+            }],
+            ..SyncChanges::default()
+        };
+        assert!(matches!(
+            repo.apply_changes(user_id, device_id, &memory_states).await,
+            Err(StorageError::Query(_))
+        ));
+
+        let sessions = SyncChanges {
+            sessions: vec![SessionChange {
+                id: Uuid::new_v4(),
+                goal_id: None,
+                started_at: 1,
+                completed_at: None,
+                items_completed: 0,
+                client_updated_at: 1,
+            }],
+            ..SyncChanges::default()
+        };
+        assert!(matches!(
+            repo.apply_changes(user_id, device_id, &sessions).await,
+            Err(StorageError::Query(_))
+        ));
+
+        let session_items = SyncChanges {
+            session_items: vec![SessionItemChange {
+                id: Uuid::new_v4(),
+                session_id: Uuid::new_v4(),
+                node_id: 1,
+                exercise_type: "review".to_string(),
+                grade: None,
+                duration_ms: None,
+                client_updated_at: 1,
+            }],
+            ..SyncChanges::default()
+        };
+        assert!(matches!(
+            repo.apply_changes(user_id, device_id, &session_items).await,
+            Err(StorageError::Query(_))
+        ));
+    }
+}

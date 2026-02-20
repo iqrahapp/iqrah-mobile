@@ -58,3 +58,31 @@ impl UserRepository {
         .map_err(StorageError::Query)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::postgres::PgPoolOptions;
+    use std::time::Duration;
+
+    fn unreachable_pool() -> PgPool {
+        PgPoolOptions::new()
+            .acquire_timeout(Duration::from_millis(100))
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1:1/iqrah")
+            .expect("lazy pool should be created")
+    }
+
+    #[tokio::test]
+    async fn user_repository_returns_query_errors_without_database() {
+        let repo = UserRepository::new(unreachable_pool());
+
+        assert!(matches!(
+            repo.find_or_create("sub-1").await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.get_by_id(Uuid::new_v4()).await,
+            Err(StorageError::Query(_))
+        ));
+    }
+}
