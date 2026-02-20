@@ -12,8 +12,7 @@ part of 'sync_models.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 SyncPushRequest _$SyncPushRequestFromJson(Map<String, dynamic> json) {
   return _SyncPushRequest.fromJson(json);
@@ -31,12 +30,8 @@ mixin _$SyncPushRequest {
   @JsonKey(name: 'app_version')
   String? get appVersion => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncPushRequest to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncPushRequest
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncPushRequestCopyWith<SyncPushRequest> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -44,17 +39,15 @@ mixin _$SyncPushRequest {
 /// @nodoc
 abstract class $SyncPushRequestCopyWith<$Res> {
   factory $SyncPushRequestCopyWith(
-    SyncPushRequest value,
-    $Res Function(SyncPushRequest) then,
-  ) = _$SyncPushRequestCopyWithImpl<$Res, SyncPushRequest>;
+          SyncPushRequest value, $Res Function(SyncPushRequest) then) =
+      _$SyncPushRequestCopyWithImpl<$Res, SyncPushRequest>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'device_id') String deviceId,
-    SyncChanges changes,
-    @JsonKey(name: 'device_os') String? deviceOs,
-    @JsonKey(name: 'device_model') String? deviceModel,
-    @JsonKey(name: 'app_version') String? appVersion,
-  });
+  $Res call(
+      {@JsonKey(name: 'device_id') String deviceId,
+      SyncChanges changes,
+      @JsonKey(name: 'device_os') String? deviceOs,
+      @JsonKey(name: 'device_model') String? deviceModel,
+      @JsonKey(name: 'app_version') String? appVersion});
 
   $SyncChangesCopyWith<$Res> get changes;
 }
@@ -69,8 +62,6 @@ class _$SyncPushRequestCopyWithImpl<$Res, $Val extends SyncPushRequest>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncPushRequest
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -80,35 +71,30 @@ class _$SyncPushRequestCopyWithImpl<$Res, $Val extends SyncPushRequest>
     Object? deviceModel = freezed,
     Object? appVersion = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            deviceId: null == deviceId
-                ? _value.deviceId
-                : deviceId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            changes: null == changes
-                ? _value.changes
-                : changes // ignore: cast_nullable_to_non_nullable
-                      as SyncChanges,
-            deviceOs: freezed == deviceOs
-                ? _value.deviceOs
-                : deviceOs // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            deviceModel: freezed == deviceModel
-                ? _value.deviceModel
-                : deviceModel // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            appVersion: freezed == appVersion
-                ? _value.appVersion
-                : appVersion // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      deviceId: null == deviceId
+          ? _value.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      changes: null == changes
+          ? _value.changes
+          : changes // ignore: cast_nullable_to_non_nullable
+              as SyncChanges,
+      deviceOs: freezed == deviceOs
+          ? _value.deviceOs
+          : deviceOs // ignore: cast_nullable_to_non_nullable
+              as String?,
+      deviceModel: freezed == deviceModel
+          ? _value.deviceModel
+          : deviceModel // ignore: cast_nullable_to_non_nullable
+              as String?,
+      appVersion: freezed == appVersion
+          ? _value.appVersion
+          : appVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
   }
 
-  /// Create a copy of SyncPushRequest
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncChangesCopyWith<$Res> get changes {
@@ -121,19 +107,17 @@ class _$SyncPushRequestCopyWithImpl<$Res, $Val extends SyncPushRequest>
 /// @nodoc
 abstract class _$$SyncPushRequestImplCopyWith<$Res>
     implements $SyncPushRequestCopyWith<$Res> {
-  factory _$$SyncPushRequestImplCopyWith(
-    _$SyncPushRequestImpl value,
-    $Res Function(_$SyncPushRequestImpl) then,
-  ) = __$$SyncPushRequestImplCopyWithImpl<$Res>;
+  factory _$$SyncPushRequestImplCopyWith(_$SyncPushRequestImpl value,
+          $Res Function(_$SyncPushRequestImpl) then) =
+      __$$SyncPushRequestImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'device_id') String deviceId,
-    SyncChanges changes,
-    @JsonKey(name: 'device_os') String? deviceOs,
-    @JsonKey(name: 'device_model') String? deviceModel,
-    @JsonKey(name: 'app_version') String? appVersion,
-  });
+  $Res call(
+      {@JsonKey(name: 'device_id') String deviceId,
+      SyncChanges changes,
+      @JsonKey(name: 'device_os') String? deviceOs,
+      @JsonKey(name: 'device_model') String? deviceModel,
+      @JsonKey(name: 'app_version') String? appVersion});
 
   @override
   $SyncChangesCopyWith<$Res> get changes;
@@ -144,12 +128,9 @@ class __$$SyncPushRequestImplCopyWithImpl<$Res>
     extends _$SyncPushRequestCopyWithImpl<$Res, _$SyncPushRequestImpl>
     implements _$$SyncPushRequestImplCopyWith<$Res> {
   __$$SyncPushRequestImplCopyWithImpl(
-    _$SyncPushRequestImpl _value,
-    $Res Function(_$SyncPushRequestImpl) _then,
-  ) : super(_value, _then);
+      _$SyncPushRequestImpl _value, $Res Function(_$SyncPushRequestImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncPushRequest
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -159,43 +140,40 @@ class __$$SyncPushRequestImplCopyWithImpl<$Res>
     Object? deviceModel = freezed,
     Object? appVersion = freezed,
   }) {
-    return _then(
-      _$SyncPushRequestImpl(
-        deviceId: null == deviceId
-            ? _value.deviceId
-            : deviceId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        changes: null == changes
-            ? _value.changes
-            : changes // ignore: cast_nullable_to_non_nullable
-                  as SyncChanges,
-        deviceOs: freezed == deviceOs
-            ? _value.deviceOs
-            : deviceOs // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        deviceModel: freezed == deviceModel
-            ? _value.deviceModel
-            : deviceModel // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        appVersion: freezed == appVersion
-            ? _value.appVersion
-            : appVersion // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
+    return _then(_$SyncPushRequestImpl(
+      deviceId: null == deviceId
+          ? _value.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      changes: null == changes
+          ? _value.changes
+          : changes // ignore: cast_nullable_to_non_nullable
+              as SyncChanges,
+      deviceOs: freezed == deviceOs
+          ? _value.deviceOs
+          : deviceOs // ignore: cast_nullable_to_non_nullable
+              as String?,
+      deviceModel: freezed == deviceModel
+          ? _value.deviceModel
+          : deviceModel // ignore: cast_nullable_to_non_nullable
+              as String?,
+      appVersion: freezed == appVersion
+          ? _value.appVersion
+          : appVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncPushRequestImpl implements _SyncPushRequest {
-  const _$SyncPushRequestImpl({
-    @JsonKey(name: 'device_id') required this.deviceId,
-    required this.changes,
-    @JsonKey(name: 'device_os') this.deviceOs,
-    @JsonKey(name: 'device_model') this.deviceModel,
-    @JsonKey(name: 'app_version') this.appVersion,
-  });
+  const _$SyncPushRequestImpl(
+      {@JsonKey(name: 'device_id') required this.deviceId,
+      required this.changes,
+      @JsonKey(name: 'device_os') this.deviceOs,
+      @JsonKey(name: 'device_model') this.deviceModel,
+      @JsonKey(name: 'app_version') this.appVersion});
 
   factory _$SyncPushRequestImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncPushRequestImplFromJson(json);
@@ -236,42 +214,34 @@ class _$SyncPushRequestImpl implements _SyncPushRequest {
                 other.appVersion == appVersion));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    deviceId,
-    changes,
-    deviceOs,
-    deviceModel,
-    appVersion,
-  );
+      runtimeType, deviceId, changes, deviceOs, deviceModel, appVersion);
 
-  /// Create a copy of SyncPushRequest
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncPushRequestImplCopyWith<_$SyncPushRequestImpl> get copyWith =>
       __$$SyncPushRequestImplCopyWithImpl<_$SyncPushRequestImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncPushRequestImplToJson(this);
+    return _$$SyncPushRequestImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncPushRequest implements SyncPushRequest {
-  const factory _SyncPushRequest({
-    @JsonKey(name: 'device_id') required final String deviceId,
-    required final SyncChanges changes,
-    @JsonKey(name: 'device_os') final String? deviceOs,
-    @JsonKey(name: 'device_model') final String? deviceModel,
-    @JsonKey(name: 'app_version') final String? appVersion,
-  }) = _$SyncPushRequestImpl;
+  const factory _SyncPushRequest(
+          {@JsonKey(name: 'device_id') required final String deviceId,
+          required final SyncChanges changes,
+          @JsonKey(name: 'device_os') final String? deviceOs,
+          @JsonKey(name: 'device_model') final String? deviceModel,
+          @JsonKey(name: 'app_version') final String? appVersion}) =
+      _$SyncPushRequestImpl;
 
   factory _SyncPushRequest.fromJson(Map<String, dynamic> json) =
       _$SyncPushRequestImpl.fromJson;
@@ -290,11 +260,8 @@ abstract class _SyncPushRequest implements SyncPushRequest {
   @override
   @JsonKey(name: 'app_version')
   String? get appVersion;
-
-  /// Create a copy of SyncPushRequest
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncPushRequestImplCopyWith<_$SyncPushRequestImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -318,12 +285,8 @@ mixin _$SyncPullRequest {
   @JsonKey(name: 'app_version')
   String? get appVersion => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncPullRequest to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncPullRequest
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncPullRequestCopyWith<SyncPullRequest> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -331,19 +294,17 @@ mixin _$SyncPullRequest {
 /// @nodoc
 abstract class $SyncPullRequestCopyWith<$Res> {
   factory $SyncPullRequestCopyWith(
-    SyncPullRequest value,
-    $Res Function(SyncPullRequest) then,
-  ) = _$SyncPullRequestCopyWithImpl<$Res, SyncPullRequest>;
+          SyncPullRequest value, $Res Function(SyncPullRequest) then) =
+      _$SyncPullRequestCopyWithImpl<$Res, SyncPullRequest>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'device_id') String deviceId,
-    int since,
-    int? limit,
-    @JsonKey(name: 'cursor') SyncPullCursor? cursor,
-    @JsonKey(name: 'device_os') String? deviceOs,
-    @JsonKey(name: 'device_model') String? deviceModel,
-    @JsonKey(name: 'app_version') String? appVersion,
-  });
+  $Res call(
+      {@JsonKey(name: 'device_id') String deviceId,
+      int since,
+      int? limit,
+      @JsonKey(name: 'cursor') SyncPullCursor? cursor,
+      @JsonKey(name: 'device_os') String? deviceOs,
+      @JsonKey(name: 'device_model') String? deviceModel,
+      @JsonKey(name: 'app_version') String? appVersion});
 
   $SyncPullCursorCopyWith<$Res>? get cursor;
 }
@@ -358,8 +319,6 @@ class _$SyncPullRequestCopyWithImpl<$Res, $Val extends SyncPullRequest>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncPullRequest
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -371,43 +330,38 @@ class _$SyncPullRequestCopyWithImpl<$Res, $Val extends SyncPullRequest>
     Object? deviceModel = freezed,
     Object? appVersion = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            deviceId: null == deviceId
-                ? _value.deviceId
-                : deviceId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            since: null == since
-                ? _value.since
-                : since // ignore: cast_nullable_to_non_nullable
-                      as int,
-            limit: freezed == limit
-                ? _value.limit
-                : limit // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            cursor: freezed == cursor
-                ? _value.cursor
-                : cursor // ignore: cast_nullable_to_non_nullable
-                      as SyncPullCursor?,
-            deviceOs: freezed == deviceOs
-                ? _value.deviceOs
-                : deviceOs // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            deviceModel: freezed == deviceModel
-                ? _value.deviceModel
-                : deviceModel // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            appVersion: freezed == appVersion
-                ? _value.appVersion
-                : appVersion // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      deviceId: null == deviceId
+          ? _value.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      since: null == since
+          ? _value.since
+          : since // ignore: cast_nullable_to_non_nullable
+              as int,
+      limit: freezed == limit
+          ? _value.limit
+          : limit // ignore: cast_nullable_to_non_nullable
+              as int?,
+      cursor: freezed == cursor
+          ? _value.cursor
+          : cursor // ignore: cast_nullable_to_non_nullable
+              as SyncPullCursor?,
+      deviceOs: freezed == deviceOs
+          ? _value.deviceOs
+          : deviceOs // ignore: cast_nullable_to_non_nullable
+              as String?,
+      deviceModel: freezed == deviceModel
+          ? _value.deviceModel
+          : deviceModel // ignore: cast_nullable_to_non_nullable
+              as String?,
+      appVersion: freezed == appVersion
+          ? _value.appVersion
+          : appVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
   }
 
-  /// Create a copy of SyncPullRequest
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncPullCursorCopyWith<$Res>? get cursor {
@@ -424,21 +378,19 @@ class _$SyncPullRequestCopyWithImpl<$Res, $Val extends SyncPullRequest>
 /// @nodoc
 abstract class _$$SyncPullRequestImplCopyWith<$Res>
     implements $SyncPullRequestCopyWith<$Res> {
-  factory _$$SyncPullRequestImplCopyWith(
-    _$SyncPullRequestImpl value,
-    $Res Function(_$SyncPullRequestImpl) then,
-  ) = __$$SyncPullRequestImplCopyWithImpl<$Res>;
+  factory _$$SyncPullRequestImplCopyWith(_$SyncPullRequestImpl value,
+          $Res Function(_$SyncPullRequestImpl) then) =
+      __$$SyncPullRequestImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'device_id') String deviceId,
-    int since,
-    int? limit,
-    @JsonKey(name: 'cursor') SyncPullCursor? cursor,
-    @JsonKey(name: 'device_os') String? deviceOs,
-    @JsonKey(name: 'device_model') String? deviceModel,
-    @JsonKey(name: 'app_version') String? appVersion,
-  });
+  $Res call(
+      {@JsonKey(name: 'device_id') String deviceId,
+      int since,
+      int? limit,
+      @JsonKey(name: 'cursor') SyncPullCursor? cursor,
+      @JsonKey(name: 'device_os') String? deviceOs,
+      @JsonKey(name: 'device_model') String? deviceModel,
+      @JsonKey(name: 'app_version') String? appVersion});
 
   @override
   $SyncPullCursorCopyWith<$Res>? get cursor;
@@ -449,12 +401,9 @@ class __$$SyncPullRequestImplCopyWithImpl<$Res>
     extends _$SyncPullRequestCopyWithImpl<$Res, _$SyncPullRequestImpl>
     implements _$$SyncPullRequestImplCopyWith<$Res> {
   __$$SyncPullRequestImplCopyWithImpl(
-    _$SyncPullRequestImpl _value,
-    $Res Function(_$SyncPullRequestImpl) _then,
-  ) : super(_value, _then);
+      _$SyncPullRequestImpl _value, $Res Function(_$SyncPullRequestImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncPullRequest
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -466,53 +415,50 @@ class __$$SyncPullRequestImplCopyWithImpl<$Res>
     Object? deviceModel = freezed,
     Object? appVersion = freezed,
   }) {
-    return _then(
-      _$SyncPullRequestImpl(
-        deviceId: null == deviceId
-            ? _value.deviceId
-            : deviceId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        since: null == since
-            ? _value.since
-            : since // ignore: cast_nullable_to_non_nullable
-                  as int,
-        limit: freezed == limit
-            ? _value.limit
-            : limit // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        cursor: freezed == cursor
-            ? _value.cursor
-            : cursor // ignore: cast_nullable_to_non_nullable
-                  as SyncPullCursor?,
-        deviceOs: freezed == deviceOs
-            ? _value.deviceOs
-            : deviceOs // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        deviceModel: freezed == deviceModel
-            ? _value.deviceModel
-            : deviceModel // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        appVersion: freezed == appVersion
-            ? _value.appVersion
-            : appVersion // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
+    return _then(_$SyncPullRequestImpl(
+      deviceId: null == deviceId
+          ? _value.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String,
+      since: null == since
+          ? _value.since
+          : since // ignore: cast_nullable_to_non_nullable
+              as int,
+      limit: freezed == limit
+          ? _value.limit
+          : limit // ignore: cast_nullable_to_non_nullable
+              as int?,
+      cursor: freezed == cursor
+          ? _value.cursor
+          : cursor // ignore: cast_nullable_to_non_nullable
+              as SyncPullCursor?,
+      deviceOs: freezed == deviceOs
+          ? _value.deviceOs
+          : deviceOs // ignore: cast_nullable_to_non_nullable
+              as String?,
+      deviceModel: freezed == deviceModel
+          ? _value.deviceModel
+          : deviceModel // ignore: cast_nullable_to_non_nullable
+              as String?,
+      appVersion: freezed == appVersion
+          ? _value.appVersion
+          : appVersion // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncPullRequestImpl implements _SyncPullRequest {
-  const _$SyncPullRequestImpl({
-    @JsonKey(name: 'device_id') required this.deviceId,
-    required this.since,
-    this.limit,
-    @JsonKey(name: 'cursor') this.cursor,
-    @JsonKey(name: 'device_os') this.deviceOs,
-    @JsonKey(name: 'device_model') this.deviceModel,
-    @JsonKey(name: 'app_version') this.appVersion,
-  });
+  const _$SyncPullRequestImpl(
+      {@JsonKey(name: 'device_id') required this.deviceId,
+      required this.since,
+      this.limit,
+      @JsonKey(name: 'cursor') this.cursor,
+      @JsonKey(name: 'device_os') this.deviceOs,
+      @JsonKey(name: 'device_model') this.deviceModel,
+      @JsonKey(name: 'app_version') this.appVersion});
 
   factory _$SyncPullRequestImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncPullRequestImplFromJson(json);
@@ -560,46 +506,36 @@ class _$SyncPullRequestImpl implements _SyncPullRequest {
                 other.appVersion == appVersion));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    deviceId,
-    since,
-    limit,
-    cursor,
-    deviceOs,
-    deviceModel,
-    appVersion,
-  );
+  int get hashCode => Object.hash(runtimeType, deviceId, since, limit, cursor,
+      deviceOs, deviceModel, appVersion);
 
-  /// Create a copy of SyncPullRequest
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncPullRequestImplCopyWith<_$SyncPullRequestImpl> get copyWith =>
       __$$SyncPullRequestImplCopyWithImpl<_$SyncPullRequestImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncPullRequestImplToJson(this);
+    return _$$SyncPullRequestImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncPullRequest implements SyncPullRequest {
-  const factory _SyncPullRequest({
-    @JsonKey(name: 'device_id') required final String deviceId,
-    required final int since,
-    final int? limit,
-    @JsonKey(name: 'cursor') final SyncPullCursor? cursor,
-    @JsonKey(name: 'device_os') final String? deviceOs,
-    @JsonKey(name: 'device_model') final String? deviceModel,
-    @JsonKey(name: 'app_version') final String? appVersion,
-  }) = _$SyncPullRequestImpl;
+  const factory _SyncPullRequest(
+          {@JsonKey(name: 'device_id') required final String deviceId,
+          required final int since,
+          final int? limit,
+          @JsonKey(name: 'cursor') final SyncPullCursor? cursor,
+          @JsonKey(name: 'device_os') final String? deviceOs,
+          @JsonKey(name: 'device_model') final String? deviceModel,
+          @JsonKey(name: 'app_version') final String? appVersion}) =
+      _$SyncPullRequestImpl;
 
   factory _SyncPullRequest.fromJson(Map<String, dynamic> json) =
       _$SyncPullRequestImpl.fromJson;
@@ -623,11 +559,8 @@ abstract class _SyncPullRequest implements SyncPullRequest {
   @override
   @JsonKey(name: 'app_version')
   String? get appVersion;
-
-  /// Create a copy of SyncPullRequest
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncPullRequestImplCopyWith<_$SyncPullRequestImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -647,12 +580,8 @@ mixin _$SyncPullCursor {
   @JsonKey(name: 'session_items')
   SyncCursorSessionItem? get sessionItems => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncPullCursor to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncPullCursorCopyWith<SyncPullCursor> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -660,16 +589,14 @@ mixin _$SyncPullCursor {
 /// @nodoc
 abstract class $SyncPullCursorCopyWith<$Res> {
   factory $SyncPullCursorCopyWith(
-    SyncPullCursor value,
-    $Res Function(SyncPullCursor) then,
-  ) = _$SyncPullCursorCopyWithImpl<$Res, SyncPullCursor>;
+          SyncPullCursor value, $Res Function(SyncPullCursor) then) =
+      _$SyncPullCursorCopyWithImpl<$Res, SyncPullCursor>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'settings') SyncCursorSetting? settings,
-    @JsonKey(name: 'memory_states') SyncCursorMemoryState? memoryStates,
-    @JsonKey(name: 'sessions') SyncCursorSession? sessions,
-    @JsonKey(name: 'session_items') SyncCursorSessionItem? sessionItems,
-  });
+  $Res call(
+      {@JsonKey(name: 'settings') SyncCursorSetting? settings,
+      @JsonKey(name: 'memory_states') SyncCursorMemoryState? memoryStates,
+      @JsonKey(name: 'sessions') SyncCursorSession? sessions,
+      @JsonKey(name: 'session_items') SyncCursorSessionItem? sessionItems});
 
   $SyncCursorSettingCopyWith<$Res>? get settings;
   $SyncCursorMemoryStateCopyWith<$Res>? get memoryStates;
@@ -687,8 +614,6 @@ class _$SyncPullCursorCopyWithImpl<$Res, $Val extends SyncPullCursor>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -697,31 +622,26 @@ class _$SyncPullCursorCopyWithImpl<$Res, $Val extends SyncPullCursor>
     Object? sessions = freezed,
     Object? sessionItems = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            settings: freezed == settings
-                ? _value.settings
-                : settings // ignore: cast_nullable_to_non_nullable
-                      as SyncCursorSetting?,
-            memoryStates: freezed == memoryStates
-                ? _value.memoryStates
-                : memoryStates // ignore: cast_nullable_to_non_nullable
-                      as SyncCursorMemoryState?,
-            sessions: freezed == sessions
-                ? _value.sessions
-                : sessions // ignore: cast_nullable_to_non_nullable
-                      as SyncCursorSession?,
-            sessionItems: freezed == sessionItems
-                ? _value.sessionItems
-                : sessionItems // ignore: cast_nullable_to_non_nullable
-                      as SyncCursorSessionItem?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      settings: freezed == settings
+          ? _value.settings
+          : settings // ignore: cast_nullable_to_non_nullable
+              as SyncCursorSetting?,
+      memoryStates: freezed == memoryStates
+          ? _value.memoryStates
+          : memoryStates // ignore: cast_nullable_to_non_nullable
+              as SyncCursorMemoryState?,
+      sessions: freezed == sessions
+          ? _value.sessions
+          : sessions // ignore: cast_nullable_to_non_nullable
+              as SyncCursorSession?,
+      sessionItems: freezed == sessionItems
+          ? _value.sessionItems
+          : sessionItems // ignore: cast_nullable_to_non_nullable
+              as SyncCursorSessionItem?,
+    ) as $Val);
   }
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncCursorSettingCopyWith<$Res>? get settings {
@@ -734,8 +654,6 @@ class _$SyncPullCursorCopyWithImpl<$Res, $Val extends SyncPullCursor>
     });
   }
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncCursorMemoryStateCopyWith<$Res>? get memoryStates {
@@ -748,8 +666,6 @@ class _$SyncPullCursorCopyWithImpl<$Res, $Val extends SyncPullCursor>
     });
   }
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncCursorSessionCopyWith<$Res>? get sessions {
@@ -762,8 +678,6 @@ class _$SyncPullCursorCopyWithImpl<$Res, $Val extends SyncPullCursor>
     });
   }
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncCursorSessionItemCopyWith<$Res>? get sessionItems {
@@ -780,18 +694,16 @@ class _$SyncPullCursorCopyWithImpl<$Res, $Val extends SyncPullCursor>
 /// @nodoc
 abstract class _$$SyncPullCursorImplCopyWith<$Res>
     implements $SyncPullCursorCopyWith<$Res> {
-  factory _$$SyncPullCursorImplCopyWith(
-    _$SyncPullCursorImpl value,
-    $Res Function(_$SyncPullCursorImpl) then,
-  ) = __$$SyncPullCursorImplCopyWithImpl<$Res>;
+  factory _$$SyncPullCursorImplCopyWith(_$SyncPullCursorImpl value,
+          $Res Function(_$SyncPullCursorImpl) then) =
+      __$$SyncPullCursorImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'settings') SyncCursorSetting? settings,
-    @JsonKey(name: 'memory_states') SyncCursorMemoryState? memoryStates,
-    @JsonKey(name: 'sessions') SyncCursorSession? sessions,
-    @JsonKey(name: 'session_items') SyncCursorSessionItem? sessionItems,
-  });
+  $Res call(
+      {@JsonKey(name: 'settings') SyncCursorSetting? settings,
+      @JsonKey(name: 'memory_states') SyncCursorMemoryState? memoryStates,
+      @JsonKey(name: 'sessions') SyncCursorSession? sessions,
+      @JsonKey(name: 'session_items') SyncCursorSessionItem? sessionItems});
 
   @override
   $SyncCursorSettingCopyWith<$Res>? get settings;
@@ -808,12 +720,9 @@ class __$$SyncPullCursorImplCopyWithImpl<$Res>
     extends _$SyncPullCursorCopyWithImpl<$Res, _$SyncPullCursorImpl>
     implements _$$SyncPullCursorImplCopyWith<$Res> {
   __$$SyncPullCursorImplCopyWithImpl(
-    _$SyncPullCursorImpl _value,
-    $Res Function(_$SyncPullCursorImpl) _then,
-  ) : super(_value, _then);
+      _$SyncPullCursorImpl _value, $Res Function(_$SyncPullCursorImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -822,38 +731,35 @@ class __$$SyncPullCursorImplCopyWithImpl<$Res>
     Object? sessions = freezed,
     Object? sessionItems = freezed,
   }) {
-    return _then(
-      _$SyncPullCursorImpl(
-        settings: freezed == settings
-            ? _value.settings
-            : settings // ignore: cast_nullable_to_non_nullable
-                  as SyncCursorSetting?,
-        memoryStates: freezed == memoryStates
-            ? _value.memoryStates
-            : memoryStates // ignore: cast_nullable_to_non_nullable
-                  as SyncCursorMemoryState?,
-        sessions: freezed == sessions
-            ? _value.sessions
-            : sessions // ignore: cast_nullable_to_non_nullable
-                  as SyncCursorSession?,
-        sessionItems: freezed == sessionItems
-            ? _value.sessionItems
-            : sessionItems // ignore: cast_nullable_to_non_nullable
-                  as SyncCursorSessionItem?,
-      ),
-    );
+    return _then(_$SyncPullCursorImpl(
+      settings: freezed == settings
+          ? _value.settings
+          : settings // ignore: cast_nullable_to_non_nullable
+              as SyncCursorSetting?,
+      memoryStates: freezed == memoryStates
+          ? _value.memoryStates
+          : memoryStates // ignore: cast_nullable_to_non_nullable
+              as SyncCursorMemoryState?,
+      sessions: freezed == sessions
+          ? _value.sessions
+          : sessions // ignore: cast_nullable_to_non_nullable
+              as SyncCursorSession?,
+      sessionItems: freezed == sessionItems
+          ? _value.sessionItems
+          : sessionItems // ignore: cast_nullable_to_non_nullable
+              as SyncCursorSessionItem?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncPullCursorImpl implements _SyncPullCursor {
-  const _$SyncPullCursorImpl({
-    @JsonKey(name: 'settings') this.settings,
-    @JsonKey(name: 'memory_states') this.memoryStates,
-    @JsonKey(name: 'sessions') this.sessions,
-    @JsonKey(name: 'session_items') this.sessionItems,
-  });
+  const _$SyncPullCursorImpl(
+      {@JsonKey(name: 'settings') this.settings,
+      @JsonKey(name: 'memory_states') this.memoryStates,
+      @JsonKey(name: 'sessions') this.sessions,
+      @JsonKey(name: 'session_items') this.sessionItems});
 
   factory _$SyncPullCursorImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncPullCursorImplFromJson(json);
@@ -891,35 +797,33 @@ class _$SyncPullCursorImpl implements _SyncPullCursor {
                 other.sessionItems == sessionItems));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode =>
       Object.hash(runtimeType, settings, memoryStates, sessions, sessionItems);
 
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncPullCursorImplCopyWith<_$SyncPullCursorImpl> get copyWith =>
       __$$SyncPullCursorImplCopyWithImpl<_$SyncPullCursorImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncPullCursorImplToJson(this);
+    return _$$SyncPullCursorImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncPullCursor implements SyncPullCursor {
-  const factory _SyncPullCursor({
-    @JsonKey(name: 'settings') final SyncCursorSetting? settings,
-    @JsonKey(name: 'memory_states') final SyncCursorMemoryState? memoryStates,
-    @JsonKey(name: 'sessions') final SyncCursorSession? sessions,
-    @JsonKey(name: 'session_items') final SyncCursorSessionItem? sessionItems,
-  }) = _$SyncPullCursorImpl;
+  const factory _SyncPullCursor(
+      {@JsonKey(name: 'settings') final SyncCursorSetting? settings,
+      @JsonKey(name: 'memory_states') final SyncCursorMemoryState? memoryStates,
+      @JsonKey(name: 'sessions') final SyncCursorSession? sessions,
+      @JsonKey(name: 'session_items')
+      final SyncCursorSessionItem? sessionItems}) = _$SyncPullCursorImpl;
 
   factory _SyncPullCursor.fromJson(Map<String, dynamic> json) =
       _$SyncPullCursorImpl.fromJson;
@@ -936,11 +840,8 @@ abstract class _SyncPullCursor implements SyncPullCursor {
   @override
   @JsonKey(name: 'session_items')
   SyncCursorSessionItem? get sessionItems;
-
-  /// Create a copy of SyncPullCursor
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncPullCursorImplCopyWith<_$SyncPullCursorImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -955,12 +856,8 @@ mixin _$SyncCursorSetting {
   int get updatedAt => throw _privateConstructorUsedError;
   String get key => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncCursorSetting to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncCursorSetting
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncCursorSettingCopyWith<SyncCursorSetting> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -968,9 +865,8 @@ mixin _$SyncCursorSetting {
 /// @nodoc
 abstract class $SyncCursorSettingCopyWith<$Res> {
   factory $SyncCursorSettingCopyWith(
-    SyncCursorSetting value,
-    $Res Function(SyncCursorSetting) then,
-  ) = _$SyncCursorSettingCopyWithImpl<$Res, SyncCursorSetting>;
+          SyncCursorSetting value, $Res Function(SyncCursorSetting) then) =
+      _$SyncCursorSettingCopyWithImpl<$Res, SyncCursorSetting>;
   @useResult
   $Res call({@JsonKey(name: 'updated_at') int updatedAt, String key});
 }
@@ -985,34 +881,31 @@ class _$SyncCursorSettingCopyWithImpl<$Res, $Val extends SyncCursorSetting>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncCursorSetting
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? key = null}) {
-    return _then(
-      _value.copyWith(
-            updatedAt: null == updatedAt
-                ? _value.updatedAt
-                : updatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-            key: null == key
-                ? _value.key
-                : key // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? key = null,
+  }) {
+    return _then(_value.copyWith(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      key: null == key
+          ? _value.key
+          : key // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$SyncCursorSettingImplCopyWith<$Res>
     implements $SyncCursorSettingCopyWith<$Res> {
-  factory _$$SyncCursorSettingImplCopyWith(
-    _$SyncCursorSettingImpl value,
-    $Res Function(_$SyncCursorSettingImpl) then,
-  ) = __$$SyncCursorSettingImplCopyWithImpl<$Res>;
+  factory _$$SyncCursorSettingImplCopyWith(_$SyncCursorSettingImpl value,
+          $Res Function(_$SyncCursorSettingImpl) then) =
+      __$$SyncCursorSettingImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({@JsonKey(name: 'updated_at') int updatedAt, String key});
@@ -1022,38 +915,35 @@ abstract class _$$SyncCursorSettingImplCopyWith<$Res>
 class __$$SyncCursorSettingImplCopyWithImpl<$Res>
     extends _$SyncCursorSettingCopyWithImpl<$Res, _$SyncCursorSettingImpl>
     implements _$$SyncCursorSettingImplCopyWith<$Res> {
-  __$$SyncCursorSettingImplCopyWithImpl(
-    _$SyncCursorSettingImpl _value,
-    $Res Function(_$SyncCursorSettingImpl) _then,
-  ) : super(_value, _then);
+  __$$SyncCursorSettingImplCopyWithImpl(_$SyncCursorSettingImpl _value,
+      $Res Function(_$SyncCursorSettingImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncCursorSetting
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? key = null}) {
-    return _then(
-      _$SyncCursorSettingImpl(
-        updatedAt: null == updatedAt
-            ? _value.updatedAt
-            : updatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-        key: null == key
-            ? _value.key
-            : key // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? key = null,
+  }) {
+    return _then(_$SyncCursorSettingImpl(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      key: null == key
+          ? _value.key
+          : key // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncCursorSettingImpl implements _SyncCursorSetting {
-  const _$SyncCursorSettingImpl({
-    @JsonKey(name: 'updated_at') required this.updatedAt,
-    required this.key,
-  });
+  const _$SyncCursorSettingImpl(
+      {@JsonKey(name: 'updated_at') required this.updatedAt,
+      required this.key});
 
   factory _$SyncCursorSettingImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncCursorSettingImplFromJson(json);
@@ -1079,32 +969,29 @@ class _$SyncCursorSettingImpl implements _SyncCursorSetting {
             (identical(other.key, key) || other.key == key));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, updatedAt, key);
 
-  /// Create a copy of SyncCursorSetting
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncCursorSettingImplCopyWith<_$SyncCursorSettingImpl> get copyWith =>
       __$$SyncCursorSettingImplCopyWithImpl<_$SyncCursorSettingImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncCursorSettingImplToJson(this);
+    return _$$SyncCursorSettingImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncCursorSetting implements SyncCursorSetting {
-  const factory _SyncCursorSetting({
-    @JsonKey(name: 'updated_at') required final int updatedAt,
-    required final String key,
-  }) = _$SyncCursorSettingImpl;
+  const factory _SyncCursorSetting(
+      {@JsonKey(name: 'updated_at') required final int updatedAt,
+      required final String key}) = _$SyncCursorSettingImpl;
 
   factory _SyncCursorSetting.fromJson(Map<String, dynamic> json) =
       _$SyncCursorSettingImpl.fromJson;
@@ -1114,18 +1001,14 @@ abstract class _SyncCursorSetting implements SyncCursorSetting {
   int get updatedAt;
   @override
   String get key;
-
-  /// Create a copy of SyncCursorSetting
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncCursorSettingImplCopyWith<_$SyncCursorSettingImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 SyncCursorMemoryState _$SyncCursorMemoryStateFromJson(
-  Map<String, dynamic> json,
-) {
+    Map<String, dynamic> json) {
   return _SyncCursorMemoryState.fromJson(json);
 }
 
@@ -1136,34 +1019,26 @@ mixin _$SyncCursorMemoryState {
   @JsonKey(name: 'node_id')
   int get nodeId => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncCursorMemoryState to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncCursorMemoryState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncCursorMemoryStateCopyWith<SyncCursorMemoryState> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class $SyncCursorMemoryStateCopyWith<$Res> {
-  factory $SyncCursorMemoryStateCopyWith(
-    SyncCursorMemoryState value,
-    $Res Function(SyncCursorMemoryState) then,
-  ) = _$SyncCursorMemoryStateCopyWithImpl<$Res, SyncCursorMemoryState>;
+  factory $SyncCursorMemoryStateCopyWith(SyncCursorMemoryState value,
+          $Res Function(SyncCursorMemoryState) then) =
+      _$SyncCursorMemoryStateCopyWithImpl<$Res, SyncCursorMemoryState>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'updated_at') int updatedAt,
-    @JsonKey(name: 'node_id') int nodeId,
-  });
+  $Res call(
+      {@JsonKey(name: 'updated_at') int updatedAt,
+      @JsonKey(name: 'node_id') int nodeId});
 }
 
 /// @nodoc
-class _$SyncCursorMemoryStateCopyWithImpl<
-  $Res,
-  $Val extends SyncCursorMemoryState
->
+class _$SyncCursorMemoryStateCopyWithImpl<$Res,
+        $Val extends SyncCursorMemoryState>
     implements $SyncCursorMemoryStateCopyWith<$Res> {
   _$SyncCursorMemoryStateCopyWithImpl(this._value, this._then);
 
@@ -1172,24 +1047,22 @@ class _$SyncCursorMemoryStateCopyWithImpl<
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncCursorMemoryState
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? nodeId = null}) {
-    return _then(
-      _value.copyWith(
-            updatedAt: null == updatedAt
-                ? _value.updatedAt
-                : updatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-            nodeId: null == nodeId
-                ? _value.nodeId
-                : nodeId // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? nodeId = null,
+  }) {
+    return _then(_value.copyWith(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
@@ -1197,54 +1070,50 @@ class _$SyncCursorMemoryStateCopyWithImpl<
 abstract class _$$SyncCursorMemoryStateImplCopyWith<$Res>
     implements $SyncCursorMemoryStateCopyWith<$Res> {
   factory _$$SyncCursorMemoryStateImplCopyWith(
-    _$SyncCursorMemoryStateImpl value,
-    $Res Function(_$SyncCursorMemoryStateImpl) then,
-  ) = __$$SyncCursorMemoryStateImplCopyWithImpl<$Res>;
+          _$SyncCursorMemoryStateImpl value,
+          $Res Function(_$SyncCursorMemoryStateImpl) then) =
+      __$$SyncCursorMemoryStateImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'updated_at') int updatedAt,
-    @JsonKey(name: 'node_id') int nodeId,
-  });
+  $Res call(
+      {@JsonKey(name: 'updated_at') int updatedAt,
+      @JsonKey(name: 'node_id') int nodeId});
 }
 
 /// @nodoc
 class __$$SyncCursorMemoryStateImplCopyWithImpl<$Res>
-    extends
-        _$SyncCursorMemoryStateCopyWithImpl<$Res, _$SyncCursorMemoryStateImpl>
+    extends _$SyncCursorMemoryStateCopyWithImpl<$Res,
+        _$SyncCursorMemoryStateImpl>
     implements _$$SyncCursorMemoryStateImplCopyWith<$Res> {
-  __$$SyncCursorMemoryStateImplCopyWithImpl(
-    _$SyncCursorMemoryStateImpl _value,
-    $Res Function(_$SyncCursorMemoryStateImpl) _then,
-  ) : super(_value, _then);
+  __$$SyncCursorMemoryStateImplCopyWithImpl(_$SyncCursorMemoryStateImpl _value,
+      $Res Function(_$SyncCursorMemoryStateImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncCursorMemoryState
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? nodeId = null}) {
-    return _then(
-      _$SyncCursorMemoryStateImpl(
-        updatedAt: null == updatedAt
-            ? _value.updatedAt
-            : updatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? nodeId = null,
+  }) {
+    return _then(_$SyncCursorMemoryStateImpl(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncCursorMemoryStateImpl implements _SyncCursorMemoryState {
-  const _$SyncCursorMemoryStateImpl({
-    @JsonKey(name: 'updated_at') required this.updatedAt,
-    @JsonKey(name: 'node_id') required this.nodeId,
-  });
+  const _$SyncCursorMemoryStateImpl(
+      {@JsonKey(name: 'updated_at') required this.updatedAt,
+      @JsonKey(name: 'node_id') required this.nodeId});
 
   factory _$SyncCursorMemoryStateImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncCursorMemoryStateImplFromJson(json);
@@ -1271,33 +1140,30 @@ class _$SyncCursorMemoryStateImpl implements _SyncCursorMemoryState {
             (identical(other.nodeId, nodeId) || other.nodeId == nodeId));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, updatedAt, nodeId);
 
-  /// Create a copy of SyncCursorMemoryState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncCursorMemoryStateImplCopyWith<_$SyncCursorMemoryStateImpl>
-  get copyWith =>
-      __$$SyncCursorMemoryStateImplCopyWithImpl<_$SyncCursorMemoryStateImpl>(
-        this,
-        _$identity,
-      );
+      get copyWith => __$$SyncCursorMemoryStateImplCopyWithImpl<
+          _$SyncCursorMemoryStateImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncCursorMemoryStateImplToJson(this);
+    return _$$SyncCursorMemoryStateImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncCursorMemoryState implements SyncCursorMemoryState {
-  const factory _SyncCursorMemoryState({
-    @JsonKey(name: 'updated_at') required final int updatedAt,
-    @JsonKey(name: 'node_id') required final int nodeId,
-  }) = _$SyncCursorMemoryStateImpl;
+  const factory _SyncCursorMemoryState(
+          {@JsonKey(name: 'updated_at') required final int updatedAt,
+          @JsonKey(name: 'node_id') required final int nodeId}) =
+      _$SyncCursorMemoryStateImpl;
 
   factory _SyncCursorMemoryState.fromJson(Map<String, dynamic> json) =
       _$SyncCursorMemoryStateImpl.fromJson;
@@ -1308,13 +1174,10 @@ abstract class _SyncCursorMemoryState implements SyncCursorMemoryState {
   @override
   @JsonKey(name: 'node_id')
   int get nodeId;
-
-  /// Create a copy of SyncCursorMemoryState
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncCursorMemoryStateImplCopyWith<_$SyncCursorMemoryStateImpl>
-  get copyWith => throw _privateConstructorUsedError;
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 SyncCursorSession _$SyncCursorSessionFromJson(Map<String, dynamic> json) {
@@ -1327,12 +1190,8 @@ mixin _$SyncCursorSession {
   int get updatedAt => throw _privateConstructorUsedError;
   String get id => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncCursorSession to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncCursorSession
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncCursorSessionCopyWith<SyncCursorSession> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1340,9 +1199,8 @@ mixin _$SyncCursorSession {
 /// @nodoc
 abstract class $SyncCursorSessionCopyWith<$Res> {
   factory $SyncCursorSessionCopyWith(
-    SyncCursorSession value,
-    $Res Function(SyncCursorSession) then,
-  ) = _$SyncCursorSessionCopyWithImpl<$Res, SyncCursorSession>;
+          SyncCursorSession value, $Res Function(SyncCursorSession) then) =
+      _$SyncCursorSessionCopyWithImpl<$Res, SyncCursorSession>;
   @useResult
   $Res call({@JsonKey(name: 'updated_at') int updatedAt, String id});
 }
@@ -1357,34 +1215,31 @@ class _$SyncCursorSessionCopyWithImpl<$Res, $Val extends SyncCursorSession>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncCursorSession
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? id = null}) {
-    return _then(
-      _value.copyWith(
-            updatedAt: null == updatedAt
-                ? _value.updatedAt
-                : updatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? id = null,
+  }) {
+    return _then(_value.copyWith(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$SyncCursorSessionImplCopyWith<$Res>
     implements $SyncCursorSessionCopyWith<$Res> {
-  factory _$$SyncCursorSessionImplCopyWith(
-    _$SyncCursorSessionImpl value,
-    $Res Function(_$SyncCursorSessionImpl) then,
-  ) = __$$SyncCursorSessionImplCopyWithImpl<$Res>;
+  factory _$$SyncCursorSessionImplCopyWith(_$SyncCursorSessionImpl value,
+          $Res Function(_$SyncCursorSessionImpl) then) =
+      __$$SyncCursorSessionImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({@JsonKey(name: 'updated_at') int updatedAt, String id});
@@ -1394,38 +1249,34 @@ abstract class _$$SyncCursorSessionImplCopyWith<$Res>
 class __$$SyncCursorSessionImplCopyWithImpl<$Res>
     extends _$SyncCursorSessionCopyWithImpl<$Res, _$SyncCursorSessionImpl>
     implements _$$SyncCursorSessionImplCopyWith<$Res> {
-  __$$SyncCursorSessionImplCopyWithImpl(
-    _$SyncCursorSessionImpl _value,
-    $Res Function(_$SyncCursorSessionImpl) _then,
-  ) : super(_value, _then);
+  __$$SyncCursorSessionImplCopyWithImpl(_$SyncCursorSessionImpl _value,
+      $Res Function(_$SyncCursorSessionImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncCursorSession
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? id = null}) {
-    return _then(
-      _$SyncCursorSessionImpl(
-        updatedAt: null == updatedAt
-            ? _value.updatedAt
-            : updatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? id = null,
+  }) {
+    return _then(_$SyncCursorSessionImpl(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncCursorSessionImpl implements _SyncCursorSession {
-  const _$SyncCursorSessionImpl({
-    @JsonKey(name: 'updated_at') required this.updatedAt,
-    required this.id,
-  });
+  const _$SyncCursorSessionImpl(
+      {@JsonKey(name: 'updated_at') required this.updatedAt, required this.id});
 
   factory _$SyncCursorSessionImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncCursorSessionImplFromJson(json);
@@ -1451,32 +1302,29 @@ class _$SyncCursorSessionImpl implements _SyncCursorSession {
             (identical(other.id, id) || other.id == id));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, updatedAt, id);
 
-  /// Create a copy of SyncCursorSession
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncCursorSessionImplCopyWith<_$SyncCursorSessionImpl> get copyWith =>
       __$$SyncCursorSessionImplCopyWithImpl<_$SyncCursorSessionImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncCursorSessionImplToJson(this);
+    return _$$SyncCursorSessionImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncCursorSession implements SyncCursorSession {
-  const factory _SyncCursorSession({
-    @JsonKey(name: 'updated_at') required final int updatedAt,
-    required final String id,
-  }) = _$SyncCursorSessionImpl;
+  const factory _SyncCursorSession(
+      {@JsonKey(name: 'updated_at') required final int updatedAt,
+      required final String id}) = _$SyncCursorSessionImpl;
 
   factory _SyncCursorSession.fromJson(Map<String, dynamic> json) =
       _$SyncCursorSessionImpl.fromJson;
@@ -1486,18 +1334,14 @@ abstract class _SyncCursorSession implements SyncCursorSession {
   int get updatedAt;
   @override
   String get id;
-
-  /// Create a copy of SyncCursorSession
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncCursorSessionImplCopyWith<_$SyncCursorSessionImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 SyncCursorSessionItem _$SyncCursorSessionItemFromJson(
-  Map<String, dynamic> json,
-) {
+    Map<String, dynamic> json) {
   return _SyncCursorSessionItem.fromJson(json);
 }
 
@@ -1507,31 +1351,24 @@ mixin _$SyncCursorSessionItem {
   int get updatedAt => throw _privateConstructorUsedError;
   String get id => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncCursorSessionItem to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncCursorSessionItem
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncCursorSessionItemCopyWith<SyncCursorSessionItem> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
 abstract class $SyncCursorSessionItemCopyWith<$Res> {
-  factory $SyncCursorSessionItemCopyWith(
-    SyncCursorSessionItem value,
-    $Res Function(SyncCursorSessionItem) then,
-  ) = _$SyncCursorSessionItemCopyWithImpl<$Res, SyncCursorSessionItem>;
+  factory $SyncCursorSessionItemCopyWith(SyncCursorSessionItem value,
+          $Res Function(SyncCursorSessionItem) then) =
+      _$SyncCursorSessionItemCopyWithImpl<$Res, SyncCursorSessionItem>;
   @useResult
   $Res call({@JsonKey(name: 'updated_at') int updatedAt, String id});
 }
 
 /// @nodoc
-class _$SyncCursorSessionItemCopyWithImpl<
-  $Res,
-  $Val extends SyncCursorSessionItem
->
+class _$SyncCursorSessionItemCopyWithImpl<$Res,
+        $Val extends SyncCursorSessionItem>
     implements $SyncCursorSessionItemCopyWith<$Res> {
   _$SyncCursorSessionItemCopyWithImpl(this._value, this._then);
 
@@ -1540,24 +1377,22 @@ class _$SyncCursorSessionItemCopyWithImpl<
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncCursorSessionItem
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? id = null}) {
-    return _then(
-      _value.copyWith(
-            updatedAt: null == updatedAt
-                ? _value.updatedAt
-                : updatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? id = null,
+  }) {
+    return _then(_value.copyWith(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
@@ -1565,9 +1400,9 @@ class _$SyncCursorSessionItemCopyWithImpl<
 abstract class _$$SyncCursorSessionItemImplCopyWith<$Res>
     implements $SyncCursorSessionItemCopyWith<$Res> {
   factory _$$SyncCursorSessionItemImplCopyWith(
-    _$SyncCursorSessionItemImpl value,
-    $Res Function(_$SyncCursorSessionItemImpl) then,
-  ) = __$$SyncCursorSessionItemImplCopyWithImpl<$Res>;
+          _$SyncCursorSessionItemImpl value,
+          $Res Function(_$SyncCursorSessionItemImpl) then) =
+      __$$SyncCursorSessionItemImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({@JsonKey(name: 'updated_at') int updatedAt, String id});
@@ -1575,41 +1410,37 @@ abstract class _$$SyncCursorSessionItemImplCopyWith<$Res>
 
 /// @nodoc
 class __$$SyncCursorSessionItemImplCopyWithImpl<$Res>
-    extends
-        _$SyncCursorSessionItemCopyWithImpl<$Res, _$SyncCursorSessionItemImpl>
+    extends _$SyncCursorSessionItemCopyWithImpl<$Res,
+        _$SyncCursorSessionItemImpl>
     implements _$$SyncCursorSessionItemImplCopyWith<$Res> {
-  __$$SyncCursorSessionItemImplCopyWithImpl(
-    _$SyncCursorSessionItemImpl _value,
-    $Res Function(_$SyncCursorSessionItemImpl) _then,
-  ) : super(_value, _then);
+  __$$SyncCursorSessionItemImplCopyWithImpl(_$SyncCursorSessionItemImpl _value,
+      $Res Function(_$SyncCursorSessionItemImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncCursorSessionItem
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? updatedAt = null, Object? id = null}) {
-    return _then(
-      _$SyncCursorSessionItemImpl(
-        updatedAt: null == updatedAt
-            ? _value.updatedAt
-            : updatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+  $Res call({
+    Object? updatedAt = null,
+    Object? id = null,
+  }) {
+    return _then(_$SyncCursorSessionItemImpl(
+      updatedAt: null == updatedAt
+          ? _value.updatedAt
+          : updatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncCursorSessionItemImpl implements _SyncCursorSessionItem {
-  const _$SyncCursorSessionItemImpl({
-    @JsonKey(name: 'updated_at') required this.updatedAt,
-    required this.id,
-  });
+  const _$SyncCursorSessionItemImpl(
+      {@JsonKey(name: 'updated_at') required this.updatedAt, required this.id});
 
   factory _$SyncCursorSessionItemImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncCursorSessionItemImplFromJson(json);
@@ -1635,33 +1466,29 @@ class _$SyncCursorSessionItemImpl implements _SyncCursorSessionItem {
             (identical(other.id, id) || other.id == id));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, updatedAt, id);
 
-  /// Create a copy of SyncCursorSessionItem
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncCursorSessionItemImplCopyWith<_$SyncCursorSessionItemImpl>
-  get copyWith =>
-      __$$SyncCursorSessionItemImplCopyWithImpl<_$SyncCursorSessionItemImpl>(
-        this,
-        _$identity,
-      );
+      get copyWith => __$$SyncCursorSessionItemImplCopyWithImpl<
+          _$SyncCursorSessionItemImpl>(this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncCursorSessionItemImplToJson(this);
+    return _$$SyncCursorSessionItemImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncCursorSessionItem implements SyncCursorSessionItem {
-  const factory _SyncCursorSessionItem({
-    @JsonKey(name: 'updated_at') required final int updatedAt,
-    required final String id,
-  }) = _$SyncCursorSessionItemImpl;
+  const factory _SyncCursorSessionItem(
+      {@JsonKey(name: 'updated_at') required final int updatedAt,
+      required final String id}) = _$SyncCursorSessionItemImpl;
 
   factory _SyncCursorSessionItem.fromJson(Map<String, dynamic> json) =
       _$SyncCursorSessionItemImpl.fromJson;
@@ -1671,13 +1498,10 @@ abstract class _SyncCursorSessionItem implements SyncCursorSessionItem {
   int get updatedAt;
   @override
   String get id;
-
-  /// Create a copy of SyncCursorSessionItem
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncCursorSessionItemImplCopyWith<_$SyncCursorSessionItemImpl>
-  get copyWith => throw _privateConstructorUsedError;
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 SyncChanges _$SyncChangesFromJson(Map<String, dynamic> json) {
@@ -1697,12 +1521,8 @@ mixin _$SyncChanges {
   List<SessionItemChange> get sessionItems =>
       throw _privateConstructorUsedError;
 
-  /// Serializes this SyncChanges to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncChanges
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncChangesCopyWith<SyncChanges> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1710,16 +1530,14 @@ mixin _$SyncChanges {
 /// @nodoc
 abstract class $SyncChangesCopyWith<$Res> {
   factory $SyncChangesCopyWith(
-    SyncChanges value,
-    $Res Function(SyncChanges) then,
-  ) = _$SyncChangesCopyWithImpl<$Res, SyncChanges>;
+          SyncChanges value, $Res Function(SyncChanges) then) =
+      _$SyncChangesCopyWithImpl<$Res, SyncChanges>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'settings') List<SettingChange> settings,
-    @JsonKey(name: 'memory_states') List<MemoryStateChange> memoryStates,
-    @JsonKey(name: 'sessions') List<SessionChange> sessions,
-    @JsonKey(name: 'session_items') List<SessionItemChange> sessionItems,
-  });
+  $Res call(
+      {@JsonKey(name: 'settings') List<SettingChange> settings,
+      @JsonKey(name: 'memory_states') List<MemoryStateChange> memoryStates,
+      @JsonKey(name: 'sessions') List<SessionChange> sessions,
+      @JsonKey(name: 'session_items') List<SessionItemChange> sessionItems});
 }
 
 /// @nodoc
@@ -1732,8 +1550,6 @@ class _$SyncChangesCopyWithImpl<$Res, $Val extends SyncChanges>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncChanges
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1742,27 +1558,24 @@ class _$SyncChangesCopyWithImpl<$Res, $Val extends SyncChanges>
     Object? sessions = null,
     Object? sessionItems = null,
   }) {
-    return _then(
-      _value.copyWith(
-            settings: null == settings
-                ? _value.settings
-                : settings // ignore: cast_nullable_to_non_nullable
-                      as List<SettingChange>,
-            memoryStates: null == memoryStates
-                ? _value.memoryStates
-                : memoryStates // ignore: cast_nullable_to_non_nullable
-                      as List<MemoryStateChange>,
-            sessions: null == sessions
-                ? _value.sessions
-                : sessions // ignore: cast_nullable_to_non_nullable
-                      as List<SessionChange>,
-            sessionItems: null == sessionItems
-                ? _value.sessionItems
-                : sessionItems // ignore: cast_nullable_to_non_nullable
-                      as List<SessionItemChange>,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      settings: null == settings
+          ? _value.settings
+          : settings // ignore: cast_nullable_to_non_nullable
+              as List<SettingChange>,
+      memoryStates: null == memoryStates
+          ? _value.memoryStates
+          : memoryStates // ignore: cast_nullable_to_non_nullable
+              as List<MemoryStateChange>,
+      sessions: null == sessions
+          ? _value.sessions
+          : sessions // ignore: cast_nullable_to_non_nullable
+              as List<SessionChange>,
+      sessionItems: null == sessionItems
+          ? _value.sessionItems
+          : sessionItems // ignore: cast_nullable_to_non_nullable
+              as List<SessionItemChange>,
+    ) as $Val);
   }
 }
 
@@ -1770,17 +1583,15 @@ class _$SyncChangesCopyWithImpl<$Res, $Val extends SyncChanges>
 abstract class _$$SyncChangesImplCopyWith<$Res>
     implements $SyncChangesCopyWith<$Res> {
   factory _$$SyncChangesImplCopyWith(
-    _$SyncChangesImpl value,
-    $Res Function(_$SyncChangesImpl) then,
-  ) = __$$SyncChangesImplCopyWithImpl<$Res>;
+          _$SyncChangesImpl value, $Res Function(_$SyncChangesImpl) then) =
+      __$$SyncChangesImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'settings') List<SettingChange> settings,
-    @JsonKey(name: 'memory_states') List<MemoryStateChange> memoryStates,
-    @JsonKey(name: 'sessions') List<SessionChange> sessions,
-    @JsonKey(name: 'session_items') List<SessionItemChange> sessionItems,
-  });
+  $Res call(
+      {@JsonKey(name: 'settings') List<SettingChange> settings,
+      @JsonKey(name: 'memory_states') List<MemoryStateChange> memoryStates,
+      @JsonKey(name: 'sessions') List<SessionChange> sessions,
+      @JsonKey(name: 'session_items') List<SessionItemChange> sessionItems});
 }
 
 /// @nodoc
@@ -1788,12 +1599,9 @@ class __$$SyncChangesImplCopyWithImpl<$Res>
     extends _$SyncChangesCopyWithImpl<$Res, _$SyncChangesImpl>
     implements _$$SyncChangesImplCopyWith<$Res> {
   __$$SyncChangesImplCopyWithImpl(
-    _$SyncChangesImpl _value,
-    $Res Function(_$SyncChangesImpl) _then,
-  ) : super(_value, _then);
+      _$SyncChangesImpl _value, $Res Function(_$SyncChangesImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncChanges
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1802,43 +1610,41 @@ class __$$SyncChangesImplCopyWithImpl<$Res>
     Object? sessions = null,
     Object? sessionItems = null,
   }) {
-    return _then(
-      _$SyncChangesImpl(
-        settings: null == settings
-            ? _value._settings
-            : settings // ignore: cast_nullable_to_non_nullable
-                  as List<SettingChange>,
-        memoryStates: null == memoryStates
-            ? _value._memoryStates
-            : memoryStates // ignore: cast_nullable_to_non_nullable
-                  as List<MemoryStateChange>,
-        sessions: null == sessions
-            ? _value._sessions
-            : sessions // ignore: cast_nullable_to_non_nullable
-                  as List<SessionChange>,
-        sessionItems: null == sessionItems
-            ? _value._sessionItems
-            : sessionItems // ignore: cast_nullable_to_non_nullable
-                  as List<SessionItemChange>,
-      ),
-    );
+    return _then(_$SyncChangesImpl(
+      settings: null == settings
+          ? _value._settings
+          : settings // ignore: cast_nullable_to_non_nullable
+              as List<SettingChange>,
+      memoryStates: null == memoryStates
+          ? _value._memoryStates
+          : memoryStates // ignore: cast_nullable_to_non_nullable
+              as List<MemoryStateChange>,
+      sessions: null == sessions
+          ? _value._sessions
+          : sessions // ignore: cast_nullable_to_non_nullable
+              as List<SessionChange>,
+      sessionItems: null == sessionItems
+          ? _value._sessionItems
+          : sessionItems // ignore: cast_nullable_to_non_nullable
+              as List<SessionItemChange>,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncChangesImpl implements _SyncChanges {
-  const _$SyncChangesImpl({
-    @JsonKey(name: 'settings') final List<SettingChange> settings = const [],
-    @JsonKey(name: 'memory_states')
-    final List<MemoryStateChange> memoryStates = const [],
-    @JsonKey(name: 'sessions') final List<SessionChange> sessions = const [],
-    @JsonKey(name: 'session_items')
-    final List<SessionItemChange> sessionItems = const [],
-  }) : _settings = settings,
-       _memoryStates = memoryStates,
-       _sessions = sessions,
-       _sessionItems = sessionItems;
+  const _$SyncChangesImpl(
+      {@JsonKey(name: 'settings') final List<SettingChange> settings = const [],
+      @JsonKey(name: 'memory_states')
+      final List<MemoryStateChange> memoryStates = const [],
+      @JsonKey(name: 'sessions') final List<SessionChange> sessions = const [],
+      @JsonKey(name: 'session_items')
+      final List<SessionItemChange> sessionItems = const []})
+      : _settings = settings,
+        _memoryStates = memoryStates,
+        _sessions = sessions,
+        _sessionItems = sessionItems;
 
   factory _$SyncChangesImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncChangesImplFromJson(json);
@@ -1890,30 +1696,23 @@ class _$SyncChangesImpl implements _SyncChanges {
         (other.runtimeType == runtimeType &&
             other is _$SyncChangesImpl &&
             const DeepCollectionEquality().equals(other._settings, _settings) &&
-            const DeepCollectionEquality().equals(
-              other._memoryStates,
-              _memoryStates,
-            ) &&
+            const DeepCollectionEquality()
+                .equals(other._memoryStates, _memoryStates) &&
             const DeepCollectionEquality().equals(other._sessions, _sessions) &&
-            const DeepCollectionEquality().equals(
-              other._sessionItems,
-              _sessionItems,
-            ));
+            const DeepCollectionEquality()
+                .equals(other._sessionItems, _sessionItems));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    const DeepCollectionEquality().hash(_settings),
-    const DeepCollectionEquality().hash(_memoryStates),
-    const DeepCollectionEquality().hash(_sessions),
-    const DeepCollectionEquality().hash(_sessionItems),
-  );
+      runtimeType,
+      const DeepCollectionEquality().hash(_settings),
+      const DeepCollectionEquality().hash(_memoryStates),
+      const DeepCollectionEquality().hash(_sessions),
+      const DeepCollectionEquality().hash(_sessionItems));
 
-  /// Create a copy of SyncChanges
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncChangesImplCopyWith<_$SyncChangesImpl> get copyWith =>
@@ -1921,17 +1720,20 @@ class _$SyncChangesImpl implements _SyncChanges {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncChangesImplToJson(this);
+    return _$$SyncChangesImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncChanges implements SyncChanges {
-  const factory _SyncChanges({
-    @JsonKey(name: 'settings') final List<SettingChange> settings,
-    @JsonKey(name: 'memory_states') final List<MemoryStateChange> memoryStates,
-    @JsonKey(name: 'sessions') final List<SessionChange> sessions,
-    @JsonKey(name: 'session_items') final List<SessionItemChange> sessionItems,
-  }) = _$SyncChangesImpl;
+  const factory _SyncChanges(
+      {@JsonKey(name: 'settings') final List<SettingChange> settings,
+      @JsonKey(name: 'memory_states')
+      final List<MemoryStateChange> memoryStates,
+      @JsonKey(name: 'sessions') final List<SessionChange> sessions,
+      @JsonKey(name: 'session_items')
+      final List<SessionItemChange> sessionItems}) = _$SyncChangesImpl;
 
   factory _SyncChanges.fromJson(Map<String, dynamic> json) =
       _$SyncChangesImpl.fromJson;
@@ -1948,11 +1750,8 @@ abstract class _SyncChanges implements SyncChanges {
   @override
   @JsonKey(name: 'session_items')
   List<SessionItemChange> get sessionItems;
-
-  /// Create a copy of SyncChanges
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncChangesImplCopyWith<_$SyncChangesImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1968,12 +1767,8 @@ mixin _$SettingChange {
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt => throw _privateConstructorUsedError;
 
-  /// Serializes this SettingChange to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SettingChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SettingChangeCopyWith<SettingChange> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1981,15 +1776,13 @@ mixin _$SettingChange {
 /// @nodoc
 abstract class $SettingChangeCopyWith<$Res> {
   factory $SettingChangeCopyWith(
-    SettingChange value,
-    $Res Function(SettingChange) then,
-  ) = _$SettingChangeCopyWithImpl<$Res, SettingChange>;
+          SettingChange value, $Res Function(SettingChange) then) =
+      _$SettingChangeCopyWithImpl<$Res, SettingChange>;
   @useResult
-  $Res call({
-    String key,
-    dynamic value,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {String key,
+      dynamic value,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
@@ -2002,8 +1795,6 @@ class _$SettingChangeCopyWithImpl<$Res, $Val extends SettingChange>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SettingChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2011,23 +1802,20 @@ class _$SettingChangeCopyWithImpl<$Res, $Val extends SettingChange>
     Object? value = freezed,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _value.copyWith(
-            key: null == key
-                ? _value.key
-                : key // ignore: cast_nullable_to_non_nullable
-                      as String,
-            value: freezed == value
-                ? _value.value
-                : value // ignore: cast_nullable_to_non_nullable
-                      as dynamic,
-            clientUpdatedAt: null == clientUpdatedAt
-                ? _value.clientUpdatedAt
-                : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      key: null == key
+          ? _value.key
+          : key // ignore: cast_nullable_to_non_nullable
+              as String,
+      value: freezed == value
+          ? _value.value
+          : value // ignore: cast_nullable_to_non_nullable
+              as dynamic,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
@@ -2035,16 +1823,14 @@ class _$SettingChangeCopyWithImpl<$Res, $Val extends SettingChange>
 abstract class _$$SettingChangeImplCopyWith<$Res>
     implements $SettingChangeCopyWith<$Res> {
   factory _$$SettingChangeImplCopyWith(
-    _$SettingChangeImpl value,
-    $Res Function(_$SettingChangeImpl) then,
-  ) = __$$SettingChangeImplCopyWithImpl<$Res>;
+          _$SettingChangeImpl value, $Res Function(_$SettingChangeImpl) then) =
+      __$$SettingChangeImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String key,
-    dynamic value,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {String key,
+      dynamic value,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
@@ -2052,12 +1838,9 @@ class __$$SettingChangeImplCopyWithImpl<$Res>
     extends _$SettingChangeCopyWithImpl<$Res, _$SettingChangeImpl>
     implements _$$SettingChangeImplCopyWith<$Res> {
   __$$SettingChangeImplCopyWithImpl(
-    _$SettingChangeImpl _value,
-    $Res Function(_$SettingChangeImpl) _then,
-  ) : super(_value, _then);
+      _$SettingChangeImpl _value, $Res Function(_$SettingChangeImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SettingChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2065,33 +1848,30 @@ class __$$SettingChangeImplCopyWithImpl<$Res>
     Object? value = freezed,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _$SettingChangeImpl(
-        key: null == key
-            ? _value.key
-            : key // ignore: cast_nullable_to_non_nullable
-                  as String,
-        value: freezed == value
-            ? _value.value
-            : value // ignore: cast_nullable_to_non_nullable
-                  as dynamic,
-        clientUpdatedAt: null == clientUpdatedAt
-            ? _value.clientUpdatedAt
-            : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$SettingChangeImpl(
+      key: null == key
+          ? _value.key
+          : key // ignore: cast_nullable_to_non_nullable
+              as String,
+      value: freezed == value
+          ? _value.value
+          : value // ignore: cast_nullable_to_non_nullable
+              as dynamic,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SettingChangeImpl implements _SettingChange {
-  const _$SettingChangeImpl({
-    required this.key,
-    required this.value,
-    @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt,
-  });
+  const _$SettingChangeImpl(
+      {required this.key,
+      required this.value,
+      @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt});
 
   factory _$SettingChangeImpl.fromJson(Map<String, dynamic> json) =>
       _$$SettingChangeImplFromJson(json);
@@ -2120,18 +1900,12 @@ class _$SettingChangeImpl implements _SettingChange {
                 other.clientUpdatedAt == clientUpdatedAt));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    key,
-    const DeepCollectionEquality().hash(value),
-    clientUpdatedAt,
-  );
+  int get hashCode => Object.hash(runtimeType, key,
+      const DeepCollectionEquality().hash(value), clientUpdatedAt);
 
-  /// Create a copy of SettingChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SettingChangeImplCopyWith<_$SettingChangeImpl> get copyWith =>
@@ -2139,16 +1913,18 @@ class _$SettingChangeImpl implements _SettingChange {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SettingChangeImplToJson(this);
+    return _$$SettingChangeImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SettingChange implements SettingChange {
-  const factory _SettingChange({
-    required final String key,
-    required final dynamic value,
-    @JsonKey(name: 'client_updated_at') required final int clientUpdatedAt,
-  }) = _$SettingChangeImpl;
+  const factory _SettingChange(
+      {required final String key,
+      required final dynamic value,
+      @JsonKey(name: 'client_updated_at')
+      required final int clientUpdatedAt}) = _$SettingChangeImpl;
 
   factory _SettingChange.fromJson(Map<String, dynamic> json) =
       _$SettingChangeImpl.fromJson;
@@ -2160,11 +1936,8 @@ abstract class _SettingChange implements SettingChange {
   @override
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt;
-
-  /// Create a copy of SettingChange
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SettingChangeImplCopyWith<_$SettingChangeImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -2189,12 +1962,8 @@ mixin _$MemoryStateChange {
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt => throw _privateConstructorUsedError;
 
-  /// Serializes this MemoryStateChange to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of MemoryStateChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $MemoryStateChangeCopyWith<MemoryStateChange> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -2202,19 +1971,17 @@ mixin _$MemoryStateChange {
 /// @nodoc
 abstract class $MemoryStateChangeCopyWith<$Res> {
   factory $MemoryStateChangeCopyWith(
-    MemoryStateChange value,
-    $Res Function(MemoryStateChange) then,
-  ) = _$MemoryStateChangeCopyWithImpl<$Res, MemoryStateChange>;
+          MemoryStateChange value, $Res Function(MemoryStateChange) then) =
+      _$MemoryStateChangeCopyWithImpl<$Res, MemoryStateChange>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'node_id') int nodeId,
-    double energy,
-    @JsonKey(name: 'fsrs_stability') double? fsrsStability,
-    @JsonKey(name: 'fsrs_difficulty') double? fsrsDifficulty,
-    @JsonKey(name: 'last_reviewed_at') int? lastReviewedAt,
-    @JsonKey(name: 'next_review_at') int? nextReviewAt,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {@JsonKey(name: 'node_id') int nodeId,
+      double energy,
+      @JsonKey(name: 'fsrs_stability') double? fsrsStability,
+      @JsonKey(name: 'fsrs_difficulty') double? fsrsDifficulty,
+      @JsonKey(name: 'last_reviewed_at') int? lastReviewedAt,
+      @JsonKey(name: 'next_review_at') int? nextReviewAt,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
@@ -2227,8 +1994,6 @@ class _$MemoryStateChangeCopyWithImpl<$Res, $Val extends MemoryStateChange>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of MemoryStateChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2240,73 +2005,65 @@ class _$MemoryStateChangeCopyWithImpl<$Res, $Val extends MemoryStateChange>
     Object? nextReviewAt = freezed,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _value.copyWith(
-            nodeId: null == nodeId
-                ? _value.nodeId
-                : nodeId // ignore: cast_nullable_to_non_nullable
-                      as int,
-            energy: null == energy
-                ? _value.energy
-                : energy // ignore: cast_nullable_to_non_nullable
-                      as double,
-            fsrsStability: freezed == fsrsStability
-                ? _value.fsrsStability
-                : fsrsStability // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            fsrsDifficulty: freezed == fsrsDifficulty
-                ? _value.fsrsDifficulty
-                : fsrsDifficulty // ignore: cast_nullable_to_non_nullable
-                      as double?,
-            lastReviewedAt: freezed == lastReviewedAt
-                ? _value.lastReviewedAt
-                : lastReviewedAt // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            nextReviewAt: freezed == nextReviewAt
-                ? _value.nextReviewAt
-                : nextReviewAt // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            clientUpdatedAt: null == clientUpdatedAt
-                ? _value.clientUpdatedAt
-                : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as int,
+      energy: null == energy
+          ? _value.energy
+          : energy // ignore: cast_nullable_to_non_nullable
+              as double,
+      fsrsStability: freezed == fsrsStability
+          ? _value.fsrsStability
+          : fsrsStability // ignore: cast_nullable_to_non_nullable
+              as double?,
+      fsrsDifficulty: freezed == fsrsDifficulty
+          ? _value.fsrsDifficulty
+          : fsrsDifficulty // ignore: cast_nullable_to_non_nullable
+              as double?,
+      lastReviewedAt: freezed == lastReviewedAt
+          ? _value.lastReviewedAt
+          : lastReviewedAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      nextReviewAt: freezed == nextReviewAt
+          ? _value.nextReviewAt
+          : nextReviewAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$MemoryStateChangeImplCopyWith<$Res>
     implements $MemoryStateChangeCopyWith<$Res> {
-  factory _$$MemoryStateChangeImplCopyWith(
-    _$MemoryStateChangeImpl value,
-    $Res Function(_$MemoryStateChangeImpl) then,
-  ) = __$$MemoryStateChangeImplCopyWithImpl<$Res>;
+  factory _$$MemoryStateChangeImplCopyWith(_$MemoryStateChangeImpl value,
+          $Res Function(_$MemoryStateChangeImpl) then) =
+      __$$MemoryStateChangeImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'node_id') int nodeId,
-    double energy,
-    @JsonKey(name: 'fsrs_stability') double? fsrsStability,
-    @JsonKey(name: 'fsrs_difficulty') double? fsrsDifficulty,
-    @JsonKey(name: 'last_reviewed_at') int? lastReviewedAt,
-    @JsonKey(name: 'next_review_at') int? nextReviewAt,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {@JsonKey(name: 'node_id') int nodeId,
+      double energy,
+      @JsonKey(name: 'fsrs_stability') double? fsrsStability,
+      @JsonKey(name: 'fsrs_difficulty') double? fsrsDifficulty,
+      @JsonKey(name: 'last_reviewed_at') int? lastReviewedAt,
+      @JsonKey(name: 'next_review_at') int? nextReviewAt,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
 class __$$MemoryStateChangeImplCopyWithImpl<$Res>
     extends _$MemoryStateChangeCopyWithImpl<$Res, _$MemoryStateChangeImpl>
     implements _$$MemoryStateChangeImplCopyWith<$Res> {
-  __$$MemoryStateChangeImplCopyWithImpl(
-    _$MemoryStateChangeImpl _value,
-    $Res Function(_$MemoryStateChangeImpl) _then,
-  ) : super(_value, _then);
+  __$$MemoryStateChangeImplCopyWithImpl(_$MemoryStateChangeImpl _value,
+      $Res Function(_$MemoryStateChangeImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of MemoryStateChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2318,53 +2075,50 @@ class __$$MemoryStateChangeImplCopyWithImpl<$Res>
     Object? nextReviewAt = freezed,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _$MemoryStateChangeImpl(
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as int,
-        energy: null == energy
-            ? _value.energy
-            : energy // ignore: cast_nullable_to_non_nullable
-                  as double,
-        fsrsStability: freezed == fsrsStability
-            ? _value.fsrsStability
-            : fsrsStability // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        fsrsDifficulty: freezed == fsrsDifficulty
-            ? _value.fsrsDifficulty
-            : fsrsDifficulty // ignore: cast_nullable_to_non_nullable
-                  as double?,
-        lastReviewedAt: freezed == lastReviewedAt
-            ? _value.lastReviewedAt
-            : lastReviewedAt // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        nextReviewAt: freezed == nextReviewAt
-            ? _value.nextReviewAt
-            : nextReviewAt // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        clientUpdatedAt: null == clientUpdatedAt
-            ? _value.clientUpdatedAt
-            : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$MemoryStateChangeImpl(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as int,
+      energy: null == energy
+          ? _value.energy
+          : energy // ignore: cast_nullable_to_non_nullable
+              as double,
+      fsrsStability: freezed == fsrsStability
+          ? _value.fsrsStability
+          : fsrsStability // ignore: cast_nullable_to_non_nullable
+              as double?,
+      fsrsDifficulty: freezed == fsrsDifficulty
+          ? _value.fsrsDifficulty
+          : fsrsDifficulty // ignore: cast_nullable_to_non_nullable
+              as double?,
+      lastReviewedAt: freezed == lastReviewedAt
+          ? _value.lastReviewedAt
+          : lastReviewedAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      nextReviewAt: freezed == nextReviewAt
+          ? _value.nextReviewAt
+          : nextReviewAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$MemoryStateChangeImpl implements _MemoryStateChange {
-  const _$MemoryStateChangeImpl({
-    @JsonKey(name: 'node_id') required this.nodeId,
-    required this.energy,
-    @JsonKey(name: 'fsrs_stability') this.fsrsStability,
-    @JsonKey(name: 'fsrs_difficulty') this.fsrsDifficulty,
-    @JsonKey(name: 'last_reviewed_at') this.lastReviewedAt,
-    @JsonKey(name: 'next_review_at') this.nextReviewAt,
-    @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt,
-  });
+  const _$MemoryStateChangeImpl(
+      {@JsonKey(name: 'node_id') required this.nodeId,
+      required this.energy,
+      @JsonKey(name: 'fsrs_stability') this.fsrsStability,
+      @JsonKey(name: 'fsrs_difficulty') this.fsrsDifficulty,
+      @JsonKey(name: 'last_reviewed_at') this.lastReviewedAt,
+      @JsonKey(name: 'next_review_at') this.nextReviewAt,
+      @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt});
 
   factory _$MemoryStateChangeImpl.fromJson(Map<String, dynamic> json) =>
       _$$MemoryStateChangeImplFromJson(json);
@@ -2414,46 +2168,36 @@ class _$MemoryStateChangeImpl implements _MemoryStateChange {
                 other.clientUpdatedAt == clientUpdatedAt));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    nodeId,
-    energy,
-    fsrsStability,
-    fsrsDifficulty,
-    lastReviewedAt,
-    nextReviewAt,
-    clientUpdatedAt,
-  );
+  int get hashCode => Object.hash(runtimeType, nodeId, energy, fsrsStability,
+      fsrsDifficulty, lastReviewedAt, nextReviewAt, clientUpdatedAt);
 
-  /// Create a copy of MemoryStateChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$MemoryStateChangeImplCopyWith<_$MemoryStateChangeImpl> get copyWith =>
       __$$MemoryStateChangeImplCopyWithImpl<_$MemoryStateChangeImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$MemoryStateChangeImplToJson(this);
+    return _$$MemoryStateChangeImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _MemoryStateChange implements MemoryStateChange {
-  const factory _MemoryStateChange({
-    @JsonKey(name: 'node_id') required final int nodeId,
-    required final double energy,
-    @JsonKey(name: 'fsrs_stability') final double? fsrsStability,
-    @JsonKey(name: 'fsrs_difficulty') final double? fsrsDifficulty,
-    @JsonKey(name: 'last_reviewed_at') final int? lastReviewedAt,
-    @JsonKey(name: 'next_review_at') final int? nextReviewAt,
-    @JsonKey(name: 'client_updated_at') required final int clientUpdatedAt,
-  }) = _$MemoryStateChangeImpl;
+  const factory _MemoryStateChange(
+      {@JsonKey(name: 'node_id') required final int nodeId,
+      required final double energy,
+      @JsonKey(name: 'fsrs_stability') final double? fsrsStability,
+      @JsonKey(name: 'fsrs_difficulty') final double? fsrsDifficulty,
+      @JsonKey(name: 'last_reviewed_at') final int? lastReviewedAt,
+      @JsonKey(name: 'next_review_at') final int? nextReviewAt,
+      @JsonKey(name: 'client_updated_at')
+      required final int clientUpdatedAt}) = _$MemoryStateChangeImpl;
 
   factory _MemoryStateChange.fromJson(Map<String, dynamic> json) =
       _$MemoryStateChangeImpl.fromJson;
@@ -2478,11 +2222,8 @@ abstract class _MemoryStateChange implements MemoryStateChange {
   @override
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt;
-
-  /// Create a copy of MemoryStateChange
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$MemoryStateChangeImplCopyWith<_$MemoryStateChangeImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -2505,12 +2246,8 @@ mixin _$SessionChange {
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt => throw _privateConstructorUsedError;
 
-  /// Serializes this SessionChange to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SessionChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SessionChangeCopyWith<SessionChange> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -2518,18 +2255,16 @@ mixin _$SessionChange {
 /// @nodoc
 abstract class $SessionChangeCopyWith<$Res> {
   factory $SessionChangeCopyWith(
-    SessionChange value,
-    $Res Function(SessionChange) then,
-  ) = _$SessionChangeCopyWithImpl<$Res, SessionChange>;
+          SessionChange value, $Res Function(SessionChange) then) =
+      _$SessionChangeCopyWithImpl<$Res, SessionChange>;
   @useResult
-  $Res call({
-    String id,
-    @JsonKey(name: 'goal_id') String? goalId,
-    @JsonKey(name: 'started_at') int startedAt,
-    @JsonKey(name: 'completed_at') int? completedAt,
-    @JsonKey(name: 'items_completed') int itemsCompleted,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {String id,
+      @JsonKey(name: 'goal_id') String? goalId,
+      @JsonKey(name: 'started_at') int startedAt,
+      @JsonKey(name: 'completed_at') int? completedAt,
+      @JsonKey(name: 'items_completed') int itemsCompleted,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
@@ -2542,8 +2277,6 @@ class _$SessionChangeCopyWithImpl<$Res, $Val extends SessionChange>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SessionChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2554,35 +2287,32 @@ class _$SessionChangeCopyWithImpl<$Res, $Val extends SessionChange>
     Object? itemsCompleted = null,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            goalId: freezed == goalId
-                ? _value.goalId
-                : goalId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            startedAt: null == startedAt
-                ? _value.startedAt
-                : startedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-            completedAt: freezed == completedAt
-                ? _value.completedAt
-                : completedAt // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            itemsCompleted: null == itemsCompleted
-                ? _value.itemsCompleted
-                : itemsCompleted // ignore: cast_nullable_to_non_nullable
-                      as int,
-            clientUpdatedAt: null == clientUpdatedAt
-                ? _value.clientUpdatedAt
-                : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      goalId: freezed == goalId
+          ? _value.goalId
+          : goalId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      startedAt: null == startedAt
+          ? _value.startedAt
+          : startedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      completedAt: freezed == completedAt
+          ? _value.completedAt
+          : completedAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      itemsCompleted: null == itemsCompleted
+          ? _value.itemsCompleted
+          : itemsCompleted // ignore: cast_nullable_to_non_nullable
+              as int,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
@@ -2590,19 +2320,17 @@ class _$SessionChangeCopyWithImpl<$Res, $Val extends SessionChange>
 abstract class _$$SessionChangeImplCopyWith<$Res>
     implements $SessionChangeCopyWith<$Res> {
   factory _$$SessionChangeImplCopyWith(
-    _$SessionChangeImpl value,
-    $Res Function(_$SessionChangeImpl) then,
-  ) = __$$SessionChangeImplCopyWithImpl<$Res>;
+          _$SessionChangeImpl value, $Res Function(_$SessionChangeImpl) then) =
+      __$$SessionChangeImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    @JsonKey(name: 'goal_id') String? goalId,
-    @JsonKey(name: 'started_at') int startedAt,
-    @JsonKey(name: 'completed_at') int? completedAt,
-    @JsonKey(name: 'items_completed') int itemsCompleted,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {String id,
+      @JsonKey(name: 'goal_id') String? goalId,
+      @JsonKey(name: 'started_at') int startedAt,
+      @JsonKey(name: 'completed_at') int? completedAt,
+      @JsonKey(name: 'items_completed') int itemsCompleted,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
@@ -2610,12 +2338,9 @@ class __$$SessionChangeImplCopyWithImpl<$Res>
     extends _$SessionChangeCopyWithImpl<$Res, _$SessionChangeImpl>
     implements _$$SessionChangeImplCopyWith<$Res> {
   __$$SessionChangeImplCopyWithImpl(
-    _$SessionChangeImpl _value,
-    $Res Function(_$SessionChangeImpl) _then,
-  ) : super(_value, _then);
+      _$SessionChangeImpl _value, $Res Function(_$SessionChangeImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SessionChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2626,48 +2351,45 @@ class __$$SessionChangeImplCopyWithImpl<$Res>
     Object? itemsCompleted = null,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _$SessionChangeImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        goalId: freezed == goalId
-            ? _value.goalId
-            : goalId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        startedAt: null == startedAt
-            ? _value.startedAt
-            : startedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-        completedAt: freezed == completedAt
-            ? _value.completedAt
-            : completedAt // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        itemsCompleted: null == itemsCompleted
-            ? _value.itemsCompleted
-            : itemsCompleted // ignore: cast_nullable_to_non_nullable
-                  as int,
-        clientUpdatedAt: null == clientUpdatedAt
-            ? _value.clientUpdatedAt
-            : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$SessionChangeImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      goalId: freezed == goalId
+          ? _value.goalId
+          : goalId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      startedAt: null == startedAt
+          ? _value.startedAt
+          : startedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+      completedAt: freezed == completedAt
+          ? _value.completedAt
+          : completedAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      itemsCompleted: null == itemsCompleted
+          ? _value.itemsCompleted
+          : itemsCompleted // ignore: cast_nullable_to_non_nullable
+              as int,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SessionChangeImpl implements _SessionChange {
-  const _$SessionChangeImpl({
-    required this.id,
-    @JsonKey(name: 'goal_id') this.goalId,
-    @JsonKey(name: 'started_at') required this.startedAt,
-    @JsonKey(name: 'completed_at') this.completedAt,
-    @JsonKey(name: 'items_completed') required this.itemsCompleted,
-    @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt,
-  });
+  const _$SessionChangeImpl(
+      {required this.id,
+      @JsonKey(name: 'goal_id') this.goalId,
+      @JsonKey(name: 'started_at') required this.startedAt,
+      @JsonKey(name: 'completed_at') this.completedAt,
+      @JsonKey(name: 'items_completed') required this.itemsCompleted,
+      @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt});
 
   factory _$SessionChangeImpl.fromJson(Map<String, dynamic> json) =>
       _$$SessionChangeImplFromJson(json);
@@ -2712,21 +2434,12 @@ class _$SessionChangeImpl implements _SessionChange {
                 other.clientUpdatedAt == clientUpdatedAt));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    goalId,
-    startedAt,
-    completedAt,
-    itemsCompleted,
-    clientUpdatedAt,
-  );
+  int get hashCode => Object.hash(runtimeType, id, goalId, startedAt,
+      completedAt, itemsCompleted, clientUpdatedAt);
 
-  /// Create a copy of SessionChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SessionChangeImplCopyWith<_$SessionChangeImpl> get copyWith =>
@@ -2734,19 +2447,21 @@ class _$SessionChangeImpl implements _SessionChange {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SessionChangeImplToJson(this);
+    return _$$SessionChangeImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SessionChange implements SessionChange {
-  const factory _SessionChange({
-    required final String id,
-    @JsonKey(name: 'goal_id') final String? goalId,
-    @JsonKey(name: 'started_at') required final int startedAt,
-    @JsonKey(name: 'completed_at') final int? completedAt,
-    @JsonKey(name: 'items_completed') required final int itemsCompleted,
-    @JsonKey(name: 'client_updated_at') required final int clientUpdatedAt,
-  }) = _$SessionChangeImpl;
+  const factory _SessionChange(
+      {required final String id,
+      @JsonKey(name: 'goal_id') final String? goalId,
+      @JsonKey(name: 'started_at') required final int startedAt,
+      @JsonKey(name: 'completed_at') final int? completedAt,
+      @JsonKey(name: 'items_completed') required final int itemsCompleted,
+      @JsonKey(name: 'client_updated_at')
+      required final int clientUpdatedAt}) = _$SessionChangeImpl;
 
   factory _SessionChange.fromJson(Map<String, dynamic> json) =
       _$SessionChangeImpl.fromJson;
@@ -2768,11 +2483,8 @@ abstract class _SessionChange implements SessionChange {
   @override
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt;
-
-  /// Create a copy of SessionChange
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SessionChangeImplCopyWith<_$SessionChangeImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -2796,12 +2508,8 @@ mixin _$SessionItemChange {
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt => throw _privateConstructorUsedError;
 
-  /// Serializes this SessionItemChange to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SessionItemChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SessionItemChangeCopyWith<SessionItemChange> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -2809,19 +2517,17 @@ mixin _$SessionItemChange {
 /// @nodoc
 abstract class $SessionItemChangeCopyWith<$Res> {
   factory $SessionItemChangeCopyWith(
-    SessionItemChange value,
-    $Res Function(SessionItemChange) then,
-  ) = _$SessionItemChangeCopyWithImpl<$Res, SessionItemChange>;
+          SessionItemChange value, $Res Function(SessionItemChange) then) =
+      _$SessionItemChangeCopyWithImpl<$Res, SessionItemChange>;
   @useResult
-  $Res call({
-    String id,
-    @JsonKey(name: 'session_id') String sessionId,
-    @JsonKey(name: 'node_id') int nodeId,
-    @JsonKey(name: 'exercise_type') String exerciseType,
-    int? grade,
-    @JsonKey(name: 'duration_ms') int? durationMs,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {String id,
+      @JsonKey(name: 'session_id') String sessionId,
+      @JsonKey(name: 'node_id') int nodeId,
+      @JsonKey(name: 'exercise_type') String exerciseType,
+      int? grade,
+      @JsonKey(name: 'duration_ms') int? durationMs,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
@@ -2834,8 +2540,6 @@ class _$SessionItemChangeCopyWithImpl<$Res, $Val extends SessionItemChange>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SessionItemChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2847,73 +2551,65 @@ class _$SessionItemChangeCopyWithImpl<$Res, $Val extends SessionItemChange>
     Object? durationMs = freezed,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _value.copyWith(
-            id: null == id
-                ? _value.id
-                : id // ignore: cast_nullable_to_non_nullable
-                      as String,
-            sessionId: null == sessionId
-                ? _value.sessionId
-                : sessionId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            nodeId: null == nodeId
-                ? _value.nodeId
-                : nodeId // ignore: cast_nullable_to_non_nullable
-                      as int,
-            exerciseType: null == exerciseType
-                ? _value.exerciseType
-                : exerciseType // ignore: cast_nullable_to_non_nullable
-                      as String,
-            grade: freezed == grade
-                ? _value.grade
-                : grade // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            durationMs: freezed == durationMs
-                ? _value.durationMs
-                : durationMs // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            clientUpdatedAt: null == clientUpdatedAt
-                ? _value.clientUpdatedAt
-                : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      sessionId: null == sessionId
+          ? _value.sessionId
+          : sessionId // ignore: cast_nullable_to_non_nullable
+              as String,
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as int,
+      exerciseType: null == exerciseType
+          ? _value.exerciseType
+          : exerciseType // ignore: cast_nullable_to_non_nullable
+              as String,
+      grade: freezed == grade
+          ? _value.grade
+          : grade // ignore: cast_nullable_to_non_nullable
+              as int?,
+      durationMs: freezed == durationMs
+          ? _value.durationMs
+          : durationMs // ignore: cast_nullable_to_non_nullable
+              as int?,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$SessionItemChangeImplCopyWith<$Res>
     implements $SessionItemChangeCopyWith<$Res> {
-  factory _$$SessionItemChangeImplCopyWith(
-    _$SessionItemChangeImpl value,
-    $Res Function(_$SessionItemChangeImpl) then,
-  ) = __$$SessionItemChangeImplCopyWithImpl<$Res>;
+  factory _$$SessionItemChangeImplCopyWith(_$SessionItemChangeImpl value,
+          $Res Function(_$SessionItemChangeImpl) then) =
+      __$$SessionItemChangeImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String id,
-    @JsonKey(name: 'session_id') String sessionId,
-    @JsonKey(name: 'node_id') int nodeId,
-    @JsonKey(name: 'exercise_type') String exerciseType,
-    int? grade,
-    @JsonKey(name: 'duration_ms') int? durationMs,
-    @JsonKey(name: 'client_updated_at') int clientUpdatedAt,
-  });
+  $Res call(
+      {String id,
+      @JsonKey(name: 'session_id') String sessionId,
+      @JsonKey(name: 'node_id') int nodeId,
+      @JsonKey(name: 'exercise_type') String exerciseType,
+      int? grade,
+      @JsonKey(name: 'duration_ms') int? durationMs,
+      @JsonKey(name: 'client_updated_at') int clientUpdatedAt});
 }
 
 /// @nodoc
 class __$$SessionItemChangeImplCopyWithImpl<$Res>
     extends _$SessionItemChangeCopyWithImpl<$Res, _$SessionItemChangeImpl>
     implements _$$SessionItemChangeImplCopyWith<$Res> {
-  __$$SessionItemChangeImplCopyWithImpl(
-    _$SessionItemChangeImpl _value,
-    $Res Function(_$SessionItemChangeImpl) _then,
-  ) : super(_value, _then);
+  __$$SessionItemChangeImplCopyWithImpl(_$SessionItemChangeImpl _value,
+      $Res Function(_$SessionItemChangeImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SessionItemChange
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -2925,53 +2621,50 @@ class __$$SessionItemChangeImplCopyWithImpl<$Res>
     Object? durationMs = freezed,
     Object? clientUpdatedAt = null,
   }) {
-    return _then(
-      _$SessionItemChangeImpl(
-        id: null == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
-                  as String,
-        sessionId: null == sessionId
-            ? _value.sessionId
-            : sessionId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as int,
-        exerciseType: null == exerciseType
-            ? _value.exerciseType
-            : exerciseType // ignore: cast_nullable_to_non_nullable
-                  as String,
-        grade: freezed == grade
-            ? _value.grade
-            : grade // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        durationMs: freezed == durationMs
-            ? _value.durationMs
-            : durationMs // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        clientUpdatedAt: null == clientUpdatedAt
-            ? _value.clientUpdatedAt
-            : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$SessionItemChangeImpl(
+      id: null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      sessionId: null == sessionId
+          ? _value.sessionId
+          : sessionId // ignore: cast_nullable_to_non_nullable
+              as String,
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as int,
+      exerciseType: null == exerciseType
+          ? _value.exerciseType
+          : exerciseType // ignore: cast_nullable_to_non_nullable
+              as String,
+      grade: freezed == grade
+          ? _value.grade
+          : grade // ignore: cast_nullable_to_non_nullable
+              as int?,
+      durationMs: freezed == durationMs
+          ? _value.durationMs
+          : durationMs // ignore: cast_nullable_to_non_nullable
+              as int?,
+      clientUpdatedAt: null == clientUpdatedAt
+          ? _value.clientUpdatedAt
+          : clientUpdatedAt // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SessionItemChangeImpl implements _SessionItemChange {
-  const _$SessionItemChangeImpl({
-    required this.id,
-    @JsonKey(name: 'session_id') required this.sessionId,
-    @JsonKey(name: 'node_id') required this.nodeId,
-    @JsonKey(name: 'exercise_type') required this.exerciseType,
-    this.grade,
-    @JsonKey(name: 'duration_ms') this.durationMs,
-    @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt,
-  });
+  const _$SessionItemChangeImpl(
+      {required this.id,
+      @JsonKey(name: 'session_id') required this.sessionId,
+      @JsonKey(name: 'node_id') required this.nodeId,
+      @JsonKey(name: 'exercise_type') required this.exerciseType,
+      this.grade,
+      @JsonKey(name: 'duration_ms') this.durationMs,
+      @JsonKey(name: 'client_updated_at') required this.clientUpdatedAt});
 
   factory _$SessionItemChangeImpl.fromJson(Map<String, dynamic> json) =>
       _$$SessionItemChangeImplFromJson(json);
@@ -3019,46 +2712,36 @@ class _$SessionItemChangeImpl implements _SessionItemChange {
                 other.clientUpdatedAt == clientUpdatedAt));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    id,
-    sessionId,
-    nodeId,
-    exerciseType,
-    grade,
-    durationMs,
-    clientUpdatedAt,
-  );
+  int get hashCode => Object.hash(runtimeType, id, sessionId, nodeId,
+      exerciseType, grade, durationMs, clientUpdatedAt);
 
-  /// Create a copy of SessionItemChange
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SessionItemChangeImplCopyWith<_$SessionItemChangeImpl> get copyWith =>
       __$$SessionItemChangeImplCopyWithImpl<_$SessionItemChangeImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SessionItemChangeImplToJson(this);
+    return _$$SessionItemChangeImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SessionItemChange implements SessionItemChange {
-  const factory _SessionItemChange({
-    required final String id,
-    @JsonKey(name: 'session_id') required final String sessionId,
-    @JsonKey(name: 'node_id') required final int nodeId,
-    @JsonKey(name: 'exercise_type') required final String exerciseType,
-    final int? grade,
-    @JsonKey(name: 'duration_ms') final int? durationMs,
-    @JsonKey(name: 'client_updated_at') required final int clientUpdatedAt,
-  }) = _$SessionItemChangeImpl;
+  const factory _SessionItemChange(
+      {required final String id,
+      @JsonKey(name: 'session_id') required final String sessionId,
+      @JsonKey(name: 'node_id') required final int nodeId,
+      @JsonKey(name: 'exercise_type') required final String exerciseType,
+      final int? grade,
+      @JsonKey(name: 'duration_ms') final int? durationMs,
+      @JsonKey(name: 'client_updated_at')
+      required final int clientUpdatedAt}) = _$SessionItemChangeImpl;
 
   factory _SessionItemChange.fromJson(Map<String, dynamic> json) =
       _$SessionItemChangeImpl.fromJson;
@@ -3082,11 +2765,8 @@ abstract class _SessionItemChange implements SessionItemChange {
   @override
   @JsonKey(name: 'client_updated_at')
   int get clientUpdatedAt;
-
-  /// Create a copy of SessionItemChange
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SessionItemChangeImplCopyWith<_$SessionItemChangeImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -3105,12 +2785,8 @@ mixin _$SyncPushResponse {
   @JsonKey(name: 'server_time')
   int get serverTime => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncPushResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncPushResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncPushResponseCopyWith<SyncPushResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -3118,15 +2794,11 @@ mixin _$SyncPushResponse {
 /// @nodoc
 abstract class $SyncPushResponseCopyWith<$Res> {
   factory $SyncPushResponseCopyWith(
-    SyncPushResponse value,
-    $Res Function(SyncPushResponse) then,
-  ) = _$SyncPushResponseCopyWithImpl<$Res, SyncPushResponse>;
+          SyncPushResponse value, $Res Function(SyncPushResponse) then) =
+      _$SyncPushResponseCopyWithImpl<$Res, SyncPushResponse>;
   @useResult
-  $Res call({
-    int applied,
-    int skipped,
-    @JsonKey(name: 'server_time') int serverTime,
-  });
+  $Res call(
+      {int applied, int skipped, @JsonKey(name: 'server_time') int serverTime});
 }
 
 /// @nodoc
@@ -3139,8 +2811,6 @@ class _$SyncPushResponseCopyWithImpl<$Res, $Val extends SyncPushResponse>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncPushResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -3148,53 +2818,43 @@ class _$SyncPushResponseCopyWithImpl<$Res, $Val extends SyncPushResponse>
     Object? skipped = null,
     Object? serverTime = null,
   }) {
-    return _then(
-      _value.copyWith(
-            applied: null == applied
-                ? _value.applied
-                : applied // ignore: cast_nullable_to_non_nullable
-                      as int,
-            skipped: null == skipped
-                ? _value.skipped
-                : skipped // ignore: cast_nullable_to_non_nullable
-                      as int,
-            serverTime: null == serverTime
-                ? _value.serverTime
-                : serverTime // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      applied: null == applied
+          ? _value.applied
+          : applied // ignore: cast_nullable_to_non_nullable
+              as int,
+      skipped: null == skipped
+          ? _value.skipped
+          : skipped // ignore: cast_nullable_to_non_nullable
+              as int,
+      serverTime: null == serverTime
+          ? _value.serverTime
+          : serverTime // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$SyncPushResponseImplCopyWith<$Res>
     implements $SyncPushResponseCopyWith<$Res> {
-  factory _$$SyncPushResponseImplCopyWith(
-    _$SyncPushResponseImpl value,
-    $Res Function(_$SyncPushResponseImpl) then,
-  ) = __$$SyncPushResponseImplCopyWithImpl<$Res>;
+  factory _$$SyncPushResponseImplCopyWith(_$SyncPushResponseImpl value,
+          $Res Function(_$SyncPushResponseImpl) then) =
+      __$$SyncPushResponseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    int applied,
-    int skipped,
-    @JsonKey(name: 'server_time') int serverTime,
-  });
+  $Res call(
+      {int applied, int skipped, @JsonKey(name: 'server_time') int serverTime});
 }
 
 /// @nodoc
 class __$$SyncPushResponseImplCopyWithImpl<$Res>
     extends _$SyncPushResponseCopyWithImpl<$Res, _$SyncPushResponseImpl>
     implements _$$SyncPushResponseImplCopyWith<$Res> {
-  __$$SyncPushResponseImplCopyWithImpl(
-    _$SyncPushResponseImpl _value,
-    $Res Function(_$SyncPushResponseImpl) _then,
-  ) : super(_value, _then);
+  __$$SyncPushResponseImplCopyWithImpl(_$SyncPushResponseImpl _value,
+      $Res Function(_$SyncPushResponseImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncPushResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -3202,33 +2862,30 @@ class __$$SyncPushResponseImplCopyWithImpl<$Res>
     Object? skipped = null,
     Object? serverTime = null,
   }) {
-    return _then(
-      _$SyncPushResponseImpl(
-        applied: null == applied
-            ? _value.applied
-            : applied // ignore: cast_nullable_to_non_nullable
-                  as int,
-        skipped: null == skipped
-            ? _value.skipped
-            : skipped // ignore: cast_nullable_to_non_nullable
-                  as int,
-        serverTime: null == serverTime
-            ? _value.serverTime
-            : serverTime // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$SyncPushResponseImpl(
+      applied: null == applied
+          ? _value.applied
+          : applied // ignore: cast_nullable_to_non_nullable
+              as int,
+      skipped: null == skipped
+          ? _value.skipped
+          : skipped // ignore: cast_nullable_to_non_nullable
+              as int,
+      serverTime: null == serverTime
+          ? _value.serverTime
+          : serverTime // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncPushResponseImpl implements _SyncPushResponse {
-  const _$SyncPushResponseImpl({
-    required this.applied,
-    required this.skipped,
-    @JsonKey(name: 'server_time') required this.serverTime,
-  });
+  const _$SyncPushResponseImpl(
+      {required this.applied,
+      required this.skipped,
+      @JsonKey(name: 'server_time') required this.serverTime});
 
   factory _$SyncPushResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncPushResponseImplFromJson(json);
@@ -3260,52 +2917,48 @@ class _$SyncPushResponseImpl implements _SyncPushResponse {
                 other.serverTime == serverTime));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, applied, skipped, serverTime);
 
-  /// Create a copy of SyncPushResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncPushResponseImplCopyWith<_$SyncPushResponseImpl> get copyWith =>
       __$$SyncPushResponseImplCopyWithImpl<_$SyncPushResponseImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncPushResponseImplToJson(this);
+    return _$$SyncPushResponseImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncPushResponse implements SyncPushResponse {
-  const factory _SyncPushResponse({
-    required final int applied,
-    required final int skipped,
-    @JsonKey(name: 'server_time') required final int serverTime,
-  }) = _$SyncPushResponseImpl;
+  const factory _SyncPushResponse(
+          {required final int applied,
+          required final int skipped,
+          @JsonKey(name: 'server_time') required final int serverTime}) =
+      _$SyncPushResponseImpl;
 
   factory _SyncPushResponse.fromJson(Map<String, dynamic> json) =
       _$SyncPushResponseImpl.fromJson;
 
-  /// Number of changes accepted (LWW won or new record).
   @override
+
+  /// Number of changes accepted (LWW won or new record).
   int get applied;
+  @override
 
   /// Number of changes rejected because server had a newer version (LWW lost).
-  @override
   int get skipped;
   @override
   @JsonKey(name: 'server_time')
   int get serverTime;
-
-  /// Create a copy of SyncPushResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncPushResponseImplCopyWith<_$SyncPushResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -3324,12 +2977,8 @@ mixin _$SyncPullResponse {
   @JsonKey(name: 'next_cursor')
   SyncPullCursor? get nextCursor => throw _privateConstructorUsedError;
 
-  /// Serializes this SyncPullResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $SyncPullResponseCopyWith<SyncPullResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -3337,16 +2986,14 @@ mixin _$SyncPullResponse {
 /// @nodoc
 abstract class $SyncPullResponseCopyWith<$Res> {
   factory $SyncPullResponseCopyWith(
-    SyncPullResponse value,
-    $Res Function(SyncPullResponse) then,
-  ) = _$SyncPullResponseCopyWithImpl<$Res, SyncPullResponse>;
+          SyncPullResponse value, $Res Function(SyncPullResponse) then) =
+      _$SyncPullResponseCopyWithImpl<$Res, SyncPullResponse>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'server_time') int serverTime,
-    SyncChanges changes,
-    @JsonKey(name: 'has_more') bool hasMore,
-    @JsonKey(name: 'next_cursor') SyncPullCursor? nextCursor,
-  });
+  $Res call(
+      {@JsonKey(name: 'server_time') int serverTime,
+      SyncChanges changes,
+      @JsonKey(name: 'has_more') bool hasMore,
+      @JsonKey(name: 'next_cursor') SyncPullCursor? nextCursor});
 
   $SyncChangesCopyWith<$Res> get changes;
   $SyncPullCursorCopyWith<$Res>? get nextCursor;
@@ -3362,8 +3009,6 @@ class _$SyncPullResponseCopyWithImpl<$Res, $Val extends SyncPullResponse>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -3372,31 +3017,26 @@ class _$SyncPullResponseCopyWithImpl<$Res, $Val extends SyncPullResponse>
     Object? hasMore = null,
     Object? nextCursor = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            serverTime: null == serverTime
-                ? _value.serverTime
-                : serverTime // ignore: cast_nullable_to_non_nullable
-                      as int,
-            changes: null == changes
-                ? _value.changes
-                : changes // ignore: cast_nullable_to_non_nullable
-                      as SyncChanges,
-            hasMore: null == hasMore
-                ? _value.hasMore
-                : hasMore // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            nextCursor: freezed == nextCursor
-                ? _value.nextCursor
-                : nextCursor // ignore: cast_nullable_to_non_nullable
-                      as SyncPullCursor?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      serverTime: null == serverTime
+          ? _value.serverTime
+          : serverTime // ignore: cast_nullable_to_non_nullable
+              as int,
+      changes: null == changes
+          ? _value.changes
+          : changes // ignore: cast_nullable_to_non_nullable
+              as SyncChanges,
+      hasMore: null == hasMore
+          ? _value.hasMore
+          : hasMore // ignore: cast_nullable_to_non_nullable
+              as bool,
+      nextCursor: freezed == nextCursor
+          ? _value.nextCursor
+          : nextCursor // ignore: cast_nullable_to_non_nullable
+              as SyncPullCursor?,
+    ) as $Val);
   }
 
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncChangesCopyWith<$Res> get changes {
@@ -3405,8 +3045,6 @@ class _$SyncPullResponseCopyWithImpl<$Res, $Val extends SyncPullResponse>
     });
   }
 
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
   $SyncPullCursorCopyWith<$Res>? get nextCursor {
@@ -3423,18 +3061,16 @@ class _$SyncPullResponseCopyWithImpl<$Res, $Val extends SyncPullResponse>
 /// @nodoc
 abstract class _$$SyncPullResponseImplCopyWith<$Res>
     implements $SyncPullResponseCopyWith<$Res> {
-  factory _$$SyncPullResponseImplCopyWith(
-    _$SyncPullResponseImpl value,
-    $Res Function(_$SyncPullResponseImpl) then,
-  ) = __$$SyncPullResponseImplCopyWithImpl<$Res>;
+  factory _$$SyncPullResponseImplCopyWith(_$SyncPullResponseImpl value,
+          $Res Function(_$SyncPullResponseImpl) then) =
+      __$$SyncPullResponseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'server_time') int serverTime,
-    SyncChanges changes,
-    @JsonKey(name: 'has_more') bool hasMore,
-    @JsonKey(name: 'next_cursor') SyncPullCursor? nextCursor,
-  });
+  $Res call(
+      {@JsonKey(name: 'server_time') int serverTime,
+      SyncChanges changes,
+      @JsonKey(name: 'has_more') bool hasMore,
+      @JsonKey(name: 'next_cursor') SyncPullCursor? nextCursor});
 
   @override
   $SyncChangesCopyWith<$Res> get changes;
@@ -3446,13 +3082,10 @@ abstract class _$$SyncPullResponseImplCopyWith<$Res>
 class __$$SyncPullResponseImplCopyWithImpl<$Res>
     extends _$SyncPullResponseCopyWithImpl<$Res, _$SyncPullResponseImpl>
     implements _$$SyncPullResponseImplCopyWith<$Res> {
-  __$$SyncPullResponseImplCopyWithImpl(
-    _$SyncPullResponseImpl _value,
-    $Res Function(_$SyncPullResponseImpl) _then,
-  ) : super(_value, _then);
+  __$$SyncPullResponseImplCopyWithImpl(_$SyncPullResponseImpl _value,
+      $Res Function(_$SyncPullResponseImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -3461,38 +3094,35 @@ class __$$SyncPullResponseImplCopyWithImpl<$Res>
     Object? hasMore = null,
     Object? nextCursor = freezed,
   }) {
-    return _then(
-      _$SyncPullResponseImpl(
-        serverTime: null == serverTime
-            ? _value.serverTime
-            : serverTime // ignore: cast_nullable_to_non_nullable
-                  as int,
-        changes: null == changes
-            ? _value.changes
-            : changes // ignore: cast_nullable_to_non_nullable
-                  as SyncChanges,
-        hasMore: null == hasMore
-            ? _value.hasMore
-            : hasMore // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        nextCursor: freezed == nextCursor
-            ? _value.nextCursor
-            : nextCursor // ignore: cast_nullable_to_non_nullable
-                  as SyncPullCursor?,
-      ),
-    );
+    return _then(_$SyncPullResponseImpl(
+      serverTime: null == serverTime
+          ? _value.serverTime
+          : serverTime // ignore: cast_nullable_to_non_nullable
+              as int,
+      changes: null == changes
+          ? _value.changes
+          : changes // ignore: cast_nullable_to_non_nullable
+              as SyncChanges,
+      hasMore: null == hasMore
+          ? _value.hasMore
+          : hasMore // ignore: cast_nullable_to_non_nullable
+              as bool,
+      nextCursor: freezed == nextCursor
+          ? _value.nextCursor
+          : nextCursor // ignore: cast_nullable_to_non_nullable
+              as SyncPullCursor?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$SyncPullResponseImpl implements _SyncPullResponse {
-  const _$SyncPullResponseImpl({
-    @JsonKey(name: 'server_time') required this.serverTime,
-    required this.changes,
-    @JsonKey(name: 'has_more') required this.hasMore,
-    @JsonKey(name: 'next_cursor') this.nextCursor,
-  });
+  const _$SyncPullResponseImpl(
+      {@JsonKey(name: 'server_time') required this.serverTime,
+      required this.changes,
+      @JsonKey(name: 'has_more') required this.hasMore,
+      @JsonKey(name: 'next_cursor') this.nextCursor});
 
   factory _$SyncPullResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$SyncPullResponseImplFromJson(json);
@@ -3527,35 +3157,33 @@ class _$SyncPullResponseImpl implements _SyncPullResponse {
                 other.nextCursor == nextCursor));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode =>
       Object.hash(runtimeType, serverTime, changes, hasMore, nextCursor);
 
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$SyncPullResponseImplCopyWith<_$SyncPullResponseImpl> get copyWith =>
       __$$SyncPullResponseImplCopyWithImpl<_$SyncPullResponseImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SyncPullResponseImplToJson(this);
+    return _$$SyncPullResponseImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _SyncPullResponse implements SyncPullResponse {
-  const factory _SyncPullResponse({
-    @JsonKey(name: 'server_time') required final int serverTime,
-    required final SyncChanges changes,
-    @JsonKey(name: 'has_more') required final bool hasMore,
-    @JsonKey(name: 'next_cursor') final SyncPullCursor? nextCursor,
-  }) = _$SyncPullResponseImpl;
+  const factory _SyncPullResponse(
+          {@JsonKey(name: 'server_time') required final int serverTime,
+          required final SyncChanges changes,
+          @JsonKey(name: 'has_more') required final bool hasMore,
+          @JsonKey(name: 'next_cursor') final SyncPullCursor? nextCursor}) =
+      _$SyncPullResponseImpl;
 
   factory _SyncPullResponse.fromJson(Map<String, dynamic> json) =
       _$SyncPullResponseImpl.fromJson;
@@ -3571,11 +3199,8 @@ abstract class _SyncPullResponse implements SyncPullResponse {
   @override
   @JsonKey(name: 'next_cursor')
   SyncPullCursor? get nextCursor;
-
-  /// Create a copy of SyncPullResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$SyncPullResponseImplCopyWith<_$SyncPullResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

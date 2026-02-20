@@ -12,8 +12,7 @@ part of 'auth_models.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 AuthResponse _$AuthResponseFromJson(Map<String, dynamic> json) {
   return _AuthResponse.fromJson(json);
@@ -28,12 +27,8 @@ mixin _$AuthResponse {
   @JsonKey(name: 'expires_in')
   int get expiresIn => throw _privateConstructorUsedError;
 
-  /// Serializes this AuthResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of AuthResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $AuthResponseCopyWith<AuthResponse> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -41,15 +36,13 @@ mixin _$AuthResponse {
 /// @nodoc
 abstract class $AuthResponseCopyWith<$Res> {
   factory $AuthResponseCopyWith(
-    AuthResponse value,
-    $Res Function(AuthResponse) then,
-  ) = _$AuthResponseCopyWithImpl<$Res, AuthResponse>;
+          AuthResponse value, $Res Function(AuthResponse) then) =
+      _$AuthResponseCopyWithImpl<$Res, AuthResponse>;
   @useResult
-  $Res call({
-    @JsonKey(name: 'access_token') String accessToken,
-    @JsonKey(name: 'user_id') String userId,
-    @JsonKey(name: 'expires_in') int expiresIn,
-  });
+  $Res call(
+      {@JsonKey(name: 'access_token') String accessToken,
+      @JsonKey(name: 'user_id') String userId,
+      @JsonKey(name: 'expires_in') int expiresIn});
 }
 
 /// @nodoc
@@ -62,8 +55,6 @@ class _$AuthResponseCopyWithImpl<$Res, $Val extends AuthResponse>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of AuthResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -71,23 +62,20 @@ class _$AuthResponseCopyWithImpl<$Res, $Val extends AuthResponse>
     Object? userId = null,
     Object? expiresIn = null,
   }) {
-    return _then(
-      _value.copyWith(
-            accessToken: null == accessToken
-                ? _value.accessToken
-                : accessToken // ignore: cast_nullable_to_non_nullable
-                      as String,
-            userId: null == userId
-                ? _value.userId
-                : userId // ignore: cast_nullable_to_non_nullable
-                      as String,
-            expiresIn: null == expiresIn
-                ? _value.expiresIn
-                : expiresIn // ignore: cast_nullable_to_non_nullable
-                      as int,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      accessToken: null == accessToken
+          ? _value.accessToken
+          : accessToken // ignore: cast_nullable_to_non_nullable
+              as String,
+      userId: null == userId
+          ? _value.userId
+          : userId // ignore: cast_nullable_to_non_nullable
+              as String,
+      expiresIn: null == expiresIn
+          ? _value.expiresIn
+          : expiresIn // ignore: cast_nullable_to_non_nullable
+              as int,
+    ) as $Val);
   }
 }
 
@@ -95,16 +83,14 @@ class _$AuthResponseCopyWithImpl<$Res, $Val extends AuthResponse>
 abstract class _$$AuthResponseImplCopyWith<$Res>
     implements $AuthResponseCopyWith<$Res> {
   factory _$$AuthResponseImplCopyWith(
-    _$AuthResponseImpl value,
-    $Res Function(_$AuthResponseImpl) then,
-  ) = __$$AuthResponseImplCopyWithImpl<$Res>;
+          _$AuthResponseImpl value, $Res Function(_$AuthResponseImpl) then) =
+      __$$AuthResponseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    @JsonKey(name: 'access_token') String accessToken,
-    @JsonKey(name: 'user_id') String userId,
-    @JsonKey(name: 'expires_in') int expiresIn,
-  });
+  $Res call(
+      {@JsonKey(name: 'access_token') String accessToken,
+      @JsonKey(name: 'user_id') String userId,
+      @JsonKey(name: 'expires_in') int expiresIn});
 }
 
 /// @nodoc
@@ -112,12 +98,9 @@ class __$$AuthResponseImplCopyWithImpl<$Res>
     extends _$AuthResponseCopyWithImpl<$Res, _$AuthResponseImpl>
     implements _$$AuthResponseImplCopyWith<$Res> {
   __$$AuthResponseImplCopyWithImpl(
-    _$AuthResponseImpl _value,
-    $Res Function(_$AuthResponseImpl) _then,
-  ) : super(_value, _then);
+      _$AuthResponseImpl _value, $Res Function(_$AuthResponseImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of AuthResponse
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -125,33 +108,30 @@ class __$$AuthResponseImplCopyWithImpl<$Res>
     Object? userId = null,
     Object? expiresIn = null,
   }) {
-    return _then(
-      _$AuthResponseImpl(
-        accessToken: null == accessToken
-            ? _value.accessToken
-            : accessToken // ignore: cast_nullable_to_non_nullable
-                  as String,
-        userId: null == userId
-            ? _value.userId
-            : userId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        expiresIn: null == expiresIn
-            ? _value.expiresIn
-            : expiresIn // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$AuthResponseImpl(
+      accessToken: null == accessToken
+          ? _value.accessToken
+          : accessToken // ignore: cast_nullable_to_non_nullable
+              as String,
+      userId: null == userId
+          ? _value.userId
+          : userId // ignore: cast_nullable_to_non_nullable
+              as String,
+      expiresIn: null == expiresIn
+          ? _value.expiresIn
+          : expiresIn // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$AuthResponseImpl implements _AuthResponse {
-  const _$AuthResponseImpl({
-    @JsonKey(name: 'access_token') required this.accessToken,
-    @JsonKey(name: 'user_id') required this.userId,
-    @JsonKey(name: 'expires_in') required this.expiresIn,
-  });
+  const _$AuthResponseImpl(
+      {@JsonKey(name: 'access_token') required this.accessToken,
+      @JsonKey(name: 'user_id') required this.userId,
+      @JsonKey(name: 'expires_in') required this.expiresIn});
 
   factory _$AuthResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$AuthResponseImplFromJson(json);
@@ -183,13 +163,11 @@ class _$AuthResponseImpl implements _AuthResponse {
                 other.expiresIn == expiresIn));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, accessToken, userId, expiresIn);
 
-  /// Create a copy of AuthResponse
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$AuthResponseImplCopyWith<_$AuthResponseImpl> get copyWith =>
@@ -197,16 +175,18 @@ class _$AuthResponseImpl implements _AuthResponse {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$AuthResponseImplToJson(this);
+    return _$$AuthResponseImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _AuthResponse implements AuthResponse {
-  const factory _AuthResponse({
-    @JsonKey(name: 'access_token') required final String accessToken,
-    @JsonKey(name: 'user_id') required final String userId,
-    @JsonKey(name: 'expires_in') required final int expiresIn,
-  }) = _$AuthResponseImpl;
+  const factory _AuthResponse(
+          {@JsonKey(name: 'access_token') required final String accessToken,
+          @JsonKey(name: 'user_id') required final String userId,
+          @JsonKey(name: 'expires_in') required final int expiresIn}) =
+      _$AuthResponseImpl;
 
   factory _AuthResponse.fromJson(Map<String, dynamic> json) =
       _$AuthResponseImpl.fromJson;
@@ -220,11 +200,8 @@ abstract class _AuthResponse implements AuthResponse {
   @override
   @JsonKey(name: 'expires_in')
   int get expiresIn;
-
-  /// Create a copy of AuthResponse
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$AuthResponseImplCopyWith<_$AuthResponseImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -243,12 +220,8 @@ mixin _$AuthState {
   bool get isLoading => throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
 
-  /// Serializes this AuthState to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
-
-  /// Create a copy of AuthState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $AuthStateCopyWith<AuthState> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -258,14 +231,13 @@ abstract class $AuthStateCopyWith<$Res> {
   factory $AuthStateCopyWith(AuthState value, $Res Function(AuthState) then) =
       _$AuthStateCopyWithImpl<$Res, AuthState>;
   @useResult
-  $Res call({
-    String? userId,
-    String? accessToken,
-    int? tokenIssuedAt,
-    int? expiresIn,
-    bool isLoading,
-    String? error,
-  });
+  $Res call(
+      {String? userId,
+      String? accessToken,
+      int? tokenIssuedAt,
+      int? expiresIn,
+      bool isLoading,
+      String? error});
 }
 
 /// @nodoc
@@ -278,8 +250,6 @@ class _$AuthStateCopyWithImpl<$Res, $Val extends AuthState>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of AuthState
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -290,35 +260,32 @@ class _$AuthStateCopyWithImpl<$Res, $Val extends AuthState>
     Object? isLoading = null,
     Object? error = freezed,
   }) {
-    return _then(
-      _value.copyWith(
-            userId: freezed == userId
-                ? _value.userId
-                : userId // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            accessToken: freezed == accessToken
-                ? _value.accessToken
-                : accessToken // ignore: cast_nullable_to_non_nullable
-                      as String?,
-            tokenIssuedAt: freezed == tokenIssuedAt
-                ? _value.tokenIssuedAt
-                : tokenIssuedAt // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            expiresIn: freezed == expiresIn
-                ? _value.expiresIn
-                : expiresIn // ignore: cast_nullable_to_non_nullable
-                      as int?,
-            isLoading: null == isLoading
-                ? _value.isLoading
-                : isLoading // ignore: cast_nullable_to_non_nullable
-                      as bool,
-            error: freezed == error
-                ? _value.error
-                : error // ignore: cast_nullable_to_non_nullable
-                      as String?,
-          )
-          as $Val,
-    );
+    return _then(_value.copyWith(
+      userId: freezed == userId
+          ? _value.userId
+          : userId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accessToken: freezed == accessToken
+          ? _value.accessToken
+          : accessToken // ignore: cast_nullable_to_non_nullable
+              as String?,
+      tokenIssuedAt: freezed == tokenIssuedAt
+          ? _value.tokenIssuedAt
+          : tokenIssuedAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      expiresIn: freezed == expiresIn
+          ? _value.expiresIn
+          : expiresIn // ignore: cast_nullable_to_non_nullable
+              as int?,
+      isLoading: null == isLoading
+          ? _value.isLoading
+          : isLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
+      error: freezed == error
+          ? _value.error
+          : error // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ) as $Val);
   }
 }
 
@@ -326,19 +293,17 @@ class _$AuthStateCopyWithImpl<$Res, $Val extends AuthState>
 abstract class _$$AuthStateImplCopyWith<$Res>
     implements $AuthStateCopyWith<$Res> {
   factory _$$AuthStateImplCopyWith(
-    _$AuthStateImpl value,
-    $Res Function(_$AuthStateImpl) then,
-  ) = __$$AuthStateImplCopyWithImpl<$Res>;
+          _$AuthStateImpl value, $Res Function(_$AuthStateImpl) then) =
+      __$$AuthStateImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String? userId,
-    String? accessToken,
-    int? tokenIssuedAt,
-    int? expiresIn,
-    bool isLoading,
-    String? error,
-  });
+  $Res call(
+      {String? userId,
+      String? accessToken,
+      int? tokenIssuedAt,
+      int? expiresIn,
+      bool isLoading,
+      String? error});
 }
 
 /// @nodoc
@@ -346,12 +311,9 @@ class __$$AuthStateImplCopyWithImpl<$Res>
     extends _$AuthStateCopyWithImpl<$Res, _$AuthStateImpl>
     implements _$$AuthStateImplCopyWith<$Res> {
   __$$AuthStateImplCopyWithImpl(
-    _$AuthStateImpl _value,
-    $Res Function(_$AuthStateImpl) _then,
-  ) : super(_value, _then);
+      _$AuthStateImpl _value, $Res Function(_$AuthStateImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of AuthState
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -362,48 +324,46 @@ class __$$AuthStateImplCopyWithImpl<$Res>
     Object? isLoading = null,
     Object? error = freezed,
   }) {
-    return _then(
-      _$AuthStateImpl(
-        userId: freezed == userId
-            ? _value.userId
-            : userId // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        accessToken: freezed == accessToken
-            ? _value.accessToken
-            : accessToken // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        tokenIssuedAt: freezed == tokenIssuedAt
-            ? _value.tokenIssuedAt
-            : tokenIssuedAt // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        expiresIn: freezed == expiresIn
-            ? _value.expiresIn
-            : expiresIn // ignore: cast_nullable_to_non_nullable
-                  as int?,
-        isLoading: null == isLoading
-            ? _value.isLoading
-            : isLoading // ignore: cast_nullable_to_non_nullable
-                  as bool,
-        error: freezed == error
-            ? _value.error
-            : error // ignore: cast_nullable_to_non_nullable
-                  as String?,
-      ),
-    );
+    return _then(_$AuthStateImpl(
+      userId: freezed == userId
+          ? _value.userId
+          : userId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      accessToken: freezed == accessToken
+          ? _value.accessToken
+          : accessToken // ignore: cast_nullable_to_non_nullable
+              as String?,
+      tokenIssuedAt: freezed == tokenIssuedAt
+          ? _value.tokenIssuedAt
+          : tokenIssuedAt // ignore: cast_nullable_to_non_nullable
+              as int?,
+      expiresIn: freezed == expiresIn
+          ? _value.expiresIn
+          : expiresIn // ignore: cast_nullable_to_non_nullable
+              as int?,
+      isLoading: null == isLoading
+          ? _value.isLoading
+          : isLoading // ignore: cast_nullable_to_non_nullable
+              as bool,
+      error: freezed == error
+          ? _value.error
+          : error // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
   }
 }
 
 /// @nodoc
 @JsonSerializable()
 class _$AuthStateImpl extends _AuthState {
-  const _$AuthStateImpl({
-    this.userId,
-    this.accessToken,
-    this.tokenIssuedAt,
-    this.expiresIn,
-    this.isLoading = false,
-    this.error,
-  }) : super._();
+  const _$AuthStateImpl(
+      {this.userId,
+      this.accessToken,
+      this.tokenIssuedAt,
+      this.expiresIn,
+      this.isLoading = false,
+      this.error})
+      : super._();
 
   factory _$AuthStateImpl.fromJson(Map<String, dynamic> json) =>
       _$$AuthStateImplFromJson(json);
@@ -414,10 +374,10 @@ class _$AuthStateImpl extends _AuthState {
   final String? accessToken;
   @override
   final int? tokenIssuedAt;
-  // Milliseconds since epoch
+// Milliseconds since epoch
   @override
   final int? expiresIn;
-  // Seconds
+// Seconds
   @override
   @JsonKey()
   final bool isLoading;
@@ -446,21 +406,12 @@ class _$AuthStateImpl extends _AuthState {
             (identical(other.error, error) || other.error == error));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    userId,
-    accessToken,
-    tokenIssuedAt,
-    expiresIn,
-    isLoading,
-    error,
-  );
+  int get hashCode => Object.hash(runtimeType, userId, accessToken,
+      tokenIssuedAt, expiresIn, isLoading, error);
 
-  /// Create a copy of AuthState
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$AuthStateImplCopyWith<_$AuthStateImpl> get copyWith =>
@@ -468,19 +419,20 @@ class _$AuthStateImpl extends _AuthState {
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$AuthStateImplToJson(this);
+    return _$$AuthStateImplToJson(
+      this,
+    );
   }
 }
 
 abstract class _AuthState extends AuthState {
-  const factory _AuthState({
-    final String? userId,
-    final String? accessToken,
-    final int? tokenIssuedAt,
-    final int? expiresIn,
-    final bool isLoading,
-    final String? error,
-  }) = _$AuthStateImpl;
+  const factory _AuthState(
+      {final String? userId,
+      final String? accessToken,
+      final int? tokenIssuedAt,
+      final int? expiresIn,
+      final bool isLoading,
+      final String? error}) = _$AuthStateImpl;
   const _AuthState._() : super._();
 
   factory _AuthState.fromJson(Map<String, dynamic> json) =
@@ -491,18 +443,15 @@ abstract class _AuthState extends AuthState {
   @override
   String? get accessToken;
   @override
-  int? get tokenIssuedAt; // Milliseconds since epoch
-  @override
-  int? get expiresIn; // Seconds
-  @override
+  int? get tokenIssuedAt;
+  @override // Milliseconds since epoch
+  int? get expiresIn;
+  @override // Seconds
   bool get isLoading;
   @override
   String? get error;
-
-  /// Create a copy of AuthState
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$AuthStateImplCopyWith<_$AuthStateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

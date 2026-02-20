@@ -12,8 +12,7 @@ part of 'exercises.dart';
 T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
-  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
-);
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
 mixin _$Exercise {
@@ -21,101 +20,100 @@ mixin _$Exercise {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String nodeId, String arabic, String translation)
-    recall,
+        recall,
     required TResult Function(String nodeId, String question, String answer)
-    cloze,
+        cloze,
     required TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)
+        mcqArToEn,
     required TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )
-    mcqEnToAr,
-  }) => throw _privateConstructorUsedError;
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)
+        mcqEnToAr,
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String nodeId, String arabic, String translation)? recall,
     TResult? Function(String nodeId, String question, String answer)? cloze,
     TResult? Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult? Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
-  }) => throw _privateConstructorUsedError;
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String nodeId, String arabic, String translation)? recall,
     TResult Function(String nodeId, String question, String answer)? cloze,
     TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
     required TResult orElse(),
-  }) => throw _privateConstructorUsedError;
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(Exercise_Recall value) recall,
     required TResult Function(Exercise_Cloze value) cloze,
     required TResult Function(Exercise_McqArToEn value) mcqArToEn,
     required TResult Function(Exercise_McqEnToAr value) mcqEnToAr,
-  }) => throw _privateConstructorUsedError;
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(Exercise_Recall value)? recall,
     TResult? Function(Exercise_Cloze value)? cloze,
     TResult? Function(Exercise_McqArToEn value)? mcqArToEn,
     TResult? Function(Exercise_McqEnToAr value)? mcqEnToAr,
-  }) => throw _privateConstructorUsedError;
+  }) =>
+      throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(Exercise_Recall value)? recall,
@@ -123,11 +121,10 @@ mixin _$Exercise {
     TResult Function(Exercise_McqArToEn value)? mcqArToEn,
     TResult Function(Exercise_McqEnToAr value)? mcqEnToAr,
     required TResult orElse(),
-  }) => throw _privateConstructorUsedError;
+  }) =>
+      throw _privateConstructorUsedError;
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   $ExerciseCopyWith<Exercise> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -150,30 +147,26 @@ class _$ExerciseCopyWithImpl<$Res, $Val extends Exercise>
   // ignore: unused_field
   final $Res Function($Val) _then;
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? nodeId = null}) {
-    return _then(
-      _value.copyWith(
-            nodeId: null == nodeId
-                ? _value.nodeId
-                : nodeId // ignore: cast_nullable_to_non_nullable
-                      as String,
-          )
-          as $Val,
-    );
+  $Res call({
+    Object? nodeId = null,
+  }) {
+    return _then(_value.copyWith(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
   }
 }
 
 /// @nodoc
 abstract class _$$Exercise_RecallImplCopyWith<$Res>
     implements $ExerciseCopyWith<$Res> {
-  factory _$$Exercise_RecallImplCopyWith(
-    _$Exercise_RecallImpl value,
-    $Res Function(_$Exercise_RecallImpl) then,
-  ) = __$$Exercise_RecallImplCopyWithImpl<$Res>;
+  factory _$$Exercise_RecallImplCopyWith(_$Exercise_RecallImpl value,
+          $Res Function(_$Exercise_RecallImpl) then) =
+      __$$Exercise_RecallImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String nodeId, String arabic, String translation});
@@ -184,12 +177,9 @@ class __$$Exercise_RecallImplCopyWithImpl<$Res>
     extends _$ExerciseCopyWithImpl<$Res, _$Exercise_RecallImpl>
     implements _$$Exercise_RecallImplCopyWith<$Res> {
   __$$Exercise_RecallImplCopyWithImpl(
-    _$Exercise_RecallImpl _value,
-    $Res Function(_$Exercise_RecallImpl) _then,
-  ) : super(_value, _then);
+      _$Exercise_RecallImpl _value, $Res Function(_$Exercise_RecallImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -197,33 +187,29 @@ class __$$Exercise_RecallImplCopyWithImpl<$Res>
     Object? arabic = null,
     Object? translation = null,
   }) {
-    return _then(
-      _$Exercise_RecallImpl(
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        arabic: null == arabic
-            ? _value.arabic
-            : arabic // ignore: cast_nullable_to_non_nullable
-                  as String,
-        translation: null == translation
-            ? _value.translation
-            : translation // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+    return _then(_$Exercise_RecallImpl(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      arabic: null == arabic
+          ? _value.arabic
+          : arabic // ignore: cast_nullable_to_non_nullable
+              as String,
+      translation: null == translation
+          ? _value.translation
+          : translation // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 
 class _$Exercise_RecallImpl extends Exercise_Recall {
-  const _$Exercise_RecallImpl({
-    required this.nodeId,
-    required this.arabic,
-    required this.translation,
-  }) : super._();
+  const _$Exercise_RecallImpl(
+      {required this.nodeId, required this.arabic, required this.translation})
+      : super._();
 
   @override
   final String nodeId;
@@ -251,46 +237,40 @@ class _$Exercise_RecallImpl extends Exercise_Recall {
   @override
   int get hashCode => Object.hash(runtimeType, nodeId, arabic, translation);
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$Exercise_RecallImplCopyWith<_$Exercise_RecallImpl> get copyWith =>
       __$$Exercise_RecallImplCopyWithImpl<_$Exercise_RecallImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String nodeId, String arabic, String translation)
-    recall,
+        recall,
     required TResult Function(String nodeId, String question, String answer)
-    cloze,
+        cloze,
     required TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)
+        mcqArToEn,
     required TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)
+        mcqEnToAr,
   }) {
     return recall(nodeId, arabic, translation);
   }
@@ -301,27 +281,25 @@ class _$Exercise_RecallImpl extends Exercise_Recall {
     TResult? Function(String nodeId, String arabic, String translation)? recall,
     TResult? Function(String nodeId, String question, String answer)? cloze,
     TResult? Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult? Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
   }) {
     return recall?.call(nodeId, arabic, translation);
   }
@@ -332,27 +310,25 @@ class _$Exercise_RecallImpl extends Exercise_Recall {
     TResult Function(String nodeId, String arabic, String translation)? recall,
     TResult Function(String nodeId, String question, String answer)? cloze,
     TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
     required TResult orElse(),
   }) {
     if (recall != null) {
@@ -400,22 +376,18 @@ class _$Exercise_RecallImpl extends Exercise_Recall {
 }
 
 abstract class Exercise_Recall extends Exercise {
-  const factory Exercise_Recall({
-    required final String nodeId,
-    required final String arabic,
-    required final String translation,
-  }) = _$Exercise_RecallImpl;
+  const factory Exercise_Recall(
+      {required final String nodeId,
+      required final String arabic,
+      required final String translation}) = _$Exercise_RecallImpl;
   const Exercise_Recall._() : super._();
 
   @override
   String get nodeId;
   String get arabic;
   String get translation;
-
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$Exercise_RecallImplCopyWith<_$Exercise_RecallImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -423,10 +395,9 @@ abstract class Exercise_Recall extends Exercise {
 /// @nodoc
 abstract class _$$Exercise_ClozeImplCopyWith<$Res>
     implements $ExerciseCopyWith<$Res> {
-  factory _$$Exercise_ClozeImplCopyWith(
-    _$Exercise_ClozeImpl value,
-    $Res Function(_$Exercise_ClozeImpl) then,
-  ) = __$$Exercise_ClozeImplCopyWithImpl<$Res>;
+  factory _$$Exercise_ClozeImplCopyWith(_$Exercise_ClozeImpl value,
+          $Res Function(_$Exercise_ClozeImpl) then) =
+      __$$Exercise_ClozeImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({String nodeId, String question, String answer});
@@ -437,12 +408,9 @@ class __$$Exercise_ClozeImplCopyWithImpl<$Res>
     extends _$ExerciseCopyWithImpl<$Res, _$Exercise_ClozeImpl>
     implements _$$Exercise_ClozeImplCopyWith<$Res> {
   __$$Exercise_ClozeImplCopyWithImpl(
-    _$Exercise_ClozeImpl _value,
-    $Res Function(_$Exercise_ClozeImpl) _then,
-  ) : super(_value, _then);
+      _$Exercise_ClozeImpl _value, $Res Function(_$Exercise_ClozeImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -450,33 +418,29 @@ class __$$Exercise_ClozeImplCopyWithImpl<$Res>
     Object? question = null,
     Object? answer = null,
   }) {
-    return _then(
-      _$Exercise_ClozeImpl(
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        question: null == question
-            ? _value.question
-            : question // ignore: cast_nullable_to_non_nullable
-                  as String,
-        answer: null == answer
-            ? _value.answer
-            : answer // ignore: cast_nullable_to_non_nullable
-                  as String,
-      ),
-    );
+    return _then(_$Exercise_ClozeImpl(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      question: null == question
+          ? _value.question
+          : question // ignore: cast_nullable_to_non_nullable
+              as String,
+      answer: null == answer
+          ? _value.answer
+          : answer // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
   }
 }
 
 /// @nodoc
 
 class _$Exercise_ClozeImpl extends Exercise_Cloze {
-  const _$Exercise_ClozeImpl({
-    required this.nodeId,
-    required this.question,
-    required this.answer,
-  }) : super._();
+  const _$Exercise_ClozeImpl(
+      {required this.nodeId, required this.question, required this.answer})
+      : super._();
 
   @override
   final String nodeId;
@@ -504,46 +468,40 @@ class _$Exercise_ClozeImpl extends Exercise_Cloze {
   @override
   int get hashCode => Object.hash(runtimeType, nodeId, question, answer);
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
   _$$Exercise_ClozeImplCopyWith<_$Exercise_ClozeImpl> get copyWith =>
       __$$Exercise_ClozeImplCopyWithImpl<_$Exercise_ClozeImpl>(
-        this,
-        _$identity,
-      );
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String nodeId, String arabic, String translation)
-    recall,
+        recall,
     required TResult Function(String nodeId, String question, String answer)
-    cloze,
+        cloze,
     required TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)
+        mcqArToEn,
     required TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)
+        mcqEnToAr,
   }) {
     return cloze(nodeId, question, answer);
   }
@@ -554,27 +512,25 @@ class _$Exercise_ClozeImpl extends Exercise_Cloze {
     TResult? Function(String nodeId, String arabic, String translation)? recall,
     TResult? Function(String nodeId, String question, String answer)? cloze,
     TResult? Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult? Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
   }) {
     return cloze?.call(nodeId, question, answer);
   }
@@ -585,27 +541,25 @@ class _$Exercise_ClozeImpl extends Exercise_Cloze {
     TResult Function(String nodeId, String arabic, String translation)? recall,
     TResult Function(String nodeId, String question, String answer)? cloze,
     TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
     required TResult orElse(),
   }) {
     if (cloze != null) {
@@ -653,22 +607,18 @@ class _$Exercise_ClozeImpl extends Exercise_Cloze {
 }
 
 abstract class Exercise_Cloze extends Exercise {
-  const factory Exercise_Cloze({
-    required final String nodeId,
-    required final String question,
-    required final String answer,
-  }) = _$Exercise_ClozeImpl;
+  const factory Exercise_Cloze(
+      {required final String nodeId,
+      required final String question,
+      required final String answer}) = _$Exercise_ClozeImpl;
   const Exercise_Cloze._() : super._();
 
   @override
   String get nodeId;
   String get question;
   String get answer;
-
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$Exercise_ClozeImplCopyWith<_$Exercise_ClozeImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -676,35 +626,30 @@ abstract class Exercise_Cloze extends Exercise {
 /// @nodoc
 abstract class _$$Exercise_McqArToEnImplCopyWith<$Res>
     implements $ExerciseCopyWith<$Res> {
-  factory _$$Exercise_McqArToEnImplCopyWith(
-    _$Exercise_McqArToEnImpl value,
-    $Res Function(_$Exercise_McqArToEnImpl) then,
-  ) = __$$Exercise_McqArToEnImplCopyWithImpl<$Res>;
+  factory _$$Exercise_McqArToEnImplCopyWith(_$Exercise_McqArToEnImpl value,
+          $Res Function(_$Exercise_McqArToEnImpl) then) =
+      __$$Exercise_McqArToEnImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String nodeId,
-    String arabic,
-    String verseArabic,
-    int surahNumber,
-    int ayahNumber,
-    int wordIndex,
-    List<String> choicesEn,
-    int correctIndex,
-  });
+  $Res call(
+      {String nodeId,
+      String arabic,
+      String verseArabic,
+      int surahNumber,
+      int ayahNumber,
+      int wordIndex,
+      List<String> choicesEn,
+      int correctIndex});
 }
 
 /// @nodoc
 class __$$Exercise_McqArToEnImplCopyWithImpl<$Res>
     extends _$ExerciseCopyWithImpl<$Res, _$Exercise_McqArToEnImpl>
     implements _$$Exercise_McqArToEnImplCopyWith<$Res> {
-  __$$Exercise_McqArToEnImplCopyWithImpl(
-    _$Exercise_McqArToEnImpl _value,
-    $Res Function(_$Exercise_McqArToEnImpl) _then,
-  ) : super(_value, _then);
+  __$$Exercise_McqArToEnImplCopyWithImpl(_$Exercise_McqArToEnImpl _value,
+      $Res Function(_$Exercise_McqArToEnImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -717,59 +662,57 @@ class __$$Exercise_McqArToEnImplCopyWithImpl<$Res>
     Object? choicesEn = null,
     Object? correctIndex = null,
   }) {
-    return _then(
-      _$Exercise_McqArToEnImpl(
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        arabic: null == arabic
-            ? _value.arabic
-            : arabic // ignore: cast_nullable_to_non_nullable
-                  as String,
-        verseArabic: null == verseArabic
-            ? _value.verseArabic
-            : verseArabic // ignore: cast_nullable_to_non_nullable
-                  as String,
-        surahNumber: null == surahNumber
-            ? _value.surahNumber
-            : surahNumber // ignore: cast_nullable_to_non_nullable
-                  as int,
-        ayahNumber: null == ayahNumber
-            ? _value.ayahNumber
-            : ayahNumber // ignore: cast_nullable_to_non_nullable
-                  as int,
-        wordIndex: null == wordIndex
-            ? _value.wordIndex
-            : wordIndex // ignore: cast_nullable_to_non_nullable
-                  as int,
-        choicesEn: null == choicesEn
-            ? _value._choicesEn
-            : choicesEn // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        correctIndex: null == correctIndex
-            ? _value.correctIndex
-            : correctIndex // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$Exercise_McqArToEnImpl(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      arabic: null == arabic
+          ? _value.arabic
+          : arabic // ignore: cast_nullable_to_non_nullable
+              as String,
+      verseArabic: null == verseArabic
+          ? _value.verseArabic
+          : verseArabic // ignore: cast_nullable_to_non_nullable
+              as String,
+      surahNumber: null == surahNumber
+          ? _value.surahNumber
+          : surahNumber // ignore: cast_nullable_to_non_nullable
+              as int,
+      ayahNumber: null == ayahNumber
+          ? _value.ayahNumber
+          : ayahNumber // ignore: cast_nullable_to_non_nullable
+              as int,
+      wordIndex: null == wordIndex
+          ? _value.wordIndex
+          : wordIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+      choicesEn: null == choicesEn
+          ? _value._choicesEn
+          : choicesEn // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      correctIndex: null == correctIndex
+          ? _value.correctIndex
+          : correctIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 
 class _$Exercise_McqArToEnImpl extends Exercise_McqArToEn {
-  const _$Exercise_McqArToEnImpl({
-    required this.nodeId,
-    required this.arabic,
-    required this.verseArabic,
-    required this.surahNumber,
-    required this.ayahNumber,
-    required this.wordIndex,
-    required final List<String> choicesEn,
-    required this.correctIndex,
-  }) : _choicesEn = choicesEn,
-       super._();
+  const _$Exercise_McqArToEnImpl(
+      {required this.nodeId,
+      required this.arabic,
+      required this.verseArabic,
+      required this.surahNumber,
+      required this.ayahNumber,
+      required this.wordIndex,
+      required final List<String> choicesEn,
+      required this.correctIndex})
+      : _choicesEn = choicesEn,
+        super._();
 
   @override
   final String nodeId;
@@ -814,78 +757,61 @@ class _$Exercise_McqArToEnImpl extends Exercise_McqArToEn {
                 other.ayahNumber == ayahNumber) &&
             (identical(other.wordIndex, wordIndex) ||
                 other.wordIndex == wordIndex) &&
-            const DeepCollectionEquality().equals(
-              other._choicesEn,
-              _choicesEn,
-            ) &&
+            const DeepCollectionEquality()
+                .equals(other._choicesEn, _choicesEn) &&
             (identical(other.correctIndex, correctIndex) ||
                 other.correctIndex == correctIndex));
   }
 
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    nodeId,
-    arabic,
-    verseArabic,
-    surahNumber,
-    ayahNumber,
-    wordIndex,
-    const DeepCollectionEquality().hash(_choicesEn),
-    correctIndex,
-  );
-
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$Exercise_McqArToEnImplCopyWith<_$Exercise_McqArToEnImpl> get copyWith =>
-      __$$Exercise_McqArToEnImplCopyWithImpl<_$Exercise_McqArToEnImpl>(
-        this,
-        _$identity,
-      );
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(String nodeId, String arabic, String translation)
-    recall,
-    required TResult Function(String nodeId, String question, String answer)
-    cloze,
-    required TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )
-    mcqArToEn,
-    required TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )
-    mcqEnToAr,
-  }) {
-    return mcqArToEn(
+      runtimeType,
       nodeId,
       arabic,
       verseArabic,
       surahNumber,
       ayahNumber,
       wordIndex,
-      choicesEn,
-      correctIndex,
-    );
+      const DeepCollectionEquality().hash(_choicesEn),
+      correctIndex);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$Exercise_McqArToEnImplCopyWith<_$Exercise_McqArToEnImpl> get copyWith =>
+      __$$Exercise_McqArToEnImplCopyWithImpl<_$Exercise_McqArToEnImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String nodeId, String arabic, String translation)
+        recall,
+    required TResult Function(String nodeId, String question, String answer)
+        cloze,
+    required TResult Function(
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)
+        mcqArToEn,
+    required TResult Function(
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)
+        mcqEnToAr,
+  }) {
+    return mcqArToEn(nodeId, arabic, verseArabic, surahNumber, ayahNumber,
+        wordIndex, choicesEn, correctIndex);
   }
 
   @override
@@ -894,38 +820,28 @@ class _$Exercise_McqArToEnImpl extends Exercise_McqArToEn {
     TResult? Function(String nodeId, String arabic, String translation)? recall,
     TResult? Function(String nodeId, String question, String answer)? cloze,
     TResult? Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult? Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
   }) {
-    return mcqArToEn?.call(
-      nodeId,
-      arabic,
-      verseArabic,
-      surahNumber,
-      ayahNumber,
-      wordIndex,
-      choicesEn,
-      correctIndex,
-    );
+    return mcqArToEn?.call(nodeId, arabic, verseArabic, surahNumber, ayahNumber,
+        wordIndex, choicesEn, correctIndex);
   }
 
   @override
@@ -934,40 +850,30 @@ class _$Exercise_McqArToEnImpl extends Exercise_McqArToEn {
     TResult Function(String nodeId, String arabic, String translation)? recall,
     TResult Function(String nodeId, String question, String answer)? cloze,
     TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
     required TResult orElse(),
   }) {
     if (mcqArToEn != null) {
-      return mcqArToEn(
-        nodeId,
-        arabic,
-        verseArabic,
-        surahNumber,
-        ayahNumber,
-        wordIndex,
-        choicesEn,
-        correctIndex,
-      );
+      return mcqArToEn(nodeId, arabic, verseArabic, surahNumber, ayahNumber,
+          wordIndex, choicesEn, correctIndex);
     }
     return orElse();
   }
@@ -1011,16 +917,15 @@ class _$Exercise_McqArToEnImpl extends Exercise_McqArToEn {
 }
 
 abstract class Exercise_McqArToEn extends Exercise {
-  const factory Exercise_McqArToEn({
-    required final String nodeId,
-    required final String arabic,
-    required final String verseArabic,
-    required final int surahNumber,
-    required final int ayahNumber,
-    required final int wordIndex,
-    required final List<String> choicesEn,
-    required final int correctIndex,
-  }) = _$Exercise_McqArToEnImpl;
+  const factory Exercise_McqArToEn(
+      {required final String nodeId,
+      required final String arabic,
+      required final String verseArabic,
+      required final int surahNumber,
+      required final int ayahNumber,
+      required final int wordIndex,
+      required final List<String> choicesEn,
+      required final int correctIndex}) = _$Exercise_McqArToEnImpl;
   const Exercise_McqArToEn._() : super._();
 
   @override
@@ -1032,11 +937,8 @@ abstract class Exercise_McqArToEn extends Exercise {
   int get wordIndex;
   List<String> get choicesEn;
   int get correctIndex;
-
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$Exercise_McqArToEnImplCopyWith<_$Exercise_McqArToEnImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -1044,35 +946,30 @@ abstract class Exercise_McqArToEn extends Exercise {
 /// @nodoc
 abstract class _$$Exercise_McqEnToArImplCopyWith<$Res>
     implements $ExerciseCopyWith<$Res> {
-  factory _$$Exercise_McqEnToArImplCopyWith(
-    _$Exercise_McqEnToArImpl value,
-    $Res Function(_$Exercise_McqEnToArImpl) then,
-  ) = __$$Exercise_McqEnToArImplCopyWithImpl<$Res>;
+  factory _$$Exercise_McqEnToArImplCopyWith(_$Exercise_McqEnToArImpl value,
+          $Res Function(_$Exercise_McqEnToArImpl) then) =
+      __$$Exercise_McqEnToArImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    String nodeId,
-    String english,
-    String verseArabic,
-    int surahNumber,
-    int ayahNumber,
-    int wordIndex,
-    List<String> choicesAr,
-    int correctIndex,
-  });
+  $Res call(
+      {String nodeId,
+      String english,
+      String verseArabic,
+      int surahNumber,
+      int ayahNumber,
+      int wordIndex,
+      List<String> choicesAr,
+      int correctIndex});
 }
 
 /// @nodoc
 class __$$Exercise_McqEnToArImplCopyWithImpl<$Res>
     extends _$ExerciseCopyWithImpl<$Res, _$Exercise_McqEnToArImpl>
     implements _$$Exercise_McqEnToArImplCopyWith<$Res> {
-  __$$Exercise_McqEnToArImplCopyWithImpl(
-    _$Exercise_McqEnToArImpl _value,
-    $Res Function(_$Exercise_McqEnToArImpl) _then,
-  ) : super(_value, _then);
+  __$$Exercise_McqEnToArImplCopyWithImpl(_$Exercise_McqEnToArImpl _value,
+      $Res Function(_$Exercise_McqEnToArImpl) _then)
+      : super(_value, _then);
 
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -1085,59 +982,57 @@ class __$$Exercise_McqEnToArImplCopyWithImpl<$Res>
     Object? choicesAr = null,
     Object? correctIndex = null,
   }) {
-    return _then(
-      _$Exercise_McqEnToArImpl(
-        nodeId: null == nodeId
-            ? _value.nodeId
-            : nodeId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        english: null == english
-            ? _value.english
-            : english // ignore: cast_nullable_to_non_nullable
-                  as String,
-        verseArabic: null == verseArabic
-            ? _value.verseArabic
-            : verseArabic // ignore: cast_nullable_to_non_nullable
-                  as String,
-        surahNumber: null == surahNumber
-            ? _value.surahNumber
-            : surahNumber // ignore: cast_nullable_to_non_nullable
-                  as int,
-        ayahNumber: null == ayahNumber
-            ? _value.ayahNumber
-            : ayahNumber // ignore: cast_nullable_to_non_nullable
-                  as int,
-        wordIndex: null == wordIndex
-            ? _value.wordIndex
-            : wordIndex // ignore: cast_nullable_to_non_nullable
-                  as int,
-        choicesAr: null == choicesAr
-            ? _value._choicesAr
-            : choicesAr // ignore: cast_nullable_to_non_nullable
-                  as List<String>,
-        correctIndex: null == correctIndex
-            ? _value.correctIndex
-            : correctIndex // ignore: cast_nullable_to_non_nullable
-                  as int,
-      ),
-    );
+    return _then(_$Exercise_McqEnToArImpl(
+      nodeId: null == nodeId
+          ? _value.nodeId
+          : nodeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      english: null == english
+          ? _value.english
+          : english // ignore: cast_nullable_to_non_nullable
+              as String,
+      verseArabic: null == verseArabic
+          ? _value.verseArabic
+          : verseArabic // ignore: cast_nullable_to_non_nullable
+              as String,
+      surahNumber: null == surahNumber
+          ? _value.surahNumber
+          : surahNumber // ignore: cast_nullable_to_non_nullable
+              as int,
+      ayahNumber: null == ayahNumber
+          ? _value.ayahNumber
+          : ayahNumber // ignore: cast_nullable_to_non_nullable
+              as int,
+      wordIndex: null == wordIndex
+          ? _value.wordIndex
+          : wordIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+      choicesAr: null == choicesAr
+          ? _value._choicesAr
+          : choicesAr // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      correctIndex: null == correctIndex
+          ? _value.correctIndex
+          : correctIndex // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
   }
 }
 
 /// @nodoc
 
 class _$Exercise_McqEnToArImpl extends Exercise_McqEnToAr {
-  const _$Exercise_McqEnToArImpl({
-    required this.nodeId,
-    required this.english,
-    required this.verseArabic,
-    required this.surahNumber,
-    required this.ayahNumber,
-    required this.wordIndex,
-    required final List<String> choicesAr,
-    required this.correctIndex,
-  }) : _choicesAr = choicesAr,
-       super._();
+  const _$Exercise_McqEnToArImpl(
+      {required this.nodeId,
+      required this.english,
+      required this.verseArabic,
+      required this.surahNumber,
+      required this.ayahNumber,
+      required this.wordIndex,
+      required final List<String> choicesAr,
+      required this.correctIndex})
+      : _choicesAr = choicesAr,
+        super._();
 
   @override
   final String nodeId;
@@ -1182,78 +1077,61 @@ class _$Exercise_McqEnToArImpl extends Exercise_McqEnToAr {
                 other.ayahNumber == ayahNumber) &&
             (identical(other.wordIndex, wordIndex) ||
                 other.wordIndex == wordIndex) &&
-            const DeepCollectionEquality().equals(
-              other._choicesAr,
-              _choicesAr,
-            ) &&
+            const DeepCollectionEquality()
+                .equals(other._choicesAr, _choicesAr) &&
             (identical(other.correctIndex, correctIndex) ||
                 other.correctIndex == correctIndex));
   }
 
   @override
   int get hashCode => Object.hash(
-    runtimeType,
-    nodeId,
-    english,
-    verseArabic,
-    surahNumber,
-    ayahNumber,
-    wordIndex,
-    const DeepCollectionEquality().hash(_choicesAr),
-    correctIndex,
-  );
-
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$Exercise_McqEnToArImplCopyWith<_$Exercise_McqEnToArImpl> get copyWith =>
-      __$$Exercise_McqEnToArImplCopyWithImpl<_$Exercise_McqEnToArImpl>(
-        this,
-        _$identity,
-      );
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(String nodeId, String arabic, String translation)
-    recall,
-    required TResult Function(String nodeId, String question, String answer)
-    cloze,
-    required TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )
-    mcqArToEn,
-    required TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )
-    mcqEnToAr,
-  }) {
-    return mcqEnToAr(
+      runtimeType,
       nodeId,
       english,
       verseArabic,
       surahNumber,
       ayahNumber,
       wordIndex,
-      choicesAr,
-      correctIndex,
-    );
+      const DeepCollectionEquality().hash(_choicesAr),
+      correctIndex);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$Exercise_McqEnToArImplCopyWith<_$Exercise_McqEnToArImpl> get copyWith =>
+      __$$Exercise_McqEnToArImplCopyWithImpl<_$Exercise_McqEnToArImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String nodeId, String arabic, String translation)
+        recall,
+    required TResult Function(String nodeId, String question, String answer)
+        cloze,
+    required TResult Function(
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)
+        mcqArToEn,
+    required TResult Function(
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)
+        mcqEnToAr,
+  }) {
+    return mcqEnToAr(nodeId, english, verseArabic, surahNumber, ayahNumber,
+        wordIndex, choicesAr, correctIndex);
   }
 
   @override
@@ -1262,38 +1140,28 @@ class _$Exercise_McqEnToArImpl extends Exercise_McqEnToAr {
     TResult? Function(String nodeId, String arabic, String translation)? recall,
     TResult? Function(String nodeId, String question, String answer)? cloze,
     TResult? Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult? Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
   }) {
-    return mcqEnToAr?.call(
-      nodeId,
-      english,
-      verseArabic,
-      surahNumber,
-      ayahNumber,
-      wordIndex,
-      choicesAr,
-      correctIndex,
-    );
+    return mcqEnToAr?.call(nodeId, english, verseArabic, surahNumber,
+        ayahNumber, wordIndex, choicesAr, correctIndex);
   }
 
   @override
@@ -1302,40 +1170,30 @@ class _$Exercise_McqEnToArImpl extends Exercise_McqEnToAr {
     TResult Function(String nodeId, String arabic, String translation)? recall,
     TResult Function(String nodeId, String question, String answer)? cloze,
     TResult Function(
-      String nodeId,
-      String arabic,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesEn,
-      int correctIndex,
-    )?
-    mcqArToEn,
+            String nodeId,
+            String arabic,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesEn,
+            int correctIndex)?
+        mcqArToEn,
     TResult Function(
-      String nodeId,
-      String english,
-      String verseArabic,
-      int surahNumber,
-      int ayahNumber,
-      int wordIndex,
-      List<String> choicesAr,
-      int correctIndex,
-    )?
-    mcqEnToAr,
+            String nodeId,
+            String english,
+            String verseArabic,
+            int surahNumber,
+            int ayahNumber,
+            int wordIndex,
+            List<String> choicesAr,
+            int correctIndex)?
+        mcqEnToAr,
     required TResult orElse(),
   }) {
     if (mcqEnToAr != null) {
-      return mcqEnToAr(
-        nodeId,
-        english,
-        verseArabic,
-        surahNumber,
-        ayahNumber,
-        wordIndex,
-        choicesAr,
-        correctIndex,
-      );
+      return mcqEnToAr(nodeId, english, verseArabic, surahNumber, ayahNumber,
+          wordIndex, choicesAr, correctIndex);
     }
     return orElse();
   }
@@ -1379,16 +1237,15 @@ class _$Exercise_McqEnToArImpl extends Exercise_McqEnToAr {
 }
 
 abstract class Exercise_McqEnToAr extends Exercise {
-  const factory Exercise_McqEnToAr({
-    required final String nodeId,
-    required final String english,
-    required final String verseArabic,
-    required final int surahNumber,
-    required final int ayahNumber,
-    required final int wordIndex,
-    required final List<String> choicesAr,
-    required final int correctIndex,
-  }) = _$Exercise_McqEnToArImpl;
+  const factory Exercise_McqEnToAr(
+      {required final String nodeId,
+      required final String english,
+      required final String verseArabic,
+      required final int surahNumber,
+      required final int ayahNumber,
+      required final int wordIndex,
+      required final List<String> choicesAr,
+      required final int correctIndex}) = _$Exercise_McqEnToArImpl;
   const Exercise_McqEnToAr._() : super._();
 
   @override
@@ -1400,11 +1257,8 @@ abstract class Exercise_McqEnToAr extends Exercise {
   int get wordIndex;
   List<String> get choicesAr;
   int get correctIndex;
-
-  /// Create a copy of Exercise
-  /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   _$$Exercise_McqEnToArImplCopyWith<_$Exercise_McqEnToArImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

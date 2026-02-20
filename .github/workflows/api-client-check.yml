@@ -1,0 +1,31 @@
+name: API Client Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  api-client-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: taiki-e/install-action@just
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Regenerate API client
+        run: just gen-api
+
+      - name: Fail if generated files differ from committed
+        run: |
+          git diff --exit-code lib/api/generated || \
+            (echo "ERROR: API client is stale - run 'just gen-api' and commit" && exit 1)
