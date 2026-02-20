@@ -9,6 +9,14 @@ Scope audited:
 
 This blueprint is intentionally opinionated and code-anchored. It is written to be consumed by another AI assistant that will help drive the next project steps.
 
+## Prerequisite
+
+Before executing large data/distribution changes, read:
+- `docs/data_platform_blueprint/index.md`
+- `docs/final_delivery_tracker/index.md`
+
+These folders define the canonical implementation and delivery path.
+
 ## Executive Truth (Current State)
 
 1. The mobile app currently schedules from `user_memory_states` due items only, using a simple priority formula in `SessionService::get_due_items`.
