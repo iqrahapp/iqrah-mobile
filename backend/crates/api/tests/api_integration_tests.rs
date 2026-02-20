@@ -6,14 +6,13 @@ use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode, header},
 };
-use iqrah_backend_api::actors::pack_cache::PackCacheActor;
+use iqrah_backend_api::cache::pack_verification_cache::PackVerificationCache;
 use iqrah_backend_api::handlers::auth::IdTokenVerifier;
 use iqrah_backend_api::{AppState, build_router};
 use iqrah_backend_config::AppConfig;
 use iqrah_backend_domain::Claims;
 use iqrah_backend_storage::{PackRepository, SyncRepository, UserRepository};
 use jsonwebtoken::{EncodingKey, Header, encode};
-use kameo::actor::Spawn;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tower::ServiceExt;
@@ -33,7 +32,7 @@ impl IdTokenVerifier for FakeVerifier {
 }
 
 fn test_state(pool: PgPool, pack_dir: String) -> Arc<AppState> {
-    let pack_cache = PackCacheActor::spawn(PackCacheActor::new());
+    let pack_cache = PackVerificationCache::new();
 
     Arc::new(AppState {
         pool: pool.clone(),
