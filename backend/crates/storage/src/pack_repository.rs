@@ -311,3 +311,56 @@ impl From<PackInfoRow> for PackInfo {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::postgres::PgPoolOptions;
+    use std::time::Duration;
+
+    fn unreachable_pool() -> PgPool {
+        PgPoolOptions::new()
+            .acquire_timeout(Duration::from_millis(100))
+            .connect_lazy("postgres://postgres:postgres@127.0.0.1:1/iqrah")
+            .expect("lazy pool should be created")
+    }
+
+    #[tokio::test]
+    async fn repository_methods_return_query_errors_without_database() {
+        let repo = PackRepository::new(unreachable_pool());
+
+        assert!(matches!(
+            repo.list_available(None, None).await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.get_pack("pack").await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.list_active_pack_versions().await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.list_all_packs().await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.get_active_version_id("pack").await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.register_pack("pack", "type", "en", "name", None).await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.add_version("pack", "1.0.0", "file", 10, "sha", None)
+                .await,
+            Err(StorageError::Query(_))
+        ));
+        assert!(matches!(
+            repo.publish_pack("pack").await,
+            Err(StorageError::Query(_))
+        ));
+    }
+}
