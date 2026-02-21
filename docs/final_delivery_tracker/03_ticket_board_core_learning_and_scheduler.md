@@ -8,48 +8,48 @@ Source anchors:
 
 ## Foundation
 
-- [ ] `C-001` Add deterministic golden session scenarios (cold-start, due-review, chunk mode)
-- [ ] `C-002` Add scheduler invariants test suite (duplicates/limits/axis mapping)
+- [ ] `[MOB]` `C-001` Add deterministic golden session scenarios (cold-start, due-review, chunk mode)
+- [ ] `[MOB]` `C-002` Add scheduler invariants test suite (duplicates/limits/axis mapping)
 
 ## Core Fixes
 
-- [ ] `C-003` Fix cold-start empty-session behavior
+- [ ] `[MOB]` `C-003` Fix cold-start empty-session behavior
   - Accept: brand-new user always gets non-empty session.
 
-- [ ] `C-004` Make goal/chunk ID alter candidate selection
+- [ ] `[MOB]` `C-004` Make goal/chunk ID alter candidate selection
   - Accept: different goal/chunk inputs produce different candidate pools.
 
-- [ ] `C-005` Implement 3-budget session composition
+- [ ] `[MOB]` `C-005` Implement 3-budget session composition
   - Budgets: continuity + due review + lexical understanding.
 
-- [ ] `C-006` Add lexical fragility prioritization policy
+- [ ] `[MOB]` `C-006` Add lexical fragility prioritization policy
   - Include frequency/spread/prayer-context weighting.
 
-- [ ] `C-007` Promote core lexical exercises into scheduled default pool
+- [ ] `[MOB]` `C-007` Promote core lexical exercises into scheduled default pool
   - Minimum: `mcq_ar_to_en`, `contextual_translation`, one cloze-MCQ continuity type, redesigned `identify_root`.
 
-- [ ] `C-008` Demote high-friction low-ROI exercises from default scheduled pool
+- [ ] `[MOB]` `C-008` Demote high-friction low-ROI exercises from default scheduled pool
   - Keep optional/challenge modes where needed.
 
-- [ ] `C-009` Enforce axis-to-exercise mapping guardrails in code and tests
-- [ ] `C-010` Add session telemetry for budget mix and outcome quality
+- [ ] `[MOB]` `C-009` Enforce axis-to-exercise mapping guardrails in code and tests
+- [ ] `[MOB]` `C-010` Add session telemetry for budget mix and outcome quality
 
 ## Blueprint Gap Closures (Previously Missing)
 
-- [ ] `C-011` Resolve CBOR import persistence gap (`G3`)
+- [ ] `[MOB]` `C-011` Resolve CBOR import persistence gap (`G3`)
   - Scope:
     - either implement persisted node/edge import in `cbor_import.rs`,
     - or explicitly disable/deprecate fallback path with fail-fast behavior and docs update.
   - Accept:
     - no ambiguity remains about whether CBOR fallback persists data.
 
-- [ ] `C-012` Restrict prerequisite parent query to dependency edges (`G6`)
+- [ ] `[MOB]` `C-012` Restrict prerequisite parent query to dependency edges (`G6`)
   - Scope:
     - ensure prerequisite logic excludes non-dependency knowledge edges.
   - Accept:
     - tests prove dependency-only behavior.
 
-- [ ] `C-013` Initialize unseen propagation targets safely (`G7`)
+- [ ] `[MOB]` `C-013` Initialize unseen propagation targets safely (`G7`)
   - Scope:
     - propagation can create/update missing target states under controlled rules.
   - Accept:

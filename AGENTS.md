@@ -8,41 +8,12 @@ Canonical guidance for AI coding agents. Overrides `CLAUDE.md` and `.github/copi
 
 | Domain | Task | File |
 |:-------|:-----|:-----|
-| **Backend** | New to backend | `backend/README.md` |
-| | Domain types & errors | `backend/crates/domain/src/` |
-| | DB schema | `backend/migrations/` |
-| | Sync conflict logic | `backend/crates/storage/src/sync_repository.rs` |
-| | Config & env vars | `backend/crates/config/src/lib.rs` |
-| | Concurrency / actor pattern | `docs/backend/CONCURRENCY.md` |
 | **Flutter / Rust core** | Architecture & data flow | `.github/copilot-instructions.md` |
 | | Rust functions exposed to Flutter | `rust/src/api/` |
 
 ---
 
 ## 2. Build & Test
-
-### Backend (run from `backend/`)
-
-All four must pass before every push (no environment variables or external services required):
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --all -- -D warnings
-cargo test --all
-cargo llvm-cov --workspace --summary-only --fail-under-lines 85
-```
-
-SQLite integration tests (no external services):
-
-```bash
-cargo test -p iqrah-backend-storage --test integration_sqlite_tests
-```
-
-Postgres-dependent integration tests are optional and must be gated behind the feature below so default local/CI runs stay machine-independent:
-
-```bash
-cargo test --all --features postgres-tests
-```
 
 ### Flutter / Rust core (run from repo root)
 
@@ -61,20 +32,6 @@ flutter_rust_bridge_codegen generate
 
 ## 3. Locked Decisions (Non-Negotiable)
 
-### Backend (Rust / Axum)
-
-| # | Constraint |
-|---|------------|
-| 1 | `DomainError` is the only error type returned from handlers. Raw `sqlx::Error` or `anyhow::Error` in handler return types is **BANNED**. |
-| 2 | Handlers never call `sqlx` directly. All DB access goes through repository functions. |
-| 3 | String-concatenated SQL is **BANNED**. Use `query!` / `query_as!` macros only. |
-| 4 | No hardcoded secrets, URLs, or credentials. All config comes from environment via `iqrah-backend-config`. |
-| 5 | `println!` / `eprintln!` in backend code is **BANNED**. Use `tracing` macros. |
-| 6 | `#[allow(dead_code)]` requires an inline comment explaining why. Never suppress silently. |
-| 7 | `unwrap()` / `expect()` in non-test code is **BANNED**. Propagate with `?` or convert to `DomainError`. |
-| 8 | Raw `Arc<Mutex<T>>`, `Arc<RwLock<T>>`, and `Arc<DashMap<K,V>>` directly in `AppState` or handler signatures are **BANNED**. All shared mutable state must be encapsulated in a named struct with a typed API, or in a `kameo` actor. |
-| 9 | Choose the right primitive: use a **wrapper struct** for simple read-heavy caches (gets/sets, no cross-operation invariants); use a **`kameo` actor** when operations must be coordinated (rate limiting, in-flight deduplication, complex state transitions, mailbox semantics, supervision). All actors live under `backend/crates/api/src/actors/`. For actors, RPC uses `actor_ref.ask(msg).await` and fire-and-forget uses `actor_ref.tell(msg).await`. See `docs/backend/CONCURRENCY.md` for the decision guide and rework spec. |
-
 ### Flutter / Dart
 
 | # | Constraint |
@@ -85,41 +42,7 @@ flutter_rust_bridge_codegen generate
 
 ---
 
-## 4. Testing (Backend)
-
-**85 % line coverage is a hard gate.** CI fails below this threshold. Do not merge code that drops coverage. Enforce it with `cargo llvm-cov --workspace --summary-only --fail-under-lines 85` in backend validation.
-
-### Trait pattern (mandatory for all external dependencies)
-
-Every component with an external dependency (DB, HTTP client, external API) must be behind a Rust trait so it can be tested with a fake in-process implementation — no live infrastructure required.
-
-Follow the existing model in `backend/crates/api/src/handlers/auth.rs`:
-- Define a trait for the dependency (`IdTokenVerifier`)
-- Provide the real implementation (`GoogleIdTokenVerifier`)
-- Place `#[cfg(test)]` fake implementations in the same module (`FakeVerifier`)
-
-New repositories and external service calls must follow this pattern. Do **not** add handler logic that can only be exercised through a live DB or network call.
-
-### Test pyramid
-
-| Layer | Tool | Requirement |
-|-------|------|-------------|
-| Unit | `#[tokio::test]` + trait fakes | Test all handler logic in isolation |
-| Storage integration | `#[sqlx::test]` with SQLite | SQLite-first; no external services |
-| API integration | `axum::serve` in-process | Gate behind `--features postgres-tests` if Postgres is needed |
-
-### SQLite integration tests
-
-Each test gets an isolated temporary DB — migrations run automatically. Keep them the default integration path:
-
-```bash
-cargo test -p iqrah-backend-storage --test integration_sqlite_tests
-TEST_KEEP_DB=1 cargo test ...   # keep DB file for debugging
-```
-
----
-
-## 5. Git Commit Style
+## 4. Git Commit Style
 
 Format: `type(scope?): subject`
 Types: `feat`, `fix`, `perf`, `refactor`, `chore`, `build`, `test`, `docs`, `ci`

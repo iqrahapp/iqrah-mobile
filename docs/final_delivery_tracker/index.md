@@ -21,6 +21,13 @@ Use this folder to run all implementation work to completion.
 7. `docs/final_delivery_tracker/07_release_gates_and_definition_of_done.md`
 8. `docs/final_delivery_tracker/08_exact_execution_order.md`
 
+## Project Markers
+
+Use these markers to identify target repo quickly:
+1. `[MOB]` = `iqrah-mobile` (this repository)
+2. `[BE]` = `../iqrah-backend`
+3. `[BOTH]` = changes required in both repos
+
 ## Working Rule
 
 No agent should execute ad-hoc work outside ticket IDs in this folder unless a new ticket is added first.
