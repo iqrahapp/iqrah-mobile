@@ -22,17 +22,17 @@ When completing a step:
 
 ## Hard Rules
 
-1. Do not start step `N+1` before step `N` is marked complete with evidence.
+1. Do not start step `N+1` before step `N` is marked complete with **evidence**.
 2. Do not skip, reorder, or parallelize steps unless product owner explicitly authorizes it.
 3. For each step, update tracker status and include closure contract evidence from `01_execution_protocol.md`.
 
 ## Step Queue
 
-- [ ] `01` `[MOB]` `C-001`
-- [ ] `02` `[MOB]` `C-002`
-- [ ] `03` `[BOTH]` `Q-001`
-- [ ] `04` `[MOB]` `Q-013`
-- [ ] `05` `[MOB]` `Q-014`
+- [x] `01` `[MOB]` `C-001`
+- [x] `02` `[MOB]` `C-002`
+- [x] `03` `[BOTH]` `Q-001`
+- [x] `04` `[MOB]` `Q-013`
+- [x] `05` `[MOB]` `Q-014`
 - [ ] `06` `[MOB]` `C-003`
 - [ ] `07` `[MOB]` `C-004`
 - [ ] `08` `[MOB]` `C-005`

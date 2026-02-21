@@ -2,8 +2,8 @@
 
 ## Quality And Regression Safety
 
-- [ ] `[BOTH]` `Q-001` Add cross-repo regression matrix (core flow, bootstrap, sync)
-- [ ] `[MOB]` `Q-013` Artifact usage inventory and classification
+- [x] `[BOTH]` `Q-001` Add cross-repo regression matrix (core flow, bootstrap, sync)
+- [x] `[MOB]` `Q-013` Artifact usage inventory and classification
   - Scope:
     - classify each large artifact as `runtime-required`, `r&d-generated`, `fixture`, or `release-asset`.
     - explicitly cover:
@@ -16,7 +16,7 @@
     - written inventory committed in docs,
     - no deletion/untracking before this ticket is complete.
 
-- [ ] `[MOB]` `Q-014` Safe git-hygiene cleanup for generated artifacts
+- [x] `[MOB]` `Q-014` Safe git-hygiene cleanup for generated artifacts
   - Scope:
     - add `.gitignore` rules for generated DB/CBOR/GraphML artifacts in R&D folders,
     - untrack generated artifacts that are not runtime-required,

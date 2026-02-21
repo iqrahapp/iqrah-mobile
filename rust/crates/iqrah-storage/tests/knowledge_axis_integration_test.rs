@@ -116,7 +116,13 @@ async fn test_session_generation_memorization_axis() {
     user_repo.save_memory_state(&state).await.unwrap();
 
     let sessions = session_service
-        .get_due_items("default", 5, false, Some(KnowledgeAxis::Memorization))
+        .get_due_items(
+            "default",
+            chrono::Utc::now(),
+            5,
+            false,
+            Some(KnowledgeAxis::Memorization),
+        )
         .await
         .unwrap();
 
@@ -149,7 +155,13 @@ async fn test_session_generation_translation_axis() {
     user_repo.save_memory_state(&state).await.unwrap();
 
     let sessions = session_service
-        .get_due_items("default", 5, false, Some(KnowledgeAxis::Translation))
+        .get_due_items(
+            "default",
+            chrono::Utc::now(),
+            5,
+            false,
+            Some(KnowledgeAxis::Translation),
+        )
         .await
         .unwrap();
 
@@ -181,7 +193,13 @@ async fn test_session_generation_meaning_axis() {
         user_repo.save_memory_state(&state).await.unwrap();
 
         let sessions = session_service
-            .get_due_items("default", 5, false, Some(KnowledgeAxis::Meaning))
+            .get_due_items(
+                "default",
+                chrono::Utc::now(),
+                5,
+                false,
+                Some(KnowledgeAxis::Meaning),
+            )
             .await
             .unwrap();
 

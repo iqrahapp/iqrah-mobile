@@ -232,7 +232,7 @@ mod tests {
             // M2.8
             at_risk_count: 10,
             at_risk_ratio: 0.10,
-            p10_R_today: 0.65,
+            p10_r_today: 0.65,
             p90_due_age_at_risk: 25.0,
             // M2.9
             at_risk_count_0_9: 15,
@@ -269,7 +269,7 @@ mod tests {
             // M2.8
             at_risk_count: 10,
             at_risk_ratio: 0.10,
-            p10_R_today: 0.65,
+            p10_r_today: 0.65,
             p90_due_age_at_risk: 25.0,
             // M2.9
             at_risk_count_0_9: 15,

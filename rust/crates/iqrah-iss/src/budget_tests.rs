@@ -2,8 +2,6 @@
 //!
 //! Tests for hard intro_budget reservation in session composition.
 
-use std::collections::HashMap;
-
 /// Simulates budget-enforced session selection.
 /// This mirrors the logic in simulator.rs simulate_day.
 fn select_session_with_budget(

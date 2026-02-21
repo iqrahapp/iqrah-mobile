@@ -167,3 +167,11 @@ cython_debug/
 *.tar.gz
 *.net
 .cache
+
+# Generated databases (regenerable via `iqrah build content-db`)
+*.db
+
+# Generated knowledge graph CBOR artifacts (regenerable via pipeline)
+*.cbor.zst
+# Exception: regression baseline is a committed fixture (node-ID stability contract)
+!test_output/baseline_graph.cbor.zst
