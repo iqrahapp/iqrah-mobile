@@ -2,7 +2,7 @@
 
 ## Milestone Board
 
-- [ ] `M0` Runtime Truth + Safety Baseline
+- [x] `M0` Runtime Truth + Safety Baseline
   - Objective: lock runtime behavior, test baselines, and no-regression harness.
   - Required tickets:
     - `C-001` `C-002` `Q-001` `Q-013` `Q-014`

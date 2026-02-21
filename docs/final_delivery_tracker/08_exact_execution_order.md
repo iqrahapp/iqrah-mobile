@@ -119,6 +119,22 @@ After step 64:
 1. Gates `A` to `E` must pass.
 2. Production readiness signoff may be issued.
 
+## Backend Strategy Lock (No Unplanned Firebase Pivot)
+
+Default strategy for this execution plan is:
+1. Keep the custom backend path (`[BE]` tickets) and continue the current queue.
+2. Do not start any Firebase migration track unless the product owner explicitly approves it.
+
+Firebase reconsideration is allowed only at a checkpoint and only if at least one trigger is true:
+1. Backend operations work blocks product progress for more than 2 consecutive weeks.
+2. Home-server reliability or bandwidth becomes unstable for beta users.
+3. Managed auth/compliance requirements become urgent and cannot be met in current timeline.
+
+Required process when a trigger is met:
+1. Agent writes a short decision memo with effort/cost/risk comparison (custom backend vs Firebase vs hybrid).
+2. Agent proposes a minimal migration scope (if any), with rollback plan.
+3. Agent waits for explicit product owner decision before changing ticket order or architecture.
+
 ## Allowed Exception Path
 
 Only security hotfixes may interrupt this order, and only with explicit product owner approval.  

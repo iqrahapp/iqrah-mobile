@@ -212,7 +212,7 @@ pub async fn get_exercises(
     // Note: surah_filter is not yet supported in V2 session service
     let due_items = app
         .session_service
-        .get_due_items(&user_id, limit, is_high_yield, None)
+        .get_due_items(&user_id, chrono::Utc::now(), limit, is_high_yield, None)
         .await?;
 
     let mut exercises = Vec::new();
@@ -269,7 +269,13 @@ pub async fn start_session(user_id: String, goal_id: String) -> Result<SessionDt
 
     let due_items = app
         .session_service
-        .get_due_items(&user_id, SESSION_ITEM_LIMIT, false, None)
+        .get_due_items(
+            &user_id,
+            chrono::Utc::now(),
+            SESSION_ITEM_LIMIT,
+            false,
+            None,
+        )
         .await?;
 
     let node_ids: Vec<i64> = due_items.into_iter().map(|item| item.node.id).collect();
@@ -443,10 +449,7 @@ pub async fn get_memory_states_since(
         .collect())
 }
 
-pub async fn get_sessions_since(
-    user_id: String,
-    since_millis: i64,
-) -> Result<Vec<SyncSessionDto>> {
+pub async fn get_sessions_since(user_id: String, since_millis: i64) -> Result<Vec<SyncSessionDto>> {
     let app = app();
     let sessions = app
         .user_repo_sqlite
@@ -482,7 +485,9 @@ pub async fn get_session_items_since(
 
     let mut result = Vec::new();
     for item in items {
-        let Some(completed_at) = item.completed_at else { continue };
+        let Some(completed_at) = item.completed_at else {
+            continue;
+        };
         let completed_ms = completed_at.timestamp_millis();
         result.push(SyncSessionItemDto {
             id: stable_session_item_id(
@@ -568,7 +573,9 @@ pub async fn upsert_sessions_from_remote(
             items_completed,
         };
 
-        app.user_repo_sqlite.upsert_session_if_newer(&session).await?;
+        app.user_repo_sqlite
+            .upsert_session_if_newer(&session)
+            .await?;
     }
 
     Ok("ok".to_string())
@@ -582,9 +589,11 @@ pub async fn upsert_session_items_from_remote(
     let _ = &user_id;
 
     for item in items {
-        let Some(completed_at_ms) = item.completed_at else { continue };
-        let completed_at =
-            chrono::DateTime::from_timestamp_millis(completed_at_ms).unwrap_or_else(chrono::Utc::now);
+        let Some(completed_at_ms) = item.completed_at else {
+            continue;
+        };
+        let completed_at = chrono::DateTime::from_timestamp_millis(completed_at_ms)
+            .unwrap_or_else(chrono::Utc::now);
 
         let session_item = iqrah_core::SessionItem {
             id: 0,
@@ -608,9 +617,7 @@ pub async fn get_last_sync_timestamp(user_id: String) -> Result<i64> {
     let app = app();
     let key = sync_setting_key(&user_id);
     let value = app.user_repo.get_setting(&key).await?;
-    Ok(value
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(0))
+    Ok(value.and_then(|v| v.parse::<i64>().ok()).unwrap_or(0))
 }
 
 pub async fn set_last_sync_timestamp(user_id: String, timestamp: i64) -> Result<String> {
@@ -968,7 +975,7 @@ pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStatsDto> {
 
     let due_items = app
         .session_service
-        .get_due_items(&user_id, 1000, false, None)
+        .get_due_items(&user_id, chrono::Utc::now(), 1000, false, None)
         .await?;
 
     Ok(DashboardStatsDto {
@@ -981,15 +988,15 @@ pub async fn get_dashboard_stats(user_id: String) -> Result<DashboardStatsDto> {
 /// Get detailed stats for charts
 pub async fn get_detailed_stats(_user_id: String) -> Result<DetailedStatsDto> {
     use chrono::{Duration, Utc};
-    
+
     let mut activity_history = Vec::new();
     let now = Utc::now();
-    
+
     // Generate last 7 days of activity (simulated)
     for i in 0..7 {
         let date = now - Duration::days(6 - i);
         let count = 10 + (date.timestamp() % 20) as i32;
-        
+
         activity_history.push(ActivityPointDto {
             date: date.format("%Y-%m-%d").to_string(),
             count,
@@ -1013,7 +1020,7 @@ pub async fn get_debug_stats(user_id: String) -> Result<DebugStatsDto> {
     let all_nodes = app.content_repo.get_all_nodes().await?;
     let due_items = app
         .session_service
-        .get_due_items(&user_id, 1000, false, None)
+        .get_due_items(&user_id, chrono::Utc::now(), 1000, false, None)
         .await?;
 
     Ok(DebugStatsDto {
@@ -1140,7 +1147,7 @@ pub async fn get_session_preview(
 
     let items = app
         .session_service
-        .get_due_items(&user_id, limit, is_high_yield, None)
+        .get_due_items(&user_id, chrono::Utc::now(), limit, is_high_yield, None)
         .await?;
 
     let mut preview = Vec::new();
@@ -1191,14 +1198,13 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
         {
             if let Some(pool) = DEBUG_CONTENT_POOL.get() {
                 let pattern = format!("{}%", query);
-                let rows: Vec<(i64,)> = sqlx::query_as(
-                    "SELECT id FROM nodes WHERE ukey LIKE ?1 LIMIT ?2",
-                )
-                .bind(&pattern)
-                .bind(limit_i64)
-                .fetch_all(pool)
-                .await
-                .unwrap_or_default();
+                let rows: Vec<(i64,)> =
+                    sqlx::query_as("SELECT id FROM nodes WHERE ukey LIKE ?1 LIMIT ?2")
+                        .bind(&pattern)
+                        .bind(limit_i64)
+                        .fetch_all(pool)
+                        .await
+                        .unwrap_or_default();
 
                 for (id,) in rows {
                     if seen.insert(id) && combined_ids.len() < limit as usize {
@@ -1293,8 +1299,11 @@ pub async fn get_available_surahs() -> Result<Vec<SurahInfo>> {
 pub async fn get_surah_verses(chapter_number: i32) -> Result<Vec<VerseWithTranslationDto>> {
     let app = app();
     let translator_id = get_preferred_translator_id().await?;
-    
-    let verses = app.content_repo.get_verses_for_chapter(chapter_number).await?;
+
+    let verses = app
+        .content_repo
+        .get_verses_for_chapter(chapter_number)
+        .await?;
     let mut results = Vec::new();
 
     for verse in verses {
@@ -1302,7 +1311,7 @@ pub async fn get_surah_verses(chapter_number: i32) -> Result<Vec<VerseWithTransl
             .content_repo
             .get_verse_translation(&verse.key, translator_id)
             .await?;
-            
+
         results.push(VerseWithTranslationDto {
             key: verse.key,
             text_uthmani: verse.text_uthmani,
@@ -1310,7 +1319,7 @@ pub async fn get_surah_verses(chapter_number: i32) -> Result<Vec<VerseWithTransl
             number: verse.verse_number,
         });
     }
-    
+
     Ok(results)
 }
 

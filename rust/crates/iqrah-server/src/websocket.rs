@@ -565,7 +565,13 @@ async fn handle_get_due_items(
     // Get due items from session service
     let items = match app_state
         .session_service
-        .get_due_items(user_id, limit, is_high_yield_mode, axis_filter)
+        .get_due_items(
+            user_id,
+            chrono::Utc::now(),
+            limit,
+            is_high_yield_mode,
+            axis_filter,
+        )
         .await
     {
         Ok(items) => items,

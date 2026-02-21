@@ -8,8 +8,8 @@ Source anchors:
 
 ## Foundation
 
-- [ ] `[MOB]` `C-001` Add deterministic golden session scenarios (cold-start, due-review, chunk mode)
-- [ ] `[MOB]` `C-002` Add scheduler invariants test suite (duplicates/limits/axis mapping)
+- [x] `[MOB]` `C-001` Add deterministic golden session scenarios (cold-start, due-review, chunk mode)
+- [x] `[MOB]` `C-002` Add scheduler invariants test suite (duplicates/limits/axis mapping)
 
 ## Core Fixes
 

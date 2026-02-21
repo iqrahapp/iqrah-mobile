@@ -185,8 +185,7 @@ impl SqliteUserRepository {
                 id: r.id,
                 user_id: r.user_id,
                 goal_id: r.goal_id,
-                started_at: DateTime::from_timestamp_millis(r.started_at)
-                    .unwrap_or_else(Utc::now),
+                started_at: DateTime::from_timestamp_millis(r.started_at).unwrap_or_else(Utc::now),
                 completed_at: r.completed_at.and_then(DateTime::from_timestamp_millis),
                 items_count: r.items_count as i32,
                 items_completed: r.items_completed as i32,
@@ -290,10 +289,7 @@ impl SqliteUserRepository {
         Ok(())
     }
 
-    pub async fn insert_session_item_if_absent(
-        &self,
-        item: &SessionItem,
-    ) -> anyhow::Result<bool> {
+    pub async fn insert_session_item_if_absent(&self, item: &SessionItem) -> anyhow::Result<bool> {
         let completed_at = item.completed_at.map(|t| t.timestamp_millis());
         let existing = query_as::<_, (i64,)>(
             "SELECT id FROM session_items
