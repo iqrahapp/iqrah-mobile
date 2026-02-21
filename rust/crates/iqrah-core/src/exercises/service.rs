@@ -182,31 +182,84 @@ impl ExerciseService {
             node_id
         };
 
-        // Route based on node type prefix
-        if base_ukey.starts_with(PREFIX_WORD) || base_ukey.starts_with(PREFIX_WORD_INSTANCE) {
-            // Word-level exercises
-            generators::generate_memorization(base_node_id, &base_ukey, &*self.content_repo).await
+        let exercise = if base_ukey.starts_with(PREFIX_WORD)
+            || base_ukey.starts_with(PREFIX_WORD_INSTANCE)
+        {
+            // C-007: promote lexical core exercises in scheduled default pool.
+            // We keep deterministic variety per node for stable session resumes.
+            match deterministic_slot(base_node_id, 3) {
+                0 => {
+                    generators::generate_mcq_ar_to_en(base_node_id, &base_ukey, &*self.content_repo)
+                        .await
+                }
+                1 => {
+                    generators::generate_contextual_translation(
+                        base_node_id,
+                        &base_ukey,
+                        &*self.content_repo,
+                    )
+                    .await
+                }
+                _ => match generators::generate_identify_root(
+                    base_node_id,
+                    &base_ukey,
+                    &*self.content_repo,
+                )
+                .await
+                {
+                    Ok(ex) => Ok(ex),
+                    Err(_) => {
+                        generators::generate_mcq_ar_to_en(
+                            base_node_id,
+                            &base_ukey,
+                            &*self.content_repo,
+                        )
+                        .await
+                    }
+                },
+            }?
         } else if base_ukey.starts_with(PREFIX_VERSE) {
-            // Verse-level exercises
-            if matches!(
-                axis,
-                Some(KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization)
-            ) {
-                generators::generate_echo_recall(base_node_id, &base_ukey, &*self.content_repo)
+            // C-008: demote high-friction full-verse typing in default scheduled flow.
+            // Prefer continuity MCQ family by default.
+            let primary = if deterministic_slot(base_node_id, 2) == 0 {
+                generators::generate_missing_word_mcq(base_node_id, &base_ukey, &*self.content_repo)
                     .await
             } else {
-                generators::generate_full_verse_input(base_node_id, &base_ukey, &*self.content_repo)
+                generators::generate_next_word_mcq(base_node_id, &base_ukey, &*self.content_repo)
                     .await
+            };
+
+            if let Ok(ex) = primary {
+                ex
+            } else if let Ok(ex) =
+                generators::generate_echo_recall(base_node_id, &base_ukey, &*self.content_repo)
+                    .await
+            {
+                ex
+            } else {
+                generators::generate_full_verse_input(base_node_id, &base_ukey, &*self.content_repo)
+                    .await?
             }
         } else if base_ukey.starts_with(PREFIX_CHAPTER) {
-            // Chapter-level exercises
-            generators::generate_ayah_chain(base_node_id, &base_ukey, &*self.content_repo).await
+            generators::generate_ayah_chain(base_node_id, &base_ukey, &*self.content_repo).await?
         } else {
-            Err(anyhow::anyhow!(
+            return Err(anyhow::anyhow!(
                 "Cannot determine exercise type for node: {}",
                 base_ukey
-            ))
+            ));
+        };
+
+        // C-009: axis-to-exercise guardrails.
+        if !guardrail_allows(&base_ukey, axis, &exercise) {
+            return Err(anyhow::anyhow!(
+                "Guardrail violation for node `{}` axis {:?} -> exercise `{}`",
+                base_ukey,
+                axis,
+                exercise.type_name()
+            ));
         }
+
+        Ok(exercise)
     }
 
     /// Generate an MCQ exercise (Arabic to English)
@@ -336,6 +389,58 @@ impl ExerciseService {
     }
 }
 
+fn deterministic_slot(node_id: i64, modulo: u32) -> u32 {
+    if modulo == 0 {
+        return 0;
+    }
+    (node_id.unsigned_abs() % modulo as u64) as u32
+}
+
+fn is_lexical_exercise(exercise: &ExerciseData) -> bool {
+    matches!(
+        exercise,
+        ExerciseData::McqArToEn { .. }
+            | ExerciseData::ContextualTranslation { .. }
+            | ExerciseData::IdentifyRoot { .. }
+    )
+}
+
+fn is_continuity_exercise(exercise: &ExerciseData) -> bool {
+    matches!(
+        exercise,
+        ExerciseData::EchoRecall { .. }
+            | ExerciseData::MissingWordMcq { .. }
+            | ExerciseData::NextWordMcq { .. }
+            | ExerciseData::AyahChain { .. }
+            | ExerciseData::ClozeDeletion { .. }
+            | ExerciseData::FirstLetterHint { .. }
+            | ExerciseData::FullVerseInput { .. }
+    )
+}
+
+fn guardrail_allows(base_ukey: &str, axis: Option<KnowledgeAxis>, exercise: &ExerciseData) -> bool {
+    // Lexical axes on lexical units must map to lexical exercises.
+    if matches!(
+        axis,
+        Some(KnowledgeAxis::Translation | KnowledgeAxis::Meaning | KnowledgeAxis::Tafsir)
+    ) && (base_ukey.starts_with(PREFIX_WORD) || base_ukey.starts_with(PREFIX_WORD_INSTANCE))
+    {
+        return is_lexical_exercise(exercise);
+    }
+
+    // Memorization verse axes must map to continuity exercises.
+    if base_ukey.starts_with(PREFIX_VERSE)
+        && matches!(
+            axis,
+            Some(KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization) | None
+        )
+    {
+        return is_continuity_exercise(exercise);
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -438,6 +543,10 @@ mod tests {
         }
 
         async fn get_nodes_by_type(&self, _node_type: NodeType) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
+        async fn get_default_intro_nodes(&self, _limit: u32) -> Result<Vec<Node>> {
             Ok(vec![])
         }
 
@@ -785,7 +894,7 @@ mod tests {
             let mut verses = HashMap::new();
             let mut chapters = HashMap::new();
 
-            // Add test word
+            // Add test words (same verse) so continuity MCQ generators can run.
             words.insert(
                 1,
                 crate::Word {
@@ -793,6 +902,39 @@ mod tests {
                     verse_key: "1:1".to_string(),
                     position: 1,
                     text_uthmani: "بِسْمِ".to_string(),
+                    text_simple: None,
+                    transliteration: None,
+                },
+            );
+            words.insert(
+                2,
+                crate::Word {
+                    id: 2,
+                    verse_key: "1:1".to_string(),
+                    position: 2,
+                    text_uthmani: "ٱللَّهِ".to_string(),
+                    text_simple: None,
+                    transliteration: None,
+                },
+            );
+            words.insert(
+                3,
+                crate::Word {
+                    id: 3,
+                    verse_key: "1:1".to_string(),
+                    position: 3,
+                    text_uthmani: "ٱلرَّحْمَٰنِ".to_string(),
+                    text_simple: None,
+                    transliteration: None,
+                },
+            );
+            words.insert(
+                4,
+                crate::Word {
+                    id: 4,
+                    verse_key: "1:1".to_string(),
+                    position: 4,
+                    text_uthmani: "ٱلرَّحِيمِ".to_string(),
                     text_simple: None,
                     transliteration: None,
                 },
@@ -835,6 +977,10 @@ mod tests {
 
     #[async_trait]
     impl ContentRepository for MockContentRepoV2 {
+        async fn get_default_intro_nodes(&self, _limit: u32) -> Result<Vec<Node>> {
+            Ok(vec![])
+        }
+
         async fn get_node(&self, node_id: i64) -> Result<Option<Node>> {
             let (ukey, node_type) = match node_id {
                 1 => ("WORD:1:1:1".to_string(), NodeType::WordInstance),
@@ -901,7 +1047,28 @@ mod tests {
         }
 
         async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> Result<Vec<Node>> {
-            Ok(vec![])
+            Ok(vec![
+                Node {
+                    id: 1,
+                    ukey: "WORD:1:1:1".to_string(),
+                    node_type: NodeType::WordInstance,
+                },
+                Node {
+                    id: 2,
+                    ukey: "WORD:1:1:2".to_string(),
+                    node_type: NodeType::WordInstance,
+                },
+                Node {
+                    id: 3,
+                    ukey: "WORD:1:1:3".to_string(),
+                    node_type: NodeType::WordInstance,
+                },
+                Node {
+                    id: 4,
+                    ukey: "WORD:1:1:4".to_string(),
+                    node_type: NodeType::WordInstance,
+                },
+            ])
         }
 
         async fn get_adjacent_words(
@@ -932,8 +1099,15 @@ mod tests {
                 .collect())
         }
 
-        async fn get_words_for_verse(&self, _verse_key: &str) -> Result<Vec<crate::Word>> {
-            Ok(vec![])
+        async fn get_words_for_verse(&self, verse_key: &str) -> Result<Vec<crate::Word>> {
+            let mut words: Vec<crate::Word> = self
+                .words
+                .values()
+                .filter(|w| w.verse_key == verse_key)
+                .cloned()
+                .collect();
+            words.sort_by_key(|w| w.position);
+            Ok(words)
         }
 
         async fn get_word(&self, word_id: i64) -> Result<Option<crate::Word>> {
@@ -1123,8 +1297,11 @@ mod tests {
 
         let exercise = service.generate_exercise_v2(1, "WORD:1:1:1").await.unwrap();
 
-        // Should generate Memorization exercise
-        assert_eq!(exercise.type_name(), "memorization");
+        // C-007: default scheduled pool should prioritize lexical core exercises.
+        assert!(matches!(
+            exercise.type_name(),
+            "mcq_ar_to_en" | "contextual_translation" | "identify_root"
+        ));
         assert_eq!(exercise.node_id(), 1);
     }
 
@@ -1135,8 +1312,11 @@ mod tests {
 
         let exercise = service.generate_exercise_v2(11, "VERSE:1:1").await.unwrap();
 
-        // Should generate FullVerseInput exercise
-        assert_eq!(exercise.type_name(), "full_verse_input");
+        // C-008/C-009: verse default path should be continuity-focused, not full-verse typing.
+        assert!(matches!(
+            exercise.type_name(),
+            "missing_word_mcq" | "next_word_mcq"
+        ));
         assert_eq!(exercise.node_id(), 11);
     }
 
@@ -1157,13 +1337,16 @@ mod tests {
         let content_repo = Arc::new(MockContentRepoV2::new());
         let service = ExerciseService::new(content_repo);
 
-        // Test with knowledge axis suffix (should strip it)
+        // Test with knowledge axis suffix (should strip it and still map safely).
         let exercise = service
-            .generate_exercise_v2(1, "WORD:1:memorization")
+            .generate_exercise_v2(1, "WORD:1:1:1:memorization")
             .await
             .unwrap();
 
-        assert_eq!(exercise.type_name(), "memorization");
+        assert!(matches!(
+            exercise.type_name(),
+            "mcq_ar_to_en" | "contextual_translation" | "identify_root"
+        ));
         // node_id should be the base without axis
         assert_eq!(exercise.node_id(), 1);
     }
@@ -1178,7 +1361,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(exercise.type_name(), "echo_recall");
+        assert!(matches!(
+            exercise.type_name(),
+            "missing_word_mcq" | "next_word_mcq"
+        ));
         assert_eq!(exercise.node_id(), 11);
     }
 
@@ -1205,10 +1391,55 @@ mod tests {
 
         // Should be serializable to JSON
         let json = serde_json::to_string(&exercise).unwrap();
-        assert!(json.contains(r#""type":"memorization"#));
+        assert!(
+            json.contains(r#""type":"mcq_ar_to_en""#)
+                || json.contains(r#""type":"contextual_translation""#)
+                || json.contains(r#""type":"identify_root""#)
+        );
 
         // Should be deserializable
         let deserialized: ExerciseData = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.type_name(), "memorization");
+        assert!(matches!(
+            deserialized.type_name(),
+            "mcq_ar_to_en" | "contextual_translation" | "identify_root"
+        ));
+    }
+
+    #[test]
+    fn test_axis_guardrail_lexical_axis_rejects_continuity_exercise() {
+        let exercise = ExerciseData::NextWordMcq {
+            node_id: 11,
+            context_position: 1,
+            distractor_node_ids: vec![2, 3, 4],
+        };
+        assert!(!guardrail_allows(
+            "WORD:1:1:1",
+            Some(KnowledgeAxis::Translation),
+            &exercise
+        ));
+    }
+
+    #[test]
+    fn test_axis_guardrail_memorization_verse_requires_continuity() {
+        let bad = ExerciseData::McqArToEn {
+            node_id: 11,
+            distractor_node_ids: vec![2, 3, 4],
+        };
+        let good = ExerciseData::MissingWordMcq {
+            node_id: 11,
+            blank_position: 2,
+            distractor_node_ids: vec![2, 3, 4],
+        };
+
+        assert!(!guardrail_allows(
+            "VERSE:1:1",
+            Some(KnowledgeAxis::Memorization),
+            &bad
+        ));
+        assert!(guardrail_allows(
+            "VERSE:1:1",
+            Some(KnowledgeAxis::Memorization),
+            &good
+        ));
     }
 }

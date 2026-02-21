@@ -8,4 +8,4 @@ mod session_service;
 
 pub use learning_service::LearningService;
 pub use package_service::PackageService;
-pub use session_service::{ScoreWeights, ScoredItem, SessionService};
+pub use session_service::{ScoreWeights, ScoredItem, SessionBudget, SessionService};

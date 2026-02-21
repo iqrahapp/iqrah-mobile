@@ -81,6 +81,35 @@ pub struct SessionCompletePayload {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SessionBudgetMixPayload {
+    pub session_id: String,
+    pub user_id: String,
+    pub goal_id: String,
+    pub items_count: u32,
+    pub continuity_count: u32,
+    pub due_review_count: u32,
+    pub lexical_count: u32,
+    pub continuity_ratio: f64,
+    pub due_review_ratio: f64,
+    pub lexical_ratio: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SessionOutcomeQualityPayload {
+    pub session_id: String,
+    pub user_id: String,
+    pub goal_id: String,
+    pub items_count: u32,
+    pub items_completed: u32,
+    pub completion_ratio: f64,
+    pub again_ratio: f64,
+    pub quality_score: f64,
+    pub continuity_count: u32,
+    pub due_review_count: u32,
+    pub lexical_count: u32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PanicPayload {
     pub function_name: String,
     pub message: String,
@@ -169,6 +198,78 @@ pub fn emit_session_complete(session_id: String, items_reviewed: u32, session_du
     emit_internal(TelemetryEvent::new("iss.session_complete", payload));
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn emit_session_budget_mix(
+    session_id: &str,
+    user_id: &str,
+    goal_id: &str,
+    items_count: u32,
+    continuity_count: u32,
+    due_review_count: u32,
+    lexical_count: u32,
+) {
+    let denom = items_count.max(1) as f64;
+    let payload = SessionBudgetMixPayload {
+        session_id: session_id.to_string(),
+        user_id: user_id.to_string(),
+        goal_id: goal_id.to_string(),
+        items_count,
+        continuity_count,
+        due_review_count,
+        lexical_count,
+        continuity_ratio: continuity_count as f64 / denom,
+        due_review_ratio: due_review_count as f64 / denom,
+        lexical_ratio: lexical_count as f64 / denom,
+    };
+    emit_internal(TelemetryEvent::new("iss.session_budget_mix", payload));
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn emit_session_outcome_quality(
+    session_id: &str,
+    user_id: &str,
+    goal_id: &str,
+    items_count: u32,
+    items_completed: u32,
+    again_count: u32,
+    good_count: u32,
+    easy_count: u32,
+    continuity_count: u32,
+    due_review_count: u32,
+    lexical_count: u32,
+) {
+    let completion_ratio = if items_count > 0 {
+        items_completed as f64 / items_count as f64
+    } else {
+        0.0
+    };
+    let again_ratio = if items_completed > 0 {
+        again_count as f64 / items_completed as f64
+    } else {
+        0.0
+    };
+    let quality_score = if items_completed > 0 {
+        (good_count + easy_count) as f64 / items_completed as f64
+    } else {
+        0.0
+    };
+
+    let payload = SessionOutcomeQualityPayload {
+        session_id: session_id.to_string(),
+        user_id: user_id.to_string(),
+        goal_id: goal_id.to_string(),
+        items_count,
+        items_completed,
+        completion_ratio,
+        again_ratio,
+        quality_score,
+        continuity_count,
+        due_review_count,
+        lexical_count,
+    };
+    emit_internal(TelemetryEvent::new("iss.session_outcome_quality", payload));
+}
+
 /// Emit panic event
 pub fn emit_panic(function_name: &str, message: &str, location: Option<&str>) {
     let payload = PanicPayload {
@@ -234,9 +335,14 @@ macro_rules! ffi_safe {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static TEST_GUARD: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_event_creation() {
+        let _guard = TEST_GUARD.lock().unwrap();
+        drain_events();
         let event = TelemetryEvent::new(
             "iss.daily_health",
             DailyHealthPayload {
@@ -259,6 +365,8 @@ mod tests {
 
     #[test]
     fn test_buffer_overflow() {
+        let _guard = TEST_GUARD.lock().unwrap();
+        drain_events();
         // Fill buffer beyond capacity
         for i in 0..(BUFFER_CAPACITY + 10) {
             emit_daily_health(i as u32, 100, 5, 20, 0.95, 0.90, 0.05, 30.0, 564);
@@ -275,7 +383,25 @@ mod tests {
 
     #[test]
     fn test_emit_no_panic() {
+        let _guard = TEST_GUARD.lock().unwrap();
+        drain_events();
         emit_daily_health(1, 100, 5, 20, 0.95, 0.90, 0.05, 30.0, 564);
         drain_events(); // Clear
+    }
+
+    #[test]
+    fn test_emit_session_budget_mix_and_quality() {
+        let _guard = TEST_GUARD.lock().unwrap();
+        drain_events();
+        emit_session_budget_mix("s1", "u1", "daily_review", 10, 4, 3, 3);
+        emit_session_outcome_quality("s1", "u1", "daily_review", 10, 8, 2, 4, 2, 4, 3, 3);
+
+        let events = drain_events();
+        assert!(events
+            .iter()
+            .any(|event| event.contains("iss.session_budget_mix")));
+        assert!(events
+            .iter()
+            .any(|event| event.contains("iss.session_outcome_quality")));
     }
 }

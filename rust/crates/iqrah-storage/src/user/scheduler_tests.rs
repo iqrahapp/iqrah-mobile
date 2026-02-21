@@ -48,6 +48,16 @@ async fn create_test_db() -> SqlitePool {
     .await
     .expect("Failed to create user_bandit_state table");
 
+    query(
+        "CREATE TABLE app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )",
+    )
+    .execute(&pool)
+    .await
+    .expect("Failed to create app_settings table");
+
     pool
 }
 
@@ -654,4 +664,30 @@ async fn test_update_bandit_arm_updates_timestamp() {
     .unwrap();
 
     assert!(result.0 > 1000000000000); // Timestamp should be updated
+}
+
+#[tokio::test]
+async fn test_delete_setting_removes_app_setting() {
+    let pool = create_test_db().await;
+    let repo = SqliteUserRepository::new(pool);
+
+    repo.set_setting("session_budget_mix:test_session", "{\"items_count\":3}")
+        .await
+        .expect("set_setting should succeed");
+    assert_eq!(
+        repo.get_setting("session_budget_mix:test_session")
+            .await
+            .expect("get_setting should succeed"),
+        Some("{\"items_count\":3}".to_string())
+    );
+
+    repo.delete_setting("session_budget_mix:test_session")
+        .await
+        .expect("delete_setting should succeed");
+    assert_eq!(
+        repo.get_setting("session_budget_mix:test_session")
+            .await
+            .expect("get_setting should succeed"),
+        None
+    );
 }

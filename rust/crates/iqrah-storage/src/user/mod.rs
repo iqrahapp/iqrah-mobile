@@ -47,10 +47,12 @@ pub async fn init_user_db(db_path: &str) -> Result<SqlitePool> {
 
 /// Check if a specific table exists
 pub async fn table_exists(pool: &SqlitePool, table_name: &str) -> Result<bool> {
-    let row = sqlx::query("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
-        .bind(table_name)
-        .fetch_optional(pool)
-        .await?;
+    let row = sqlx::query!(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        table_name
+    )
+    .fetch_optional(pool)
+    .await?;
 
     Ok(row.is_some())
 }

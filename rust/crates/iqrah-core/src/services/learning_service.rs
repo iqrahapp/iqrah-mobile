@@ -208,22 +208,34 @@ impl LearningService {
                 continue; // Skip negligible changes
             }
 
-            // Get current state of target node
-            if let Some(target_state) = self
+            // C-013: initialize unseen propagation targets safely.
+            // We only initialize when propagated influence is positive.
+            let (existing_energy, initialized) = match self
                 .user_repo
                 .get_memory_state(user_id, edge.target_id)
                 .await?
             {
-                // Calculate new energy
-                let new_energy = (target_state.energy + propagated_delta).clamp(0.0, 1.0);
-                updates.push((edge.target_id, new_energy));
+                Some(target_state) => (target_state.energy, false),
+                None if propagated_delta > 0.0 => (0.0, true),
+                None => continue,
+            };
 
-                details.push(PropagationDetail {
-                    target_node_id: edge.target_id,
-                    energy_change: propagated_delta,
-                    reason: format!("Propagated from {}", source_node_id),
-                });
+            let new_energy = (existing_energy + propagated_delta).clamp(0.0, 1.0);
+            if (new_energy - existing_energy).abs() < 0.001 {
+                continue;
             }
+
+            updates.push((edge.target_id, new_energy));
+
+            details.push(PropagationDetail {
+                target_node_id: edge.target_id,
+                energy_change: new_energy - existing_energy,
+                reason: if initialized {
+                    format!("Initialized via propagation from {}", source_node_id)
+                } else {
+                    format!("Propagated from {}", source_node_id)
+                },
+            });
         }
 
         if details.is_empty() {
@@ -528,6 +540,54 @@ mod tests {
         let result = service.process_review("user1", 1, ReviewGrade::Good).await;
 
         // Assert
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_propagation_initializes_unseen_target_on_positive_delta() {
+        let content_repo = Arc::new(create_content_mock());
+        let mut user_mock = MockUserRepository::new();
+
+        // Source exists, target (node 2) does not yet exist for this user.
+        user_mock.expect_get_memory_state().returning(|_, node_id| {
+            if node_id == 1 {
+                Ok(Some(MemoryState {
+                    user_id: "user1".to_string(),
+                    node_id: 1,
+                    stability: 1.0,
+                    difficulty: 5.0,
+                    energy: 0.2,
+                    last_reviewed: Utc::now(),
+                    due_at: Utc::now(),
+                    review_count: 1,
+                }))
+            } else {
+                Ok(None)
+            }
+        });
+
+        user_mock
+            .expect_save_review_atomic()
+            .withf(|_, _, energy_updates, propagation_event| {
+                let has_target_update = energy_updates
+                    .iter()
+                    .any(|(node_id, new_energy)| *node_id == 2 && *new_energy > 0.0);
+                let has_init_reason = propagation_event.as_ref().is_some_and(|event| {
+                    event
+                        .details
+                        .iter()
+                        .any(|detail| detail.reason.contains("Initialized via propagation"))
+                });
+                has_target_update && has_init_reason
+            })
+            .returning(|_, _, _, _| Ok(()));
+
+        user_mock.expect_update_energy().returning(|_, _, _| Ok(()));
+        user_mock.expect_log_propagation().returning(|_| Ok(()));
+
+        let service = LearningService::new(content_repo, Arc::new(user_mock));
+        let result = service.process_review("user1", 1, ReviewGrade::Good).await;
+
         assert!(result.is_ok());
     }
 

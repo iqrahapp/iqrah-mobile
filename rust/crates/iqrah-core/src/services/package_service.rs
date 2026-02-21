@@ -165,7 +165,7 @@ impl PackageService {
             .await?;
 
         // 2. Import verse translations from package
-        let translations: Vec<(String, String)> = sqlx::query_as(
+        let translations = sqlx::query!(
             "SELECT verse_key, translation FROM verse_translations ORDER BY verse_key",
         )
         .fetch_all(package_pool)
@@ -173,9 +173,9 @@ impl PackageService {
         .context("Failed to read translations from package")?;
 
         // 3. Batch insert translations
-        for (verse_key, translation) in translations {
+        for row in translations {
             self.content_repo
-                .insert_verse_translation(&verse_key, translator_id, &translation, None)
+                .insert_verse_translation(&row.verse_key, translator_id, &row.translation, None)
                 .await?;
         }
 
@@ -380,6 +380,9 @@ mod tests {
             Ok(vec![])
         }
         async fn get_nodes_by_type(&self, _node_type: crate::NodeType) -> Result<Vec<crate::Node>> {
+            Ok(vec![])
+        }
+        async fn get_default_intro_nodes(&self, _limit: u32) -> Result<Vec<crate::Node>> {
             Ok(vec![])
         }
         async fn get_words_in_ayahs(&self, _ayah_node_ids: &[i64]) -> Result<Vec<crate::Node>> {

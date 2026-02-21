@@ -23,6 +23,14 @@ pub struct EdgeRow {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, FromRow)]
+pub struct NodeRow {
+    pub id: i64,
+    pub ukey: String,
+    pub node_type: i32,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, FromRow)]
 pub struct ChapterRow {
     pub chapter_number: i32,
     pub name_arabic: String,

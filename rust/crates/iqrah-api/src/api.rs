@@ -42,6 +42,10 @@ fn sync_setting_key(user_id: &str) -> String {
     format!("sync_last_timestamp:{}", user_id)
 }
 
+fn session_budget_mix_setting_key(session_id: &str) -> String {
+    format!("session_budget_mix:{}", session_id)
+}
+
 fn stable_session_item_id(
     session_id: &str,
     node_id: i64,
@@ -52,18 +56,28 @@ fn stable_session_item_id(
     Uuid::new_v5(&Uuid::NAMESPACE_URL, key.as_bytes()).to_string()
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct PersistedSessionBudgetMix {
+    user_id: String,
+    goal_id: String,
+    items_count: u32,
+    continuity_count: u32,
+    due_review_count: u32,
+    lexical_count: u32,
+}
+
 /// Populate the nodes table from existing verses/words/chapters data.
 /// Uses INSERT OR IGNORE to be idempotent - safe to call multiple times.
 async fn populate_nodes_from_content(pool: &sqlx::SqlitePool) -> Result<()> {
     // Check if nodes table already has data
-    let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nodes")
+    let count = sqlx::query_scalar!("SELECT COUNT(*) FROM nodes")
         .fetch_one(pool)
         .await?;
 
-    if count.0 > 0 {
+    if count > 0 {
         tracing::info!(
             "Nodes table already has {} entries, skipping population",
-            count.0
+            count
         );
         return Ok(());
     }
@@ -72,7 +86,7 @@ async fn populate_nodes_from_content(pool: &sqlx::SqlitePool) -> Result<()> {
 
     // Populate chapter nodes (type = 1)
     // ID encoding: (TYPE_CHAPTER << 56) | chapter_number
-    sqlx::query(
+    sqlx::query!(
         "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
          SELECT (CAST(1 AS INTEGER) << 56) | chapter_number,
                 'CHAPTER:' || chapter_number,
@@ -84,7 +98,7 @@ async fn populate_nodes_from_content(pool: &sqlx::SqlitePool) -> Result<()> {
 
     // Populate verse nodes (type = 2)
     // ID encoding: (TYPE_VERSE << 56) | (chapter_number << 16) | verse_number
-    sqlx::query(
+    sqlx::query!(
         "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
          SELECT (CAST(2 AS INTEGER) << 56) | (chapter_number << 16) | verse_number,
                 'VERSE:' || verse_key,
@@ -96,7 +110,7 @@ async fn populate_nodes_from_content(pool: &sqlx::SqlitePool) -> Result<()> {
 
     // Populate word nodes (type = 3)
     // ID encoding: (TYPE_WORD << 56) | word_id
-    sqlx::query(
+    sqlx::query!(
         "INSERT OR IGNORE INTO nodes (id, ukey, node_type)
          SELECT (CAST(3 AS INTEGER) << 56) | word_id,
                 'WORD:' || word_id,
@@ -107,11 +121,11 @@ async fn populate_nodes_from_content(pool: &sqlx::SqlitePool) -> Result<()> {
     .await?;
 
     // Count how many nodes were inserted
-    let new_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nodes")
+    let new_count = sqlx::query_scalar!("SELECT COUNT(*) FROM nodes")
         .fetch_one(pool)
         .await?;
 
-    tracing::info!("Populated {} nodes from content tables", new_count.0);
+    tracing::info!("Populated {} nodes from content tables", new_count);
 
     Ok(())
 }
@@ -269,22 +283,36 @@ pub async fn start_session(user_id: String, goal_id: String) -> Result<SessionDt
 
     let due_items = app
         .session_service
-        .get_due_items(
+        .get_due_items_for_goal(
             &user_id,
             chrono::Utc::now(),
             SESSION_ITEM_LIMIT,
             false,
+            Some(&goal_id),
             None,
         )
         .await?;
 
-    let node_ids: Vec<i64> = due_items.into_iter().map(|item| item.node.id).collect();
+    let node_ids: Vec<i64> = due_items.iter().map(|item| item.node.id).collect();
+    let continuity_count = due_items
+        .iter()
+        .filter(|item| item.session_budget.as_str() == "continuity")
+        .count() as u32;
+    let due_review_count = due_items
+        .iter()
+        .filter(|item| item.session_budget.as_str() == "due_review")
+        .count() as u32;
+    let lexical_count = due_items
+        .iter()
+        .filter(|item| item.session_budget.as_str() == "lexical")
+        .count() as u32;
+
     app.session_service.save_session_state(&node_ids).await?;
 
     let session = iqrah_core::Session {
         id: Uuid::new_v4().to_string(),
         user_id: user_id.clone(),
-        goal_id,
+        goal_id: goal_id.clone(),
         started_at: chrono::Utc::now(),
         completed_at: None,
         items_count: node_ids.len() as i32,
@@ -292,6 +320,29 @@ pub async fn start_session(user_id: String, goal_id: String) -> Result<SessionDt
     };
 
     app.user_repo.create_session(&session).await?;
+    let persisted_mix = PersistedSessionBudgetMix {
+        user_id: user_id.clone(),
+        goal_id: goal_id.clone(),
+        items_count: node_ids.len() as u32,
+        continuity_count,
+        due_review_count,
+        lexical_count,
+    };
+    if let Ok(mix_json) = serde_json::to_string(&persisted_mix) {
+        let _ = app
+            .user_repo
+            .set_setting(&session_budget_mix_setting_key(&session.id), &mix_json)
+            .await;
+    }
+    crate::telemetry::emit_session_budget_mix(
+        &session.id,
+        &user_id,
+        &goal_id,
+        node_ids.len() as u32,
+        continuity_count,
+        due_review_count,
+        lexical_count,
+    );
 
     Ok(SessionDto {
         id: session.id,
@@ -409,6 +460,48 @@ pub async fn complete_session(session_id: String) -> Result<SessionSummaryDto> {
     app.session_service.clear_session_state().await?;
 
     let summary = app.user_repo.get_session_summary(&session_id).await?;
+    let session_meta = app.user_repo.get_session(&session_id).await?;
+    let mix_setting_key = session_budget_mix_setting_key(&session_id);
+    let mix = app
+        .user_repo
+        .get_setting(&mix_setting_key)
+        .await?
+        .and_then(|raw| serde_json::from_str::<PersistedSessionBudgetMix>(&raw).ok());
+    if let Err(err) = app.user_repo.delete_setting(&mix_setting_key).await {
+        tracing::warn!(
+            "failed to cleanup session budget mix cache for session {}: {}",
+            session_id,
+            err
+        );
+    }
+    let (user_id, goal_id, continuity_count, due_review_count, lexical_count) =
+        if let Some(mix) = mix {
+            (
+                mix.user_id,
+                mix.goal_id,
+                mix.continuity_count,
+                mix.due_review_count,
+                mix.lexical_count,
+            )
+        } else if let Some(session) = session_meta {
+            (session.user_id, session.goal_id, 0, 0, 0)
+        } else {
+            ("unknown".to_string(), "unknown".to_string(), 0, 0, 0)
+        };
+    crate::telemetry::emit_session_outcome_quality(
+        &session_id,
+        &user_id,
+        &goal_id,
+        summary.items_count.max(0) as u32,
+        summary.items_completed.max(0) as u32,
+        summary.again_count.max(0) as u32,
+        summary.good_count.max(0) as u32,
+        summary.easy_count.max(0) as u32,
+        continuity_count,
+        due_review_count,
+        lexical_count,
+    );
+
     Ok(SessionSummaryDto {
         session_id: summary.session_id,
         items_count: summary.items_count,
@@ -1058,55 +1151,55 @@ pub async fn get_db_health() -> Result<DbHealthDto> {
         .ok_or_else(|| anyhow::anyhow!("User pool not available"))?;
 
     // Query content database counts
-    let chapters_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM chapters")
+    let chapters_count = sqlx::query_scalar!("SELECT COUNT(*) FROM chapters")
         .fetch_one(content_pool)
         .await?;
-    let verses_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM verses")
+    let verses_count = sqlx::query_scalar!("SELECT COUNT(*) FROM verses")
         .fetch_one(content_pool)
         .await?;
-    let words_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM words")
+    let words_count = sqlx::query_scalar!("SELECT COUNT(*) FROM words")
         .fetch_one(content_pool)
         .await?;
-    let nodes_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM nodes")
+    let nodes_count = sqlx::query_scalar!("SELECT COUNT(*) FROM nodes")
         .fetch_one(content_pool)
         .await?;
-    let edges_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM edges")
+    let edges_count = sqlx::query_scalar!("SELECT COUNT(*) FROM edges")
         .fetch_one(content_pool)
         .await
-        .unwrap_or((0,));
+        .unwrap_or(0);
 
     // Query user database counts
-    let user_memory_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM memory_states")
+    let user_memory_count = sqlx::query_scalar!("SELECT COUNT(*) FROM user_memory_states")
         .fetch_one(user_pool)
         .await
-        .unwrap_or((0,));
+        .unwrap_or(0);
 
     // Check for issues
     let mut issues = Vec::new();
-    if chapters_count.0 == 0 {
+    if chapters_count == 0 {
         issues.push("chapters table is empty".to_string());
-    } else if chapters_count.0 != 114 {
-        issues.push(format!("expected 114 chapters, found {}", chapters_count.0));
+    } else if chapters_count != 114 {
+        issues.push(format!("expected 114 chapters, found {}", chapters_count));
     }
-    if verses_count.0 == 0 {
+    if verses_count == 0 {
         issues.push("verses table is empty".to_string());
     }
-    if words_count.0 == 0 {
+    if words_count == 0 {
         issues.push("words table is empty".to_string());
     }
-    if nodes_count.0 == 0 {
+    if nodes_count == 0 {
         issues.push("nodes table is empty - knowledge graph not populated".to_string());
     }
 
     let is_healthy = issues.is_empty();
 
     Ok(DbHealthDto {
-        chapters_count: chapters_count.0,
-        verses_count: verses_count.0,
-        words_count: words_count.0,
-        nodes_count: nodes_count.0,
-        edges_count: edges_count.0,
-        user_memory_count: user_memory_count.0,
+        chapters_count,
+        verses_count,
+        words_count,
+        nodes_count,
+        edges_count,
+        user_memory_count,
         is_healthy,
         issues,
     })
@@ -1198,17 +1291,19 @@ pub async fn search_nodes(query: String, limit: u32) -> Result<Vec<NodeSearchDto
         {
             if let Some(pool) = DEBUG_CONTENT_POOL.get() {
                 let pattern = format!("{}%", query);
-                let rows: Vec<(i64,)> =
-                    sqlx::query_as("SELECT id FROM nodes WHERE ukey LIKE ?1 LIMIT ?2")
-                        .bind(&pattern)
-                        .bind(limit_i64)
-                        .fetch_all(pool)
-                        .await
-                        .unwrap_or_default();
+                let pattern_ref = pattern.as_str();
+                let rows = sqlx::query!(
+                    "SELECT id as \"id!\" FROM nodes WHERE ukey LIKE ?1 LIMIT ?2",
+                    pattern_ref,
+                    limit_i64
+                )
+                .fetch_all(pool)
+                .await
+                .unwrap_or_default();
 
-                for (id,) in rows {
-                    if seen.insert(id) && combined_ids.len() < limit as usize {
-                        combined_ids.push(id);
+                for row in rows {
+                    if seen.insert(row.id) && combined_ids.len() < limit as usize {
+                        combined_ids.push(row.id);
                     }
                 }
             }

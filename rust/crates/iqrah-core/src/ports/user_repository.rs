@@ -80,6 +80,9 @@ pub trait UserRepository: Send + Sync {
     /// Set app setting
     async fn set_setting(&self, key: &str, value: &str) -> anyhow::Result<()>;
 
+    /// Delete app setting
+    async fn delete_setting(&self, key: &str) -> anyhow::Result<()>;
+
     // ========================================================================
     // Atomic Review Saving (Task 3.1: Transaction Wrapping)
     // ========================================================================

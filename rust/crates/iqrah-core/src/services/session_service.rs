@@ -1,7 +1,8 @@
-use crate::domain::{KnowledgeAxis, KnowledgeNode, MemoryState, NodeType};
+use crate::domain::{node_id, KnowledgeAxis, KnowledgeNode, MemoryState, NodeType};
 use crate::{ContentRepository, Node, UserRepository};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tracing::{debug, instrument};
 
@@ -33,6 +34,28 @@ pub struct ScoredItem {
     pub mastery_gap: f64,
     /// Knowledge axis if this is a knowledge node (Phase 4)
     pub knowledge_axis: Option<KnowledgeAxis>,
+    /// Session composition budget assignment.
+    pub session_budget: SessionBudget,
+    /// Lexical fragility priority when applicable.
+    pub lexical_priority: Option<f64>,
+}
+
+/// Session composition budget buckets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionBudget {
+    Continuity,
+    DueReview,
+    Lexical,
+}
+
+impl SessionBudget {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SessionBudget::Continuity => "continuity",
+            SessionBudget::DueReview => "due_review",
+            SessionBudget::Lexical => "lexical",
+        }
+    }
 }
 
 /// Session service handles session generation and scoring
@@ -69,36 +92,48 @@ impl SessionService {
         is_high_yield_mode: bool,
         axis_filter: Option<KnowledgeAxis>,
     ) -> Result<Vec<ScoredItem>> {
-        debug!("Fetching due items");
+        self.get_due_items_for_goal(user_id, now, limit, is_high_yield_mode, None, axis_filter)
+            .await
+    }
 
-        // Set weights based on mode
+    /// Get due items with optional goal/chunk scope.
+    #[instrument(skip(self), fields(user_id, limit, is_high_yield_mode, goal_id = goal_id.unwrap_or("none")))]
+    pub async fn get_due_items_for_goal(
+        &self,
+        user_id: &str,
+        now: DateTime<Utc>,
+        limit: u32,
+        is_high_yield_mode: bool,
+        goal_id: Option<&str>,
+        axis_filter: Option<KnowledgeAxis>,
+    ) -> Result<Vec<ScoredItem>> {
+        debug!("Fetching due items");
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+
         let weights = if is_high_yield_mode {
             ScoreWeights {
                 w_due: 1.0,
                 w_need: 2.0,
-                w_yield: 10.0, // High emphasis on influence
+                w_yield: 10.0,
             }
         } else {
             ScoreWeights::default()
         };
 
-        // Get all due memory states
+        let goal_scope = self.resolve_goal_scope(goal_id).await?;
+
         let due_states = self
             .user_repo
-            .get_due_states(user_id, now, limit * 3) // Get extra for filtering
+            .get_due_states(user_id, now, limit * 3)
             .await?;
 
-        // Deduplicate: keep the most-overdue state per node (earliest due_at wins).
-        // This is a defensive guard — the repository should not return duplicates,
-        // but if it does, we select the state that would score highest rather than
-        // accepting whichever one arrives first.
-        let mut best_by_node: std::collections::HashMap<i64, MemoryState> =
-            std::collections::HashMap::new();
+        let mut best_by_node: HashMap<i64, MemoryState> = HashMap::new();
         for state in due_states {
             best_by_node
                 .entry(state.node_id)
                 .and_modify(|existing| {
-                    // Prefer the state with the earlier due_at (longer overdue)
                     if state.due_at < existing.due_at {
                         *existing = state.clone();
                     }
@@ -106,89 +141,298 @@ impl SessionService {
                 .or_insert(state);
         }
 
-        // Score and sort
-        let mut scored_items = Vec::new();
+        let mut candidates: HashMap<i64, ScoredItem> = HashMap::new();
 
         for state in best_by_node.into_values() {
-            // Get node info
             let node = match self.content_repo.get_node(state.node_id).await? {
-                Some(n) => n,
-                None => continue, // Skip if node doesn't exist
+                Some(node) => node,
+                None => continue,
             };
 
-            // Include word_instance, verse, and knowledge types
-            let is_reviewable = matches!(
+            if !matches!(
                 node.node_type,
-                NodeType::WordInstance | NodeType::Verse | NodeType::Knowledge
-            );
-
-            if !is_reviewable {
+                NodeType::Word
+                    | NodeType::WordInstance
+                    | NodeType::Verse
+                    | NodeType::Knowledge
+                    | NodeType::Root
+                    | NodeType::Lemma
+            ) {
                 continue;
             }
 
-            // Phase 4: Filter by knowledge axis if specified
-            let knowledge_axis = KnowledgeNode::parse(&node.ukey).map(|kn| kn.axis).or(
-                if matches!(node.node_type, NodeType::Verse) {
-                    Some(KnowledgeAxis::Memorization)
-                } else {
-                    None
-                },
-            );
+            if !goal_scope.matches(&node) {
+                continue;
+            }
+
+            let knowledge_axis = resolve_knowledge_axis(&node);
 
             if let Some(filter_axis) = axis_filter {
-                // If filtering by axis, only include matching knowledge nodes
                 match knowledge_axis {
-                    Some(axis) if axis == filter_axis => {
-                        // Include this node
-                    }
-                    _ => {
-                        // Skip nodes that don't match the axis filter
-                        continue;
-                    }
+                    Some(axis) if axis == filter_axis => {}
+                    _ => continue,
                 }
             }
 
-            // Calculate priority score
             let days_overdue = (now.timestamp_millis() - state.due_at.timestamp_millis()) as f64
                 / (24.0 * 60.0 * 60.0 * 1000.0);
             let days_overdue = days_overdue.max(0.0);
-
             let mastery_gap = (1.0 - state.energy).max(0.0);
-
-            // For now, use a simple importance based on node type
-            // In future, could query from importance_scores table
-            let importance = match node.node_type {
-                NodeType::WordInstance => 0.5,
-                NodeType::Verse => 0.3,
-                NodeType::Knowledge => 0.6, // Knowledge nodes are important
-                _ => 0.0,
-            };
-
+            let importance = importance_for_node_type(node.node_type);
             let priority_score = weights.w_due * days_overdue
                 + weights.w_need * mastery_gap
                 + weights.w_yield * importance;
+            let lexical_priority = self
+                .compute_lexical_priority(&node, &state, mastery_gap, days_overdue)
+                .await?;
 
-            scored_items.push(ScoredItem {
-                node,
-                memory_state: state,
-                priority_score,
-                days_overdue,
-                mastery_gap,
-                knowledge_axis,
+            candidates.insert(
+                node.id,
+                ScoredItem {
+                    node,
+                    memory_state: state,
+                    priority_score,
+                    days_overdue,
+                    mastery_gap,
+                    knowledge_axis,
+                    session_budget: SessionBudget::DueReview,
+                    lexical_priority,
+                },
+            );
+        }
+
+        if candidates.len() < (limit as usize) {
+            let needed = (limit as usize) - candidates.len();
+            let fetch_limit = (needed + limit as usize * 2).max(needed + 20) as u32;
+
+            if let Ok(default_nodes) = self.content_repo.get_default_intro_nodes(fetch_limit).await
+            {
+                for node in default_nodes {
+                    if candidates.len() >= (limit as usize) * 3 {
+                        break;
+                    }
+
+                    if candidates.contains_key(&node.id) || !goal_scope.matches(&node) {
+                        continue;
+                    }
+
+                    if let Ok(Some(_)) = self.user_repo.get_memory_state(user_id, node.id).await {
+                        continue;
+                    }
+
+                    let knowledge_axis = resolve_knowledge_axis(&node);
+                    if let Some(filter_axis) = axis_filter {
+                        match knowledge_axis {
+                            Some(axis) if axis == filter_axis => {}
+                            _ => continue,
+                        }
+                    }
+
+                    let state = MemoryState::new_for_node(user_id.to_string(), node.id);
+                    let days_overdue = 0.0;
+                    let mastery_gap = 1.0;
+                    let importance = importance_for_node_type(node.node_type);
+                    let priority_score =
+                        weights.w_need * mastery_gap + weights.w_yield * importance;
+                    let lexical_priority = self
+                        .compute_lexical_priority(&node, &state, mastery_gap, days_overdue)
+                        .await?;
+                    let session_budget = if is_lexical_candidate(&node, knowledge_axis) {
+                        SessionBudget::Lexical
+                    } else {
+                        SessionBudget::Continuity
+                    };
+
+                    candidates.insert(
+                        node.id,
+                        ScoredItem {
+                            node,
+                            memory_state: state,
+                            priority_score,
+                            days_overdue,
+                            mastery_gap,
+                            knowledge_axis,
+                            session_budget,
+                            lexical_priority,
+                        },
+                    );
+                }
+            }
+        }
+
+        let mut all_candidates: Vec<ScoredItem> = candidates.into_values().collect();
+        if all_candidates.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        all_candidates.sort_by(desc_priority);
+
+        let (continuity_target, due_target, lexical_target) =
+            session_budget_targets(limit as usize);
+
+        let mut selected = Vec::new();
+        let mut selected_ids: HashSet<i64> = HashSet::new();
+
+        let mut due_pool: Vec<ScoredItem> = all_candidates
+            .iter()
+            .filter(|item| {
+                item.session_budget == SessionBudget::DueReview
+                    || item.days_overdue > 0.0
+                    || item.memory_state.review_count > 0
+            })
+            .cloned()
+            .collect();
+        due_pool.sort_by(desc_priority);
+        if due_pool.is_empty() {
+            due_pool = all_candidates.clone();
+        }
+
+        let mut continuity_pool: Vec<ScoredItem> = all_candidates
+            .iter()
+            .filter(|item| is_continuity_candidate(&item.node, item.knowledge_axis))
+            .cloned()
+            .collect();
+        continuity_pool.sort_by(desc_priority);
+        if continuity_pool.is_empty() {
+            continuity_pool = all_candidates.clone();
+        }
+
+        let mut lexical_pool: Vec<ScoredItem> = all_candidates
+            .iter()
+            .filter(|item| is_lexical_candidate(&item.node, item.knowledge_axis))
+            .cloned()
+            .collect();
+        lexical_pool.sort_by(desc_lexical_then_priority);
+        if lexical_pool.is_empty() {
+            lexical_pool = all_candidates.clone();
+            lexical_pool.sort_by(desc_lexical_then_priority);
+        }
+
+        take_from_pool(
+            &mut selected,
+            &mut selected_ids,
+            &continuity_pool,
+            continuity_target,
+            SessionBudget::Continuity,
+        );
+        take_from_pool(
+            &mut selected,
+            &mut selected_ids,
+            &lexical_pool,
+            lexical_target,
+            SessionBudget::Lexical,
+        );
+        take_from_pool(
+            &mut selected,
+            &mut selected_ids,
+            &due_pool,
+            due_target,
+            SessionBudget::DueReview,
+        );
+
+        if selected.len() < (limit as usize) {
+            for item in all_candidates {
+                if selected.len() >= (limit as usize) {
+                    break;
+                }
+                if selected_ids.insert(item.node.id) {
+                    selected.push(item);
+                }
+            }
+        }
+
+        selected.truncate(limit as usize);
+        Ok(selected)
+    }
+
+    async fn resolve_goal_scope(&self, goal_id: Option<&str>) -> Result<GoalScope> {
+        let Some(raw_goal_id) = goal_id else {
+            return Ok(GoalScope::default());
+        };
+
+        let normalized = raw_goal_id.trim();
+        if normalized.is_empty() || normalized == "daily_review" {
+            return Ok(GoalScope::default());
+        }
+
+        let scoped_nodes = self.content_repo.get_nodes_for_goal(normalized).await?;
+        if !scoped_nodes.is_empty() {
+            return Ok(GoalScope {
+                allowed_node_ids: Some(scoped_nodes.into_iter().collect()),
+                chapter_scope: None,
             });
         }
 
-        // Sort by priority (highest first)
-        scored_items.sort_by(|a, b| {
-            b.priority_score
-                .partial_cmp(&a.priority_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        Ok(GoalScope {
+            allowed_node_ids: None,
+            chapter_scope: extract_chapter_scope(normalized),
+        })
+    }
 
-        // Return top N items
-        scored_items.truncate(limit as usize);
+    async fn compute_lexical_priority(
+        &self,
+        node: &Node,
+        state: &MemoryState,
+        mastery_gap: f64,
+        days_overdue: f64,
+    ) -> Result<Option<f64>> {
+        let axis = resolve_knowledge_axis(node);
+        if !is_lexical_candidate(node, axis) {
+            return Ok(None);
+        }
 
-        Ok(scored_items)
+        let fragility = (mastery_gap
+            + if state.review_count == 0 { 0.35 } else { 0.0 }
+            + (days_overdue.clamp(0.0, 14.0) / 28.0))
+            .max(0.1);
+
+        let frequency_weight = self
+            .metadata_weight(
+                node.id,
+                &[
+                    "frequency_weight",
+                    "lexical_frequency_weight",
+                    "word_frequency_weight",
+                    "word_frequency",
+                ],
+            )
+            .await?
+            .unwrap_or(1.0);
+
+        let spread_weight = self
+            .metadata_weight(
+                node.id,
+                &[
+                    "spread_weight",
+                    "cross_surah_spread",
+                    "lexical_spread_weight",
+                ],
+            )
+            .await?
+            .unwrap_or(1.0);
+
+        let prayer_boost = self
+            .metadata_weight(node.id, &["prayer_boost", "salah_boost"])
+            .await?
+            .unwrap_or_else(|| default_prayer_boost(node));
+
+        Ok(Some(
+            fragility.max(0.05)
+                * frequency_weight.max(0.1)
+                * spread_weight.max(0.1)
+                * prayer_boost.max(0.1),
+        ))
+    }
+
+    async fn metadata_weight(&self, node_id: i64, keys: &[&str]) -> Result<Option<f64>> {
+        for key in keys {
+            if let Some(value) = self.content_repo.get_metadata(node_id, key).await? {
+                if let Ok(parsed) = value.parse::<f64>() {
+                    return Ok(Some(parsed));
+                }
+            }
+        }
+        Ok(None)
     }
 
     /// Get session state (for resuming)
@@ -231,6 +475,199 @@ impl SessionService {
     }
 }
 
+#[derive(Debug, Default)]
+struct GoalScope {
+    allowed_node_ids: Option<HashSet<i64>>,
+    chapter_scope: Option<u8>,
+}
+
+impl GoalScope {
+    fn matches(&self, node: &Node) -> bool {
+        if let Some(ids) = &self.allowed_node_ids {
+            return ids.contains(&node.id);
+        }
+
+        if let Some(chapter) = self.chapter_scope {
+            return chapter_for_node(node).is_some_and(|value| value == chapter);
+        }
+
+        true
+    }
+}
+
+fn resolve_knowledge_axis(node: &Node) -> Option<KnowledgeAxis> {
+    KnowledgeNode::parse(&node.ukey).map(|kn| kn.axis).or(
+        if matches!(node.node_type, NodeType::Verse) {
+            Some(KnowledgeAxis::Memorization)
+        } else {
+            None
+        },
+    )
+}
+
+fn importance_for_node_type(node_type: NodeType) -> f64 {
+    match node_type {
+        NodeType::Word | NodeType::WordInstance | NodeType::Root | NodeType::Lemma => 0.65,
+        NodeType::Knowledge => 0.6,
+        NodeType::Verse => 0.35,
+        NodeType::Chapter => 0.3,
+    }
+}
+
+fn chapter_for_node(node: &Node) -> Option<u8> {
+    if let Some((chapter, _)) = node_id::decode_verse(node.id) {
+        return Some(chapter);
+    }
+    if let Some((chapter, _, _)) = node_id::decode_word_instance(node.id) {
+        return Some(chapter);
+    }
+    if let Some(chapter) = node_id::decode_chapter(node.id) {
+        return Some(chapter);
+    }
+
+    if let Some(base) = node.ukey.strip_prefix("VERSE:") {
+        return node_id::parse_verse(&format!("VERSE:{base}"))
+            .ok()
+            .map(|(chapter, _)| chapter);
+    }
+    if node.ukey.starts_with("WORD_INSTANCE:") {
+        return node_id::parse_word_instance(&node.ukey)
+            .ok()
+            .map(|(chapter, _, _)| chapter);
+    }
+
+    None
+}
+
+fn extract_chapter_scope(goal_id: &str) -> Option<u8> {
+    if let Some(value) = goal_id.strip_prefix("surah:") {
+        if let Ok(chapter) = value.parse::<u8>() {
+            return Some(chapter);
+        }
+    }
+
+    if let Some(idx) = goal_id.find("surah-") {
+        let suffix = &goal_id[idx + "surah-".len()..];
+        let chapter_str: String = suffix.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if let Ok(chapter) = chapter_str.parse::<u8>() {
+            return Some(chapter);
+        }
+    }
+
+    None
+}
+
+fn is_continuity_candidate(node: &Node, axis: Option<KnowledgeAxis>) -> bool {
+    if matches!(node.node_type, NodeType::Verse | NodeType::Chapter) {
+        return true;
+    }
+
+    matches!(
+        axis,
+        Some(KnowledgeAxis::Memorization | KnowledgeAxis::ContextualMemorization)
+    )
+}
+
+fn is_lexical_candidate(node: &Node, axis: Option<KnowledgeAxis>) -> bool {
+    if matches!(
+        node.node_type,
+        NodeType::Word | NodeType::WordInstance | NodeType::Root | NodeType::Lemma
+    ) {
+        return true;
+    }
+
+    matches!(
+        axis,
+        Some(KnowledgeAxis::Translation | KnowledgeAxis::Meaning | KnowledgeAxis::Tafsir)
+    )
+}
+
+fn default_prayer_boost(node: &Node) -> f64 {
+    if chapter_for_node(node).is_some_and(|chapter| matches!(chapter, 1 | 112 | 113 | 114)) {
+        1.4
+    } else {
+        1.0
+    }
+}
+
+fn desc_priority(a: &ScoredItem, b: &ScoredItem) -> std::cmp::Ordering {
+    b.priority_score
+        .partial_cmp(&a.priority_score)
+        .unwrap_or(std::cmp::Ordering::Equal)
+}
+
+fn desc_lexical_then_priority(a: &ScoredItem, b: &ScoredItem) -> std::cmp::Ordering {
+    match b
+        .lexical_priority
+        .unwrap_or(0.0)
+        .partial_cmp(&a.lexical_priority.unwrap_or(0.0))
+        .unwrap_or(std::cmp::Ordering::Equal)
+    {
+        std::cmp::Ordering::Equal => desc_priority(a, b),
+        other => other,
+    }
+}
+
+fn take_from_pool(
+    selected: &mut Vec<ScoredItem>,
+    selected_ids: &mut HashSet<i64>,
+    pool: &[ScoredItem],
+    target: usize,
+    budget: SessionBudget,
+) {
+    let mut added = 0usize;
+    for item in pool {
+        if added >= target {
+            break;
+        }
+
+        if selected_ids.insert(item.node.id) {
+            let mut adjusted = item.clone();
+            adjusted.session_budget = budget;
+            selected.push(adjusted);
+            added += 1;
+        }
+    }
+}
+
+fn session_budget_targets(limit: usize) -> (usize, usize, usize) {
+    if limit == 0 {
+        return (0, 0, 0);
+    }
+    if limit == 1 {
+        return (1, 0, 0);
+    }
+    if limit == 2 {
+        return (1, 1, 0);
+    }
+
+    let mut continuity = ((limit as f64) * 0.4).round() as usize;
+    let mut due_review = ((limit as f64) * 0.3).round() as usize;
+    let mut lexical = limit.saturating_sub(continuity + due_review);
+
+    continuity = continuity.max(1);
+    due_review = due_review.max(1);
+    lexical = lexical.max(1);
+
+    while continuity + due_review + lexical > limit {
+        if continuity >= due_review && continuity >= lexical && continuity > 1 {
+            continuity -= 1;
+        } else if due_review >= continuity && due_review >= lexical && due_review > 1 {
+            due_review -= 1;
+        } else if lexical > 1 {
+            lexical -= 1;
+        } else {
+            break;
+        }
+    }
+
+    while continuity + due_review + lexical < limit {
+        lexical += 1;
+    }
+
+    (continuity, due_review, lexical)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,6 +696,10 @@ mod tests {
             }))
         });
 
+        mock.expect_get_default_intro_nodes()
+            .returning(|_| Ok(vec![]));
+        mock.expect_get_metadata().returning(|_, _| Ok(None));
+
         mock
     }
 
@@ -270,6 +711,8 @@ mod tests {
         let states_clone = states.clone();
         mock.expect_get_due_states()
             .returning(move |_, _, _| Ok(states_clone.clone()));
+
+        mock.expect_get_memory_state().returning(|_, _| Ok(None));
 
         // Session state management
         let session_state = std::sync::Arc::new(std::sync::Mutex::new(Vec::<i64>::new()));
@@ -683,12 +1126,32 @@ mod tests {
 
         /// Golden scenario 1: Cold-start — brand-new user with zero memory states.
         ///
-        /// Documents the known cold-start gap: the current runtime scheduler
-        /// is due-queue-only, so a user with no states gets an empty session.
-        /// This test locks in that behavior as the baseline for C-003 to fix.
+        /// C-003 requirement: session must never be empty on cold start.
         #[tokio::test]
-        async fn test_golden_cold_start_empty_session() {
-            let content_repo = Arc::new(create_content_mock());
+        async fn test_golden_cold_start_non_empty_session() {
+            let mut content_mock = MockContentRepository::new();
+            content_mock.expect_get_node().returning(|_| Ok(None));
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| {
+                    Ok(vec![
+                        Node {
+                            id: 200,
+                            ukey: "VERSE:1:1".to_string(),
+                            node_type: NodeType::Verse,
+                        },
+                        Node {
+                            id: 201,
+                            ukey: "WORD_INSTANCE:1:1:1".to_string(),
+                            node_type: NodeType::WordInstance,
+                        },
+                    ])
+                });
+
+            let content_repo = Arc::new(content_mock);
             let user_repo = Arc::new(create_user_mock_with_due_states(vec![]));
             let service = SessionService::new(content_repo, user_repo);
             let now = Utc::now();
@@ -699,12 +1162,21 @@ mod tests {
 
             assert!(result.is_ok());
             let items = result.unwrap();
-            // GOLDEN: new user with no memory states → empty session.
-            // This gap is tracked as C-003 (cold-start empty-session fix).
-            assert_eq!(
-                items.len(),
-                0,
-                "Cold-start: new user with zero memory states must get an empty session (C-003 gap)"
+            assert!(
+                !items.is_empty(),
+                "Cold-start must always return a non-empty session (C-003)"
+            );
+            assert!(
+                items
+                    .iter()
+                    .any(|item| item.session_budget == SessionBudget::Continuity),
+                "Cold-start session should include continuity budget items"
+            );
+            assert!(
+                items
+                    .iter()
+                    .any(|item| item.session_budget == SessionBudget::Lexical),
+                "Cold-start session should include lexical budget items"
             );
         }
 
@@ -712,10 +1184,10 @@ mod tests {
         ///
         /// Three WordInstance nodes with known energies and overdue durations are
         /// scored with default weights (w_due=1.0, w_need=2.0, w_yield=1.5).
-        /// Expected priority scores (importance=0.5 for WordInstance):
-        ///   Node 10: 1.0×7 + 2.0×0.9 + 1.5×0.5 = 9.55  (highest)
-        ///   Node 11: 1.0×3 + 2.0×0.5 + 1.5×0.5 = 4.75  (medium)
-        ///   Node 12: 1.0×1 + 2.0×0.2 + 1.5×0.5 = 2.15  (lowest)
+        /// Expected priority scores (importance=0.65 for WordInstance):
+        ///   Node 10: 1.0×7 + 2.0×0.9 + 1.5×0.65 = 9.775  (highest)
+        ///   Node 11: 1.0×3 + 2.0×0.5 + 1.5×0.65 = 4.975  (medium)
+        ///   Node 12: 1.0×1 + 2.0×0.2 + 1.5×0.65 = 2.375  (lowest)
         #[tokio::test]
         async fn test_golden_due_review_deterministic_priority() {
             // Fixed reference point — makes priority scores fully deterministic across
@@ -770,6 +1242,12 @@ mod tests {
                     Ok(None)
                 }
             });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| Ok(vec![]));
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
 
             let user_repo = Arc::new(create_user_mock_with_due_states(states));
             let service = SessionService::new(Arc::new(content_mock), user_repo);
@@ -813,18 +1291,18 @@ mod tests {
 
             // GOLDEN: approximate score values (regression guard)
             assert!(
-                (items[0].priority_score - 9.55).abs() < 0.2,
-                "Node 10 priority ≈ 9.55, got {:.3}",
+                (items[0].priority_score - 9.775).abs() < 0.2,
+                "Node 10 priority ≈ 9.775, got {:.3}",
                 items[0].priority_score
             );
             assert!(
-                (items[1].priority_score - 4.75).abs() < 0.2,
-                "Node 11 priority ≈ 4.75, got {:.3}",
+                (items[1].priority_score - 4.975).abs() < 0.2,
+                "Node 11 priority ≈ 4.975, got {:.3}",
                 items[1].priority_score
             );
             assert!(
-                (items[2].priority_score - 2.15).abs() < 0.2,
-                "Node 12 priority ≈ 2.15, got {:.3}",
+                (items[2].priority_score - 2.375).abs() < 0.2,
+                "Node 12 priority ≈ 2.375, got {:.3}",
                 items[2].priority_score
             );
         }
@@ -875,6 +1353,12 @@ mod tests {
                     node_type,
                 }))
             });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| Ok(vec![]));
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
 
             let user_repo = Arc::new(create_user_mock_with_due_states(states));
             let service = SessionService::new(Arc::new(content_mock), user_repo);
@@ -924,6 +1408,273 @@ mod tests {
                     "Every item in chunk mode must carry the requested axis"
                 );
             }
+        }
+    }
+
+    // ========================================================================
+    // C-004/C-005/C-006 Runtime Behavior Tests
+    // ========================================================================
+    mod core_fixes {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_goal_scope_changes_candidate_pool() {
+            let now = Utc::now();
+            let states = vec![
+                MemoryState {
+                    user_id: "goal_user".to_string(),
+                    node_id: 500,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.4,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 2,
+                },
+                MemoryState {
+                    user_id: "goal_user".to_string(),
+                    node_id: 501,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.4,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 2,
+                },
+            ];
+
+            let mut content_mock = MockContentRepository::new();
+            content_mock.expect_get_node().returning(|id| {
+                Ok(Some(Node {
+                    id,
+                    ukey: format!("VERSE:1:{}", id),
+                    node_type: NodeType::Verse,
+                }))
+            });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| Ok(vec![]));
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
+            content_mock
+                .expect_get_nodes_for_goal()
+                .returning(|goal_id| {
+                    let scoped = match goal_id {
+                        "goal_a" => vec![500],
+                        "goal_b" => vec![501],
+                        _ => vec![],
+                    };
+                    Ok(scoped)
+                });
+
+            let user_repo = Arc::new(create_user_mock_with_due_states(states));
+            let service = SessionService::new(Arc::new(content_mock), user_repo);
+
+            let pool_a = service
+                .get_due_items_for_goal("goal_user", now, 10, false, Some("goal_a"), None)
+                .await
+                .unwrap();
+            let pool_b = service
+                .get_due_items_for_goal("goal_user", now, 10, false, Some("goal_b"), None)
+                .await
+                .unwrap();
+
+            let ids_a: Vec<i64> = pool_a.iter().map(|item| item.node.id).collect();
+            let ids_b: Vec<i64> = pool_b.iter().map(|item| item.node.id).collect();
+
+            assert_eq!(ids_a, vec![500], "goal_a should scope to node 500");
+            assert_eq!(ids_b, vec![501], "goal_b should scope to node 501");
+            assert_ne!(ids_a, ids_b, "Different goals must produce different pools");
+        }
+
+        #[tokio::test]
+        async fn test_three_budget_composition_present_for_standard_session() {
+            let now = Utc::now();
+            let states = vec![
+                MemoryState {
+                    user_id: "budget_user".to_string(),
+                    node_id: 700,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.3,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 3,
+                },
+                MemoryState {
+                    user_id: "budget_user".to_string(),
+                    node_id: 701,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.5,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 3,
+                },
+                MemoryState {
+                    user_id: "budget_user".to_string(),
+                    node_id: 702,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.6,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 2,
+                },
+            ];
+
+            let mut content_mock = MockContentRepository::new();
+            content_mock.expect_get_node().returning(|id| {
+                let (ukey, node_type) = match id {
+                    700 => ("VERSE:2:1".to_string(), NodeType::Verse),
+                    701 => ("WORD_INSTANCE:2:1:1".to_string(), NodeType::WordInstance),
+                    702 => ("WORD_INSTANCE:2:1:2".to_string(), NodeType::WordInstance),
+                    _ => return Ok(None),
+                };
+                Ok(Some(Node {
+                    id,
+                    ukey,
+                    node_type,
+                }))
+            });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| {
+                    Ok(vec![
+                        Node {
+                            id: 703,
+                            ukey: "VERSE:2:2".to_string(),
+                            node_type: NodeType::Verse,
+                        },
+                        Node {
+                            id: 704,
+                            ukey: "WORD_INSTANCE:2:2:1".to_string(),
+                            node_type: NodeType::WordInstance,
+                        },
+                    ])
+                });
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
+
+            let user_repo = Arc::new(create_user_mock_with_due_states(states));
+            let service = SessionService::new(Arc::new(content_mock), user_repo);
+
+            let items = service
+                .get_due_items("budget_user", now, 6, false, None)
+                .await
+                .unwrap();
+
+            assert!(
+                items
+                    .iter()
+                    .any(|item| item.session_budget == SessionBudget::Continuity),
+                "Session must include continuity budget items (C-005)"
+            );
+            assert!(
+                items
+                    .iter()
+                    .any(|item| item.session_budget == SessionBudget::DueReview),
+                "Session must include due-review budget items (C-005)"
+            );
+            assert!(
+                items
+                    .iter()
+                    .any(|item| item.session_budget == SessionBudget::Lexical),
+                "Session must include lexical budget items (C-005)"
+            );
+        }
+
+        #[tokio::test]
+        async fn test_lexical_priority_uses_frequency_spread_and_prayer_boost() {
+            let now = Utc::now();
+            let states = vec![
+                MemoryState {
+                    user_id: "lex_user".to_string(),
+                    node_id: 801,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.8,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 1,
+                },
+                MemoryState {
+                    user_id: "lex_user".to_string(),
+                    node_id: 802,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.8,
+                    last_reviewed: now,
+                    due_at: now,
+                    review_count: 1,
+                },
+                MemoryState {
+                    user_id: "lex_user".to_string(),
+                    node_id: 803,
+                    stability: 5.0,
+                    difficulty: 5.0,
+                    energy: 0.2,
+                    last_reviewed: now - Duration::try_days(10).unwrap(),
+                    due_at: now - Duration::try_days(10).unwrap(),
+                    review_count: 5,
+                },
+            ];
+
+            let mut content_mock = MockContentRepository::new();
+            content_mock.expect_get_node().returning(|id| {
+                let (ukey, node_type) = match id {
+                    801 => ("WORD_INSTANCE:1:1:1".to_string(), NodeType::WordInstance),
+                    802 => ("WORD_INSTANCE:2:1:1".to_string(), NodeType::WordInstance),
+                    803 => ("VERSE:2:1".to_string(), NodeType::Verse),
+                    _ => return Ok(None),
+                };
+                Ok(Some(Node {
+                    id,
+                    ukey,
+                    node_type,
+                }))
+            });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| Ok(vec![]));
+            content_mock
+                .expect_get_metadata()
+                .returning(|node_id, key| {
+                    let value = match (node_id, key) {
+                        (801, "frequency_weight") => Some("2.0".to_string()),
+                        (801, "spread_weight") => Some("1.8".to_string()),
+                        (802, "frequency_weight") => Some("1.0".to_string()),
+                        (802, "spread_weight") => Some("1.0".to_string()),
+                        _ => None,
+                    };
+                    Ok(value)
+                });
+
+            let user_repo = Arc::new(create_user_mock_with_due_states(states));
+            let service = SessionService::new(Arc::new(content_mock), user_repo);
+
+            let items = service
+                .get_due_items("lex_user", now, 4, false, None)
+                .await
+                .unwrap();
+
+            let by_id: HashMap<i64, ScoredItem> =
+                items.into_iter().map(|item| (item.node.id, item)).collect();
+            let lexical_801 = by_id
+                .get(&801)
+                .and_then(|item| item.lexical_priority)
+                .unwrap_or(0.0);
+            let lexical_802 = by_id
+                .get(&802)
+                .and_then(|item| item.lexical_priority)
+                .unwrap_or(0.0);
+
+            assert!(
+                lexical_801 > lexical_802,
+                "Lexical score should prioritize higher frequency/spread/prayer value (C-006)"
+            );
         }
     }
 
@@ -1081,6 +1832,12 @@ mod tests {
                     node_type: NodeType::Verse,
                 }))
             });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| Ok(vec![]));
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
 
             let user_repo = Arc::new(create_user_mock_with_due_states(states));
             let service = SessionService::new(Arc::new(content_mock), user_repo);
@@ -1213,6 +1970,12 @@ mod tests {
                     node_type,
                 }))
             });
+            content_mock
+                .expect_get_default_intro_nodes()
+                .returning(|_| Ok(vec![]));
+            content_mock
+                .expect_get_metadata()
+                .returning(|_, _| Ok(None));
 
             let user_repo = Arc::new(create_user_mock_with_due_states(states));
             let service = SessionService::new(Arc::new(content_mock), user_repo);

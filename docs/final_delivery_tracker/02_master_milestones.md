@@ -7,7 +7,7 @@
   - Required tickets:
     - `C-001` `C-002` `Q-001` `Q-013` `Q-014`
 
-- [ ] `M1` Core Learning Loop Reliability
+- [x] `M1` Core Learning Loop Reliability
   - Objective: non-empty cold-start, goal/chunk-aware planning, meaningful session composition.
   - Required tickets:
     - `C-003`..`C-013`

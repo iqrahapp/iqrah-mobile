@@ -40,6 +40,12 @@ flutter_rust_bridge_codegen generate
 | 2 | All business logic lives in Rust. Dart/Flutter is UI and state management only. |
 | 3 | Never call `rust/src/api/` functions directly from widgets. Go through a Riverpod provider. |
 
+### Rust / SQLx
+
+| # | Constraint |
+|---|------------|
+| 1 | Use `sqlx::query!`, `sqlx::query_as!`, and `sqlx::query_scalar!` for static SQL. Use raw `query(...)`/`query_as::<...>(...)` only for truly dynamic SQL text, and add a short inline comment explaining why. |
+
 ---
 
 ## 4. Git Commit Style

@@ -1,6 +1,6 @@
 use super::models::{
     CandidateNodeRow, ChapterRow, ContentPackageRow, EdgeRow, GoalRow, InstalledPackageRow,
-    LanguageRow, LemmaRow, MorphologySegmentRow, NodeGoalRow, PrerequisiteRow, RootRow,
+    LanguageRow, LemmaRow, MorphologySegmentRow, NodeGoalRow, NodeRow, PrerequisiteRow, RootRow,
     TranslatorRow, VerseRow, VerseTranslationRow, WordRow,
 };
 use async_trait::async_trait;
@@ -10,7 +10,7 @@ use iqrah_core::{
     ContentRepository, DistributionType, Edge, EdgeType, InstalledPackage, Language, Lemma,
     MorphologySegment, Node, NodeType, PackageType, Root, Translator, Verse, Word,
 };
-use sqlx::{query, query_as, SqlitePool};
+use sqlx::{query_as, SqlitePool};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -430,46 +430,52 @@ impl ContentRepository for SqliteContentRepository {
                 let (chapter, verse) = nid::decode_verse(node_id)
                     .ok_or_else(|| anyhow::anyhow!("Invalid verse ID"))?;
                 let verse_key = format!("{}:{}", chapter, verse);
+                let verse_key_ref = verse_key.as_str();
 
-                let count: (i64,) = query_as("SELECT COUNT(*) FROM verses WHERE verse_key = ?")
-                    .bind(&verse_key)
-                    .fetch_one(&self.pool)
-                    .await?;
-                Ok(count.0 > 0)
+                let count = sqlx::query_scalar!(
+                    "SELECT COUNT(*) FROM verses WHERE verse_key = ?",
+                    verse_key_ref
+                )
+                .fetch_one(&self.pool)
+                .await?;
+                Ok(count > 0)
             }
             NodeType::Chapter => {
                 let chapter_num = nid::decode_chapter(node_id)
                     .ok_or_else(|| anyhow::anyhow!("Invalid chapter ID"))?;
 
-                let count: (i64,) =
-                    query_as("SELECT COUNT(*) FROM chapters WHERE chapter_number = ?")
-                        .bind(chapter_num)
-                        .fetch_one(&self.pool)
-                        .await?;
-                Ok(count.0 > 0)
+                let count = sqlx::query_scalar!(
+                    "SELECT COUNT(*) FROM chapters WHERE chapter_number = ?",
+                    chapter_num
+                )
+                .fetch_one(&self.pool)
+                .await?;
+                Ok(count > 0)
             }
             NodeType::Word => {
                 let word_id =
                     nid::decode_word(node_id).ok_or_else(|| anyhow::anyhow!("Invalid word ID"))?;
 
-                let count: (i64,) = query_as("SELECT COUNT(*) FROM words WHERE word_id = ?")
-                    .bind(word_id)
-                    .fetch_one(&self.pool)
-                    .await?;
-                Ok(count.0 > 0)
+                let count =
+                    sqlx::query_scalar!("SELECT COUNT(*) FROM words WHERE word_id = ?", word_id)
+                        .fetch_one(&self.pool)
+                        .await?;
+                Ok(count > 0)
             }
             NodeType::WordInstance => {
                 let (chapter, verse, position) = nid::decode_word_instance(node_id)
                     .ok_or_else(|| anyhow::anyhow!("Invalid word instance ID"))?;
                 let verse_key = format!("{}:{}", chapter, verse);
+                let verse_key_ref = verse_key.as_str();
 
-                let count: (i64,) =
-                    query_as("SELECT COUNT(*) FROM words WHERE verse_key = ? AND position = ?")
-                        .bind(&verse_key)
-                        .bind(position)
-                        .fetch_one(&self.pool)
-                        .await?;
-                Ok(count.0 > 0)
+                let count = sqlx::query_scalar!(
+                    "SELECT COUNT(*) FROM words WHERE verse_key = ? AND position = ?",
+                    verse_key_ref,
+                    position
+                )
+                .fetch_one(&self.pool)
+                .await?;
+                Ok(count > 0)
             }
             _ => Ok(false),
         }
@@ -501,7 +507,7 @@ impl ContentRepository for SqliteContentRepository {
 
     async fn has_nodes(&self) -> anyhow::Result<bool> {
         // Efficient O(1) check using EXISTS or LIMIT 1
-        let result: Option<(i32,)> = query_as("SELECT 1 FROM verses LIMIT 1")
+        let result = sqlx::query_scalar!("SELECT 1 FROM verses LIMIT 1")
             .fetch_optional(&self.pool)
             .await?;
         Ok(result.is_some())
@@ -510,21 +516,27 @@ impl ContentRepository for SqliteContentRepository {
     async fn search_by_content(&self, query: &str, limit: i64) -> anyhow::Result<Vec<Node>> {
         use iqrah_core::domain::node_id as nid;
 
-        // Search in Arabic text (text_uthmani) for verses
+        // Search in Arabic text (Uthmani resource) for verses
         let pattern = format!("%{}%", query);
-        let rows: Vec<(String,)> = query_as(
-            "SELECT verse_key FROM verses
-             WHERE text_uthmani LIKE ?1
+        let pattern_ref = pattern.as_str();
+        let rows = sqlx::query!(
+            "SELECT v.verse_key
+             FROM verses v
+             JOIN nodes n ON n.ukey = 'VERSE:' || v.verse_key
+             JOIN script_resources sr_uth ON sr_uth.slug = 'uthmani'
+             JOIN script_contents sc_uth ON sc_uth.node_id = n.id AND sc_uth.resource_id = sr_uth.resource_id
+             WHERE sc_uth.text_content LIKE ?1
              LIMIT ?2",
+            pattern_ref,
+            limit
         )
-        .bind(&pattern)
-        .bind(limit)
         .fetch_all(&self.pool)
         .await?;
 
         let nodes: Vec<Node> = rows
             .into_iter()
-            .filter_map(|(verse_key,)| {
+            .filter_map(|row| {
+                let verse_key = row.verse_key;
                 nid::parse_verse(&verse_key).ok().map(|(ch, v)| Node {
                     id: nid::encode_verse(ch, v),
                     ukey: nid::verse(ch, v),
@@ -736,6 +748,33 @@ impl ContentRepository for SqliteContentRepository {
         };
 
         Ok((prev_word, next_word))
+    }
+
+    async fn get_default_intro_nodes(&self, limit: u32) -> anyhow::Result<Vec<Node>> {
+        let rows = query_as::<_, NodeRow>(
+            "SELECT id, ukey, node_type
+             FROM nodes
+             WHERE node_type IN (2, 3)
+             ORDER BY id ASC LIMIT ?",
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .filter_map(|r| {
+                if let Ok(node_type) = r.node_type.try_into() {
+                    Some(Node {
+                        id: r.id,
+                        ukey: r.ukey,
+                        node_type,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     // ========================================================================
@@ -1079,19 +1118,19 @@ impl ContentRepository for SqliteContentRepository {
         version: Option<String>,
         package_id: Option<String>,
     ) -> anyhow::Result<i32> {
-        let result = query(
+        let result = sqlx::query!(
             "INSERT INTO translators (slug, full_name, language_code, description, copyright_holder, license, website, version, package_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            slug,
+            full_name,
+            language_code,
+            description,
+            copyright_holder,
+            license,
+            website,
+            version,
+            package_id
         )
-        .bind(slug)
-        .bind(full_name)
-        .bind(language_code)
-        .bind(description)
-        .bind(copyright_holder)
-        .bind(license)
-        .bind(website)
-        .bind(version)
-        .bind(package_id)
         .execute(&self.pool)
         .await?;
 
@@ -1105,17 +1144,17 @@ impl ContentRepository for SqliteContentRepository {
         translation: &str,
         footnotes: Option<String>,
     ) -> anyhow::Result<()> {
-        query(
+        sqlx::query!(
             "INSERT INTO verse_translations (verse_key, translator_id, translation, footnotes)
              VALUES (?, ?, ?, ?)
              ON CONFLICT(verse_key, translator_id) DO UPDATE SET
                 translation = excluded.translation,
                 footnotes = excluded.footnotes",
+            verse_key,
+            translator_id,
+            translation,
+            footnotes
         )
-        .bind(verse_key)
-        .bind(translator_id)
-        .bind(translation)
-        .bind(footnotes)
         .execute(&self.pool)
         .await?;
 
@@ -1131,6 +1170,7 @@ impl ContentRepository for SqliteContentRepository {
         package_type: Option<PackageType>,
         language_code: Option<String>,
     ) -> anyhow::Result<Vec<ContentPackage>> {
+        // Dynamic SQL is required here because filter predicates are optional.
         let mut sql = String::from(
             "SELECT package_id, package_type, name, language_code, author, version, description, \
              file_size, download_url, checksum, license, created_at, updated_at \
@@ -1204,7 +1244,18 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn upsert_package(&self, package: &ContentPackage) -> anyhow::Result<()> {
-        query(
+        let package_id = package.package_id.as_str();
+        let package_type = package.package_type.to_string();
+        let name = package.name.as_str();
+        let language_code = package.language_code.as_deref();
+        let author = package.author.as_deref();
+        let version = package.version.as_str();
+        let description = package.description.as_deref();
+        let file_size = package.file_size;
+        let download_url = package.download_url.as_deref();
+        let checksum = package.checksum.as_deref();
+        let license = package.license.as_deref();
+        sqlx::query!(
             "INSERT INTO content_packages \
              (package_id, package_type, name, language_code, author, version, description, \
               file_size, download_url, checksum, license, updated_at) \
@@ -1221,18 +1272,18 @@ impl ContentRepository for SqliteContentRepository {
                 checksum = excluded.checksum, \
                 license = excluded.license, \
                 updated_at = unixepoch()",
+            package_id,
+            package_type,
+            name,
+            language_code,
+            author,
+            version,
+            description,
+            file_size,
+            download_url,
+            checksum,
+            license
         )
-        .bind(&package.package_id)
-        .bind(package.package_type.to_string())
-        .bind(&package.name)
-        .bind(&package.language_code)
-        .bind(&package.author)
-        .bind(&package.version)
-        .bind(&package.description)
-        .bind(package.file_size)
-        .bind(&package.download_url)
-        .bind(&package.checksum)
-        .bind(&package.license)
         .execute(&self.pool)
         .await?;
 
@@ -1240,10 +1291,12 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn delete_package(&self, package_id: &str) -> anyhow::Result<()> {
-        query("DELETE FROM content_packages WHERE package_id = ?")
-            .bind(package_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query!(
+            "DELETE FROM content_packages WHERE package_id = ?",
+            package_id
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -1271,25 +1324,25 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn is_package_installed(&self, package_id: &str) -> anyhow::Result<bool> {
-        let count: i32 =
-            query_as("SELECT COUNT(*) as count FROM installed_packages WHERE package_id = ?")
-                .bind(package_id)
-                .fetch_one(&self.pool)
-                .await
-                .map(|(count,): (i32,)| count)?;
+        let count = sqlx::query_scalar!(
+            "SELECT COUNT(*) as count FROM installed_packages WHERE package_id = ?",
+            package_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(count > 0)
     }
 
     async fn mark_package_installed(&self, package_id: &str) -> anyhow::Result<()> {
-        query(
+        sqlx::query!(
             "INSERT INTO installed_packages (package_id, installed_at, enabled) \
              VALUES (?, unixepoch(), 1) \
              ON CONFLICT(package_id) DO UPDATE SET \
                 enabled = 1, \
                 installed_at = unixepoch()",
+            package_id
         )
-        .bind(package_id)
         .execute(&self.pool)
         .await?;
 
@@ -1297,28 +1350,34 @@ impl ContentRepository for SqliteContentRepository {
     }
 
     async fn mark_package_uninstalled(&self, package_id: &str) -> anyhow::Result<()> {
-        query("DELETE FROM installed_packages WHERE package_id = ?")
-            .bind(package_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query!(
+            "DELETE FROM installed_packages WHERE package_id = ?",
+            package_id
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
 
     async fn enable_package(&self, package_id: &str) -> anyhow::Result<()> {
-        query("UPDATE installed_packages SET enabled = 1 WHERE package_id = ?")
-            .bind(package_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE installed_packages SET enabled = 1 WHERE package_id = ?",
+            package_id
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
 
     async fn disable_package(&self, package_id: &str) -> anyhow::Result<()> {
-        query("UPDATE installed_packages SET enabled = 0 WHERE package_id = ?")
-            .bind(package_id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE installed_packages SET enabled = 0 WHERE package_id = ?",
+            package_id
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -1473,12 +1532,12 @@ impl ContentRepository for SqliteContentRepository {
         const CHUNK_SIZE: usize = 500;
 
         for chunk in node_ids.chunks(CHUNK_SIZE) {
-            // Build parameterized query
+            // Dynamic IN-clause size is data-dependent; query! cannot validate runtime SQL text.
             let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
             let sql = format!(
                 "SELECT target_id AS node_id, source_id AS parent_id
                  FROM edges
-                 WHERE edge_type IN (0, 1) AND target_id IN ({})",
+                 WHERE edge_type = 0 AND target_id IN ({})",
                 placeholders
             );
 
@@ -1539,7 +1598,7 @@ impl ContentRepository for SqliteContentRepository {
             return Ok(HashMap::new());
         }
 
-        // Build placeholders for IN clause
+        // Dynamic IN-clause size is data-dependent; query! cannot validate runtime SQL text.
         let placeholders = vec!["?"; verse_keys.len()].join(", ");
         let query_str = format!(
             "SELECT v.verse_key, v.chapter_number, v.verse_number,
@@ -1587,7 +1646,7 @@ impl ContentRepository for SqliteContentRepository {
             return Ok(HashMap::new());
         }
 
-        // Create placeholders for IN clause
+        // Dynamic IN-clause size is data-dependent; query! cannot validate runtime SQL text.
         let placeholders: Vec<String> = word_ids.iter().map(|_| "?".to_string()).collect();
         let query_str = format!(
             "SELECT w.word_id, w.verse_key, w.position,

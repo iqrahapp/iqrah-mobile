@@ -1,13 +1,14 @@
 use crate::error::Result;
-use sqlx::{Row, SqlitePool};
+use sqlx::SqlitePool;
 
 /// Get the current schema version from the database
 pub async fn get_schema_version(pool: &SqlitePool) -> Result<String> {
-    let row = sqlx::query("SELECT version FROM schema_version ORDER BY applied_at DESC LIMIT 1")
-        .fetch_one(pool)
-        .await?;
+    let row =
+        sqlx::query_scalar!("SELECT version FROM schema_version ORDER BY applied_at DESC LIMIT 1")
+            .fetch_one(pool)
+            .await?;
 
-    Ok(row.try_get("version")?)
+    Ok(row)
 }
 
 /// Check if database schema version is compatible with app version

@@ -60,6 +60,9 @@ pub trait ContentRepository: Send + Sync {
     /// Get nodes by type
     async fn get_nodes_by_type(&self, node_type: NodeType) -> anyhow::Result<Vec<Node>>;
 
+    /// Get default intro nodes for cold-start backfilling (verses and words, ordered chronologically)
+    async fn get_default_intro_nodes(&self, limit: u32) -> anyhow::Result<Vec<Node>>;
+
     /// Get all WORD nodes within the given ayah node IDs (ordered by position)
     async fn get_words_in_ayahs(&self, ayah_node_ids: &[i64]) -> anyhow::Result<Vec<Node>>;
 

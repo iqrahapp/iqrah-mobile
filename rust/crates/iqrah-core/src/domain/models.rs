@@ -58,6 +58,23 @@ impl NodeType {
     }
 }
 
+impl TryFrom<i32> for NodeType {
+    type Error = String;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(NodeType::Chapter),
+            2 => Ok(NodeType::Verse),
+            3 => Ok(NodeType::Word),
+            4 => Ok(NodeType::WordInstance),
+            5 => Ok(NodeType::Root),
+            6 => Ok(NodeType::Lemma),
+            7 => Ok(NodeType::Knowledge),
+            _ => Err(format!("Invalid NodeType value: {}", value)),
+        }
+    }
+}
+
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s: String = (*self).into();

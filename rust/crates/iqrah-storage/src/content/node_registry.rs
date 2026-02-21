@@ -44,13 +44,20 @@ impl NodeRegistry {
         }
 
         // Query database
-        let result =
-            sqlx::query_as::<_, (i64, String)>("SELECT id, ukey FROM nodes WHERE ukey = ?")
-                .bind(ukey)
-                .fetch_optional(&self.pool)
-                .await?;
+        let result = sqlx::query!(
+            "SELECT
+                id AS \"id!: i64\",
+                ukey AS \"ukey!: String\"
+             FROM nodes
+             WHERE ukey = ?",
+            ukey
+        )
+        .fetch_optional(&self.pool)
+        .await?;
 
-        if let Some((id, fetched_ukey)) = result {
+        if let Some(row) = result {
+            let id = row.id;
+            let fetched_ukey = row.ukey;
             // Update both caches
             let mut ukey_cache = self.ukey_cache.write().await;
             let mut id_cache = self.id_cache.write().await;
@@ -74,12 +81,20 @@ impl NodeRegistry {
         }
 
         // Query database
-        let result = sqlx::query_as::<_, (i64, String)>("SELECT id, ukey FROM nodes WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let result = sqlx::query!(
+            "SELECT
+                id AS \"id!: i64\",
+                ukey AS \"ukey!: String\"
+             FROM nodes
+             WHERE id = ?",
+            id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
 
-        if let Some((fetched_id, ukey)) = result {
+        if let Some(row) = result {
+            let fetched_id = row.id;
+            let ukey = row.ukey;
             // Update both caches
             let mut ukey_cache = self.ukey_cache.write().await;
             let mut id_cache = self.id_cache.write().await;
@@ -103,12 +118,15 @@ impl NodeRegistry {
 
     /// Register a new node in the registry (inserts into database and cache)
     pub async fn register(&self, id: i64, ukey: String, node_type: i32) -> anyhow::Result<()> {
-        sqlx::query("INSERT OR IGNORE INTO nodes (id, ukey, node_type) VALUES (?, ?, ?)")
-            .bind(id)
-            .bind(&ukey)
-            .bind(node_type)
-            .execute(&self.pool)
-            .await?;
+        let ukey_ref = ukey.as_str();
+        sqlx::query!(
+            "INSERT OR IGNORE INTO nodes (id, ukey, node_type) VALUES (?, ?, ?)",
+            id,
+            ukey_ref,
+            node_type
+        )
+        .execute(&self.pool)
+        .await?;
 
         // Update caches
         let mut ukey_cache = self.ukey_cache.write().await;

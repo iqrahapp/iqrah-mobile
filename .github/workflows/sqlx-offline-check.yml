@@ -1,0 +1,39 @@
+name: SQLx Offline Check
+
+on:
+  push:
+    branches: [main, develop, "claude/**"]
+    paths:
+      - "rust/**"
+      - ".github/workflows/sqlx-offline-check.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "rust/**"
+      - ".github/workflows/sqlx-offline-check.yml"
+
+jobs:
+  sqlx-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Install sqlx-cli (sqlite)
+        run: cargo install sqlx-cli --no-default-features --features sqlite --locked
+
+      - name: Verify SQLx metadata is up-to-date
+        run: ./scripts/sqlx_prepare_workspace.sh --check
+

@@ -8,11 +8,45 @@
 // 4. Full text is fetched later during question generation
 
 use super::exercise_data::ExerciseData;
-use crate::domain::node_id::{self, PREFIX_CHAPTER, PREFIX_VERSE};
+use crate::domain::node_id::{self, PREFIX_CHAPTER, PREFIX_VERSE, PREFIX_WORD};
 use crate::{ContentRepository, KnowledgeNode, Node};
 use anyhow::Result;
 use rand::seq::SliceRandom;
 use rand::Rng;
+
+async fn resolve_word_location(
+    base_ukey: &str,
+    content_repo: &dyn ContentRepository,
+) -> Result<(i32, i32, i32)> {
+    let parts: Vec<&str> = base_ukey.split(':').collect();
+    if parts.len() == 4 {
+        let chapter: i32 = parts[1].parse()?;
+        let verse: i32 = parts[2].parse()?;
+        let position: i32 = parts[3].parse()?;
+        return Ok((chapter, verse, position));
+    }
+
+    if base_ukey.starts_with(PREFIX_WORD) {
+        let word_id = node_id::parse_word(base_ukey).map_err(|e| anyhow::anyhow!(e))?;
+        let word = content_repo
+            .get_word(word_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Word not found: {}", base_ukey))?;
+        let verse_parts: Vec<&str> = word.verse_key.split(':').collect();
+        if verse_parts.len() != 2 {
+            return Err(anyhow::anyhow!(
+                "Invalid verse key `{}` for word {}",
+                word.verse_key,
+                word_id
+            ));
+        }
+        let chapter: i32 = verse_parts[0].parse()?;
+        let verse: i32 = verse_parts[1].parse()?;
+        return Ok((chapter, verse, word.position));
+    }
+
+    Err(anyhow::anyhow!("Invalid word ukey format: {}", base_ukey))
+}
 
 // ============================================================================
 // Memorization Exercises
@@ -50,16 +84,7 @@ pub async fn generate_mcq_ar_to_en(
         ukey.to_string()
     };
 
-    // Parse ukey to extract verse location
-    // Format: PREFIX_WORD_INSTANCE + "chapter:verse:position" (e.g., "WORD_INSTANCE:1:1:3")
-    let parts: Vec<&str> = base_ukey.split(':').collect();
-    if parts.len() != 4 {
-        return Err(anyhow::anyhow!("Invalid word ukey format: {}", base_ukey));
-    }
-
-    let chapter: i32 = parts[1].parse()?;
-    let verse: i32 = parts[2].parse()?;
-    let position: i32 = parts[3].parse()?;
+    let (chapter, verse, position) = resolve_word_location(&base_ukey, content_repo).await?;
 
     // Get other words from the same verse or nearby verses as distractors
     let verse_key = format!("{}:{}", chapter, verse);
@@ -118,14 +143,7 @@ pub async fn generate_mcq_en_to_ar(
         ukey.to_string()
     };
 
-    let parts: Vec<&str> = base_ukey.split(':').collect();
-    if parts.len() != 4 {
-        return Err(anyhow::anyhow!("Invalid word ukey format: {}", base_ukey));
-    }
-
-    let chapter: i32 = parts[1].parse()?;
-    let verse: i32 = parts[2].parse()?;
-    let position: i32 = parts[3].parse()?;
+    let (chapter, verse, position) = resolve_word_location(&base_ukey, content_repo).await?;
 
     let verse_key = format!("{}:{}", chapter, verse);
     let words = content_repo.get_words_for_verse(&verse_key).await?;
@@ -170,22 +188,13 @@ pub async fn generate_contextual_translation(
     ukey: &str,
     _content_repo: &dyn ContentRepository,
 ) -> Result<ExerciseData> {
-    // Parse to extract verse_key
     let base_ukey = if let Some(kn) = KnowledgeNode::parse(ukey) {
         kn.base_node_id
     } else {
         ukey.to_string()
     };
-
-    let parts: Vec<&str> = base_ukey.split(':').collect();
-    if parts.len() != 4 {
-        return Err(anyhow::anyhow!(
-            "Invalid word node ID format: {}",
-            base_ukey
-        ));
-    }
-
-    let verse_key = format!("{}:{}", parts[1], parts[2]);
+    let (chapter, verse, _) = resolve_word_location(&base_ukey, _content_repo).await?;
+    let verse_key = format!("{}:{}", chapter, verse);
 
     Ok(ExerciseData::ContextualTranslation { node_id, verse_key })
 }

@@ -359,6 +359,12 @@ impl UserRepository for InMemoryUserRepository {
         Ok(())
     }
 
+    async fn delete_setting(&self, key: &str) -> Result<()> {
+        let mut settings = self.settings.write().unwrap();
+        settings.remove(key);
+        Ok(())
+    }
+
     async fn save_review_atomic(
         &self,
         user_id: &str,
@@ -545,5 +551,24 @@ mod tests {
 
         let s2 = repo.get_memory_state("user1", 2).await.unwrap().unwrap();
         assert!((s2.energy - 0.8).abs() < 0.001);
+    }
+
+    #[tokio::test]
+    async fn test_delete_setting_removes_value() {
+        let repo = InMemoryUserRepository::new();
+
+        repo.set_setting("session_budget_mix:s1", "payload")
+            .await
+            .unwrap();
+        assert_eq!(
+            repo.get_setting("session_budget_mix:s1").await.unwrap(),
+            Some("payload".to_string())
+        );
+
+        repo.delete_setting("session_budget_mix:s1").await.unwrap();
+        assert_eq!(
+            repo.get_setting("session_budget_mix:s1").await.unwrap(),
+            None
+        );
     }
 }
